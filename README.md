@@ -7,8 +7,6 @@
     sudo apt install vim
     sudo apt install tmux
 
-### tmux configuration
-
     touch ~/.tmux.conf
     set -g mouse on
     set -g status-interval 60
@@ -46,7 +44,15 @@ edit `jupyter_notebook_config.py`:
 
 ### jdk
 
+    tar -zxvf jdk-8u191-linux-x64.tar.gz
+    sudo mv jdk1.8.0_191 /usr/local/lib/jdk
 
+    sudo gedit /etc/profile
+    # jvm
+    export JAVA_HOME=/usr/local/lib/jdk
+    export JRE_HOME=${JAVA_HOME}/jre
+    export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib:${CLASSPATH}
+    export PATH=${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}
 
 ### IntelliJ IDEA
 
@@ -59,6 +65,10 @@ edit `jupyter_notebook_config.py`:
 - 运行：运行程序Alt+Shift+F10，启动调试Shift+F9
 
 #### training
+    
+    sudo gedit /etc/hosts
+    # JetBrains Crack
+    0.0.0.0 account.jetbrains.com
     
     gedit -idea.vmoptions
     gedit -idea64.vmoptions
