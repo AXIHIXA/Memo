@@ -67,7 +67,7 @@ edit `jupyter_notebook_config.py`:
 #### training
     
     sudo gedit /etc/hosts
-    # JetBrains Crack
+    # JetBrains
     0.0.0.0 account.jetbrains.com
     
     gedit -idea.vmoptions
