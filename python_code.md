@@ -50,9 +50,9 @@
 ## file system traversal
  
     for root, dirs, files in os.walk('./some_dir/'):
-      # `root`: The directory we are traversing in this loop
-      # `dirs`: All directories in `root`
-      # `files`: All files in `root`
+        # `root`: The directory we are traversing in this loop
+        # `dirs`: All directories in `root`
+        # `files`: All files in `root`
 
-      for filename in files:
-        print(os.path.abspath(filename))
+        for filename in files:
+            print(os.path.abspath(filename))
