@@ -56,3 +56,14 @@
 
         for filename in files:
             print(os.path.abspath(filename))
+
+## h5py
+    
+    import h5py
+    
+    
+    with h5py.File('../var/doc_term_mat.h5', 'r') as fin:
+        doc_term_mat = fin['doc_term_mat']
+
+    with h5py.File('../var/doc_term_mat.h5', 'w') as fout:
+        fout.create_dataset('doc_term_mat', data=doc_term_mat)
