@@ -36,15 +36,16 @@
             iou = np.float32(intersection) / union
             ious.append(iou)
         return np.array(ious)
-        
-    img = cv2.imread('SHION.jpg')
 
-    fig = plt.figure(dpi=300)
-    plt.imshow(img[:, :, [2, 1, 0]])
-    plt.axis('on')
-    plt.title('image')
-    plt.show()
-    fig.clear()
+
+    if __name__ == '__main__':
+        img = cv2.imread('SHION.jpg')
+        fig = plt.figure(dpi=300)
+        plt.imshow(img[:, :, [2, 1, 0]])
+        plt.axis('on')
+        plt.title('image')
+        plt.show()
+        fig.clear()
     
 ## file system traversal
  
