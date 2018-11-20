@@ -59,6 +59,8 @@
             print(os.path.abspath(filename))
 
 ## h5py
+
+Use `h5py` module to save LARGE `numpy` arrays or matrices: 
     
     import h5py
     
