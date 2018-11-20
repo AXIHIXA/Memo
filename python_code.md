@@ -3,6 +3,7 @@
 ## opencv-python + matplotlib
 
     import cv2
+    import h5py
     import json
     import matplotlib
     import matplotlib.pylab as plt
