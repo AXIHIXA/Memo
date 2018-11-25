@@ -70,3 +70,7 @@ Use `h5py` module to save LARGE `numpy` arrays or matrices:
 
     with h5py.File('../var/doc_term_mat.h5', 'w') as fout:
         fout.create_dataset('doc_term_mat', data=doc_term_mat)
+        
+## sort `dict` by value
+
+    dictionary = sorted(dictionary.items(), key=lambda x: x[1], reverse=True)
