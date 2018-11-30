@@ -73,3 +73,7 @@ edit `jupyter_notebook_config.py`:
     gedit -idea.vmoptions
     gedit -idea64.vmoptions
     -javaagent:/home/ax/opt/idea/lib/JetbrainsCrack-3.1-release-enc.jar
+    ...
+    -Xms1024m
+    -Xmx2048m
+    -XX:ReservedCodeCacheSize=1024m
