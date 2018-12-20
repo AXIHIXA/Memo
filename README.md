@@ -63,6 +63,7 @@ edit `jupyter_notebook_config.py`:
 - 重构：重构汇总Ctrl+Shift+Alt+T，变量改名Shift+F6，提取变量Ctrl+Alt+V
 - 格式化：格式化import列表Ctrl+Alt+O，格式化代码Ctrl+Alt+L
 - 运行：运行程序Alt+Shift+F10，启动调试Shift+F9
+- 方法分隔符：【File】→【Settings...】→【Editor】→【General】→【Appearance】→【Show method separators】
 
 #### training
     
