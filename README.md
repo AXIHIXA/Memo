@@ -44,8 +44,8 @@ edit `jupyter_notebook_config.py`:
 
 ### jdk
 
-    tar -zxvf jdk-8u191-linux-x64.tar.gz
-    sudo mv jdk1.8.0_191 /usr/local/lib/jdk
+    tar -zxvf jdk-8u201-linux-x64.tar.gz
+    sudo mv jdk1.8.0_201 /usr/local/lib/jdk
 
     sudo gedit /etc/profile
     # jvm
@@ -73,7 +73,7 @@ edit `jupyter_notebook_config.py`:
     
     gedit -idea.vmoptions
     gedit -idea64.vmoptions
-    -javaagent:/home/ax/opt/idea/lib/JetbrainsCrack-3.1-release-enc.jar
+    -javaagent:/home/ax/opt/idea/lib/JetbrainsIdesCrack-4.2.jar
     ...
     -Xms1024m
     -Xmx2048m
