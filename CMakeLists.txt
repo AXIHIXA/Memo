@@ -1,12 +1,17 @@
 cmake_minimum_required(VERSION 3.13)
-project(hw1 C)
 
-set(CMAKE_C_STANDARD 99)
+set(PROJECT_NAME "OpenGLDemo")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 
-include_directories("${PROJECT_SOURCE_DIR}/include/")
+find_package(OpenGL REQUIRED)
+find_package(GLUT REQUIRED)
 
-set(SOURCES
-        src/transplant.c
-        src/main.c)
+include_directories(${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS})
 
-add_executable(hw1 ${SOURCES})
+set(SOURCE_FILES
+        src/main.cpp)
+
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+
+target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY})
