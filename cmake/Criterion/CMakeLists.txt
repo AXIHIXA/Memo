@@ -16,12 +16,12 @@ if (${TEST})
     set(SOURCE_FILES
             ${SOURCE_FILES}
             tests/sfmm_tests.c
-            )
+    )
 else ()
     set(SOURCE_FILES
             ${SOURCE_FILES}
             src/main.c
-            )
+    )
 endif ()
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
