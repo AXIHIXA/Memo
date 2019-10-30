@@ -101,14 +101,9 @@ edit `jupyter_notebook_config.py`:
 - 方法分隔符：【File】→【Settings...】→【Editor】→【General】→【Appearance】→【Show method separators】
 
 #### training
-    
-    sudo gedit /etc/hosts
-    # JetBrains
-    0.0.0.0 account.jetbrains.com
-    
+   
     gedit -idea.vmoptions
     gedit -idea64.vmoptions
-    -javaagent:/home/ax/opt/idea/lib/JetbrainsIdesCrack-4.2.jar
     ...
     -Xms1024m
     -Xmx2048m
