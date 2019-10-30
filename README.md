@@ -15,8 +15,11 @@
     
 ### VMWare Shared Folder
 
-    sudo vmhgfs-fuse .host:/ /mnt/hgfs/ -o allow_other -o uid=1000
     # https://askubuntu.com/questions/29284/how-do-i-mount-shared-folders-in-ubuntu-using-vmware-tools 
+    
+    sudo gedit /etc/fstab
+    # Use shared folders between VMWare guest and host
+    .host:/    /mnt/hgfs/    fuse.vmhgfs-fuse    defaults,allow_other,uid=1000     0    0
 
 ## python
 
