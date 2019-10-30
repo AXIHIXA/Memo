@@ -12,6 +12,11 @@
     set -g status-interval 60
     set -g display-time 3000
     set -g history-limit 65535
+    
+### VMWare Shared Folder
+
+    sudo vmhgfs-fuse .host:/ /mnt/hgfs/ -o allow_other -o uid=1000
+    # https://askubuntu.com/questions/29284/how-do-i-mount-shared-folders-in-ubuntu-using-vmware-tools 
 
 ## python
 
