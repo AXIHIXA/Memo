@@ -79,8 +79,8 @@ edit `jupyter_notebook_config.py`:
 
 ### jdk
 
-    tar -zxvf jdk-8u231-linux-x64.tar.gz
-    sudo mv jdk1.8.0_231 /usr/local/lib/jdk
+    tar -zxvf jdk-11.0.5_linux-x64_bin.tar.gz
+    sudo mv jdk-11.0.5 /usr/local/lib/jdk
 
     sudo gedit /etc/profile
     # jvm
