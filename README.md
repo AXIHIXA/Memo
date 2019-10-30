@@ -22,6 +22,33 @@
     pip install opencv-python
     python -m ipykernel install --name py3 --user
     
+#### Note
+
+    Do you wish the installer to initialize Anaconda3
+    by running conda init? [yes|no]
+    [no] >>> yes
+    no change     /home/ax/opt/anaconda3/condabin/conda
+    no change     /home/ax/opt/anaconda3/bin/conda
+    no change     /home/ax/opt/anaconda3/bin/conda-env
+    no change     /home/ax/opt/anaconda3/bin/activate
+    no change     /home/ax/opt/anaconda3/bin/deactivate
+    no change     /home/ax/opt/anaconda3/etc/profile.d/conda.sh
+    no change     /home/ax/opt/anaconda3/etc/fish/conf.d/conda.fish
+    no change     /home/ax/opt/anaconda3/shell/condabin/Conda.psm1
+    no change     /home/ax/opt/anaconda3/shell/condabin/conda-hook.ps1
+    no change     /home/ax/opt/anaconda3/lib/python3.7/site-packages/xontrib/conda.xsh
+    no change     /home/ax/opt/anaconda3/etc/profile.d/conda.csh
+    modified      /home/ax/.bashrc
+
+    ==> For changes to take effect, close and re-open your current shell. <==
+
+    If you'd prefer that conda's base environment not be activated on startup,
+       set the auto_activate_base parameter to false:
+
+    conda config --set auto_activate_base false
+
+    Thank you for installing Anaconda3!
+    
 ### jupyter lab
 
 #### generate config
