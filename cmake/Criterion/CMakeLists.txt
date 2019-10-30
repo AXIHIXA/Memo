@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
+project(hw4_raw_cl C)
 
-set(PROJECT_NAME hw4_raw_cl)
 set(CMAKE_C_STANDARD 99)
 # 1, ON, YES, TRUE, Y
 # 0, OFF, NO, FALSE, N, IGNORE, NOTFOUND, empty string, <string>-NOTFOUND
