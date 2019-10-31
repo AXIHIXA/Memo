@@ -139,4 +139,4 @@ edit `jupyter_notebook_config.py`:
     
 ### boost
 
-    sudo apt install libboost-all-dev libcgal-dev
+    sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
