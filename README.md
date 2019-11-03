@@ -151,7 +151,11 @@ edit `jupyter_notebook_config.py`:
 
 ### OpenGL
     
-    sudo apt install freeglut3-dev libglm-dev libglew-dev libglfw3-dev build-essential libx11-dev libxmu-dev libxi-dev libgl1-mesa-glx libglu1-mesa libglu1-mesa-dev 
+    sudo apt install freeglut3-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev
+    
+#### undetermined
+    
+    libx11-dev  libgl1-mesa-glx libglu1-mesa libglu1-mesa-dev 
     
 ### boost + cgal
 
