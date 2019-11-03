@@ -1,5 +1,5 @@
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifndef __DEBUG_H
+#define __DEBUG_H
 
 #include <stdio.h>
 
@@ -85,4 +85,4 @@
 #define error(S, ...)
 #endif
 
-#endif /* DEBUG_H */
+#endif /* __DEBUG_H */
