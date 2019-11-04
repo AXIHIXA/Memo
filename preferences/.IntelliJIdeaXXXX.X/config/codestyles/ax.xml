@@ -1,17 +1,27 @@
 <code_scheme name="ax" version="173">
-  <ECMA4CodeStyleSettings>
+  <ECMA4CodeStyleSettings version="0">
     <option name="FUNCTION_EXPRESSION_BRACE_STYLE" value="2" />
   </ECMA4CodeStyleSettings>
-  <JSCodeStyleSettings>
+  <JSCodeStyleSettings version="0">
     <option name="FUNCTION_EXPRESSION_BRACE_STYLE" value="2" />
   </JSCodeStyleSettings>
+  <JavaCodeStyleSettings>
+    <option name="SPACES_WITHIN_ANGLE_BRACKETS" value="true" />
+    <option name="SPACE_AFTER_CLOSING_ANGLE_BRACKET_IN_TYPE_ARGUMENT" value="true" />
+  </JavaCodeStyleSettings>
+  <Python>
+    <option name="DICT_ALIGNMENT" value="2" />
+    <option name="OPTIMIZE_IMPORTS_SORT_NAMES_IN_FROM_IMPORTS" value="true" />
+    <option name="OPTIMIZE_IMPORTS_JOIN_FROM_IMPORTS_WITH_SAME_SOURCE" value="true" />
+    <option name="OPTIMIZE_IMPORTS_CASE_INSENSITIVE_ORDER" value="true" />
+  </Python>
   <ScalaCodeStyleSettings>
     <option name="METHOD_BRACE_FORCE" value="3" />
     <option name="FINALLY_BRACE_FORCE" value="3" />
     <option name="TRY_BRACE_FORCE" value="3" />
     <option name="CLOSURE_BRACE_FORCE" value="3" />
   </ScalaCodeStyleSettings>
-  <TypeScriptCodeStyleSettings>
+  <TypeScriptCodeStyleSettings version="0">
     <option name="FUNCTION_EXPRESSION_BRACE_STYLE" value="2" />
   </TypeScriptCodeStyleSettings>
   <codeStyleSettings language="CFML">

@@ -6,7 +6,17 @@
     <option name="NAMESPACE_BRACE_PLACEMENT" value="2" />
     <option name="FUNCTION_BRACE_PLACEMENT" value="2" />
     <option name="BLOCK_BRACE_PLACEMENT" value="2" />
+    <option name="SPACE_BEFORE_TEMPLATE_DECLARATION_LT" value="true" />
+    <option name="SPACE_WITHIN_TEMPLATE_CALL_LTGT" value="true" />
+    <option name="SPACE_AFTER_POINTER_IN_DECLARATION" value="true" />
+    <option name="SPACE_AFTER_REFERENCE_IN_DECLARATION" value="true" />
   </Objective-C>
+  <Python>
+    <option name="DICT_ALIGNMENT" value="2" />
+    <option name="OPTIMIZE_IMPORTS_SORT_NAMES_IN_FROM_IMPORTS" value="true" />
+    <option name="OPTIMIZE_IMPORTS_JOIN_FROM_IMPORTS_WITH_SAME_SOURCE" value="true" />
+    <option name="OPTIMIZE_IMPORTS_CASE_INSENSITIVE_ORDER" value="true" />
+  </Python>
   <SwiftCodeStyleSettings>
     <option name="GUARD_ELSE_ON_NEW_LINE" value="true" />
   </SwiftCodeStyleSettings>
