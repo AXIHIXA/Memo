@@ -155,6 +155,10 @@ edit `jupyter_notebook_config.py`:
     
     sudo apt install freeglut3-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev
     
+### SFML
+
+    sudo apt install libsfml-dev
+    
 ### boost + cgal
 
     I suggest not using this holy s**t thing. 
