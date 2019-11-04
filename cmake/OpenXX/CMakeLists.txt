@@ -1,7 +1,8 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.15)
 project(PVG)
 set(CMAKE_CXX_STANDARD 17)
 
+find_package(Eigen3 REQUIRED)
 find_package(GLUT REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -19,6 +20,7 @@ set(SOURCE_FILES
 
 set(ALL_INCLUDE_DIRS
         include
+        ${EIGEN3_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
         ${GLUT_INCLUDE_DIR}
         ${OPENGL_INCLUDE_DIR})
