@@ -18,8 +18,8 @@ Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note.
         swap         swap           32G
         /boot        ext4           1G
         /            ext4           remaining
-        
-        　 
+
+
 - 分区之后要将boot所对应的分区设置为启动引导器，否则启动时操作系统可能找不到引导项导致无法进入ubuntu
 　　 
 - The grub page is default hidden if only ubuntu is detected. To see this page and edit grub after installation, boot with efi floppy inserted. 
