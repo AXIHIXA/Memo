@@ -12,17 +12,20 @@
 - 在选择install ubuntu之前，按e进入grub编辑页面，将倒数第二行的 quiet splash 替换成 nomodeset（后面安装成功，并利用软件更新器更新了软件后，启动黑屏问题也是这样解决），按F10保存，即可成功进入安装程序
 - 安装过程中的磁盘分区（其他步骤直接点继续就可以了，所以说一下如何进行磁盘分区）在进入到安装类型（install type）这一步骤的时候，建议选择其他（something else）手动进行分区，这样可以自己控制磁盘的分配。手动分区要在空闲分区（free space）分配，点击"+"号即可分配，分配的大小类型如下所示:
 　　 
+　　 
     partition    file system    size
     efi          --             300M
     swap         swap           32G
     /boot        ext4           1G
     /            ext4           remaining
 　　 
+　　 
 - 分区之后要将boot所对应的分区设置为启动引导器，否则启动时操作系统可能找不到引导项导致无法进入ubuntu
 　　 
 - The grub page is default hidden if only ubuntu is detected. To see this page and edit grub after installation, boot with efi floppy inserted. 
 　　 
 - update nvidia drivers: 
+　　 
 　　 
     $ ubuntu-drivers devices
     == /sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0 ==
@@ -38,6 +41,7 @@
     driver   : intel-microcode - distro free
     　　 
     $ sudo ubuntu-drivers autoinstall
+
 
 ### time fix
 
