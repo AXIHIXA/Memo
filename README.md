@@ -4,11 +4,7 @@
 
 ### driver problem
 
-#### installation
-
-
-#### after 
-
+    https://www.cnblogs.com/deepllz/p/8892628.html
 
 ### time fix
 
@@ -44,24 +40,6 @@
     
 #### Note
 
-    Do you wish the installer to initialize Anaconda3
-    by running conda init? [yes|no]
-    [no] >>> yes
-    no change     /home/ax/opt/anaconda3/condabin/conda
-    no change     /home/ax/opt/anaconda3/bin/conda
-    no change     /home/ax/opt/anaconda3/bin/conda-env
-    no change     /home/ax/opt/anaconda3/bin/activate
-    no change     /home/ax/opt/anaconda3/bin/deactivate
-    no change     /home/ax/opt/anaconda3/etc/profile.d/conda.sh
-    no change     /home/ax/opt/anaconda3/etc/fish/conf.d/conda.fish
-    no change     /home/ax/opt/anaconda3/shell/condabin/Conda.psm1
-    no change     /home/ax/opt/anaconda3/shell/condabin/conda-hook.ps1
-    no change     /home/ax/opt/anaconda3/lib/python3.7/site-packages/xontrib/conda.xsh
-    no change     /home/ax/opt/anaconda3/etc/profile.d/conda.csh
-    modified      /home/ax/.bashrc
-
-    ==> For changes to take effect, close and re-open your current shell. <==
-
     If you'd prefer that conda's base environment not be activated on startup,
        set the auto_activate_base parameter to false:
 
@@ -70,21 +48,6 @@
     Thank you for installing Anaconda3!
     
 #### .bashrc
-
-    # >>> conda initialize >>>
-    # !! Contents within this block are managed by 'conda init' !!
-    __conda_setup="$('/home/ax/opt/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-    if [ $? -eq 0 ]; then
-        eval "$__conda_setup"
-    else
-        if [ -f "/home/ax/opt/anaconda3/etc/profile.d/conda.sh" ]; then
-            . "/home/ax/opt/anaconda3/etc/profile.d/conda.sh"
-        else
-            export PATH="/home/ax/opt/anaconda3/bin:$PATH"
-        fi
-    fi
-    unset __conda_setup
-    # <<< conda initialize <<<
 
     # conda deactivate
     conda deactivate
@@ -133,7 +96,7 @@ edit `jupyter_notebook_config.py`:
 - 运行：运行程序Alt+Shift+F10，启动调试Shift+F9
 - 方法分隔符：【File】→【Settings...】→【Editor】→【General】→【Appearance】→【Show method separators】
 
-#### training
+#### heap size
    
     gedit -idea.vmoptions
     gedit -idea64.vmoptions
@@ -154,6 +117,11 @@ edit `jupyter_notebook_config.py`:
 ### OpenGL
     
     sudo apt install freeglut3-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev
+    
+### Qt
+    
+    sudo apt install qt5-default
+    sudo apt install qtcreator
     
 ### SFML
 
