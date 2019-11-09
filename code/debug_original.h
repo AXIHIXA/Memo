@@ -1,9 +1,9 @@
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifndef __DEBUG_H
+#define __DEBUG_H
 
 #include <stdio.h>
 
-#define ENDL "\n"
+#define NL "\n"
 
 #ifdef COLOR
 #define KNRM "\033[0m"
@@ -38,8 +38,8 @@
 #ifdef DEBUG
 #define debug(S, ...)                                                          \
   do {                                                                         \
-    fprintf(stderr, KMAG "DEBUG: %s %s:%d " KNRM S ENDL,                       \
-            __extension__ __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__);    \
+    fprintf(stderr, KMAG "DEBUG: %s:%s:%d " KNRM S NL, __FILE__,               \
+            __extension__ __FUNCTION__, __LINE__, ##__VA_ARGS__);                \
   } while (0)
 #else
 #define debug(S, ...)
@@ -48,8 +48,8 @@
 #ifdef INFO
 #define info(S, ...)                                                           \
   do {                                                                         \
-    fprintf(stderr, KBLU "INFO: %s %s:%d " KNRM S ENDL,                        \
-            __extension__ __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__);    \
+    fprintf(stderr, KBLU "INFO: %s:%s:%d " KNRM S NL, __FILE__,                \
+            __extension__ __FUNCTION__, __LINE__, ##__VA_ARGS__);                \
   } while (0)
 #else
 #define info(S, ...)
@@ -58,8 +58,8 @@
 #ifdef WARN
 #define warn(S, ...)                                                           \
   do {                                                                         \
-    fprintf(stderr, KYEL "WARN: %s %s:%d " KNRM S ENDL,                        \
-            __extension__ __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__);    \
+    fprintf(stderr, KYEL "WARN: %s:%s:%d " KNRM S NL, __FILE__,                \
+            __extension__ __FUNCTION__, __LINE__, ##__VA_ARGS__);                \
   } while (0)
 #else
 #define warn(S, ...)
@@ -68,8 +68,8 @@
 #ifdef SUCCESS
 #define success(S, ...)                                                        \
   do {                                                                         \
-    fprintf(stderr, KGRN "SUCCESS: %s %s:%d " KNRM S ENDL,                     \
-            __extension__ __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__);    \
+    fprintf(stderr, KGRN "SUCCESS: %s:%s:%d " KNRM S NL, __FILE__,             \
+            __extension__ __FUNCTION__, __LINE__, ##__VA_ARGS__);                \
   } while (0)
 #else
 #define success(S, ...)
@@ -78,11 +78,11 @@
 #ifdef ERROR
 #define error(S, ...)                                                          \
   do {                                                                         \
-    fprintf(stderr, KRED "ERROR: %s %s:%d " KNRM S ENDL,                       \
-            __extension__ __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__);    \
+    fprintf(stderr, KRED "ERROR: %s:%s:%d " KNRM S NL, __FILE__,               \
+            __extension__ __FUNCTION__, __LINE__, ##__VA_ARGS__);                \
   } while (0)
 #else
 #define error(S, ...)
 #endif
 
-#endif /* DEBUG_H */
+#endif /* __DEBUG_H */
