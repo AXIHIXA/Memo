@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(hw4_raw_cl C)
+project(hw4_raw C)
 set(CMAKE_C_STANDARD 99)
 
 # 1, ON, YES, TRUE, Y
@@ -7,6 +7,13 @@ set(CMAKE_C_STANDARD 99)
 set(TEST OFF)
 
 set(SOURCE_FILES
+        include/debug.h
+        include/global.h
+        include/handler.h
+        include/jobber.h
+        include/sf_readline.h
+        include/task.h
+        src/handler.c
         src/jobs.c
         src/sf_readline.c
         src/task.c)
@@ -24,10 +31,9 @@ else ()
             src/main.c)
 endif ()
 
-add_definitions(-DDEBUG -DCOLOR -DERROR -DSUCCESS -DWARN -DINFO)
-#add_compile_options(-Wall -Werror -Wno-unused-function -MMD)
-#add_compile_options(-D_POSIX_SOURCE -D_DEFAULT_SOURCE)
+add_definitions(-DCOLOR -DVERBOSE)
+add_compile_options(-D_POSIX_SOURCE -D_DEFAULT_SOURCE)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${OBJECT_FILES})
-include_directories(${PROJECT_NAME} PRIVATE "include")
+target_include_directories(${PROJECT_NAME} PUBLIC "include")
 target_link_libraries(${PROJECT_NAME} criterion)
