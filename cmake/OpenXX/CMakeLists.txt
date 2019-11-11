@@ -16,19 +16,22 @@ set(SOURCE_FILES
         src/Mesh.cpp
         src/TriangularFacet.cpp
         src/Vertex.cpp
-        src/main.cpp)
+        src/main.cpp
+        )
 
 set(ALL_INCLUDE_DIRS
         include
         ${EIGEN3_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
         ${GLUT_INCLUDE_DIR}
-        ${OPENGL_INCLUDE_DIR})
+        ${OPENGL_INCLUDE_DIR}
+        )
 
 set(ALL_LIBS
         ${GLUT_LIBRARY}
         ${OPENGL_LIBRARY}
-        ${OpenCV_LIBS})
+        ${OpenCV_LIBS}
+        )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 add_definitions(-DCOLOR -DVERBOSE)

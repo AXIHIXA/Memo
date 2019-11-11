@@ -16,19 +16,23 @@ set(SOURCE_FILES
         src/handler.c
         src/jobs.c
         src/sf_readline.c
-        src/task.c)
+        src/task.c
+        )
 
 SET(OBJECT_FILES
-        lib/sf_event.o)
+        lib/sf_event.o
+        )
 
 if (${TEST})
     set(SOURCE_FILES
             ${SOURCE_FILES}
-            tests/hw4_tests.c)
+            tests/hw4_tests.c
+            )
 else ()
     set(SOURCE_FILES
             ${SOURCE_FILES}
-            src/main.c)
+            src/main.c
+            )
 endif ()
 
 add_definitions(-DCOLOR -DVERBOSE)
