@@ -27,7 +27,8 @@ set(ALL_LIBS
         ${OpenCV_LIBS}
 )
 
-add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 add_definitions(-DCOLOR -DVERBOSE)
+
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ALL_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${ALL_LIBS})
