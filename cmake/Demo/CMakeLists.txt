@@ -5,14 +5,14 @@ set(CMAKE_CXX_STANDARD 11)
 set(SOURCE_FILES
         include/debug.h
         src/main.cpp
-        )
+)
 
 set(ALL_INCLUDE_DIRS
         include
-        )
+)
 
 set(ALL_LIBS
-        )
+)
 
 add_definitions(-DCOLOR -DVERBOSE)
 
