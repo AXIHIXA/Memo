@@ -66,6 +66,24 @@ Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note.
     # Use shared folders between VMWare guest and host
     .host:/    /mnt/hgfs/    fuse.vmhgfs-fuse    defaults,allow_other,uid=1000     0    0
 
+### Application Entry
+
+    # global
+    sudo touch /home/ax/.local/share/applications understand.desktop
+    
+    # current user
+    touch /home/ax/.local/share/applications understand.desktop
+    gedit /home/ax/.local/share/applications understand.desktop
+    
+    [Desktop Entry]
+    Version=1.0
+    Type=Application
+    Name=understand
+    Icon=/home/ax/opt/understand/bin/linux64/understand_64.png
+    Exec="/home/ax/opt/understand/bin/linux64/understand"
+    Categories=Development;IDE;
+    Terminal=false
+
 ## python
 
 ### anaconda
