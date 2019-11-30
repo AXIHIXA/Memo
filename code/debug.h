@@ -36,7 +36,7 @@
 #endif
 
 #ifdef ST_DEBUG
-#define st_debug(S, ...)                                                              \
+#define st_debug(S, ...)                                                           \
     do                                                                             \
     {                                                                              \
         fprintf(stderr, KMAG "DEBUG: %s %s:%d " KNRM S ENDL,                       \
@@ -48,7 +48,7 @@
 #endif
 
 #ifdef ST_INFO
-#define st_info(S, ...)                                                               \
+#define st_info(S, ...)                                                            \
     do                                                                             \
     {                                                                              \
         fprintf(stderr, KBLU "INFO: %s %s:%d " KNRM S ENDL,                        \
@@ -60,7 +60,7 @@
 #endif
 
 #ifdef ST_WARN
-#define st_warn(S, ...)                                                               \
+#define st_warn(S, ...)                                                            \
     do                                                                             \
     {                                                                              \
         fprintf(stderr, KYEL "WARN: %s %s:%d " KNRM S ENDL,                        \
@@ -72,7 +72,7 @@
 #endif
 
 #ifdef ST_SUCCESS
-#define st_success(S, ...)                                                            \
+#define st_success(S, ...)                                                         \
     do                                                                             \
     {                                                                              \
         fprintf(stderr, KGRN "SUCCESS: %s %s:%d " KNRM S ENDL,                     \
@@ -84,7 +84,7 @@
 #endif
 
 #ifdef ST_ERROR
-#define st_error(S, ...)                                                             \
+#define st_error(S, ...)                                                           \
     do                                                                             \
     {                                                                              \
         fprintf(stderr, KRED "ERROR: %s %s:%d " KNRM S ENDL,                       \
