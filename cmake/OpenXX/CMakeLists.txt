@@ -11,7 +11,7 @@ set(SOURCE_FILES
         include/debug.h
         include/global.h
         src/main.cpp
-)
+        )
 
 set(ALL_INCLUDE_DIRS
         include
@@ -19,15 +19,15 @@ set(ALL_INCLUDE_DIRS
         ${OpenCV_INCLUDE_DIRS}
         ${GLUT_INCLUDE_DIR}
         ${OPENGL_INCLUDE_DIR}
-)
+        )
 
 set(ALL_LIBS
         ${GLUT_LIBRARY}
         ${OPENGL_LIBRARY}
         ${OpenCV_LIBS}
-)
+        
 
-add_definitions(-DCOLOR -DVERBOSE)
+add_definitions(-DST_COLOR -DST_VERBOSE)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ALL_INCLUDE_DIRS})

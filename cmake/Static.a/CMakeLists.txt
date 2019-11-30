@@ -13,28 +13,28 @@ set(SOURCE_FILES
         include/protocol.h
         include/server.h
         include/trader.h
-)
+        )
 
 set(ALL_LIBS
         ${CMAKE_SOURCE_DIR}/lib/bourse.a
         ${CMAKE_SOURCE_DIR}/lib/bourse_debug.a
         criterion
         pthread
-)
+        )
 
 if (${TEST})
     set(SOURCE_FILES
             ${SOURCE_FILES}
             tests/bourse_tests.c
-    )
+            )
 else ()
     set(SOURCE_FILES
             ${SOURCE_FILES}
             src/main.c
-    )
+            )
 endif ()
 
-add_definitions(-DCOLOR -DVERBOSE)
+add_definitions(-DST_COLOR -DST_VERBOSE)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC "include")

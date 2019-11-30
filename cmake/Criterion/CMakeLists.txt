@@ -17,25 +17,25 @@ set(SOURCE_FILES
         src/jobs.c
         src/sf_readline.c
         src/task.c
-)
+        )
 
 SET(OBJECT_FILES
         lib/sf_event.o
-)
+        )
 
 if (${TEST})
     set(SOURCE_FILES
             ${SOURCE_FILES}
             tests/hw4_tests.c
-    )
+            )
 else ()
     set(SOURCE_FILES
             ${SOURCE_FILES}
             src/main.c
-    )
+            )
 endif ()
 
-add_definitions(-DCOLOR -DVERBOSE)
+add_definitions(-DST_COLOR -DST_VERBOSE)
 add_compile_options(-D_POSIX_SOURCE -D_DEFAULT_SOURCE)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${OBJECT_FILES})
