@@ -178,9 +178,9 @@ edit `jupyter_notebook_config.py`:
     sudo apt install qt5-default
     sudo apt install qtcreator
     
-### SFML
+### tbb
 
-    sudo apt install libsfml-dev
+    sudo apt install libtbb-dev
     
 ### boost + cgal
 
