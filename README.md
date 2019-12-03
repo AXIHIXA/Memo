@@ -64,7 +64,8 @@ Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note.
     
     sudo gedit /etc/fstab
     # Use shared folders between VMWare guest and host
-    .host:/    /mnt/hgfs/    fuse.vmhgfs-fuse    defaults,allow_other,uid=1000     0    0
+    # Keep same as real ubuntu system mount 
+    .host:/    /media/ax/DATAIN    fuse.vmhgfs-fuse    defaults,allow_other,uid=1000     0    0
 
 ### Application Entry
 
