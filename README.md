@@ -70,11 +70,11 @@ Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note.
 ### Application Entry
 
     # global
-    sudo touch /home/ax/.local/share/applications understand.desktop
+    sudo touch /home/ax/.local/share/applications/understand.desktop
     
     # current user
-    touch /home/ax/.local/share/applications understand.desktop
-    gedit /home/ax/.local/share/applications understand.desktop
+    touch /home/ax/.local/share/applications/understand.desktop
+    gedit /home/ax/.local/share/applications/understand.desktop
     
     [Desktop Entry]
     Version=1.0
