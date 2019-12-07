@@ -157,8 +157,8 @@ edit `jupyter_notebook_config.py`:
     gedit -idea.vmoptions
     gedit -idea64.vmoptions
     ...
-    -Xms1024m
-    -Xmx2048m
+    -Xms2048m
+    -Xmx8192m
 
 ## C/C++
 
