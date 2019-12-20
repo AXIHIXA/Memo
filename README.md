@@ -85,6 +85,10 @@ Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note.
     Categories=Development;IDE;
     Terminal=false
 
+### ex****** passport
+
+***For people getting the white screen error, go to Library > History > Show All History, right click on ex******, and Forget About This Site***
+
 ## python
 
 ### anaconda
