@@ -73,6 +73,22 @@ ssh-server配置文件位于/etc/ssh/sshd_config，在这里可以定义SSH的�
 - ssh免密码登录：将需要免密码的机器的ssh公钥`id_rsa.pub` mv 至`/home/<user>/.ssh/authorized_ssh`。
 
 
+#### 新建用户
+
+	
+	sudo adduser <user>  # 按照提示来，一般默认就行
+	
+
+- 查看用户：`cat /etc/passwd`
+- 删除用户：`deluser`
+- 设置`root`密码：`sudo passwd root`
+- 添加`sudoers`：
+
+	
+	su root
+	sudo vi /etc/sudoers  # 在“root ALL=(ALL:ALL) ALL”这一行下面加入一行：<User> ALL=(ALL:ALL) ALL
+	
+
 ### time fix
 
     sudo timedatectl set-local-rtc 1 --adjust-system-clock
