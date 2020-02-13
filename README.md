@@ -86,8 +86,36 @@ sudo /etc/init.d/ssh start
 - 添加`sudoers`：
 
 ```
-su root
-sudo vi /etc/sudoers  # 在“root ALL=(ALL:ALL) ALL”这一行下面加入一行：<User> ALL=(ALL:ALL) ALL
+sudo su - 
+visudo
+
+# Allow members of group sudo to execute any command
+%sudo   ALL=(ALL:ALL) ALL
+ax      ALL=(ALL:ALL) ALL
+```
+
+- 添加免密`sudoers`：
+
+```
+sudo su - 
+visudo
+
+# Allow members of group sudo to execute any command
+%sudo   ALL=(ALL:ALL) ALL
+ax      ALL=(ALL:ALL) NOPASSWD : ALL
+```
+
+- `su`  后面不加用户是默认切到 `root`
+- `su`  是不改变当前变量（only `.bashrc` will be sourced）
+- `su -` 是改变为切换到用户的变量（expericene a login process, usually `.bash_profile` and `.bashrc` will be sourced）
+- 也就是说`su`只能获得`root`的执行权限，不能获得环境变量；而`su -`是切换到`root`并获得`root`的环境变量及执行权限
+
+#### 默认编辑器
+
+```
+vi etc/profile
+# add following line 
+export EDITOR="/usr/bin/vim"
 ```
 
 ### time fix
