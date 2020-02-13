@@ -89,6 +89,7 @@ ssh-server配置文件位于/etc/ssh/sshd_config，在这里可以定义SSH的�
 - 设置`root`密码：`sudo passwd root`
 - 添加`sudoers`：
 
+
 	
 	
 	su root
