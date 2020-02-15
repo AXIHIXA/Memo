@@ -74,6 +74,25 @@ sudo /etc/init.d/ssh start
 - ssh免密码登录：将需要免密码的机器的ssh公钥`id_rsa.pub` mv 至`/home/<user>/.ssh/authorized_ssh`。
 
 
+#### Setup `fail2ban`
+
+```
+sudo apt install fail2ban
+sudo vi /etc/fail2ban/jail.local 
+
+[sshd]
+enabled = true
+banaction = iptables-multiport
+maxretry = 5
+findtime = 900  # ban ip if fail for 5 times in 900 seconds
+bantime = 1500  # ban ip for 1500 seconds
+port = 130      # ssh port 130. do not need to specify if using port 22
+
+sudo service fail2ban restart
+```
+
+
+
 #### 新建用户
 
 	
