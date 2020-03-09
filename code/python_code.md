@@ -79,6 +79,12 @@ Use `h5py` module to save LARGE `numpy` arrays or matrices:
 ## prettytable
 
 ```
+pip install PrettyTable
+```
+
+```
+import prettytable
+
 pt1 = prettytable.PrettyTable()
 pt1.field_names = ['seq', 'ack', 'win']
 while start < answers[0]:
