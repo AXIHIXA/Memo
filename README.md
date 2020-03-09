@@ -1,5 +1,11 @@
 # Memo
 
+## Some Alienware Key Shortcut
+
+```
+Fn + F6 : disables / enables WIN key
+```
+
 ## new ubuntu
 
 ### driver problem

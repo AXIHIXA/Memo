@@ -74,3 +74,15 @@ Use `h5py` module to save LARGE `numpy` arrays or matrices:
 ## sort `dict` by value
 
     dictionary = sorted(dictionary.items(), key=lambda x: x[1], reverse=True)
+    
+    
+## prettytable
+
+```
+pt1 = prettytable.PrettyTable()
+pt1.field_names = ['seq', 'ack', 'win']
+while start < answers[0]:
+    se = i.all_src_tcp[start]
+    pt1.add_row([se.seq, se.ack, se.win])
+print(pt1)
+```
