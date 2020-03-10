@@ -11,7 +11,7 @@ Fn + F6 : disables / enables WIN key
 ### anaconda
 
 ```
-conda create -n py3 python=3.8 numpy scipy sympy matplotlib cython ipykernel h5py
+conda create -n py3 python=3.7 numpy scipy sympy matplotlib cython ipykernel h5py
 source activate py3
 pip install opencv-python PrettyTable
 python -m ipykernel install --name py3 --user
