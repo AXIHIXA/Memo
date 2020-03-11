@@ -86,12 +86,6 @@ sudo gedit /etc/fstab
 
 ### Application Entry
 
-#### global
-
-```
-sudo touch /home/ax/.local/share/applications/understand.desktop
-```
-
 #### current user
 
 ```    
@@ -104,6 +98,19 @@ Type=Application
 Name=understand
 Icon=/home/ax/opt/understand/bin/linux64/understand_64.png
 Exec="/home/ax/opt/understand/bin/linux64/understand"
+Categories=Development;IDE;
+Terminal=false
+
+touch /home/ax/.local/share/applications/jetbrains-pycharm.desktop
+gedit /home/ax/.local/share/applications/jetbrains-pycharm.desktop
+
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=PyCharm
+Icon=/home/ax/opt/pycharm/bin/pycharm.svg
+Exec="/home/ax/opt/pycharm/bin/pycharm.sh" %f
+Comment=IDE PyCharm
 Categories=Development;IDE;
 Terminal=false
 ```
