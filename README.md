@@ -132,7 +132,7 @@ sudo apt install libtbb-dev
     
 ### boost + cgal
 
-I suggest not using this holy s**t thing. 
+I suggest not using this holy s\*\*t thing. 
 
 ```
 sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
