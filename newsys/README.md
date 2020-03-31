@@ -45,7 +45,7 @@ $ sudo ubuntu-drivers autoinstall
 ### dependencies
 
 ```
-sudo apt install vim tmux git gcc g++ cmake
+sudo apt install vim tmux git gcc g++ cmake gdb
 
 touch ~/.tmux.conf
 gedit ~/.tmux.conf
