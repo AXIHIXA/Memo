@@ -49,6 +49,10 @@ $ sudo ubuntu-drivers autoinstall
 -rw-r--r--  1 ax   ax   3771 Mar 31 13:58 .bashrc
 ```
 
+```
+chmod 644 ~/.bashrc ~/.bash_history
+```
+
 ### dependencies
 
 ```
