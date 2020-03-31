@@ -62,12 +62,11 @@ set -g status-interval 60
 set -g display-time 3000
 set -g history-limit 65535
 
-sudo apt install git
 ssh-keygen
 git config --global user.name "Xi Han"
 git config --global user.email "ahanxi@126.com"
 
-gedit /etc/profile
+sudo gedit /etc/profile
 
 # default editor
 export EDITOR="/usr/bin/vim"
