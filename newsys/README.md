@@ -50,17 +50,15 @@ sudo apt install vim tmux git gcc g++ cmake
 touch ~/.tmux.conf
 gedit ~/.tmux.conf
 
-# .tmux.conf
 set -g mouse on
 set -g status-interval 60
 set -g display-time 3000
 set -g history-limit 65535
 
 sudo apt install git
+ssh-keygen
 git config --global user.name "Xi Han"
 git config --global user.email "ahanxi@126.com"
-ssh-keygen
-
 
 gedit /etc/profile
 
@@ -107,12 +105,13 @@ gedit /home/ax/.local/share/applications/jetbrains-pycharm.desktop
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=PyCharm
+Name=PyCharm Professional Edition
 Icon=/home/ax/opt/pycharm/bin/pycharm.svg
 Exec="/home/ax/opt/pycharm/bin/pycharm.sh" %f
-Comment=IDE PyCharm
+Comment=Python IDE for Professional Developers
 Categories=Development;IDE;
 Terminal=false
+StartupWMClass=jetbrains-pycharm
 ```
 
 ### ex****** passport

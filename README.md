@@ -31,9 +31,13 @@ python -m ipykernel install --name py3 --user
 ```
 gedit ~/.bashrc
 
-# conda deactivate
+# anaconda
 conda deactivate
 export PATH="/home/ax/opt/anaconda3/bin:$PATH"
+
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias jl="cd /mnt/d/workspace; jupyter lab"
 ```
     
 ### jupyter lab
