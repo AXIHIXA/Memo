@@ -42,6 +42,13 @@ $ sudo ubuntu-drivers autoinstall
 
 ## new system configuration
 
+
+### WSL `.bashrc`
+
+```
+-rw-r--r--  1 ax   ax   3771 Mar 31 13:58 .bashrc
+```
+
 ### dependencies
 
 ```
