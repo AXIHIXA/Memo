@@ -51,7 +51,33 @@ extern const int BUF_SIZE;         // sth.h （其他要用到`BUF_SIZE`的头�
 2.3.1节提及：引用的类型必须与其所引用的对象的类型一致，但有2个例外。    
 其中一个：初始化常量引用时，允许用任意表达式作为初始值，只要该表达式的结果能够被转换成引用的类型即可。    
 尤其，允许为一个常量引用绑定：
+
 - 非常量的对象
 - 字面值
-- 一般表达式    
+- 一般表达式
+
 即：**常量引用可以绑定在右值上**！
+
+```
+int i = 42;
+const int & r1 = i;      // ok: we can bind a const int& to a plain int object
+const int & r2 = 42;     // ok: r1 is a reference to const
+const int & r3 = i * 2;  // ok: r3 is a reference to const
+int & r4 = i * 2;        // error: r4 is a plain, non const reference
+```
+
+注：执行如下代码时：
+
+```
+double pi = 3.1415926;
+const int & a = pi;
+```
+
+实际上编译器干了这么件事：
+
+```
+int tmp = pi;
+const int & a = tmp;
+```
+
+如果不是常量引用，改的就不是`pi`而是临时量`tmp`，容易造成人祸，因此`C++`直接规定非常量引用不能绑定给临时量。
