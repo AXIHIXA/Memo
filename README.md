@@ -101,43 +101,65 @@ gedit -idea64.vmoptions
 -Xmx8192m
 ```
 
-## C/C++ Libraries
+## C/C++ 
 
-### Eigen
+### `C++ Primer` Notes
+
+#### 初始化
+
+- 显式初始化
 
 ```
+int a = 1;
+int a(1);
+int a = {1};  // 列表初始化。如会损失精度，则CE
+int a{1};     // 列表初始化。如会损失精度，则CE
+
+// e.g.
+int a = {3.14};  // 列表初始化。会损失精度，报CE
+int a{3.14};     // 列表初始化。会损失精度，报CE
+```
+
+- 隐式初始化（不可靠）
+
+```
+- 内置变量且在函数体之外，隐式初始化为0
+- 内置变量且在函数体之内，无隐式初始化
+- 类：由类决定是否允许隐式初始化以及初始化为何值
+```
+
+#### 指针只能用字面量，或者用`&`获取的地址初始化或者赋值；
+
+
+#### `const`常量不论是声明还是使用都添加`extern`修饰符：
+
+```
+int a;             // 这其实是声明并定义了变量a
+extern int a;      // 这才是仅仅声明而不定义
+extern int a = 1;  // 这是声明并定义了变量a并初始化为1。“任何包含显式初始化的声明即成为定义，如有extern则其作用会被抵消”
+```
+
+
+### Libraries
+
+```
+# Eigen
 sudo apt install libeigen3-dev
-```
 
-### OpenCV
-
-```
+# OpenCV
 sudo apt install libopencv-dev
-```
 
-### OpenGL
-    
-```
+# OpenGL
 sudo apt install freeglut3-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev
-```
 
-### Qt
-    
-```
+# Qt
 sudo apt install qt5-default
 sudo apt install qtcreator
-```
-    
-### tbb
 
-```
+# tbb
 sudo apt install libtbb-dev
-```
-    
-### boost + cgal
 
-I suggest not using this holy s\*\*t thing. 
-
-```
+# boost + cgal
+# I suggest not using this holy s\*\*t thing. 
 sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 ```
