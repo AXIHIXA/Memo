@@ -46,32 +46,34 @@ extern const int BUF_SIZE;         // globals.h
 extern const int BUF_SIZE;         // sth.h （其他要用到`BUF_SIZE`的头文件）
 ```
 
+### \# 对复杂的声明符，从右往左看比较好理解
+
 ### \# `const`指针与引用
 
 对于常量，只能绑定常量指针或引用，不能绑定普通版。
 
 指针或引用的类型必须与其所引用的对象的类型一致，但有2个例外：
-- 常量引用可以绑定在“存在可接受的转换规则”的对象上；    
-- 基类的指针或引用可以绑定到派生类上）
+- 常量引用可以绑定在“存在可接受的转换规则”的对象上【这一条指向常量的指针不行】；    
+- 基类的指针或引用可以绑定到派生类上。
 
 尤其，允许为一个常量引用绑定：
 - 非常量的对象
 - 字面值
 - 一般表达式
 
-即：**常量引用可以绑定在右值上**！
+即：**常量引用可以绑定在（其它类型的）右值上**！
 
 ```
-int i = 42;
+double i = 4.2;
 const int & r1 = i;      // ok: we can bind a const int& to a plain int object
-const int & r2 = 42;     // ok: r1 is a reference to const
+const int & r2 = 4.2;    // ok: r1 is a reference to const
 const int & r3 = i * 2;  // ok: r3 is a reference to const
 int & r4 = i * 2;        // error: r4 is a plain, non const reference
 
 // 注：执行如下代码时：
 
-double pi = 3.1415926;
-const int & a = pi;
+double pi = 3.1415926;  
+const int & a = pi;     // ok
 
 // 实际上编译器干了这么件事：
 
@@ -79,4 +81,13 @@ int tmp = pi;
 const int & a = tmp;
 
 // 如果不是常量引用，改的就不是`pi`而是临时量`tmp`，容易造成人祸，因此`C++`直接规定非常量引用不能绑定给临时量。
+```
+
+“指向常量的指针”和“常指针”不一样：
+
+```
+int num = 1;  
+const int * p1 = &num;        // 指向`const int`的指针。不能用p1修改num的值，但可以让p1指向别的`(const) int`变量
+int * const p2 = &num;        // 指向`int`的常指针。不能让p1指向别的`int`变量，但可以用p1修改num的值
+const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1修改num的值，也不可以让p1指向别的`int`变量
 ```
