@@ -53,9 +53,9 @@ edit `jupyter_notebook_config.py`:
 
 ```
 c.NotebookApp.ip = '0.0.0.0'         # 204
-c.NotebookApp.open_browser = False   # 267
-c.NotebookApp.password = 'sha1:...'  # 276
-c.NotebookApp.port = 9000            # 287
+c.NotebookApp.open_browser = False   # 272
+c.NotebookApp.password = 'sha1:...'  # 281
+c.NotebookApp.port = 9000            # 292
 ```
     
 #### view installed kernels
