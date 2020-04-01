@@ -23,13 +23,23 @@ int a{3.14};     // 列表初始化。会损失精度，报CE
 - 类：由类决定是否允许隐式初始化以及初始化为何值
 ```
 
-#### \# 指针只能用字面量，或者用`&`获取的地址初始化或者赋值；
+#### \# 指针只能用字面量，或者用`&`获取的地址初始化或者赋值
 
 
-#### \# `const`常量不论是声明还是使用都添加`extern`修饰符：
+#### \# `extern`修饰符
 
 ```
 int a;             // 这其实是声明并定义了变量a
 extern int a;      // 这才是仅仅声明而不定义
 extern int a = 1;  // 这是声明并定义了变量a并初始化为1。“任何包含显式初始化的声明即成为定义，如有extern则其作用会被抵消”
+```
+
+#### \# `const`常量不论是声明还是使用都添加`extern`修饰符
+
+“如果想在多个文件之间共享`const`对象，则必须在定义的对象之前添加`extern`关键字。”
+
+```
+extern const int BUF_SIZE = 1024;  // globals.cpp
+extern const int BUF_SIZE;         // globals.h
+extern const int BUF_SIZE;         // sth.h （其他要用到`BUF_SIZE`的头文件）
 ```
