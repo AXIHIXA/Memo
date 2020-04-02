@@ -27,6 +27,7 @@ int a{3.14};     // 列表初始化。会损失精度，报CE
 
 ### \# 指针只能用字面量，或者用`&`获取的地址初始化或者赋值
 
+### \# “指针`*`以及引用`&`只从属于某个声明符，而不是基本数据类型的一部分。”
 
 ### \# `extern`修饰符
 
@@ -103,14 +104,15 @@ typedef int * intptr;
 using intptr2 = int *;
 
 int a = 1;
-const intptr p = &a;  // "const (int *)", i.e. `int * const`. NOT `const int *`!!!
+const intptr p = &a;             // "const (int *)", i.e. `int * const`. NOT `const int *`!!!
 const intptr2 p2 = &a, p3 = &a;  // 注意这里p3已经是指针了，不需要再加*
 ```
 
+### \# `auto` & `decltype`
 
+- 如果希望`auto`推断出引用或者顶层常量，则声明`auto`时必须加上相应的描述符，例如`const auto & a = ...`。
 
-
-
+- `decltype((...))`（双层括号）的结果永远是引用，而`decltype(...)`（单层括号）当且仅当`...`是引用类型时才是引用。
 
 
 
