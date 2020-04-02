@@ -9,6 +9,10 @@
 - `using`声明**不应**写进头文件
 - `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
 
+
++ 对复杂的声明符，从右往左看比较好理解
++ 对数组声明，从数组的名字开始由内向外看比较好理解
+
 ### \# 初始化
 
 #### 显式初始化和隐性初始化
@@ -66,8 +70,6 @@ extern const int BUF_SIZE = 1024;  // globals.cpp
 extern const int BUF_SIZE;         // globals.h
 extern const int BUF_SIZE;         // sth.h （其他要用到`BUF_SIZE`的头文件）
 ```
-
-### \# 对复杂的声明符，从右往左看比较好理解
 
 ### \# `const`指针与引用
 
