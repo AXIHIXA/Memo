@@ -91,3 +91,28 @@ const int * p1 = &num;        // 指向`const int`的指针。不能用p1修改n
 int * const p2 = &num;        // 指向`int`的常指针。不能让p1指向别的`int`变量，但可以用p1修改num的值
 const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1修改num的值，也不可以让p1指向别的`int`变量
 ```
+
+### \# `constexpr`
+
+`constexpr`函数默认`inline`。`constexpr`函数必须返回字面值。`constexpr`函数可以用于初始化常量。
+
+### \# 类型别名
+
+```
+typedef int * intptr;
+using intptr2 = int *;
+
+int a = 1;
+const intptr p = &a;  // "const (int *)", i.e. `int * const`. NOT `const int *`!!!
+const intptr2 p2 = &a, p3 = &a;  // 注意这里p3已经是指针了，不需要再加*
+```
+
+
+
+
+
+
+
+
+
+
