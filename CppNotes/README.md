@@ -16,8 +16,8 @@
 
 ### ○ 一些常识
 
-- `*iter++`等价于`*(iter++)` → `++` > `*`
-- `p->ele`等价于`(*p).ele` → `.` < `*`
+- `*iter++`等价于`*(iter++)` → 优先级：`++` > `*`
+- `p->ele`等价于`(*p).ele` → 优先级：`.` < `*`
 - 指针只能用字面量，或者用`&`获取的地址初始化或者赋值
 - 指针`*`以及引用`&`只从属于某个声明符，而不是基本数据类型的一部分
 
@@ -30,8 +30,8 @@
 
 int a = 1;
 int a(1);
-int a = {1};  // 列表初始化。如会损失精度，则CE
-int a{1};     // 列表初始化。如会损失精度，则CE
+int a = {1};     // 列表初始化。如会损失精度，则CE
+int a{1};        // 列表初始化。如会损失精度，则CE
 
 // e.g.
 int a = {3.14};  // 列表初始化。会损失精度，报CE
@@ -128,11 +128,11 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
 
 ```
 int i = 0;
-int *const p1 = &i;        // we can't change the value of p1; const is top-level
-const int ci = 42;         // we cannot change ci; const is top-level
-const int *p2 = &ci;       // we can change p2; const is low-level
-const int *const p3 = p2;  // right-most const is top-level, left-most is not
-const int &r = ci;         // const in reference types is always low-level
+int * const p1 = &i;        // we can't change the value of p1; const is top-level
+const int ci = 42;          // we cannot change ci; const is top-level
+const int * p2 = &ci;       // we can change p2; const is low-level
+const int * const p3 = p2;  // right-most const is top-level, left-most is not
+const int & r = ci;         // const in reference types is always low-level
 ```
 
 ### ○ `constexpr`
@@ -199,16 +199,43 @@ sizeof expr   // 返回表达式结果类型大小
 
 #### 命名的强制类型转换
 
-如果`T`是引用类型，则转换结果为**左**值。
+如果`T`是引用类型，则转换结果为**左**值
+
+- `static_cast<T>(expr)`：一般用于有精度损失的强制类型转换。转换结果与原始地址相等。
+- `dynamic_cast<T>(expr)`：支持运行时的类型识别。
+- `const_cast<T>(expr)`：
+常常用于有函数重载的上下文中。
+用于且只有它能用于去除运算对象的底层const（cast away the const）。
+只能用于更改const属性，不能更改类型。
+如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为。
+但如果对象本身是常量，则结果未定义。
+```
+const char * pc;
+char * p = const_cast<char *>(pc);   // 正确，但通过p写值是未定义的行为
+char * q = static_cast<char *>(cp);  // 错误，static_cast不能用于去除const
+static_cast<std::string>(pc);        // 正确，字符串字面值转换为std::string
+const_cast<std::string>(pc);         // 错误，const_cast只能用于去除const
+```
+- `reinterpret_cast<T>(expr)`：强制编译器按照`T`类型重新解读一块内存。**十分危险**。 
+```
+int * a = new int(1);
+char * pc = reinterpret_cast<char *>(a);  // 正确
+std::string s(pc);                        // 可能会RE，（取决于从a开始多久出现0？）
+```
+
+#### 旧式的强制类型转换
 
 ```
-static_cast<T>(expr);       // 一般用于有精度损失的强制类型转换。转换结果与原始地址相等
-
-dynamic_cast<T>(expr);      // 用于去除底层const。只能用于更改const属性，不能更改类型
-
-const_cast<T>(expr);        // 
-
-reinterpret_cast<T>(expr);  // 
+T(expr);   // 函数式
+(T) expr;  // C风格
 ```
 
+根据具体位置不同，旧式的强制类型转换的效果与`static_cast`、`const_cast`或`reinterpret_cast`相同。
+选择优先级：`static_cast` > `const_cast` > `reinterpret_cast`。
+即：只有当前一种解释不合法时，才会考虑后一种。
+
+```
+int * ip;
+char * cp = (char *) ip;  // 相当于 reinterpret_cast<char *>(ip);
+```
 
