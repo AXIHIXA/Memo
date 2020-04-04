@@ -2,7 +2,7 @@
 
 ### 🌱 Notes
 
-- `C++`
+- `C/C++`
 
     - [C++ Primer 5th Edition Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
 
@@ -23,7 +23,7 @@
     - [OpenCV & OpenGL](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/OpenXX/CMakeLists.txt)
     - [Libraries](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Static.a/CMakeLists.txt)
 
-- `C` Code
+- `C/C++` Code
 
     - [debug.h](https://github.com/AXIHIXA/Memo/blob/master/code/debug.h)
     - [pipe_demo.c](https://github.com/AXIHIXA/Memo/blob/master/code/pipe_demo.c)
