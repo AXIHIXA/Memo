@@ -2,7 +2,7 @@
 
 ## Catalog
 
-### 〇 Sample Code
+### Sample Code
 
 #### `CMakeList`
 
@@ -24,7 +24,7 @@
 
 - [Code Styles](https://github.com/AXIHIXA/Memo/tree/master/code/ide%20preferences)
 
-### 〇 Notes
+### Notes
 
 #### `C++`
 
