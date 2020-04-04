@@ -41,12 +41,28 @@
 #define st_debug(S, ...)                                                           \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KMAG "[DEBUG] %s:%d " KNRM S "\n",                         \
-                __FILE__, __LINE__, ##__VA_ARGS__);                                \
+        fprintf(stdout, KMAG "[DEBUG] %s @ %s:%d " KNRM S "\n",                    \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
+    }                                                                              \
+    while (0)
+#define st_mag(S, ...)                                                             \
+    do                                                                             \
+    {                                                                              \
+        fprintf(stdout, KMAG "%s @ %s:%d " KNRM S "\n",                            \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
+    }                                                                              \
+    while (0)
+#define st_print(S, ...)                                                           \
+    do                                                                             \
+    {                                                                              \
+        fprintf(stdout, "%s @ %s:%d " S "\n",                                      \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
     }                                                                              \
     while (0)
 #else
 #define st_debug(S, ...)
+#define st_mag(S, ...)
+#define st_print(S, ...)
 #endif
 
 
@@ -54,12 +70,20 @@
 #define st_info(S, ...)                                                            \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KBLU "[INFO] %s:%d " KNRM S "\n",                          \
-                __FILE__, __LINE__, ##__VA_ARGS__);                                \
+        fprintf(stdout, KBLU "[INFO] %s @ %s:%d " KNRM S "\n",                     \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
+    }                                                                              \
+    while (0)
+#define st_blu(S, ...)                                                             \
+    do                                                                             \
+    {                                                                              \
+        fprintf(stdout, KBLU "%s @ %s:%d " KNRM S "\n",                            \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
     }                                                                              \
     while (0)
 #else
 #define st_info(S, ...)
+#define st_blu(S, ...)
 #endif
 
 
@@ -67,12 +91,20 @@
 #define st_warn(S, ...)                                                            \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KYEL "[WARN] %s:%d " KNRM S "\n",                          \
-                __FILE__, __LINE__, ##__VA_ARGS__);                                \
+        fprintf(stdout, KYEL "[WARN] %s @ %s:%d " KNRM S "\n",                     \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
+    }                                                                              \
+    while (0)
+#define st_yel(S, ...)                                                             \
+    do                                                                             \
+    {                                                                              \
+        fprintf(stdout, KYEL "%s @ %s:%d " KNRM S "\n",                            \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
     }                                                                              \
     while (0)
 #else
 #define st_warn(S, ...)
+#define st_yel(S, ...)
 #endif
 
 
@@ -80,12 +112,20 @@
 #define st_success(S, ...)                                                         \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KGRN "[SUCCESS] %s:%d " KNRM S "\n",                       \
-                __FILE__, __LINE__, ##__VA_ARGS__);                                \
+        fprintf(stdout, KGRN "[SUCCESS] %s @ %s:%d " KNRM S "\n",                  \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
+    }                                                                              \
+    while (0)
+#define st_grn(S, ...)                                                             \
+    do                                                                             \
+    {                                                                              \
+        fprintf(stdout, KGRN "%s @ %s:%d " KNRM S "\n",                            \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
     }                                                                              \
     while (0)
 #else
 #define st_success(S, ...)
+#define st_grn(S, ...)
 #endif
 
 
@@ -93,12 +133,20 @@
 #define st_error(S, ...)                                                           \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KRED "[ERROR] %s:%d " KNRM S "\n",                         \
-                __FILE__, __LINE__, ##__VA_ARGS__);                                \
+        fprintf(stdout, KRED "[ERROR] %s @ %s:%d " KNRM S "\n",                    \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
+    }                                                                              \
+    while (0)
+#define st_red(S, ...)                                                             \
+    do                                                                             \
+    {                                                                              \
+        fprintf(stdout, KRED "%s @ %s:%d " KNRM S "\n",                            \
+                __extension__ __func__, __FILE__, __LINE__, ##__VA_ARGS__);        \
     }                                                                              \
     while (0)
 #else
 #define st_error(S, ...)
+#define st_red(S, ...)
 #endif
 
 
