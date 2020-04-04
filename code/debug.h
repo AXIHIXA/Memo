@@ -28,13 +28,6 @@
 #endif
 
 
-#ifdef ST_NEWLINE
-#define ENDL "\n"
-#else
-#define ENDL ""
-#endif
-
-
 #ifdef ST_VERBOSE
 #define ST_DEBUG
 #define ST_INFO
@@ -48,7 +41,7 @@
 #define st_debug(S, ...)                                                           \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KMAG "[DEBUG] %s:%d " KNRM S ENDL,                         \
+        fprintf(stdout, KMAG "[DEBUG] %s:%d " KNRM S "\n",                         \
                 __FILE__, __LINE__, ##__VA_ARGS__);                                \
     }                                                                              \
     while (0)
@@ -61,7 +54,7 @@
 #define st_info(S, ...)                                                            \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KBLU "[INFO] %s:%d " KNRM S ENDL,                          \
+        fprintf(stdout, KBLU "[INFO] %s:%d " KNRM S "\n",                          \
                 __FILE__, __LINE__, ##__VA_ARGS__);                                \
     }                                                                              \
     while (0)
@@ -74,7 +67,7 @@
 #define st_warn(S, ...)                                                            \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KYEL "[WARN] %s:%d " KNRM S ENDL,                          \
+        fprintf(stdout, KYEL "[WARN] %s:%d " KNRM S "\n",                          \
                 __FILE__, __LINE__, ##__VA_ARGS__);                                \
     }                                                                              \
     while (0)
@@ -87,7 +80,7 @@
 #define st_success(S, ...)                                                         \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KGRN "[SUCCESS] %s:%d " KNRM S ENDL,                       \
+        fprintf(stdout, KGRN "[SUCCESS] %s:%d " KNRM S "\n",                       \
                 __FILE__, __LINE__, ##__VA_ARGS__);                                \
     }                                                                              \
     while (0)
@@ -100,7 +93,7 @@
 #define st_error(S, ...)                                                           \
     do                                                                             \
     {                                                                              \
-        fprintf(stdout, KRED "[ERROR] %s:%d " KNRM S ENDL,                         \
+        fprintf(stdout, KRED "[ERROR] %s:%d " KNRM S "\n",                         \
                 __FILE__, __LINE__, ##__VA_ARGS__);                                \
     }                                                                              \
     while (0)
