@@ -1,6 +1,18 @@
 # Memo
 
-## Catalog
+### 🌱 Notes
+
+- `C++`
+
+    - [C++ Primer 5th Edition Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
+
+- `ubuntu` Management
+
+    - [System Installation](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/system%20installation.md)
+    - [System Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/system%20configuration.md)
+    - [System Management](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/system%20management.md)
+    - [Environment Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/environment%20configuration.md)
+
 
 ### 🌱 Sample Code
 
@@ -23,16 +35,3 @@
 - IDE Preferences
 
     - [Code Styles](https://github.com/AXIHIXA/Memo/tree/master/code/ide%20preferences)
-
-### 🌱 Notes
-
-- `C++`
-
-    - [C++ Primer 5th Edition Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
-
-- `ubuntu` Management
-
-    - [System Installation](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/system%20installation.md)
-    - [System Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/system%20configuration.md)
-    - [System Management](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/system%20management.md)
-    - [Environment Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/environment%20configuration.md)
