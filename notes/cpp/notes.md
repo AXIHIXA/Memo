@@ -286,6 +286,7 @@ default:
 
     - `exception`：最通用的异常类`exception`，只报告异常的发生，不提供任何额外信息。
     - `stdexcept`：几种常用的异常类：
+    
         > - `excpetion`：最常见的问题
         > - `runtime_error`：所有RE
         > - `range_error`：RE，生成的结果超出了有意义的值域范围
@@ -296,6 +297,7 @@ default:
         > - `invalid_argument`：逻辑错误，无效参数
         > - `length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
         > - `out_of_range`：逻辑错误，使用了一个超出有效范围的值
+        
     - `new`：`bad_alloc`异常类。12.1.2
     - `type_info`：`bad_cast`异常类。19.2
     
