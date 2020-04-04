@@ -279,3 +279,26 @@ default:
     break;
 }
 ```
+
+### 🌱 异常处理
+
+- `C++`标准异常
+
+    - `exception`：最通用的异常类`exception`，只报告异常的发生，不提供任何额外信息。
+    - `stdexcept`：几种常用的异常类：
+        > - `excpetion`：最常见的问题
+        > - `runtime_error`：所有RE
+        > - `range_error`：RE，生成的结果超出了有意义的值域范围
+        > - `overflow_error`：RE，计算溢出
+        > - `underflow_error`：RE，计算溢出
+        > - `logic_error`：所有逻辑错误
+        > - `domain_error`：逻辑错误，参数对应的结果值不存在
+        > - `invalid_argument`：逻辑错误，无效参数
+        > - `length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
+        > - `out_of_range`：逻辑错误，使用了一个超出有效范围的值
+    - `new`：`bad_alloc`异常类。12.1.2
+    - `type_info`：`bad_cast`异常类。19.2
+    
+- `excpetion`，`bad_alloc`和`bad_cast`只能默认初始化，不能传参；其余异常必须传参（`C`风格字符串）。
+- 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
+  如果此异常传入了初始参数，则返回之；否则返回值由编译器决定。
