@@ -40,7 +40,7 @@ int a{3.14};     // 列表初始化。会损失精度，报CE
 // 隐式初始化
 
 - 内置变量且在函数体之外，隐式初始化为0
-- 内置变量且在函数体之内，无隐式初始化
+- 内置变量且在函数体之内，**无**隐式初始化
 - 自定义对象：由类决定是否允许隐式初始化以及初始化为何值
 ```
 
@@ -102,7 +102,7 @@ int & r4 = i * 2;        // error: r4 is a plain, non const reference
 // 注：执行如下代码时：
 
 double pi = 3.1415926;  
-const int & a = pi;     // ok
+const int & a = pi;      // ok
 
 // 实际上编译器干了这么件事：
 
@@ -239,3 +239,40 @@ int * ip;
 char * cp = (char *) ip;  // 相当于 reinterpret_cast<char *>(ip);
 ```
 
+### ○ `switch`
+
+- `switch`语句中定义的变量的作用域是**整个`switch`语句**，而不仅是某个单独的`case`！
+
+如果某处一个**带有初值**的变量位于作用域之外，在另一处该变量位于作用域之内，
+则从前一处跳转至后一处的行为是非法的。
+
+```
+int num = 2;
+
+switch (num)
+{
+case 0:
+    // 因为程序的执行流程可能绕开下面的初始化语句，所以此switch语句不合法
+    std::string filename;  // 错误：控制流绕过一个隐式初始化的变量
+    int i = 0;             // 错误：控制流绕过一个显式初始化的变量
+    int j;                 // 正确：j没有初始化
+    j = 1;                 // 正确：可以给j赋值，这样就不是初始化了
+    break;
+    
+case 1:
+    // 正确：虽然j在作用域之内，但它没有被初始化
+    j = nextNum();         // 正确：给j赋值
+    
+    if (filename.empty())  // filename在作用域内，但没有被初始化
+    {
+        // do something...
+    }
+    
+    break;
+    
+default:
+    j = 2;
+    std::cout <<j << std::endl;
+    break;
+}
+```
