@@ -124,7 +124,6 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
 #### 顶层`const`和底层`const`
 
 - 顶层`const`：任意的对象是常量
-
 - 底层`const`：指针或引用指向的那个对象本身是常量
 
 ```
