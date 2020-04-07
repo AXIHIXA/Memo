@@ -6,7 +6,6 @@
     <option name="FUNCTION_EXPRESSION_BRACE_STYLE" value="2" />
   </JSCodeStyleSettings>
   <JavaCodeStyleSettings>
-    <option name="SPACES_WITHIN_ANGLE_BRACKETS" value="true" />
     <option name="SPACE_AFTER_CLOSING_ANGLE_BRACKET_IN_TYPE_ARGUMENT" value="true" />
   </JavaCodeStyleSettings>
   <Python>
