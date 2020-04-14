@@ -13,6 +13,8 @@ python -m ipykernel install --name py3 --user
     
 #### `.bashrc`
 
+##### `VMWare` Client
+
 ```
 gedit ~/.bashrc
 
@@ -22,6 +24,22 @@ export PATH="/home/ax/opt/anaconda3/bin:$PATH"
 
 alias c3="conda activate py3"
 alias d3="conda deactivate"
+alias ws="cd /media/ax/DATAIN/workspace"
+alias jl="cd /media/ax/DATAIN/workspace; jupyter lab"
+```
+
+##### `WSL`
+
+```
+gedit ~/.bashrc
+
+# anaconda
+conda deactivate
+export PATH="/home/ax/opt/anaconda3/bin:$PATH"
+
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /mnt/d/workspace"
 alias jl="cd /mnt/d/workspace; jupyter lab"
 ```
     
@@ -54,8 +72,8 @@ jupyter kernelspec list
 ### jdk
 
 ```
-tar -zxvf jdk-11.0.6_linux-x64_bin.tar.gz
-sudo mv jdk-11.0.6 /usr/local/lib/jdk
+tar -zxvf jdk-11.0.7_linux-x64_bin.tar.gz
+sudo mv jdk-11.0.7 /usr/local/lib/jdk
 
 sudo gedit /etc/profile
 # jvm
