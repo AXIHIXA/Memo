@@ -76,6 +76,7 @@ tar -zxvf jdk-11.0.7_linux-x64_bin.tar.gz
 sudo mv jdk-11.0.7 /usr/local/lib/jdk
 
 sudo gedit /etc/profile
+
 # jvm
 export JAVA_HOME=/usr/local/lib/jdk
 export JRE_HOME=${JAVA_HOME}/jre
