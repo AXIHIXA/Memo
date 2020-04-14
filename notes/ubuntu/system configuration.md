@@ -43,6 +43,7 @@ sudo timedatectl set-local-rtc 1 --adjust-system-clock
 
 ```
 sudo gedit /etc/fstab
+
 # Use shared folders between VMWare guest and host
 # Keep same as real ubuntu system mount 
 # refer to https://kb.vmware.com/s/article/60262 for details
