@@ -135,9 +135,7 @@ sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 
 ### `Node.js`
 
-`npm` comes with `node.js`: 
-
-[NodeSource Node.js Binary Distributions](https://github.com/nodesource/distributions/blob/master/README.md)
+`npm` comes with `node.js`: [NodeSource Node.js Binary Distributions](https://github.com/nodesource/distributions/blob/master/README.md)
 
 ### `yarn`
 
