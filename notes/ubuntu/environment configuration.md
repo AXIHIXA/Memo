@@ -131,6 +131,18 @@ sudo apt install libtbb-dev
 sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 ```
 
+## Javascript
+
+### `Node.js`
+
+`npm` comes with `node.js`: 
+
+[NodeSource Node.js Binary Distributions](https://github.com/nodesource/distributions/blob/master/README.md)
+
+### `yarn`
+
+
+
 ## Some Alienware Key Shortcut
 
 ```
