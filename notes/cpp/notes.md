@@ -315,9 +315,9 @@ sizeof expr   // 返回表达式结果类型大小
         ```
         int a = 1, 
         int * p = &a;
-        long long b = (long long) p;                         // 正确：人见人爱的C风格强转
-        long long b2 = static_cast<long long>(p);            // 错误：int *转换为long long是没有明确定义的
-        long long b3 = reinterpret_cast<long long>(p);       // 正确
+        size_t b = (size_t) p;                         // 正确：人见人爱的C风格强转
+        size_t b2 = static_cast<size_t>(p);            // 错误：int *转换为long long是没有明确定义的
+        size_t b3 = reinterpret_cast<size_t>(p);       // 正确
         ```
         
 #### 旧式的强制类型转换
