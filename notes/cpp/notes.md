@@ -259,10 +259,10 @@ sizeof expr   // 返回表达式结果类型大小
 `sizeof`运算符的结果部分地依赖于其作用的类型：
 
 - 对`char`，或者`char`类型的表达式，执行结果为`1`；
-- 对`引用`，执行结果为`被引用对象所占空间`的大小；
-- 对`解引用指针`，执行结果为`指针指向对象所占空间`大小，指针**不需**有效；
-- 对`数组头`，执行结果为`整个数组所占空间`的大小，等价于对数组中所有元素各自执行一次`sizeof`后再求和。`sizeof`**不会**把数组头转换为指针处理；
-- 对`std::string`、`std::vector`对象，执行结果为`该类型固定部分`大小，**不会**计算对象中的元素具体占用多大空间。
+- 对`引用`，执行结果为**被引用对象所占空间**的大小；
+- 对`解引用指针`，执行结果为**指针指向对象所占空间**大小，指针**不需**有效；
+- 对`数组头`，执行结果为**整个数组所占空间**的大小，等价于对数组中所有元素各自执行一次`sizeof`后再求和。`sizeof`**不会**把数组头转换为指针处理；
+- 对`std::string`、`std::vector`对象，执行结果为该类型**固定部分**大小，**不会**计算对象中的元素具体占用多大空间。
 
 ### 🌱 强制类型转换
 
@@ -283,21 +283,21 @@ sizeof expr   // 返回表达式结果类型大小
     - 但如果对象本身是常量，则结果未定义。
     ```
     const char * pc;
-    char * p = const_cast<char *>(pc);   // 正确，但通过p写值是未定义的行为
-    char * q = static_cast<char *>(cp);  // 错误，static_cast不能用于去除const
-    static_cast<std::string>(pc);        // 正确，字符串字面值转换为std::string
-    const_cast<std::string>(pc);         // 错误，const_cast只能用于去除const
+    char * p = const_cast<char *>(pc);                       // 正确，但通过p写值是未定义的行为
+    char * q = static_cast<char *>(cp);                      // 错误，static_cast不能用于去除const
+    static_cast<std::string>(pc);                            // 正确，字符串字面值转换为std::string
+    const_cast<std::string>(pc);                             // 错误，const_cast只能用于去除const
     ```
 - `reinterpret_cast<T>(expr)`：
     - 强制编译器按照`T`类型重新解读一块内存。
     
     ```
     int * a = new int(1);
-    char * pc = reinterpret_cast<char *>(a);             // 正确
-    std::string s(pc);                                   // 可能会RE，（取决于从a开始多久出现0？）
+    char * pc = reinterpret_cast<char *>(a);                 // 正确
+    std::string s(pc);                                       // 可能会RE，（取决于从a开始多久出现0？）
     ```
-    - 可以用来：
-        - 指针强转指针（比如解析二进制数据流）：
+    - 需要使用`reinterpret_cast`的场景（暂时没发现第3种妙用）：
+        - 将指针强转成指针（比如解析二进制数据流）：
         ```
         uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
         dat[0] = 1U;
@@ -311,13 +311,13 @@ sizeof expr   // 返回表达式结果类型大小
             printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
         }
         ```
-        - 指针强转成数字（获取具体的地址）：
+        - 将指针强转成数字（获取具体的地址）：
         ```
         int a = 1, 
         int * p = &a;
-        size_t b = (size_t) p;                         // 正确：人见人爱的C风格强转
-        size_t b2 = static_cast<size_t>(p);            // 错误：int *转换为long long是没有明确定义的
-        size_t b3 = reinterpret_cast<size_t>(p);       // 正确
+        size_t b = (size_t) p;                               // 正确：人见人爱的C风格强转
+        size_t b2 = static_cast<size_t>(p);                  // 错误：int *转换为long long是没有明确定义的
+        size_t b3 = reinterpret_cast<size_t>(p);             // 正确
         ```
         
 #### 旧式的强制类型转换
