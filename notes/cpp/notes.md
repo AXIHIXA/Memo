@@ -143,6 +143,14 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
 
 #### 顶层`const`和底层`const`
 
+We use the term **top-level const** to indicate that the pointer itself is a `const`. 
+When a pointer can point to a `const` object, we refer tothat const as a **low-level const**.
+
+作者：myd7349
+链接：https://www.zhihu.com/question/24785843/answer/28984155
+来源：知乎
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
 - 顶层`const`：任意的对象是常量
 - 底层`const`：指针或引用指向的那个对象本身是常量
     - 注意，引用一旦绑定就永远不能改了，因此引用自带顶层`const`；
