@@ -270,16 +270,16 @@ sizeof expr   // 返回表达式结果类型大小
 
 如果`T`是引用类型，则转换结果为**左**值
 
-- `static_cast<T>(expr)`：用于任何具有明确定义的不包含底层`const`的强制类型转换。结果的值和被转换对象的值可能不同。例如：
-    - `double`强转`int`（有精度损失）；
-    - `void *`强转`Type *`（这一条其实也可以用`reinterpret_cast`，因为`void *`强转`Type *`的语义就是强行按照`Type *`解释那块内存）。
+- `static_cast<T>(expr)`
+    - 用于任何具有明确定义的不包含底层`const`的强制类型转换。结果的值和被转换对象的值可能不同。例如：
+        - `double`强转`int`（有精度损失）；
+        - `void *`强转`Type *`（这一条其实也可以用`reinterpret_cast`，因为`void *`强转`Type *`的语义就是强行按照`Type *`解释那块内存）。
 - `dynamic_cast<T>(expr)`：支持运行时的类型识别 => 19.2
 - `const_cast<T>(expr)`：
-常常用于有函数重载的上下文中。
-用于且只有它能用于去除运算对象的底层const（cast away the const）。
-只能用于更改const属性，不能更改类型。
-如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为。
-但如果对象本身是常量，则结果未定义。
+    - 用于且只有它能用于去除运算对象的底层`const`（cast away the `const`）。
+    - 只能用于更改`const`属性，不能更改类型。
+    - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为。
+    - 但如果对象本身是常量，则结果未定义。
 ```
 const char * pc;
 char * p = const_cast<char *>(pc);   // 正确，但通过p写值是未定义的行为
