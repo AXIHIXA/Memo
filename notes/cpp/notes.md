@@ -298,19 +298,16 @@ uint8_t * p = static_cast<uint8_t *>(&b);       // 错误：uint *转换为uint8
 
 #### 旧式的强制类型转换
 
-```
-// 以下两种语法等价，都应避免使用：
-T(expr);   // 函数式
-(T) expr;  // C风格
-```
+- 以下两种语法等价，都应避免使用：
+    - 函数式`T(expr)`
+    - `C`风格`(T) expr`
 
-根据具体位置不同，旧式的强制类型转换的效果与`static_cast`、`const_cast`或`reinterpret_cast`相同。
-具体来讲，执行以下各项中第一个成功的：
-> - const_cast
-> - static_cast (though ignoring access restrictions)
-> - static_cast (see above), then const_cast
-> - reinterpret_cast
-> - reinterpret_cast, then const_cast
+- 根据具体位置不同，旧式的强制类型转换的效果与`static_cast`、`const_cast`或`reinterpret_cast`相同。具体来讲，定义为以下各项中第一个成功的：
+    > - const_cast
+    > - static_cast (though ignoring access restrictions)
+    > - static_cast (though ignoring access restrictions), then const_cast
+    > - reinterpret_cast
+    > - reinterpret_cast, then const_cast
 
 ```
 int * ip;
