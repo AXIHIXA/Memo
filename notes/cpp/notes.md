@@ -270,8 +270,8 @@ sizeof expr   // 返回表达式结果类型大小
 
 如果`T`是引用类型，则转换结果为**左**值
 
-- `static_cast<T>(expr)`：一般用于有精度损失的强制类型转换。转换结果与原始地址相等。
-- `dynamic_cast<T>(expr)`：支持运行时的类型识别。
+- `static_cast<T>(expr)`：用于任何具有明确定义的不包含底层`const`的强制类型转换。例如：`double`强转`int`；`void *`强转`Type *`等。
+- `dynamic_cast<T>(expr)`：支持运行时的类型识别 => 19.2
 - `const_cast<T>(expr)`：
 常常用于有函数重载的上下文中。
 用于且只有它能用于去除运算对象的底层const（cast away the const）。
