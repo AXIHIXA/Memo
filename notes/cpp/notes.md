@@ -296,8 +296,7 @@ uint8_t * p = reinterpret_cast<uint8_t *>(&b);  // 正确
 uint8_t * p = static_cast<uint8_t *>(&b);       // 错误：uint *转换为uint8_t *是未明确定义的
 ```
 ```
-// 假设这是小端机
-uint8_t dat[12] = {0};
+uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
 dat[0] = 1U;
 dat[4] = 2U;
 dat[8] = 3U;
