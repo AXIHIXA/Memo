@@ -299,8 +299,8 @@ uint8_t * p = static_cast<uint8_t *>(&b);       // 错误：uint *转换为uint8
 #### 旧式的强制类型转换
 
 - 以下两种语法等价，都应避免使用：
-    - 函数式`T(expr)`
-    - `C`风格`(T) expr`
+    - 函数式：`T t = T(expr);`
+    - `C`风格：`T t = (T) expr;`
 
 - 根据具体位置不同，旧式的强制类型转换的效果与`static_cast`、`const_cast`或`reinterpret_cast`相同。具体来讲，定义为以下各项中第一个成功的：
     > - const_cast
