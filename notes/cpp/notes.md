@@ -281,13 +281,13 @@ sizeof expr   // 返回表达式结果类型大小
     - 只能用于更改`const`属性，不能更改类型。
     - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为。
     - 但如果对象本身是常量，则结果未定义。
-```
-const char * pc;
-char * p = const_cast<char *>(pc);   // 正确，但通过p写值是未定义的行为
-char * q = static_cast<char *>(cp);  // 错误，static_cast不能用于去除const
-static_cast<std::string>(pc);        // 正确，字符串字面值转换为std::string
-const_cast<std::string>(pc);         // 错误，const_cast只能用于去除const
-```
+    ```
+    const char * pc;
+    char * p = const_cast<char *>(pc);   // 正确，但通过p写值是未定义的行为
+    char * q = static_cast<char *>(cp);  // 错误，static_cast不能用于去除const
+    static_cast<std::string>(pc);        // 正确，字符串字面值转换为std::string
+    const_cast<std::string>(pc);         // 错误，const_cast只能用于去除const
+    ```
 - `reinterpret_cast<T>(expr)`：
     - 强制编译器按照`T`类型重新解读一块内存。
     - 可以用作指针强转（比如解析二进制数据流）。目前没发现其他妙用。
