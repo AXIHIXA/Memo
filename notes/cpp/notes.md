@@ -297,7 +297,7 @@ dat[0] = 1U;
 dat[4] = 2U;
 dat[8] = 3U;
 uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
-uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的，因此static_cast会报错
+uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的
 
 for (size_t i = 0; i < 3; ++i)
 {
