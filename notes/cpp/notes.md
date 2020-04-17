@@ -139,7 +139,7 @@ int * const p2 = &num;        // 指向`int`的常指针。不能让p1指向别�
 const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1修改num的值，也不可以让p1指向别的`int`变量。
 ```
 
-- 顶层`const`和底层`const`
+- `顶层const`和`底层const`
     - 顶层`const`（Top-level `const`）：任意的对象是常量
     - 底层`const`（Low-level `const`）：仅限指针或引用。指向的那个对象本身是常量
         - 注意，引用一旦绑定就永远不能改了，因此普通引用以及常引用本身都自带顶层`const`；
