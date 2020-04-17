@@ -290,26 +290,36 @@ sizeof expr   // 返回表达式结果类型大小
     ```
 - `reinterpret_cast<T>(expr)`：
     - 强制编译器按照`T`类型重新解读一块内存。
-    - 可以用作指针强转（比如解析二进制数据流）。目前没发现其他妙用。
+    
     ```
     int * a = new int(1);
     char * pc = reinterpret_cast<char *>(a);             // 正确
     std::string s(pc);                                   // 可能会RE，（取决于从a开始多久出现0？）
     ```
-    ```
-    uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
-    dat[0] = 1U;
-    dat[4] = 2U;
-    dat[8] = 3U;
-    uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
-    uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的
+    - 可以用来：
+        - 指针强转指针（比如解析二进制数据流）：
+        ```
+        uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
+        dat[0] = 1U;
+        dat[4] = 2U;
+        dat[8] = 3U;
+        uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
+        uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的
 
-    for (size_t i = 0; i < 3; ++i)
-    {
-        printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
-    }
-    ```
-
+        for (size_t i = 0; i < 3; ++i)
+        {
+            printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
+        }
+        ```
+        - 指针强转成数字（获取具体的地址）：
+        ```
+        int a = 1, 
+        int * p = &a;
+        long long b = (long long) p;                         // 正确：人见人爱的C风格强转
+        long long b2 = static_cast<long long>(p);            // 错误：int *转换为long long是没有明确定义的
+        long long b3 = reinterpret_cast<long long>(p);       // 正确
+        ```
+        
 #### 旧式的强制类型转换
 
 - 以下两种语法等价，因为具体行为难以断言且可能隐式进行`reinterpret_cast`，都应避免使用：
