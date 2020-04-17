@@ -288,25 +288,27 @@ char * q = static_cast<char *>(cp);  // 错误，static_cast不能用于去除co
 static_cast<std::string>(pc);        // 正确，字符串字面值转换为std::string
 const_cast<std::string>(pc);         // 错误，const_cast只能用于去除const
 ```
-- `reinterpret_cast<T>(expr)`：强制编译器按照`T`类型重新解读一块内存。可以用作指针强转（比如解析二进制数据流）。目前没发现其他妙用。
-```
-int * a = new int(1);
-char * pc = reinterpret_cast<char *>(a);             // 正确
-std::string s(pc);                                   // 可能会RE，（取决于从a开始多久出现0？）
-```
-```
-uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
-dat[0] = 1U;
-dat[4] = 2U;
-dat[8] = 3U;
-uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
-uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的
+- `reinterpret_cast<T>(expr)`：
+    - 强制编译器按照`T`类型重新解读一块内存。
+    - 可以用作指针强转（比如解析二进制数据流）。目前没发现其他妙用。
+    ```
+    int * a = new int(1);
+    char * pc = reinterpret_cast<char *>(a);             // 正确
+    std::string s(pc);                                   // 可能会RE，（取决于从a开始多久出现0？）
+    ```
+    ```
+    uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
+    dat[0] = 1U;
+    dat[4] = 2U;
+    dat[8] = 3U;
+    uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
+    uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的
 
-for (size_t i = 0; i < 3; ++i)
-{
-    printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
-}
-```
+    for (size_t i = 0; i < 3; ++i)
+    {
+        printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
+    }
+    ```
 
 #### 旧式的强制类型转换
 
