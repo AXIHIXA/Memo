@@ -270,7 +270,7 @@ sizeof expr   // 返回表达式结果类型大小
 
 如果`T`是引用类型，则转换结果为**左**值
 
-- `static_cast<T>(expr)`：用于任何具有明确定义的不包含底层`const`的强制类型转换。例如：`double`强转`int`；`void *`强转`Type *`等。
+- `static_cast<T>(expr)`：用于任何具有明确定义的不包含底层`const`的强制类型转换。结果的值和被转换对象的值可能不同。例如：`double`强转`int`；`void *`强转`Type *`等。
 - `dynamic_cast<T>(expr)`：支持运行时的类型识别 => 19.2
 - `const_cast<T>(expr)`：
 常常用于有函数重载的上下文中。
@@ -285,7 +285,7 @@ char * q = static_cast<char *>(cp);  // 错误，static_cast不能用于去除co
 static_cast<std::string>(pc);        // 正确，字符串字面值转换为std::string
 const_cast<std::string>(pc);         // 错误，const_cast只能用于去除const
 ```
-- `reinterpret_cast<T>(expr)`：强制编译器按照`T`类型重新解读一块内存。**十分危险**。 
+- `reinterpret_cast<T>(expr)`：强制编译器按照`T`类型重新解读一块内存。可以用作指针强转（比如解析二进制数据流）。目前没发现其他妙用。
 ```
 int * a = new int(1);
 char * pc = reinterpret_cast<char *>(a);        // 正确
