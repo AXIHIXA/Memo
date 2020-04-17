@@ -7,6 +7,7 @@
 - 常见规则
 
     - `const`常量不论是声明还是使用都添加`extern`修饰符
+    - 想要`auto`推导出引用或者常量的话，直接写清楚是坠吼的（`const auto & a = b`），别折腾顶层`const`什么的
     - `constexpr`函数、`inline`函数以及模板的**定义和实现都应**写进头文件
     - `using`声明（`using std::string`、`using namespace std`、`using intptr = int *`等）**不应**写进头文件
     - `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
@@ -25,6 +26,7 @@
 
     - 对复杂的声明符，从右往左看比较好理解
     - 对数组声明，从数组的名字开始由内向外看比较好理解
+    - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
 
 
 ### 🌱 初始化
@@ -90,7 +92,7 @@ extern const int BUF_SIZE;          // sth.h （其他要用到`BUF_SIZE`的头�
 如果程序包含多个文件，则每个用了`const`对象的文件都必须得能访问到它的初始值才行。
 要做到这一点，就必须在每一个用到变量的文件之中都有它的定义。
 为了支持这一用法，同时避免对同一变量的重复定义，默认情况下，`const`对象被设定为仅在文件内有效。
-当多个文件中出现了同名的`const`变量是，其实等同于在不同文件中分别定义了**独立的**变量。
+当多个文件中出现了同名的`const`变量时，其实等同于在不同文件中分别定义了**独立的**变量。
 
 如果希望`const`对象只在一个文件中定义一次，而在多个文件中声明并使用它，则需采用上述操作。
 
@@ -99,7 +101,7 @@ extern const int BUF_SIZE;          // sth.h （其他要用到`BUF_SIZE`的头�
 
 #### 绑定
 
-对于常量，只能绑定常量指针或引用，不能绑定普通版。
+对于常量，只能绑定指向常量的指针或引用，不能绑定普通版。
 
 指针或引用的类型必须与其所引用的对象的类型一致，但有2个例外：
 - 常量引用可以绑定在“存在可接受的转换规则”的对象上【这一条指向常量的指针不行】；    
@@ -114,10 +116,10 @@ extern const int BUF_SIZE;          // sth.h （其他要用到`BUF_SIZE`的头�
 
 ```
 double i = 4.2;
-const int & r1 = i;      // ok: we can bind a const int& to a plain int object
-const int & r2 = 4.2;    // ok: r1 is a reference to const
-const int & r3 = i * 2;  // ok: r3 is a reference to const
-int & r4 = i * 2;        // error: r4 is a plain, non const reference
+const int & r1 = i;      // 正确：we can bind a const int& to a plain int object
+const int & r2 = 4.2;    // 正确：r1 is a reference to const
+const int & r3 = i * 2;  // 正确：r3 is a reference to const
+int & r4 = i * 2;        // 错误：r4 is a plain reference, not const reference
 
 // 注：执行如下代码时：
 
@@ -143,33 +145,23 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
 
 #### 顶层`const`和底层`const`
 
-We use the term **top-level const** to indicate that the pointer itself is a `const`. 
-When a pointer can point to a `const` object, we refer tothat const as a **low-level const**.
-
-More generally, **top-level const** indicates that an object itself is `const`. 
-**Top-level const** can appear in any object type, 
-i.e., one of the built-in arithmetic types, a class type, or a pointer type. 
-
-**Low-level const** appears in the base type of compound types, 
-such as pointers or references. 
-
-Note that pointer types can have both top-level and low-level const independently. 
-
+- 顶层`const`（Top-level `const`）：任意的对象是常量
+- 底层`const`（Low-level `const`）：仅限指针或引用。指向的那个对象本身是常量
     - 注意，引用一旦绑定就永远不能改了，因此引用自带顶层`const`；
-    - 常量引用永远是底层`const`。
+    - 常量引用永远都是底层`const`；
+    - 对常量对象取地址是**底层**`const`。
 
 ```
 int i = 0;
-int * const p1 = &i;        // we can't change the value of p1; const is top-level
-const int ci = 42;          // we cannot change ci; const is top-level
-const int * p2 = &ci;       // we can change p2; const is low-level
-const int * const p3 = p2;  // right-most const is top-level, left-most is not
-const int & r = ci;         // const in reference types is always low-level
+int * const p1 = &i;        // 顶层const
+const int ci = 42;          // 顶层const
+const int * p2 = &ci;       // 底层const
+const int * const p3 = p2;  // 第一个const为底层，第二个为顶层
+const int & r = ci;         // 常量引用永远都是底层const
 ```
 
-- 附赠一条知乎高票回答：
-
-顶层和底层的翻译很容易让人误解为就只有两层，实际上当然是不是的。首先我们假设有这样的代码：
+附赠一条知乎高票回答：
+“顶层”和“底层”的翻译很容易让人误解为就只有两层，实际上当然是不是的。首先我们假设有这样的代码：
 ```
 template<typename T> using Const = const T;
 template<typename T> using Ptr = T *;
@@ -212,19 +204,24 @@ auto sz = 0, pi = 3.14;  // 错误，sz和pi类型不同
     - 对于引用，`auto`推导为被引用对象的类型（使用引用实际上是使用被引用的对象，特别是引用被用作初始之时，参与初始化的是被引用对象的值）
     ```
     int a = 0, &r = i;
-    auto b = r;         // b为int，而不是int *
+    auto b = r;         // b为int，而不是int &
     ```
     - 对于`const`：`auto`会忽略顶层`const`：
     ```
+    int i = 1;
     const int ci = i, &cr = ci;
-    auto b = ci;                 // b is an int (top-level const in ci is dropped)
-    auto c = cr;                 // c is an int (cr is an alias for ci whose const is top-level)
-    auto d = &i;                 // d is an int * (& of an int object is int *)
-    auto e = &ci;                // e is const int * (& of a const object is low-level const)
+    auto b = ci;                 // b为int（ci为顶层const）
+    auto c = cr;                 // c为int（cr为ci的别名, ci本身是顶层const）
+    auto d = &i;                 // d为int *（&i为const int *，）
+    auto e = &ci;                // e为const int *（对常量对象取地址是底层const）
     ```
+    - 对常量对象取地址，结果为底层`const`；
     - 如果希望`auto`推断出引用或者顶层常量，则声明`auto`时必须加上相应的描述符：
     ```
-    例如`const auto & a = ...`。
+    const auto f = ci;           // f为const int
+    auto & g = ci;               // g为const int &
+    auto & h = 42;               // 错误：不能为非常量引用绑定字面值
+    const auto & j = 42;         // 正确：可以为常量引用绑定字面值
     ```
 
 #### `decltype`
