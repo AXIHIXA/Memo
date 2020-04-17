@@ -299,17 +299,17 @@ uint8_t * p = static_cast<uint8_t *>(&b);       // 错误：uint *转换为uint8
 #### 旧式的强制类型转换
 
 - 以下两种语法等价，因为具体行为难以断言且可能隐式进行`reinterpret_cast`，都应避免使用：
-    ```
-    T t = T(expr);   // 函数式
-    T t = (T) expr;  // C风格
-    ```
+```
+T t = T(expr);   // 函数式
+T t = (T) expr;  // C风格
+```
 
 - 根据具体位置不同，旧式的强制类型转换的效果与`static_cast`、`const_cast`或`reinterpret_cast`相同。具体来讲，定义为以下各项中第一个成功的：
-    > - const_cast
-    > - static_cast (though ignoring access restrictions)
-    > - static_cast (though ignoring access restrictions), then const_cast
-    > - reinterpret_cast
-    > - reinterpret_cast, then const_cast
+    - const_cast
+    - static_cast (though ignoring access restrictions)
+    - static_cast (though ignoring access restrictions), then const_cast
+    - reinterpret_cast
+    - reinterpret_cast, then const_cast
 
 ```
 int * ip;
@@ -357,10 +357,8 @@ default:
 ### 🌱 异常处理
 
 - `C++`标准异常
-
     - `exception`：最通用的异常类`exception`，只报告异常的发生，不提供任何额外信息。
     - `stdexcept`：几种常用的异常类：
-    
         > - `excpetion`：最常见的问题
         > - `runtime_error`：所有RE
         >     - `range_error`：RE，生成的结果超出了有意义的值域范围
@@ -371,7 +369,6 @@ default:
         >     - `invalid_argument`：逻辑错误，无效参数
         >     - `length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
         >     - `out_of_range`：逻辑错误，使用了一个超出有效范围的值
-        
     - `new`：`bad_alloc`异常类。12.1.2
     - `type_info`：`bad_cast`异常类。19.2
     
