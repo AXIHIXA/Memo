@@ -288,20 +288,29 @@ const_cast<std::string>(pc);         // 错误，const_cast只能用于去除con
 - `reinterpret_cast<T>(expr)`：强制编译器按照`T`类型重新解读一块内存。**十分危险**。 
 ```
 int * a = new int(1);
-char * pc = reinterpret_cast<char *>(a);  // 正确
-std::string s(pc);                        // 可能会RE，（取决于从a开始多久出现0？）
+char * pc = reinterpret_cast<char *>(a);        // 正确
+std::string s(pc);                              // 可能会RE，（取决于从a开始多久出现0？）
+
+uint b = 1;
+uint8_t * p = reinterpret_cast<uint8_t *>(&b);  // 正确：强制按照
+uint8_t * p = static_cast<uint8_t *>(&b);       // 错误：uint *转换为uint8_t *是未定义的
 ```
 
 #### 旧式的强制类型转换
 
 ```
+// 以下两种语法等价，都应避免使用：
 T(expr);   // 函数式
 (T) expr;  // C风格
 ```
 
 根据具体位置不同，旧式的强制类型转换的效果与`static_cast`、`const_cast`或`reinterpret_cast`相同。
-选择优先级：`static_cast` = `const_cast` > `reinterpret_cast`。
-即：只有当前一种解释不合法时，才会考虑后一种。
+具体来讲，执行以下各项中第一个成功的：
+> - const_cast
+> - static_cast (though ignoring access restrictions)
+> - static_cast (see above), then const_cast
+> - reinterpret_cast
+> - reinterpret_cast, then const_cast
 
 ```
 int * ip;
