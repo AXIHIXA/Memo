@@ -146,8 +146,15 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
 We use the term **top-level const** to indicate that the pointer itself is a `const`. 
 When a pointer can point to a `const` object, we refer tothat const as a **low-level const**.
 
-- 顶层`const`：任意的对象是常量
-- 底层`const`：指针或引用指向的那个对象本身是常量
+More generally, **top-level const** indicates that an object itself is `const`. 
+**Top-level const** can appear in any object type, 
+i.e., one of the built-in arithmetic types, a class type, or a pointer type. 
+
+**Low-level const** appears in the base type of compound types, 
+such as pointers or references. 
+
+Note that pointer types can have both top-level and low-level const independently. 
+
     - 注意，引用一旦绑定就永远不能改了，因此引用自带顶层`const`；
     - 常量引用永远是底层`const`。
 
