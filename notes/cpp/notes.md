@@ -292,13 +292,13 @@ char * pc = reinterpret_cast<char *>(a);        // 正确
 std::string s(pc);                              // 可能会RE，（取决于从a开始多久出现0？）
 
 uint b = 1;
-uint8_t * p = reinterpret_cast<uint8_t *>(&b);  // 正确：强制按照
-uint8_t * p = static_cast<uint8_t *>(&b);       // 错误：uint *转换为uint8_t *是未定义的
+uint8_t * p = reinterpret_cast<uint8_t *>(&b);  // 正确
+uint8_t * p = static_cast<uint8_t *>(&b);       // 错误：uint *转换为uint8_t *是未明确定义的
 ```
 
 #### 旧式的强制类型转换
 
-- 以下两种语法等价，都应避免使用：
+- 以下两种语法等价，因为具体行为难以断言且可能隐式进行`reinterpret_cast`，都应避免使用：
     - 函数式：`T t = T(expr);`
     - `C`风格：`T t = (T) expr;`
 
