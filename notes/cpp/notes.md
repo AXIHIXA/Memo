@@ -288,12 +288,8 @@ const_cast<std::string>(pc);         // 错误，const_cast只能用于去除con
 - `reinterpret_cast<T>(expr)`：强制编译器按照`T`类型重新解读一块内存。可以用作指针强转（比如解析二进制数据流）。目前没发现其他妙用。
 ```
 int * a = new int(1);
-char * pc = reinterpret_cast<char *>(a);        // 正确
-std::string s(pc);                              // 可能会RE，（取决于从a开始多久出现0？）
-
-uint b = 1;
-uint8_t * p = reinterpret_cast<uint8_t *>(&b);  // 正确
-uint8_t * p = static_cast<uint8_t *>(&b);       // 错误：uint *转换为uint8_t *是未明确定义的
+char * pc = reinterpret_cast<char *>(a);             // 正确
+std::string s(pc);                                   // 可能会RE，（取决于从a开始多久出现0？）
 ```
 ```
 uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
@@ -301,7 +297,7 @@ dat[0] = 1U;
 dat[4] = 2U;
 dat[8] = 3U;
 uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
-uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误
+uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的，因此static_cast会报错
 
 for (size_t i = 0; i < 3; ++i)
 {
