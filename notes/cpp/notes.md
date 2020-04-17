@@ -305,11 +305,11 @@ T t = (T) expr;  // C风格
 ```
 
 - 根据具体位置不同，旧式的强制类型转换的效果与`static_cast`、`const_cast`或`reinterpret_cast`相同。具体来讲，定义为以下各项中第一个成功的：
-    - const_cast
-    - static_cast (though ignoring access restrictions)
-    - static_cast (though ignoring access restrictions), then const_cast
-    - reinterpret_cast
-    - reinterpret_cast, then const_cast
+    - `const_cast`
+    - `static_cast` (though ignoring access restrictions)
+    - `static_cast` (though ignoring access restrictions), then `const_cast`
+    - `reinterpret_cast`
+    - `reinterpret_cast`, then `const_cast`
 
 ```
 int * ip;
