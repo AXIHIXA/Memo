@@ -497,31 +497,40 @@ void foo(...);
 ```
 
 ```
-#include <cstdarg>
 #include <iostream>
+#include <cstdarg>
+#include <cmath>
  
-int add_nums(int count, ...) 
+double sample_stddev(int count, ...) 
 {
-    int result = 0;
-    std::va_list args;
-    va_start(args, count);
+    double sum = 0;
+    std::va_list args1;
+    va_start(args1, count);                      // 第二个参数是va_list前面的具名参数的名字
+    std::va_list args2;
+    va_copy(args2, args1);
     
     for (int i = 0; i < count; ++i) 
     {
-        result += va_arg(args, int);
+        double num = va_arg(args1, double);
+        sum += num;
     }
     
-    va_end(args);
-    return result;
+    va_end(args1);                               // 调用va_start之后不调用va_end，行为未定义
+    double mean = sum / count;
+ 
+    double sum_sq_diff = 0;
+    
+    for (int i = 0; i < count; ++i) 
+    {
+        double num = va_arg(args2, double);
+        sum_sq_diff += (num-mean) * (num-mean);  
+    }
+    
+    va_end(args2);                               // 调用va_copy之后不调用va_end，行为未定义
+    return std::sqrt(sum_sq_diff / count);
 }
-
-std::cout << add_nums(4, 25, 25, 50, 50) << std::endl;  // 150
-
-// 未使用：
-// The va_copy macro copies src to dest.
-// va_end should be called on dest before the function returns 
-// or any subsequent re-initialization of dest (via calls to va_start or va_copy). 
-void va_copy(std::va_list dest, std::va_list src);      
+ 
+std::cout << sample_stddev(4, 25.0, 27.3, 26.9, 25.7) << std::endl;
 ```
 
 
