@@ -57,16 +57,14 @@ int a{3.14};     // 列表初始化。会损失精度，报CE
 
 #### 拷贝初始化和直接初始化
 
-如果初始化时使用了等号，则是拷贝初始化（生成并直接初始化临时右值对象，再将临时对象拷贝到左值），有性能损失：
-
+- 如果初始化时使用了等号，则是拷贝初始化（生成并直接初始化临时右值对象，再将临时对象拷贝到左值），有性能损失：
 ```
 std::string s = std::string("hehe"); 
 // 实际执行时等价于：
 std::string tmp("hehe"); 
 std::string s = tmp; 
 ```
-
-如不使用等号，则是直接初始化。
+- 如不使用等号，则是直接初始化。
 
 ### 🌱 `extern`修饰符
 
@@ -596,3 +594,65 @@ __LINE__
 __TIME__
 __DATE__
 ````
+
+### 🌱 函数指针
+
+#### 函数指针
+
+- 声明：用指针替代函数名即可。
+    - `bool lengthCompare(const std::string &, const stf::string)`的类型是`bool(const std::string &, const stf::string)`
+    - 声明指向`bool(const std::string &, const stf::string)`类型函数的指针：
+        - `bool (*pf)(const std::string &, const stf::string);  // 未初始化`
+- 使用：
+```
+pf = lengthCompare;                           // pf now points to the function named lengthCompare
+pf = &lengthCompare;                          // equivalent assignment: address-of operator is optional
+
+bool b1 = pf("hello", "goodbye");             // calls lengthCompare
+bool b2 = (*pf)("hello", "goodbye");          // equivalent call
+bool b3 = lengthCompare("hello", "goodbye");  // equivalent call
+```
+- 重载函数的指针：函数指针的类型必须与重载函数中的某一个精确匹配
+```
+void ff(int*);
+void ff(unsigned int);
+void (*pf1)(unsigned int) = 0;                // pf1 points to nothing
+void (*pf2)(unsigned int) = ff;               // pf1 points to ff(unsigned int)
+
+void (*pf3)(int) = ff;                        // error: no ff with a matching parameter list
+double (*pf4)(int*) = ff;                     // error: return type of ff and pf4 don't match
+```
+
+#### 函数指针形参
+
+- 声明：
+```
+// third parameter is a function type and is automatically treated as a pointer to function
+void 
+useBigger(const string & s1, 
+          const string & s2,
+          bool pf(const string &, const string &));
+          
+// equivalent declaration: explicitly define the parameter as a pointer to function
+void 
+useBigger(const string & s1, 
+          const string & s2,
+          bool (*pf)(const string &, const string &));
+```
+- 使用：
+    - 传入函数名、函数名手动取地址或者已有的指针均可：
+    ```          
+    // automatically converts the function lengthCompare to a pointer to function
+    useBigger(s1, s2, lengthCompare);
+    ```
+    - 使用类型别名（`typedef`或`using`）可以简化书写：
+    ```
+    typedef bool Func(const std::string &, const std::string &);        // function type
+    typedef decltype(lengthCompare) Func2;                              // equivalent type
+    
+    typedef bool(*FuncP)(const std::string &, const std::string &);     // function pointer type
+    typedef decltype(lengthCompare) * FuncP2;                           // equivalent type
+    using FuncP3 = bool (*)(const std::string &, const std::string &);  // equivalent type
+    using FuncP4 = decltype(lengthCompare) *;                           // equivalent type
+    ```
+### 🌱 构造函数
