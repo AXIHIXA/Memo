@@ -676,14 +676,13 @@ useBigger(const string & s1,
           const string & s2,
           bool (*pf)(const string &, const string &));
 ```
-- 使用：
-    - 传入函数名、函数名手动取地址或者已有的指针均可：
-    ```          
-    // automatically converts the function lengthCompare to a pointer to function
-    useBigger(s1, s2, lengthCompare);
-    useBigger(s1, s2, &lengthCompare);
-    useBigger(s1, s2, pf);
-    ```
+- 使用：传入函数名、函数名手动取地址或者已有的指针均可：
+```          
+// automatically converts the function lengthCompare to a pointer to function
+useBigger(s1, s2, lengthCompare);
+useBigger(s1, s2, &lengthCompare);
+useBigger(s1, s2, pf);
+```
 
 
 
