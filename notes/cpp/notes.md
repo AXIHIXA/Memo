@@ -13,6 +13,7 @@
     - 现代`C++`应使用标准库类型配合迭代器，而不是`C`风格的数组和指针。数组也是一种迭代器
     - 现代`C++`**不应**使用旧式的强制类型转换，应当明确调用对应的`xx_cast<T>(expr)`
     - 除非必须，**不要**使用自增自减运算符的后置版本（会造成性能浪费）
+    - 不在内部作用域声明函数
     
 - 一些常识
     - 指针解引用的结果是其指向对象的左值引用
@@ -21,7 +22,9 @@
     - `std::endl`有刷新缓冲区的效果。最好带上
     - 如果一个函数是永远也不会用到的，那么它可以只有声明而没有定义 => 15.3
     - 引用从来都是作为被引用对象的同义词出现（比如`auto`就不能自动推断出引用），唯一例外是`decltype`。它会原样保留引用以及顶层`const`
-    - `main`函数不能递归调用
+    - `main`函数不能递归调用、不能重载
+    - 内部作用域生命的东西会覆盖外部作用域的同名东西，可能会影响函数重载的使用
+    - 定义在类内部的函数是隐式的`inline`函数
     
 - 读代码标准操作
     - 对复杂的声明符，从右往左看比较好理解
@@ -451,6 +454,19 @@ void print(const int[]);
 void print(const int[10]);  // 此处长度没有意义。可以传入长度不为10的数组，是合法的
 ```
 
+#### 重载和`const`形参
+
+- 顶层`const`不影响传入的对象，因此以下定义不合法：
+```
+Record lookup(Phone);
+Record lookup(const Phone);   // redeclares Record lookup(Phone)
+```
+- 不允许两个函数除了返回值其余都相同：
+```
+Record lookup(const Account&);
+bool lookup(const Account&);  // error: only the return type is different
+```
+
 #### 可变形参
 
 - 初始化列表（`initializer-list`）：用于所有实参类型相同的函数
@@ -567,4 +583,17 @@ std::vector<std::string> process()
         return (i % 2) ? &odd : &even;  
     }
     ```
-- 
+
+### 🌱 调试帮助
+
+#### `assert`
+
+- 定义`#define NDEBUG`可以关闭`assert`宏检查
+- 以下宏可用于细化调试信息：
+````
+__func__
+__FILE__
+__LINE__
+__TIME__
+__DATE__
+````
