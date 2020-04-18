@@ -456,35 +456,73 @@ void print(const int[10]);  // 此处长度没有意义。可以传入长度不�
 #### 可变形参
 
 - 初始化列表（`initializer-list`）：用于所有实参类型相同的函数
-    - `#include <initializer-list>`。提供操作：
-    ```
-    std::initializer-list<T> lst;              // 默认初始化。T类型元素的空列表
-    std::initializer-list<T> lst{a, b, c...};  // lst元素数量和初始值一样多；
-                                               // lst的元素是对应初始值的拷贝（copies）；
-                                               // 列表中的元素永远、均为常量，不能改变
-    
-    lst2(lst);                                 // 拷贝或赋值一个初始化列表对象不会拷贝列表中的元素；
-    lst3 = lst;                                // 拷贝后，原始列表和副本共享元素
-    
-    lst.size();                                // 列表中的元素数量
-    lst.begin();                               // 返回指向lst中首元素的指针
-    lst.end();                                 // 返回指向lst中尾元素下一位置的指针
-    ```
-    - 用法举例：报错
-    ```
-    void error_msg(initializer_list<std::string> il)
+```
+#include <initializer-list>
+
+std::initializer-list<T> lst;              // 默认初始化。T类型元素的空列表
+std::initializer-list<T> lst{a, b, c...};  // lst元素数量和初始值一样多；
+                                           // lst的元素是对应初始值的拷贝（copies）；
+                                           // 列表中的元素永远、均为常量，不能改变
+
+lst2(lst);                                 // 拷贝或赋值一个初始化列表对象不会拷贝列表中的元素；
+lst3 = lst;                                // 拷贝后，原始列表和副本共享元素
+
+lst.size();                                // 列表中的元素数量
+lst.begin();                               // 返回指向lst中首元素的指针
+lst.end();                                 // 返回指向lst中尾元素下一位置的指针
+```
+
+```
+void error_msg(std::initializer_list<std::string> il)
+{
+    for (const std::string & s = il.begin(); s != il.end(); ++s)
     {
-        for (const std::string & beg = il.begin(); beg != il.end(); ++beg)
-        {
-            std::cout << *beg << " ";
-        }
-        
-        std::cout << std::endl;
+        std::cout << *s << " ";
     }
     
-    // ...
+    std::cout << std::endl;
+}
+
+expected == actual ? error_msg({"functionX", "okay"}) : error_msg({"functionX", expected, actual});
+```
+
+- 省略符形参：仅用于`C`和`C++`通用的类型，只能作为函数的最后一个参数。
+```
+#include <cstdarg>
+
+// 三种声明格式：
+void foo(parm_list, ...);
+void foo(parm_list...);
+void foo(...);
+```
+
+```
+#include <cstdarg>
+#include <iostream>
+ 
+int add_nums(int count, ...) 
+{
+    int result = 0;
+    std::va_list args;
+    va_start(args, count);
     
-    expected == actual ? error_msg({"functionX", "okay"}) : error_msg({"functionX", expected, actual});
-    ```
+    for (int i = 0; i < count; ++i) 
+    {
+        result += va_arg(args, int);
+    }
+    
+    va_end(args);
+    return result;
+}
+
+std::cout << add_nums(4, 25, 25, 50, 50) << std::endl;  // 150
+
+// 未使用：
+// The va_copy macro copies src to dest.
+// va_end should be called on dest before the function returns 
+// or any subsequent re-initialization of dest (via calls to va_start or va_copy). 
+void va_copy(std::va_list dest, std::va_list src);      
+```
+
 
 - 可变参数模板 => 16.4
