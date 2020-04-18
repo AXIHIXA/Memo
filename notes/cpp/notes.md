@@ -604,9 +604,7 @@ __DATE__
     - 声明指向`bool(const std::string &, const stf::string)`类型函数的指针：
         - `bool (*pf)(const std::string &, const stf::string);  // 未初始化`
 - 使用：
-    - 注意
-        - 函数名会转化成函数指针
-        - 数组头会转化成数组元素类型的指针，而不是数组指针
+
 ```
 pf = lengthCompare;                           // pf now points to the function named lengthCompare
 pf = &lengthCompare;                          // equivalent assignment: address-of operator is optional
@@ -624,6 +622,42 @@ void (*pf2)(unsigned int) = ff;               // pf1 points to ff(unsigned int)
 
 void (*pf3)(int) = ff;                        // error: no ff with a matching parameter list
 double (*pf4)(int*) = ff;                     // error: return type of ff and pf4 don't match
+```
+- 使用类型别名（`typedef`或`using`）可以简化书写：
+```
+typedef bool Func(const std::string &, const std::string &);        // function type
+typedef decltype(lengthCompare) Func2;                              // equivalent type
+
+typedef bool (*FuncP)(const std::string &, const std::string &);    // function pointer type
+typedef decltype(lengthCompare) * FuncP2;                           // equivalent type
+using FuncP3 = bool (*)(const std::string &, const std::string &);  // equivalent type
+using FuncP4 = decltype(lengthCompare) *;                           // equivalent type
+```
+
+#### 与数组指针的辨析
+
+- 注意
+    - 函数名会转化成函数指针
+    - 数组头会转化成指向数组元素类型的指针，而不是指向数组类型的指针
+    ```
+    bool le(int, int);
+    bool (*pf1)(int, int) = le;               // 正确
+    bool (*pf2)(int, int) = &le;              // 正确
+    
+    int arr[10];
+    int * p1 = arr;                           // 正确
+    int * p2 = &arr;                          // 错误
+    int *(p3)[10] = &arr;                     // 正确
+    ```
+- 数组指针的类型别名：
+```
+int arr[10];
+
+typedef int (*int_arr_10_ptr_t1)[10];         // 指向长度为10的int数组的指针类型的别名
+typedef decltype(arr) * int_arr_10_ptr_t2;    // 等价类型别名
+
+using int_arr_10_ptr_t3 = int[10];            // 等价类型别名
+using int_arr_10_ptr_t4 = decltype(arr) *;    // 等价类型别名
 ```
 
 #### 函数指针形参
@@ -650,14 +684,8 @@ useBigger(const string & s1,
     useBigger(s1, s2, &lengthCompare);
     useBigger(s1, s2, pf);
     ```
-    - 使用类型别名（`typedef`或`using`）可以简化书写：
-    ```
-    typedef bool Func(const std::string &, const std::string &);        // function type
-    typedef decltype(lengthCompare) Func2;                              // equivalent type
-    
-    typedef bool (*FuncP)(const std::string &, const std::string &);    // function pointer type
-    typedef decltype(lengthCompare) * FuncP2;                           // equivalent type
-    using FuncP3 = bool (*)(const std::string &, const std::string &);  // equivalent type
-    using FuncP4 = decltype(lengthCompare) *;                           // equivalent type
-    ```
+
+
+
+
 ### 🌱 构造函数
