@@ -604,6 +604,9 @@ __DATE__
     - 声明指向`bool(const std::string &, const stf::string)`类型函数的指针：
         - `bool (*pf)(const std::string &, const stf::string);  // 未初始化`
 - 使用：
+    - 注意
+        - 函数名会转化成函数指针
+        - 数组头会转化成数组元素类型的指针，而不是数组指针
 ```
 pf = lengthCompare;                           // pf now points to the function named lengthCompare
 pf = &lengthCompare;                          // equivalent assignment: address-of operator is optional
@@ -644,13 +647,15 @@ useBigger(const string & s1,
     ```          
     // automatically converts the function lengthCompare to a pointer to function
     useBigger(s1, s2, lengthCompare);
+    useBigger(s1, s2, &lengthCompare);
+    useBigger(s1, s2, pf);
     ```
     - 使用类型别名（`typedef`或`using`）可以简化书写：
     ```
     typedef bool Func(const std::string &, const std::string &);        // function type
     typedef decltype(lengthCompare) Func2;                              // equivalent type
     
-    typedef bool(*FuncP)(const std::string &, const std::string &);     // function pointer type
+    typedef bool (*FuncP)(const std::string &, const std::string &);    // function pointer type
     typedef decltype(lengthCompare) * FuncP2;                           // equivalent type
     using FuncP3 = bool (*)(const std::string &, const std::string &);  // equivalent type
     using FuncP4 = decltype(lengthCompare) *;                           // equivalent type
