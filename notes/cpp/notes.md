@@ -646,8 +646,8 @@ __DATE__
 - 使用：
 
 ```
-pf = lengthCompare;                                                 // pf now points to the function named lengthCompare
-pf = &lengthCompare;                                                // equivalent assignment: address-of operator is optional
+pf = lengthCompare;                                                 // pf now points to lengthCompare()
+pf = &lengthCompare;                                                // equivalent assignment: & is optional
 
 bool b1 = pf("hello", "goodbye");                                   // calls lengthCompare
 bool b2 = (*pf)("hello", "goodbye");                                // equivalent call
