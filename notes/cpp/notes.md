@@ -30,6 +30,7 @@
     - 定义在类内部的函数是隐式的`inline`函数；
     - 使用`struct`或`class`定义类的**唯一区别**就是默认访问权限：`struct`中默认`public`，而`class`默认`private`；
     - 类内初始值只能使用`x = ?`，`x = {?}`或`x{?}`的形式；初始化列表只能使用`x(?)`或`x{?}`的形式；
+    - 每个类定义了**唯一**的类型；两个类即使内容完全一样，它们也是不同的类型，不能自动相互转化；
     
 - 读代码标准操作
     - 对复杂的声明符，从右往左看比较好理解；
@@ -259,6 +260,7 @@ int * pend = std::end(ia);
 
 ### 🌱 `左值`和`右值`
 
+
 - 赋值运算符`a = b`中，`a`需是（非常量）左值，返回结果也是**左**值；
 - 取地址符`&a`中，`a`需是左值，返回指向`a`的右值指针；
 - 解引用运算符`*a`和下标运算符`a[i]`的返回结果均为**左**值；
@@ -305,12 +307,11 @@ sizeof expr   // 返回表达式结果类型大小
         int b = 2;
         const int c0 = const_cast<const int>(b);                 // 错误：const int类型不是指针或引用
         const int & c1 = const_cast<const int &>(b);             // 正确
-        const int & c2 = b;                                      // 正确
-        const int & c3 = static_cast<const int &>(b);            // 正确
+        const int & c2 = static_cast<const int &>(b);            // 正确
+        const int & c3 = b;                                      // 正确
         ```
     - 只能用于更改`const`属性，不能更改类型。
-    - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为。
-    - 但如果对象本身是常量，则结果未定义。
+    - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为；但如果对象本身是常量，则结果未定义。
     ```
     const char * pc;
     char * p = const_cast<char *>(pc);                           // 正确，但通过p写值是未定义的行为
@@ -494,6 +495,9 @@ Record lookup(const Account &);  // new function that takes a const reference
 Record lookup(Account *);        // new function, takes a pointer to Account
 Record lookup(const Account *);  // new function, takes a pointer to const
 ```
+- 类成员函数基于`const`的重载
+    - 通过区分成员函数是否为`const`的，我们可以对其进行重载；
+    - 原理：编译器可以根据`this`指针参数的底层`const`区分参数类型
 - 不允许两个函数除了返回值其余都相同：
 ```
 Record lookup(const Account&);
@@ -762,8 +766,54 @@ useBigger(s1, s2, pf);
 ### 🌱 友元
 
 - 友元不是类的成员，不受`public`、`private`以及`protected`这些访问限制的约束；
-- 友元函数的声明仅仅是指定访问权限，并不是真正的函数声明。想要使用友元，仍另需有一个单独的函数声明；
+- 友元**不具有**传递性。每个类**单独**负责控制自己的友元类或友元函数；
+    - `B`有友元`A`，`C`有友元`B`，则`A`能访问`B`的私有成员，但不能访问`C`的私有成员。
 - 在类定义开始或结束的地方**集中声明**友元。
+
+#### 友元函数
+
+- 友元函数的声明仅仅是指定访问权限，并不是真正的函数声明。想要使用友元，仍**另需一单独的函数声明**；
+- 对于重载函数，必须对特定的函数（特有的参数列表）单独声明。
+
+#### 友元类
+
+- 令一个类成为友元
+
+#### 友元成员函数
+ 
+- 令一个类的某个成员函数成为友元
+
+#### 友元声明和作用域
+
+```
+struct X
+{
+    friend void f()
+    { 
+        // friend function can be defined in the class
+    }
+
+    X()
+    {
+        f();     // error: no declaration for f
+    } 
+    
+    void g();
+    void h();
+};
+
+void X::g()
+{
+    return f();  // error: f hasn't been declared
+} 
+
+void f();        // declares the function defined inside X
+
+void X::h()
+{
+    return f();  // ok: declaration for f is now in scope
+} 
+```
 
 ### 🌱 类的类型成员
 
@@ -795,30 +845,21 @@ const Screen s1;
 printf("%zu\n", s1.some_member());                 // 1
 ```
 
-### 🌱 基于`const`的重载
+### 🌱 类的前向声明
 
-- 通过区分成员函数是否为`const`的，我们可以对其进行重载；
-- `const`函数中`this`指针为指针常量，非`const`函数中`this`指针为普通指针
-- 实际调用成员函数时
-```
-class Screen 
-{
-public:
-    Screen & display(std::ostream & os)
-    { 
-        do_display(os); 
-        return *this; 
-    }
-    
-    const Screen & display(std::ostream & os) const
-    { 
-        do_display(os); 
-        return *this; 
-    }
-private:
-    void do_display(std::ostream & os) const 
-    {
-        os << contents;
-    }
-};
-```
+- 只声明不定义一个类：`class Item;`
+    - 在定义之前，`Item`是<u>不完全类型</u>；
+    - 不完全类型使用受限：
+        - 可以定义指向这种类型的指针或引用；
+        - 可以声明（**不能**定义）以这种类型为参数，或返回值类型的函数；
+        - **不能**创建这种类型的对象；
+        - **不能**用引用或指针访问其成员；
+        - *数据成员* **不能**被声明为这种类型；
+ 
+- 特别地：类可以包含指向自身类型的引用或指针。
+
+
+
+
+
+
