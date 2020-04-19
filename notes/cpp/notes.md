@@ -501,7 +501,7 @@ Record lookup(const Account *);  // new function, takes a pointer to const
 - 不允许两个函数除了返回值其余都相同：
 ```
 Record lookup(const Account&);
-bool lookup(const Account&);  // error: only the return type is different
+bool lookup(const Account&);     // error: only the return type is different
 ```
 
 #### 可变形参
@@ -642,26 +642,26 @@ __DATE__
 - 声明：用指针替代函数名即可。
     - `bool lengthCompare(const std::string &, const stf::string)`的类型是`bool(const std::string &, const stf::string)`
     - 声明指向`bool(const std::string &, const stf::string)`类型函数的指针：
-        - `bool (*pf)(const std::string &, const stf::string);  // 未初始化`
+        - `bool (*pf)(const std::string &, const stf::string);      // 未初始化`
 - 使用：
 
 ```
-pf = lengthCompare;                           // pf now points to the function named lengthCompare
-pf = &lengthCompare;                          // equivalent assignment: address-of operator is optional
+pf = lengthCompare;                                                 // pf now points to the function named lengthCompare
+pf = &lengthCompare;                                                // equivalent assignment: address-of operator is optional
 
-bool b1 = pf("hello", "goodbye");             // calls lengthCompare
-bool b2 = (*pf)("hello", "goodbye");          // equivalent call
-bool b3 = lengthCompare("hello", "goodbye");  // equivalent call
+bool b1 = pf("hello", "goodbye");                                   // calls lengthCompare
+bool b2 = (*pf)("hello", "goodbye");                                // equivalent call
+bool b3 = lengthCompare("hello", "goodbye");                        // equivalent call
 ```
 - 重载函数的指针：函数指针的类型必须与重载函数中的某一个精确匹配
 ```
 void ff(int*);
 void ff(unsigned int);
-void (*pf1)(unsigned int) = 0;                // pf1 points to nothing
-void (*pf2)(unsigned int) = ff;               // pf1 points to ff(unsigned int)
+void (*pf1)(unsigned int) = 0;                                      // pf1 points to nothing
+void (*pf2)(unsigned int) = ff;                                     // pf1 points to ff(unsigned int)
 
-void (*pf3)(int) = ff;                        // error: no ff with a matching parameter list
-double (*pf4)(int*) = ff;                     // error: return type of ff and pf4 don't match
+void (*pf3)(int) = ff;                                              // error: no ff with a matching parameter list
+double (*pf4)(int*) = ff;                                           // error: return type of ff and pf4 don't match
 ```
 - 使用类型别名（`typedef`或`using`）可以简化书写：
 ```
@@ -785,17 +785,20 @@ useBigger(s1, s2, pf);
 
 #### 友元声明和作用域
 
+- 关于这段代码最重要的是：理解友元声明的作用是**影响访问权限**，它本身**并非**普通意义上的函数声明。
 ```
 struct X
 {
     friend void f()
     { 
-        // friend function can be defined in the class
+        // friend functions can be defined in the class
+        // this does NOT serve as declaration, even though this is already a defination
+        // to use this function, another declaration is REQUIRED
     }
 
     X()
     {
-        f();     // error: no declaration for f
+        f();     // ERROR: no declaration for f
     } 
     
     void g();
@@ -804,14 +807,14 @@ struct X
 
 void X::g()
 {
-    return f();  // error: f hasn't been declared
+    return f();  // ERROR: f hasn't been declared
 } 
 
 void f();        // declares the function defined inside X
 
 void X::h()
 {
-    return f();  // ok: declaration for f is now in scope
+    return f();  // OK: declaration for f is now in scope
 } 
 ```
 
