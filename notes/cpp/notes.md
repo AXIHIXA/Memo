@@ -316,37 +316,38 @@ sizeof expr   // 返回表达式结果类型大小
     std::string s(pc);                                       // 可能会RE，（取决于从a开始多久出现0？）
     ```
     - 需要使用`reinterpret_cast`的场景（不能用`static_cast`的场景，暂时没发现第3种妙用）：
-        - 将指针强转成指针（比如解析二进制数据流）：
-        ```
-        uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
-        dat[0] = 1U;
-        dat[4] = 2U;
-        dat[8] = 3U;
-        uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
-        uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的
+        - 将指针强转成指针：
+            - （比如解析二进制数据流）：
+            ```
+            uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
+            dat[0] = 1U;
+            dat[4] = 2U;
+            dat[8] = 3U;
+            uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
+            uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的
 
-        for (size_t i = 0; i < 3; ++i)
-        {
-            printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
-        }
-        ```
+            for (size_t i = 0; i < 3; ++i)
+            {
+                printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
+            }
+            ```
+            - （或吃饱了撑的）：
+            ```
+            float pi = 3.14159;
+            int * p1 = reinterpret_cast<int *>(&pi);     
+            printf("0x%x\n", *p1);                               // 0x40490fd0
+            
+            uint32_t r = 0x40490fd0;   
+            float * p2 = reinterpret_cast<float *>(&r);
+            printf("%f\n", *p2);                                 // 3.141590
+            ```
         - 将指针强转成数字（获取具体的地址）：
         ```
         int a = 1, 
         int * p = &a;
         size_t b = (size_t) p;                               // 正确：人见人爱的C风格强转
-        size_t b2 = static_cast<size_t>(p);                  // 错误：int *转换为long long是没有明确定义的
+        size_t b2 = static_cast<size_t>(p);                  // 错误：int *转换为size_t是没有明确定义的
         size_t b3 = reinterpret_cast<size_t>(p);             // 正确
-        ```
-        - 探究变量在内存中的二进制存储（吃饱了撑的）：
-        ```
-        float pi = 3.14159;
-        int * p1 = reinterpret_cast<int *>(&pi);     
-        printf("0x%x\n", *p1);                               // 0x40490fd0
-        
-        uint r = 0x40490fd0;   
-        float * p2 = reinterpret_cast<float *>(&r);
-        printf("%f\n", *p2);                                 // 3.141590
         ```
         
 #### 旧式的强制类型转换
