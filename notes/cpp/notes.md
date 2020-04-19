@@ -363,7 +363,6 @@ T t = (T) expr;  // C风格
     - `static_cast` (though ignoring access restrictions), then `const_cast`
     - `reinterpret_cast`
     - `reinterpret_cast`, then `const_cast`
-
 ```
 int * ip;
 char * cp = (char *) ip;  // 相当于reinterpret_cast<char *>(ip);
