@@ -35,7 +35,8 @@
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向；
       括号内分析完就跳出括号，还是按先右后左的顺序，如此循环，直到整个声明分析完；
-        - 大宝贝：(`cdecl`)[https://cdecl.org/]，安装：`sudo apt install cdecl`
+        - 大宝贝：(`cdecl`)[https://cdecl.org/]
+        - 安装：`sudo apt install cdecl`
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`；
 
 ### 🌱 初始化
