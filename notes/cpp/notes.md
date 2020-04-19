@@ -26,7 +26,7 @@
     - 引用从来都是作为被引用对象的同义词出现（比如`auto`就不能自动推断出引用），唯一例外是`decltype`。它会原样保留引用以及顶层`const`；
     - `main`函数不能递归调用、不能重载；
     - 定义在类内部的函数是隐式的`inline`函数；
-    - 使用`struct`或`class`定义类的唯一区别就是默认访问权限：`struct`中默认`public`，而`class`默认`private`；
+    - 使用`struct`或`class`定义类的**唯一区别**就是默认访问权限：`struct`中默认`public`，而`class`默认`private`；
     
 - 读代码标准操作
     - 对复杂的声明符，从右往左看比较好理解；
@@ -337,6 +337,16 @@ sizeof expr   // 返回表达式结果类型大小
         size_t b = (size_t) p;                               // 正确：人见人爱的C风格强转
         size_t b2 = static_cast<size_t>(p);                  // 错误：int *转换为long long是没有明确定义的
         size_t b3 = reinterpret_cast<size_t>(p);             // 正确
+        ```
+        - 探究变量在内存中的二进制存储（吃饱了撑的）：
+        ```
+        float pi = 3.14159;
+        int * p1 = reinterpret_cast<int *>(&pi);     
+        printf("0x%x\n", *p1);                               // 0x40490fd0
+        
+        uint r = 0x40490fd0;   
+        float * p2 = reinterpret_cast<float *>(&r);
+        printf("%f\n", *p2);                                 // 3.141590
         ```
         
 #### 旧式的强制类型转换
