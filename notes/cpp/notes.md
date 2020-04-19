@@ -7,7 +7,7 @@
 - 常见规则
     - `const`常量不论是声明还是使用都添加`extern`修饰符；
     - 想要`auto`推导出引用或者常量的话，直接写清楚是坠吼的（`const auto & a = b`），别折腾顶层`const`什么的；
-    - `constexpr`函数、`inline`函数以及模板的**定义和实现都应**写进头文件；
+    - `constexpr`函数、`inline`函数（包括类的`inline`成员函数）以及模板的**定义和实现都应**写进头文件；
     - `using`声明（`using std::string`、`using namespace std`、`using intptr = int *`等）**不应**写进头文件；
     - `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小；
     - 现代`C++`应使用标准库类型配合迭代器，而**不是**`C`风格的数组和指针。数组也是一种迭代器；
@@ -16,6 +16,8 @@
     - **不在**内部作用域声明函数（内部作用域生命的东西会覆盖外部作用域的同名东西，可能会影响函数重载的使用）；
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员；
     - 希望类的所有成员都是`public`时，**应**使用`struct`；只有希望使用`private`成员时才用`class`；
+    - 在类定义开始或结束的地方**集中声明**友元；使用友元，仍另需有一个**单独的函数声明**；
+    - 类的类型成员（`typedef`以及`using`声明）应该放在类定义刚开始的地方的`public`区域； 
     
 - 一些常识
     - 指针解引用的结果是其指向对象的左值引用；
@@ -302,18 +304,18 @@ sizeof expr   // 返回表达式结果类型大小
     - 但如果对象本身是常量，则结果未定义。
     ```
     const char * pc;
-    char * p = const_cast<char *>(pc);                       // 正确，但通过p写值是未定义的行为
-    char * q = static_cast<char *>(cp);                      // 错误，static_cast不能用于去除const
-    static_cast<std::string>(pc);                            // 正确，字符串字面值转换为std::string
-    const_cast<std::string>(pc);                             // 错误，const_cast只能用于去除const
+    char * p = const_cast<char *>(pc);                           // 正确，但通过p写值是未定义的行为
+    char * q = static_cast<char *>(cp);                          // 错误，static_cast不能用于去除const
+    static_cast<std::string>(pc);                                // 正确，字符串字面值转换为std::string
+    const_cast<std::string>(pc);                                 // 错误，const_cast只能用于去除const
     ```
 - `reinterpret_cast<T>(expr)`：
     - 强制编译器按照`T`类型重新解读一块内存。
     
     ```
     int * a = new int(1);
-    char * pc = reinterpret_cast<char *>(a);                 // 正确
-    std::string s(pc);                                       // 可能会RE，（取决于从a开始多久出现0？）
+    char * pc = reinterpret_cast<char *>(a);                     // 正确
+    std::string s(pc);                                           // 可能会RE，（取决于从a开始多久出现0？）
     ```
     - 需要使用`reinterpret_cast`的场景（不能用`static_cast`的场景，暂时没发现第3种妙用）：
         - 将指针强转成指针：
@@ -331,7 +333,7 @@ sizeof expr   // 返回表达式结果类型大小
                 printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
             }
             ```
-            - （或吃饱了撑的）：
+            - （或吃饱了撑的去探究数据在内存中的二进制存储）：
             ```
             float pi = 3.14159;
             int * p1 = reinterpret_cast<int *>(&pi);     
@@ -345,9 +347,9 @@ sizeof expr   // 返回表达式结果类型大小
         ```
         int a = 1, 
         int * p = &a;
-        size_t b = (size_t) p;                               // 正确：人见人爱的C风格强转
-        size_t b2 = static_cast<size_t>(p);                  // 错误：int *转换为size_t是没有明确定义的
-        size_t b3 = reinterpret_cast<size_t>(p);             // 正确
+        size_t b = (size_t) p;                                   // 正确：人见人爱的C风格强转
+        size_t b2 = static_cast<size_t>(p);                      // 错误：int *转换为size_t是没有明确定义的
+        size_t b3 = reinterpret_cast<size_t>(p);                 // 正确
         ```
         
 #### 旧式的强制类型转换
@@ -727,3 +729,34 @@ useBigger(s1, s2, pf);
 - 13
 - 15.7
 - 18.1.3
+
+### 🌱 友元
+
+- 友元不是类的成员，不受`public`、`private`以及`protected`这些访问限制的约束；
+- 友元函数的声明仅仅是指定访问权限，并不是真正的函数声明。想要使用友元，仍另需有一个单独的函数声明；
+- 在类定义开始或结束的地方**集中声明**友元。
+
+### 🌱 类的类型成员
+
+- 类中的`typedef`和`using`必须先定义后使用；=> 7.4.1
+- 一般放在类定义刚开始的地方的`public`区域。
+
+### 🌱 可变数据成员
+
+- 可变数据成员（mutable data member）永远不会是`const`，即使它是`const`对象的成员；
+- 一个`const`成员函数可以改变可变数据成员：
+```
+class Screen 
+{
+public:
+    void some_member() const;
+    
+private:
+    mutable size_t access_ctr;    // may change even in a const object
+};
+
+void Screen::some_member() const
+{
+    ++access_ctr;                 // keep a count of the calls to any member function
+}
+```
