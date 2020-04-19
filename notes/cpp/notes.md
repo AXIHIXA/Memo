@@ -29,6 +29,7 @@
     - `main`函数不能递归调用、不能重载；
     - 定义在类内部的函数是隐式的`inline`函数；
     - 使用`struct`或`class`定义类的**唯一区别**就是默认访问权限：`struct`中默认`public`，而`class`默认`private`；
+    - 类内初始值只能使用`x = ?`，`x = {?}`或`x{?}`的形式；初始化列表只能使用`x(?)`或`x{?}`的形式；
     
 - 读代码标准操作
     - 对复杂的声明符，从右往左看比较好理解；
@@ -298,7 +299,15 @@ sizeof expr   // 返回表达式结果类型大小
 - `dynamic_cast<T>(expr)`：
     - 支持运行时的类型识别 => 19.2
 - `const_cast<T>(expr)`：
-    - 用于且只有它能用于去除运算对象的底层`const`（cast away the `const`）。
+    - 用于且只有它能用于改变运算对象的**底层**`const`（cast away the `const`）。
+        - 即：只能用于指针或引用
+        ```
+        int b = 2;
+        const int c0 = const_cast<const int>(b);                 // 错误：const int类型不是指针或引用
+        const int & c1 = const_cast<const int &>(b);             // 正确
+        const int & c2 = b;                                      // 正确
+        const int & c3 = static_cast<const int &>(b);            // 正确
+        ```
     - 只能用于更改`const`属性，不能更改类型。
     - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为。
     - 但如果对象本身是常量，则结果未定义。
@@ -466,12 +475,24 @@ void print(const int[]);
 void print(const int[10]);  // 此处长度没有意义。可以传入长度不为10的数组，是合法的
 ```
 
-#### 重载和`const`形参
+#### 函数重载
 
 - 顶层`const`不影响传入的对象，因此以下定义不合法：
 ```
 Record lookup(Phone);
-Record lookup(const Phone);   // redeclares Record lookup(Phone)
+Record lookup(const Phone);      // redeclares Record lookup(Phone)
+
+Record lookup(Phone *);
+Record lookup(Phone * const);    // redeclares Record lookup(Phone *)
+```
+- 可以基于底层`const`重载函数：
+```
+// functions taking const and nonconst references or pointers have different parameters
+// declarations for four independent, overloaded functions
+Record lookup(Account &);        // function that takes a reference to Account
+Record lookup(const Account &);  // new function that takes a const reference
+Record lookup(Account *);        // new function, takes a pointer to Account
+Record lookup(const Account *);  // new function, takes a pointer to const
 ```
 - 不允许两个函数除了返回值其余都相同：
 ```
@@ -705,6 +726,13 @@ useBigger(s1, s2, pf);
 
 - 按如下规则初始化类成员：
     - 存在类内初始值，则以其初始化对应成员；
+        - 类内初始值可接受的语法：
+        ```
+        int a1 = 0;    // 正确
+        int a2 = {0};  // 正确
+        int a3{0};     // 正确
+        int a4(0);     // 错误！
+        ```
     - 默认初始化该成员。
 
 - 生成条件：
@@ -721,7 +749,8 @@ useBigger(s1, s2, pf);
 
 #### 构造函数初始值列表
 
-- 某个数据成员被初始值列表忽略时，按照默认构造函数的规则执行隐式初始化
+- 某个数据成员被初始值列表忽略时，按照默认构造函数的规则执行隐式初始化；
+- 初始化列表接受的初始化语法：`a(?)`或`a{?}`。
 
 #### Further Topics
 
@@ -743,20 +772,53 @@ useBigger(s1, s2, pf);
 
 ### 🌱 可变数据成员
 
-- 可变数据成员（mutable data member）永远不会是`const`，即使它是`const`对象的成员；
-- 一个`const`成员函数可以改变可变数据成员：
+- 可用于更改`const`对象的成员：
+    - `const`对象只能调用`const`成员函数；
+    - 可变数据成员（mutable data member）永远不会是`const`，即使它是`const`对象的成员；
+    - 任何成员函数，包括`const`成员函数，都可以改变可变数据成员。
 ```
 class Screen 
 {
 public:
-    void some_member() const;
+    inline const size_t & some_member() const;
     
 private:
-    mutable size_t access_ctr;    // may change even in a const object
+    mutable size_t access_ctr = 0;                 // may change even in a const object
 };
 
-void Screen::some_member() const
+inline const size_t & Screen::some_member() const
 {
-    ++access_ctr;                 // keep a count of the calls to any member function
+    return ++access_ctr;                           // keep a count of the calls to any member function
 }
+
+const Screen s1;
+printf("%zu\n", s1.some_member());                 // 1
+```
+
+### 🌱 基于`const`的重载
+
+- 通过区分成员函数是否为`const`的，我们可以对其进行重载；
+- `const`函数中`this`指针为指针常量，非`const`函数中`this`指针为普通指针
+- 实际调用成员函数时
+```
+class Screen 
+{
+public:
+    Screen & display(std::ostream & os)
+    { 
+        do_display(os); 
+        return *this; 
+    }
+    
+    const Screen & display(std::ostream & os) const
+    { 
+        do_display(os); 
+        return *this; 
+    }
+private:
+    void do_display(std::ostream & os) const 
+    {
+        os << contents;
+    }
+};
 ```
