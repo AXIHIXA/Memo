@@ -315,7 +315,7 @@ sizeof expr   // 返回表达式结果类型大小
     char * pc = reinterpret_cast<char *>(a);                 // 正确
     std::string s(pc);                                       // 可能会RE，（取决于从a开始多久出现0？）
     ```
-    - 需要使用`reinterpret_cast`的场景（暂时没发现第3种妙用）：
+    - 需要使用`reinterpret_cast`的场景（不能用`static_cast`的场景，暂时没发现第3种妙用）：
         - 将指针强转成指针（比如解析二进制数据流）：
         ```
         uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
