@@ -36,9 +36,7 @@
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向；
       括号内分析完就跳出括号，还是按先右后左的顺序，如此循环，直到整个声明分析完；
         - 举例：`int (*(*pf)(int, int (*(*)(int))[20]))[10]`：
-            - 按顺序翻译为：`pf`，是指针，指向函数
-              （参数列表为：`int`，指针，指向函数（参数列表为`int`，返回指针，指向数组，长度`20`，元素类型为`int`），
-                返回：指针，指向数组，长度`10`，元素类型为`int`）；
+            - 按顺序翻译为：declare `pf` as pointer to function (int, pointer to function (int) returning pointer to array 20 of int) returning pointer to array 10 of int；
         - 大宝贝：[cdecl](https://cdecl.org/) ，安装：`sudo apt install cdecl`。
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`；
 
