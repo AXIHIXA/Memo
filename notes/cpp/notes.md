@@ -829,17 +829,16 @@ public:
 ```
 - `explicit`**只能在类内声明**，只对一个实参的构造函数有意义。
 - `explicit`构造函数**只能用于直接初始化**：
-    - 执行拷贝形式的初始化（使用`=`）时，实际发生了隐式类型转换
-    - 此时只能直接初始化，而不能使用`explicit`构造函数：
+    - 执行拷贝形式的初始化（使用`=`）时，实际发生了隐式类型转换。此时只能直接初始化，而不能使用`explicit`构造函数：
     ```
     SalesData item1(nullBook);   // 正确
     SalesData item2 = nullBook;  // 错误
     ```
-- 为转换显式地使用构造函数：
-```
-SalesData item2 = SalesData(nullBook);               // 正确：显式构造的对象
-SalesData item3 = static_cast<SalesData>(std::cin);  // 正确：static_cast可以使用explicit构造函数
-```
+    - 为转换显式地使用构造函数：
+    ```
+    SalesData item2 = SalesData(nullBook);               // 正确：显式构造的对象
+    SalesData item3 = static_cast<SalesData>(std::cin);  // 正确：static_cast可以使用explicit构造函数
+    ```
 - 标准库中含有显式构造函数的类：
     - 接受一个单参数`const char *`的`std::string`构造函数 *不是* `explicit`的；
     - 接受容量参数的`std::vector`构造函数**是**`explicit`的；
