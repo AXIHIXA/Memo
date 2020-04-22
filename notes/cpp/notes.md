@@ -17,7 +17,7 @@
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员；
     - 希望类的所有成员都是`public`时，**应**使用`struct`；只有希望使用`private`成员时才用`class`；
     - 在类定义开始或结束的地方**集中声明**友元；使用友元，仍另需有一个**单独的函数声明**；
-    - 类的类型成员（`typedef`以及`using`声明）应该放在类定义刚开始的地方的`public`区域； 
+    - 类的类型成员（`typedef`以及`using`声明）应该放在类定义**刚开始**的地方的`public`区域； 
     
 - 一些常识
     - 指针解引用的结果是其指向对象的左值引用；
@@ -864,7 +864,37 @@ printf("%zu\n", s1.some_member());                 // 1
 - 特别地：类可以包含指向自身类型的引用或指针。
 
 
+### 类作用域
 
+```
+// note: this code is for illustration purposes only and reflects bad practice
+// it is generally a bad idea to use the same name for a parameter and a member
+int height; // defines a name subsequently used inside Screen
 
+class Screen 
+{
+public:
+    typedef std::string::size_type pos;
+    
+    void dummy_fcn(pos height) 
+    {
+        cursor = width * height;        // which height? the parameter
+    }
+    
+    void dummy_fcn_2(pos height) 
+    {
+        cursor = width * this->height;  // which height? member height
+    }
+    
+    void dummy_fcn_3(pos height) 
+    {
+        cursor = width * ::height;      // which height? the global one
+    }
+
+private:
+    pos cursor = 0;
+    pos height = 0, width = 0;
+};
+```
 
 
