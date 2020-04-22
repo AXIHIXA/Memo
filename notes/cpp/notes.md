@@ -813,9 +813,6 @@ item.combine(SalesData("9-999-99999-9"));
 #### 显式构造函数（`explicit` constructor）
 
 - 我们可以通过将构造函数声明为`explicit`来抑制构造函数定义的隐式转换：
-    - 此时，没有任何构造函数能用于隐式地创建`SalesData`对象。
-        - `item.combine(nullBook);`：错误，`const std::string &`构造函数是`explicit`的；
-        - `item.combine(std::cin);`：错误，`std::istream &`构造函数是`explicit`的。
 ```
 class SalesData 
 {
@@ -826,13 +823,17 @@ public:
     explicit SalesData(const std::string & s): bookNo(s)  {}
     explicit SalesData(std::istream &);
 };
+
+// 此时，没有任何构造函数能用于隐式地创建`SalesData`对象。
+item.combine(nullBook);                                  // 错误，对应构造函数是explicit的
+item.combine(std::cin);                                  // 错误，对应函数是explicit的。
 ```
 - `explicit`**只能在类内声明**，只对一个实参的构造函数有意义。
 - `explicit`构造函数**只能用于直接初始化**：
     - 执行拷贝形式的初始化（使用`=`）时，实际发生了隐式类型转换。此时只能直接初始化，而不能使用`explicit`构造函数：
     ```
-    SalesData item1(nullBook);   // 正确
-    SalesData item2 = nullBook;  // 错误
+    SalesData item1(nullBook);                           // 正确
+    SalesData item2 = nullBook;                          // 错误
     ```
     - 为转换显式地使用构造函数：
     ```
