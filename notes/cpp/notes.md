@@ -32,6 +32,7 @@
     - 使用`struct`或`class`定义类的**唯一区别**就是默认访问权限：`struct`中默认`public`，而`class`默认`private`；
     - 每个类定义了**唯一**的类型；两个类即使内容完全一样，它们也是不同的类型，**不能**自动相互转化；
     - 如果一个构造函数为每一个参数都提供了默认实参，则它实际上也定义了默认构造函数；
+    - 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则；
     
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向；
@@ -783,13 +784,65 @@ useBigger(s1, s2, pf);
 ```
 struct Item
 {
-Item() : Item(0, "")  {}  // delegating constructor
-Item(int k, const std::string & v) : key(k), value(v)  {}
+    Item() : Item(0, "")  {}  // delegating constructor
+    Item(const int & k, const std::string & v) : key(k), value(v)  {}
 
-int key;
-std::string value;
+    int key;
+    std::string value;
 }
 ```
+
+#### 转换构造函数（converting constructor）
+
+- 如果构造函数只接受一个实参，那么它实际上定义了转换为此类类型的隐式转换机制，有时我们将这种构造函数称作转换构造函数；=> 14.9
+- 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则；
+- 编译器只允许一步隐式类型转换，且转换结果是**临时右值**对象：
+```
+// 错误：需要用户定义的两种转换：
+// (1) 把"9-999-99999-9"转换成std::string
+// (2) 再把这个（临时的）std::string转换成SalesData
+item.combine("9-999-99999-9");
+
+// 正确：显式地转换成std::string，再隐式地转换成SalesData
+item.combine(std::string("9-999-99999-9")); 
+
+// 正确：隐式地转换成std::string，再显式地转换成SalesData
+item.combine(SalesData("9-999-99999-9")); 
+```
+
+#### 显式构造函数（`explicit` constructor）
+
+- 我们可以通过将构造函数声明为`explicit`来抑制构造函数定义的隐式转换：
+```
+class SalesData 
+{
+public:
+    SalesData() = default;
+    SalesData(const std::string & s, unsigned n, double p) : 
+        bookNo(s), units_sold(n), revenue(p * n)  {}
+    explicit SalesData(const std::string & s): bookNo(s)  {}
+    explicit SalesData(std::istream &);
+};
+```
+    - 此时，没有任何构造函数能用于隐式地创建`SalesData`对象。
+        - `item.combine(nullBook);`：错误，`const std::string &`构造函数是`explicit`的；
+        - `item.combine(std::cin);`：错误，`std::istream &`构造函数是`explicit`的。
+- `explicit`**只能在类内声明**，只对一个实参的构造函数有意义。
+- `explicit`构造函数**只能用于直接初始化**：
+    - 执行拷贝形式的初始化（使用`=`）时，实际发生了隐式类型转换
+    - 此时只能直接初始化，而不能使用`explicit`构造函数：
+    ```
+    SalesData item1(nullBook);   // 正确
+    SalesData item2 = nullBook;  // 错误
+    ```
+- 为转换显式地使用构造函数：
+```
+SalesData item2 = SalesData(nullBook);               // 正确：显式构造的对象
+SalesData item3 = static_cast<SalesData>(std::cin);  // 正确：static_cast可以使用explicit构造函数
+```
+- 标准库中含有显式构造函数的类：
+    - 接受一个单参数`const char *`的`std::string`构造函数 *不是* `explicit`的；
+    - 接受容量参数的`std::vector`构造函数**是**`explicit`的；
 
 #### Further Topics
 
