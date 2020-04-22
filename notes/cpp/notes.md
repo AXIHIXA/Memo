@@ -730,7 +730,7 @@ useBigger(s1, s2, pf);
 
 ### 🌱 构造函数
 
-#### （合成的）默认构造函数（synthesized default constructor）
+#### 合成的默认构造函数（synthesized default constructor）
 
 - 按如下规则初始化类成员：
     - 存在类内初始值，则以其初始化对应成员；
