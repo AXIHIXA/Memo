@@ -1091,14 +1091,14 @@ int a2[scale(i)];                       // 错误：i不是常量表达式，sca
     
     if (io_sub.any())                            // equivalent to if(true)
     {
-        cerr << "print appropriate error messages" << endl;
+        std::cerr << "print appropriate error messages" << std::endl;
     }    
         
     constexpr Debug prod(false);                 // no debugging during production
     
     if (prod.any())                              // equivalent to if(false)
     {
-        cerr << "print an error message" << endl;
+        std::cerr << "print an error message" << std::endl;
     }
     ```
 
