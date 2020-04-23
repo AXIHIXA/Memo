@@ -7,6 +7,7 @@
 - 常见规则
     - `const`常量不论是声明还是使用都添加`extern`修饰符；
     - 想要`auto`推导出引用或者常量的话，直接写清楚是坠吼的（`const auto & a = b`），别折腾顶层`const`什么的；
+    - 认定应为常量表达式的变量应当声明为`constexpr`类型；
     - `constexpr`函数、`inline`函数（包括类的`inline`成员函数）以及模板的**定义和实现都应**写进头文件；
     - `using`声明（`using std::string`、`using namespace std`、`using intptr = int *`等）**不应**写进头文件；
     - `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小；
@@ -108,7 +109,7 @@ extern const int BUF_SIZE;          // sth.h （其他要用到`BUF_SIZE`的头�
 如果希望`const`对象只在一个文件中定义一次，而在多个文件中声明并使用它，则需采用上述操作。
 
 
-### 🌱 复合类型（指针、引用）和常量
+### 🌱 复合类型（指针、引用）
 
 - 指针`*`以及引用`&`只从属于某个声明符，而不是基本数据类型的一部分
 
@@ -181,10 +182,6 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
     // 要怎么看呢？很简单，不要用`const`和`*`，用`Const`和`Ptr`来表达，马上明白：
     Const<Ptr<Ptr<Ptr<Const<int>>>>> shit = nullptr;
     ```
-
-- `constexpr`
-    - `constexpr`函数默认`inline`。`constexpr`函数必须返回字面值。`constexpr`函数可以用于初始化常量。   
-    - `constexpr`函数、`inline`函数以及模板的**定义和实现都应**写进头文件。
 
 ### 🌱 处理类型
 
@@ -975,26 +972,135 @@ t.print1(0);  // 0 1 2
 
 ### 🌱 聚合类（aggregate class）
 
-聚合类使得用户可以直接访问其成员，并且具有特殊的初始化语法形式。
-当一个类满足如下条件（就相当于纯`C`风格的`struct`）时，我们说它是聚合的：
-- 所有成员都是`public`的；
-- **没有**定义任何构造函数；
-- **没有**类内初始值；
-- **没有**基类，也没有`virtual`函数。
-
-我们可以提供一个花括号括起来的成员初始值列表，并用它初始化聚合类的成员：
+- 聚合类使得用户可以直接访问其成员，并且具有特殊的初始化语法形式。
+- 当一个类满足如下条件（就相当于纯`C`风格的`struct`）时，我们说它是聚合的：
+    - 所有成员都是`public`的；
+    - **没有**定义任何构造函数；
+    - **没有**类内初始值；
+    - **没有**基类，也没有`virtual`函数。
+- 我们可以提供一个花括号括起来的成员初始值列表，并用它初始化聚合类的成员：
 ```
 Entry e = {0, "Anna"};
 ```
-与初始化数组元素的规则一样，如果初始值列表中的元素个数少于类的成员数量，则靠后的成员被 *值初始化* 。
+- 与初始化数组元素的规则一样，如果初始值列表中的元素个数少于类的成员数量，则靠后的成员被 *值初始化* ；
+- 初始化列表的元素个数不能超过类的成员数量；
+- 显示初始化类的对象成员存在三个明显的缺点：
+    - 要求类的所有成员都是`public`的；
+    - 将正确初始化每个对象的每个成员的责任交给了用户，容易出错；
+    - 添加或删除一个成员之后，所有的初始化语句都需要更新。
 
-初始化列表的元素个数不能超过类的成员数量。
+### 🌱 字面值常量类
 
-显示初始化类的对象成员存在三个明显的缺点：
-- 要求类的所有成员都是`public`的；
-- 将正确初始化每个对象的每个成员的责任交给了用户，容易出错；
-- 添加或删除一个成员之后，所有的初始化语句都需要更新。
+#### 常量表达式（const expression）
 
+- 字面值：
+    - 算数类型；
+    - 引用和指针；
+    - 字面值常量类；
+    - 19.3
+
+- 常量表达式：值**不会改变**、并且在**编译过程中就能得到**计算结果的表达式；
+    - 字面值和用常量表达式初始化的`const`对象也是常量表达式。
+
+#### `constexpr`变量
+
+- 允许将变量声明为`constexpr`类型，以便由编译器来验证变量的值是否是一个常量表达式；
+- 声明为`constexpr`的变量一定是一个常量，而且必须用常量表达式来初始化：
+```
+constexpr int mf = 20;         // 正确
+constexpr int limit = mf + 1;  // 正确
+constexpr int sz = size();     // 当且仅当size是constexpr函数时，才正确
+```              
+- 尽管不能使用普通函数作为`constexpr`变量的初始值，但可以使用`constexpr`函数；
+- `constexpr`引用和指针：
+    - 只能绑定到固定地址的变量上：
+        - 例如全局对象，局部静态对象等；
+        - **不能**指向局部非静态对象。
+    - `constexpr`指针和变量的初始值必须是`nullptr`、`0`或者存储于某个固定地址的对象；
+    - `constexpr`指针为**顶层**`const`。
+
+#### `constexpr`函数
+
+- `constexpr`函数是指能用于常量表达式的函数；
+- 定义`constexpr`函数需要遵守：
+    - 函数的返回类型和所有形参的类型都是字面值类型；
+    - 函数体中只包含运行时不执行任何操作的语句，例如：
+        - 空语句；
+        - 类型别名；
+        - `using`声明。
+    - 函数体中如有可执行语句，只能是**一条**`return`语句。
+```
+constexpr int new_sz()  { return 42; }
+constexpr int foo = new_sz();           // 正确：foo是常量表达式
+
+// 如果arg是常量表达式，那么scale(arg)也是常量表达式
+constexpr size_t scale(size_t cnt)  { return new_sz() * cnt; }
+
+int arr[scale(2)];                      // 正确
+int i = 2;                              // i不是常量表达式
+int a2[scale(i)];                       // 错误：i不是常量表达式，scale(i)也不是
+```
+- 执行初始化时，编译器把对`constexpr`函数的调用替换成其结果值；
+- `constexpr`函数是隐式的`inline`函数； 
+- `constexpr`函数、`inline`函数以及模板的**定义和实现都应**写进头文件。
+
+#### 字面值常量类
+
+`constexpr`函数的参数和返回值都必须是字面值类型。
+除了算数类型、引用和指针以外，**字面值常量类**也是字面值类型。
+和其他类不同，字面值常量类可能含有`constexpr`函数成员。
+这样的成员必须符合`constexpr`函数的所有要求，是隐式`const`的。
+
+- 以下类是字面值常量类：
+    - 数据成员都是字面值类型的聚合类是字面值常量类；
+    - 满足以下要求的非聚合类：
+        - 数据成员都必须是字面值类型；
+        - 类必须至少有一个`constexpr`构造函数；
+        - 如果一个数据成员含有类内初始值，则内置类型成员的初始值必须是常量表达式；
+          或者如果成员属于某种类类型，则初始值必须使用成员自己的`constexpr`构造函数；
+        - 类必须使用析构函数的默认定义，该成员负责销毁类的对象。
+        
+- `constexpr`构造函数
+    - 字面值常量类的构造函数可以是`constexpr`，且必须有至少一个`constexpr`构造函数；
+    - `constexpr`构造函数可以声明成`= default;`的或者`= delete;`的；
+    - `constexpr`构造函数的函数体是**空的**；
+        - 既要满足构造函数的要求（不能有返回语句）
+        - 又要满足`constexpr`函数的要求（函数体中如有可执行语句，只能是**一条**`return`语句）
+    - `constexpr`构造函数必须初始化**所有**数据成员，初始值或者使用`constexpr`构造函数，或者是一条常量表达式；
+    - `constexpr`构造函数用于生成`constexpr`对象以及`constexpr`函数的参数或返回类型：
+    ```
+    class Debug 
+    {
+    public:
+        constexpr Debug(bool b = true): hw(b), io(b), other(b) {}
+        constexpr Debug(bool h, bool i, bool o): hw(h), io(i), other(o) {}
+        
+        constexpr bool any() { return hw || io || other; }
+        
+        void set_io(bool b) { io = b; }
+        void set_hw(bool b) { hw = b; }
+        void set_other(bool b) { hw = b; }
+        
+    private:
+        bool hw;                                 // hardware errors other than IO errors
+        bool io;                                 // IO errors
+        bool other;                              // other errors
+    };
+    
+    constexpr Debug io_sub(false, true, false);  // debugging IO
+    
+    if (io_sub.any())                            // equivalent to if(true)
+    {
+        cerr << "print appropriate error messages" << endl;
+    }    
+        
+    constexpr Debug prod(false);                 // no debugging during production
+    
+    if (prod.any())                              // equivalent to if(false)
+    {
+        cerr << "print an error message" << endl;
+    }
+    ```
 
 
 
