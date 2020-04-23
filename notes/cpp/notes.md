@@ -826,7 +826,7 @@ public:
 
 // 此时，没有任何构造函数能用于隐式地创建`SalesData`对象。
 item.combine(nullBook);                                  // 错误，对应构造函数是explicit的
-item.combine(std::cin);                                  // 错误，对应函数是explicit的。
+item.combine(std::cin);                                  // 错误，对应构造函数是explicit的
 ```
 - `explicit`**只能在类内声明**，只对一个实参的构造函数有意义。
 - `explicit`构造函数**只能用于直接初始化**：
@@ -954,32 +954,24 @@ printf("%zu\n", s1.some_member());                 // 1
 ```
 // note: this code is for illustration purposes only and reflects bad practice
 // it is generally a bad idea to use the same name for a parameter and a member
-int height;                             // defines a name subsequently used inside Screen
+size_t shit = 2;
 
-class Screen 
+
+struct Item
 {
-public:
-    typedef std::string::size_type pos;
-    
-    void dummy_fcn(pos height) 
+    void print1(size_t shit) const
     {
-        cursor = width * height;        // which height? the parameter
-    }
-    
-    void dummy_fcn_2(pos height) 
-    {
-        cursor = width * this->height;  // which height? member height
-    }
-    
-    void dummy_fcn_3(pos height) 
-    {
-        cursor = width * ::height;      // which height? the global one
+        // shit:       function parameter
+        // this->shit: class member
+        // ::shit:     global one
+        printf("%zu %zu %zu\n", shit, this->shit, ::shit);
     }
 
-private:
-    pos cursor = 0;
-    pos height = 0, width = 0;
+    size_t shit = 1;
 };
+
+Item t;
+t.print1(0);  // 0 1 2
 ```
 
 
