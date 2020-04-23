@@ -1220,56 +1220,55 @@ std::vector<noDefault> v1(10, init);  // 正确：提供了元素初始化器
 std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始化器
 ```
 
-#### 库概览
+#### 容器操作
 
-- 容器操作：
-    - 类型别名（均为容器类 *静态* 成员）：
-        - `iterator`：此类型容器的迭代器类型；
-        - `const_iterator`：可以读取元素，但不能修改元素的迭代器类型；
-        - `reverse_iterator`：按逆序寻址元素的迭代器，**不支持** `std::foward_list`；
-        - `const_reverse_iterator`：不能修改的逆序迭代器，**不支持**` std::foward_list`；
-        - `size_type`：无符号整数类型（`size_t`，aka `unsigned long`），足够保存此种容器类型最大可能容器的大小；
-        - `difference_type`：带符号整数类型（`ptrdiff_t`，aka `long`），足够保存两个迭代器之间的距离；
-        - `value_type`：元素类型；
-        - `reference`：元素的左值引用类型，等价于`value_type &`；
-        - `const_reference`：元素的常引用类型，等价于`const value_type &`。
-    - 构造函数：
-        - `C c;`：默认构造函数，构造空容器；
-        - `C c1(c2);`：拷贝构造，将`c2`中所有元素拷贝到`c1`；
-        - `C c(b, e);`：构造`c`，将迭代器`b`和`e`指定的范围内的元素拷贝到`c`。**不支持** `std::array`；
-        - `C c{a, b, c...};`：列表初始化。
-    - 赋值与`swap`：
-        - `c1 = c2;`：将`c1`中的元素全部替换为`c2`中的元素；
-        - `c1 = {a, b, c...};`：将`c1`中的元素替换为列表中的元素。**不支持** `std::array`；
-        - `a.swap(b);`：交换`a`与`b`中的元素；
-        - `std::swap(a, b);`：交换`a`与`b`中的元素。
-    - 大小：
-        - `c.size();`：`c`中元素的数目。常数复杂度。**不支持** `std::foward_list`；
-        - `c.max_size();`：`c`可保存的最大元素数目；
-        - `c.empty();`：若`c`中存储了元素，返回`false`，否则返回`true`。
-    - 添加删除元素（**不支持** `std::array`）：
-        - `c.insert(args);`：将`args`中的元素拷贝进`c`；
-        - `c.emplace(init);`：使用`inits`构造`c`中的一个元素；
-        - `c.erase(args);`：删除`args`指定的元素；
-        - `c.clear();`：删除`c`中所有元素，返回`void`；
-    - 关系运算符：
-        - `==`，`!=`：所有容器都支持相等和不等运算符；
-        - `<`，`<=`，`>`，`>=`：关系运算符。**不支持** 无序关联容器。
-    - 获取迭代器：
-        - `c.begin()`，`c.end()`：
-        - `c.cbegin()`，`c.cend()`：
-        - `c.rbegin()`，`c.rend()`：，**不支持** `std::foward_list`；
-        - `c.crbegin()`，`c.crend()`：，**不支持** `std::foward_list`；
-        - `std::begin()`，`std::end()`：不但能用于容器，*还能用于内置数组* ：
-        ```
-        std::vector<int> vec{0, 1, 2, 3};
-        std::vector<int>::iterator iter_beg = std::begin(vec);
-        std::vector<int>::iterator iter_end = std::end(vec);
-        
-        int arr[] = {0, 1, 2, 3};
-        int * ptr_beg = std::begin(arr);
-        int * ptr_end = std::end(arr);
-        ```
+- 类型别名（均为容器类 *静态* 成员）：
+    - `iterator`：此类型容器的迭代器类型；
+    - `const_iterator`：可以读取元素，但不能修改元素的迭代器类型；
+    - `reverse_iterator`：按逆序寻址元素的迭代器，**不支持**`std::foward_list`；
+    - `const_reverse_iterator`：不能修改的逆序迭代器，**不支持**`std::foward_list`；
+    - `size_type`：无符号整数类型（`size_t`，aka `unsigned long`），足够保存此种容器类型最大可能容器的大小；
+    - `difference_type`：带符号整数类型（`ptrdiff_t`，aka `long`），足够保存两个迭代器之间的距离；
+    - `value_type`：元素类型；
+    - `reference`：元素的左值引用类型，等价于`value_type &`；
+    - `const_reference`：元素的常引用类型，等价于`const value_type &`。
+- 构造函数：
+    - `C c;`：默认构造函数，构造空容器；
+    - `C c1(c2);`：拷贝构造，将`c2`中所有元素拷贝到`c1`；
+    - `C c(b, e);`：构造`c`，将迭代器`b`和`e`指定的范围内的元素拷贝到`c`。**不支持**`std::array`；
+    - `C c{a, b, c...};`：列表初始化。
+- 赋值与`swap`：
+    - `c1 = c2;`：将`c1`中的元素全部替换为`c2`中的元素；
+    - `c1 = {a, b, c...};`：将`c1`中的元素替换为列表中的元素。**不支持**`std::array`；
+    - `a.swap(b);`：交换`a`与`b`中的元素；
+    - `std::swap(a, b);`：交换`a`与`b`中的元素。
+- 大小：
+    - `c.size();`：`c`中元素的数目。常数复杂度。**不支持**`std::foward_list`；
+    - `c.max_size();`：`c`可保存的最大元素数目；
+    - `c.empty();`：若`c`中存储了元素，返回`false`，否则返回`true`。
+- 添加删除元素（**不支持**`std::array`）：
+    - `c.insert(args);`：将`args`中的元素拷贝进`c`；
+    - `c.emplace(init);`：使用`inits`构造`c`中的一个元素；
+    - `c.erase(args);`：删除`args`指定的元素；
+    - `c.clear();`：删除`c`中所有元素，返回`void`；
+- 关系运算符：
+    - `==`，`!=`：所有容器都支持相等和不等运算符；
+    - `<`，`<=`，`>`，`>=`：关系运算符。**不支持**无序关联容器。
+- 获取迭代器：
+    - `c.begin()`，`c.end()`：
+    - `c.cbegin()`，`c.cend()`：
+    - `c.rbegin()`，`c.rend()`：，**不支持**`std::foward_list`；
+    - `c.crbegin()`，`c.crend()`：，**不支持**`std::foward_list`；
+    - `std::begin()`，`std::end()`：不但能用于容器，*还能用于内置数组* ：
+    ```
+    std::vector<int> vec{0, 1, 2, 3};
+    std::vector<int>::iterator iter_beg = std::begin(vec);
+    std::vector<int>::iterator iter_end = std::end(vec);
+    
+    int arr[] = {0, 1, 2, 3};
+    int * ptr_beg = std::begin(arr);
+    int * ptr_end = std::end(arr);
+    ```
 
 
 
