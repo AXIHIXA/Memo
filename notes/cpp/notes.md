@@ -39,6 +39,7 @@
     - 如果一个构造函数为每一个参数都提供了默认实参，则它实际上也定义了默认构造函数；
     - 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则；
     - 非`constexpr`静态成员只能在**类外**初始化；在类外部定义静态成员时，**不能**重复`static`关键字；
+    - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器；
     
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向；
@@ -1224,11 +1225,12 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
 
 - 类型别名（均为容器类 *静态* 成员）：
     - `iterator`：此类型容器的迭代器类型；
+        - 对于容器常量，只能获取常量迭代器。
     - `const_iterator`：可以读取元素，但不能修改元素的迭代器类型；
     - `reverse_iterator`：按逆序寻址元素的迭代器，**不支持**`std::foward_list`；
     - `const_reverse_iterator`：不能修改的逆序迭代器，**不支持**`std::foward_list`；
     - `size_type`：无符号整数类型（`size_t`，aka `unsigned long`），足够保存此种容器类型最大可能容器的大小；
-    - `difference_type`：带符号整数类型（`ptrdiff_t`，aka `long`），足够保存两个迭代器之间的距离；
+    - `difference_type`：带符号整数类型（`ptrdiff_t`，aka `long`），足够保存两个该容器类型的迭代器之间的距离；
     - `value_type`：元素类型；
     - `reference`：元素的左值引用类型，等价于`value_type &`；
     - `const_reference`：元素的常引用类型，等价于`const value_type &`。
@@ -1255,11 +1257,11 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `==`，`!=`：所有容器都支持相等和不等运算符；
     - `<`，`<=`，`>`，`>=`：关系运算符。**不支持**无序关联容器。
 - 获取迭代器：
-    - `c.begin()`，`c.end()`：
-    - `c.cbegin()`，`c.cend()`：
-    - `c.rbegin()`，`c.rend()`：，**不支持**`std::foward_list`；
-    - `c.crbegin()`，`c.crend()`：，**不支持**`std::foward_list`；
-    - `std::begin()`，`std::end()`：不但能用于容器，*还能用于内置数组* ：
+    - `c.begin()`，`c.end()`：返回指向`c`的首元素和尾元素之后位置的迭代器（“尾后迭代器”，off-the-end iterator）；
+    - `c.cbegin()`，`c.cend()`：返回`const_iterator`；
+    - `c.rbegin()`，`c.rend()`：返回指向`c`的尾元素和首元素之前位置的迭代器。**不支持**`std::foward_list`；
+    - `c.crbegin()`，`c.crend()`：返回`const_reverse_iterator`。**不支持**`std::foward_list`；
+    - `std::begin()`，`std::end()`：不但能用于容器， *还能用于内置数组* ：
     ```
     std::vector<int> vec{0, 1, 2, 3};
     std::vector<int>::iterator iter_beg = std::begin(vec);
@@ -1270,15 +1272,33 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     int * ptr_end = std::end(arr);
     ```
 
+#### 迭代器（iterator）
 
-
-
-
-
-
-
-
-
+- 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符；
+- 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器；
+- `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小；
+- 迭代器运算符：
+    - `*iter`：返回迭代器`iter`所知元素的**左值**引用；
+        - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**。
+    - `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
+    - `++iter`：令`iter`指向容器中的下一个元素；
+        - 尾后迭代器并不实际指向元素，因此**不能**递增或递减。
+    - `--iter`：令`iter`指向容器中的上一个元素；
+    - `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
+                                          如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
+                                          则相等；反之，不相等。
+- 迭代器运算（iterator arithmetic）：
+    - `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后；
+    - `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后；
+    - `iter += n`；
+    - `iter1 - iter2`：两个迭代器之间的距离（`difference_type`），
+                       即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
+    - `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
+                            如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者。
+                            `std::list`的迭代器**不支持**；
+- 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求：
+    - 它们或指向同一容器中的元素，或指向同一容器的尾后；
+    - `begin <= end`，即：`end`不在`begin`之前
 
 
 
