@@ -78,7 +78,8 @@ visudo
 ax      ALL=(ALL:ALL) NOPASSWD : ALL
 ```
 
-- `su`  后面不加用户是默认切到 `root`
-- `su`  是不改变当前变量（only `.bashrc` will be sourced）
-- `su -` 是改变为切换到用户的变量（expericene a login process, usually `.bash_profile` and `.bashrc` will be sourced）
+### 切换用户
+- `su`以及`su -`，`su -l`后面不加用户，则默认切到 `root`
+- `su`是不改变当前变量（only `.bashrc` will be sourced）
+- `su -`是`su -l`的简写，“模拟了一次登录（login）”，改变为切换到用户的变量（expericene a login process, usually `.bash_profile` and `.bashrc` will be sourced）
 - 也就是说`su`只能获得`root`的执行权限，不能获得环境变量；而`su -`是切换到`root`并获得`root`的环境变量及执行权限
