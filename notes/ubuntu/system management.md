@@ -1,6 +1,6 @@
 # Ubuntu System Management
 
-### 🌱 配置ssh
+### 🌱 配置`ssh`
 
 ```
 sudo apt install openssl-server
@@ -25,7 +25,7 @@ sudo /etc/init.d/ssh start
 - ssh免密码登录：将需要免密码的机器的`ssh`公钥`id_rsa.pub`拷贝至`${HOME}/.ssh/authorized_ssh`。
 
 
-### 🌱 Setup `fail2ban`
+### 🌱 配置`fail2ban`
 
 ```
 sudo apt install fail2ban
@@ -113,19 +113,19 @@ hadoop version
 gedit ${HADOOP_CONF_DIR}/hadoop-env.sh
 
 # jvm
-# hadoop does not recognize JAVA_HOME in /etc/profile
+# in case hadoop does not recognize ${JAVA_HOME} exported in `/etc/profile`
 # just let it happy
 export JAVA_HOME=/opt/jvm/jdk
 ```
 - 修改4个配置文件的`<configuration></configuration>`域：
-    - `core-site.xml`：
+    - `core-site.xml`，`10497`是`h`和`a`的`ASCII`码：
     ```
-    sgedit ${HADOOP_CONF_DIR}/core-site.xml
+    gedit ${HADOOP_CONF_DIR}/core-site.xml
     
     <configuration>
     <property>
       <name>fs.default.name</name>
-      <value>hdfs://localhost:9000</value>
+      <value>hdfs://localhost:10497</value>
     </property>
     </configuration>
     ```
