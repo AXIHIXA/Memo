@@ -73,18 +73,18 @@ jupyter kernelspec list
 
 ```
 tar -zxvf jdk-11.0.7_linux-x64_bin.tar.gz
-sudo mv jdk-11.0.7 /usr/local/lib/jvm/jdk
+sudo mv jdk-11.0.7 /opt/jdk
 
 sudo gedit /etc/profile
 
 # jvm
-export JAVA_HOME=/usr/local/lib/jvm/jdk
+export JAVA_HOME=/opt/jdk
 export JRE_HOME=${JAVA_HOME}/jre
 export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib:${CLASSPATH}
 export PATH=${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}
 ```
 
-### java的安装位置
+### jdk的安装位置
 
 引用自百度知道（这地方整体不咋地，不过这句话我感觉还是挺靠谱的）：
 

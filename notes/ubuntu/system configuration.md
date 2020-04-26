@@ -30,7 +30,7 @@ git config --global user.email "ahanxi@126.com"
 sudo gedit /etc/profile
 
 # default editor
-export EDITOR="/usr/bin/vim"
+export EDITOR=/usr/bin/vim
 ```
 
 ## time fix
