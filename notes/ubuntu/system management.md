@@ -84,6 +84,7 @@ ax      ALL=(ALL:ALL) NOPASSWD : ALL
 
 `hadoop`需要`jdk 8`。
 正式部署应当为`hadoop`单独创建账号，单机伪分布式配置着玩儿一下就不用啦。
+真正的分布式安装可以看`https://zhuanlan.zhihu.com/p/77938727`。
 安装流程如下：
 
 - 配置`ssh`以及免密登录（参考本文件开头部分）；
@@ -118,7 +119,7 @@ gedit ${HADOOP_CONF_DIR}/hadoop-env.sh
 export JAVA_HOME=/opt/jvm/jdk
 ```
 - 修改4个配置文件的`<configuration></configuration>`域：
-    - `core-site.xml`，`10497`是`h`和`a`的`ASCII`码：
+    - `core-site.xml`，`10497`是`h`和`a`的`ASCII`码，其实随便谁都行：
     ```
     gedit ${HADOOP_CONF_DIR}/core-site.xml
     
@@ -183,8 +184,9 @@ ${HADOOP_HOME}/sbin/stop-all.sh
 ```
 hdfs dfs -ls /
 ```
+    - 或者浏览器中打开`http://localhost:9870`，这个是`hadoop`状态页。
     
-## spark
+## 🌱 `spark`
 
 ```
 tar -xzvf spark-2.0.0-bin-hadoop2.7.tgz  
