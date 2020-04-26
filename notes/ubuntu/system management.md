@@ -125,7 +125,7 @@ export JAVA_HOME=/opt/jvm/jdk
     
     <configuration>
     <property>
-      <name>fs.default.name</name>
+      <name>fs.defaultFS</name>
       <value>hdfs://localhost:10497</value>
     </property>
     </configuration>
@@ -189,24 +189,26 @@ hdfs dfs -ls /
 ## 🌱 `spark`
 
 ```
-tar -xzvf spark-2.0.0-bin-hadoop2.7.tgz  
-sudo mv spark-2.0.0 /opt/
+cd ~/Downloads
+wget http://apache.mirrors.hoobly.com/spark/spark-3.0.0-preview2/spark-3.0.0-preview2-bin-hadoop3.2.tgz
+tar -xzvf spark-3.0.0-preview2-bin-hadoop3.2.tgz  
+mv spark-3.0.0-preview2-bin-hadoop3.2 ~/opt/
 
-sudo gedit /etc/profile
+gedit ~/.bashrc
 
 # spark
-export SPARK_HOME=/opt/spark-2.0.0
+export SPARK_HOME=/home/ax/opt/spark-3.0.0-preview2-bin-hadoop3.2
 export PATH=${SPARK_HOME}/bin:${PATH}
 ```
-```
-source /etc/profile
 
+```
 cp $SPARK_HOME/conf/spark-env.sh.template $SPARK_HOME/conf/spark-env.sh
-sudo gedit $SPARK_HOME/conf/spark-env.sh
+gedit $SPARK_HOME/conf/spark-env.sh
 
 export SPARK_MASTER_IP=master
 export SPARK_WORKER_MEMORY=4G
 ```
+
 ```
 $SPARK_HOME/sbin/start-all.sh
 jps
