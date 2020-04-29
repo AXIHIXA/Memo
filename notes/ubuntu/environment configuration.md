@@ -1,6 +1,6 @@
 # Environment Configuration
 
-## python
+## 🌱 python
 
 ### anaconda
 
@@ -67,7 +67,7 @@ c.NotebookApp.port = 9000            # 292
 jupyter kernelspec list
 ```
 
-## java
+## 🌱 java
 
 ### jdk
 
@@ -122,7 +122,7 @@ gedit -idea64.vmoptions
 -Xmx8192m
 ```
 
-## C/C++ 
+## 🌱 C/C++ 
 
 ### Libraries
 
@@ -148,7 +148,7 @@ sudo apt install libtbb-dev
 sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 ```
 
-## Javascript
+## 🌱 Javascript
 
 ### `Node.js`
 
@@ -157,6 +157,11 @@ sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 ### `yarn`
 
 [Installation | Yarn](https://classic.yarnpkg.com/en/docs/install/#debian-stable)
+
+
+## 🌱 `MongoDB`
+
+[Installation | MongoDB Community Edition](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/)
 
 ## Some Alienware Key Shortcut
 
