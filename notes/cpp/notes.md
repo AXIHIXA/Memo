@@ -21,7 +21,8 @@
     - 类的类型成员（`typedef`以及`using`声明）应该放在类定义**刚开始**的地方的`public`区域； 
     - 最好令构造函数初始化列表的顺序与成员声明的顺序**保持一致**；**避免**用某些成员初始化其他成员，用构造函数的参数作为初始值；
     - 应把静态数据成员的定义与其他非内联函数的定义放在**同一个文件**中；
-    - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）：
+    - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）；
+    - 不需要写访问时，应当使用`const_iterator`；
     
 - 一些常识
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）；
@@ -1238,6 +1239,18 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `C c;`：默认构造函数，构造空容器；
     - `C c1(c2);`：拷贝构造，将`c2`中所有元素拷贝到`c1`；
     - `C c(b, e);`：构造`c`，将迭代器`b`和`e`指定的范围内的元素拷贝到`c`。**不支持**`std::array`；
+        - 将容器初始化为另一容器的拷贝时，容器类型必须相同：
+        ```
+        // each container has three elements, initialized from the given initializers
+        list<string> authors = {"Milton", "Shakespeare", "Austen"};
+        vector<const char *> articles = {"a", "an", "the"};
+        
+        list<string> list2(authors);                                 // ok: types match
+        deque<string> authList(authors);                             // error: container types don't match
+        vector<string> words(articles);                              // error: element types must match
+        // ok: converts const char * elements to string
+        forward_list<string> words(articles.begin(), articles.end());
+        ```
     - `C c{a, b, c...};`：列表初始化。
 - 赋值与`swap`：
     - `c1 = c2;`：将`c1`中的元素全部替换为`c2`中的元素；
@@ -1300,7 +1313,6 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - 它们或指向同一容器中的元素，或指向同一容器的尾后；
     - `begin <= end`，即：`end`不在`begin`之前
 
-#### 容器类型成员
 
 
 
