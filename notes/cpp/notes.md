@@ -1212,6 +1212,16 @@ int a2[scale(i)];                       // 错误：i不是常量表达式，sca
     - `std::list`：双向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快；
     - `std::foward_list`：单向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快；
     - `std::array`：固定大小数组。支持快速随机访问。**不能**添加删除元素。**支持拷贝赋值**（内置数组不行）；
+    ```
+    std::array<int, 10> ia1; // ten default-initialized ints
+    std::array<int, 10> ia2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};     // list initialization
+    std::array<int, 10> ia3 = {42};                               // ia3[0] is 42, remaining elements are 0
+
+    int digs[10] = {0,1,2,3,4,5,6,7,8,9};
+    int cpy[10] = digs;                                           // error: no copy or assignment for built-in arrays
+    std::array<int, 10> digits = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::array<int, 10> copy = digits;                            // ok: so long as array types match
+    ```
     - `std::string`：与`std::vector`相似，专门用于保存字符。随机访问快。在尾部插入删除速度快。
 - 除`std::array`外，其他容器均提供高效灵活的内存管理；
 - 除`std::foward_list`没有`size()`操作（为了达到与手写的单向链表一样的效率）外，其余容器均为常数复杂度；
