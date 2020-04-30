@@ -1239,7 +1239,8 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `C c;`：默认构造函数，构造空容器；
     - `C c1(c2);`：拷贝构造，将`c2`中所有元素拷贝到`c1`；
     - `C c(b, e);`：构造`c`，将迭代器`b`和`e`指定的范围内的元素拷贝到`c`。**不支持**`std::array`；
-        - 将容器初始化为另一容器的拷贝时，容器类型必须相同：
+        - 将容器初始化为另一容器的拷贝时，两个容器的容器类型和元素类型都必须相同；
+        - 如果用迭代器指定范围，则仅元素类型相同即可。
         ```
         // each container has three elements, initialized from the given initializers
         std::list<std::string> authors = {"Milton", "Shakespeare", "Austen"};
@@ -1250,6 +1251,9 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
         std::vector<std::string> words(articles);                                // error: element types must match
         // ok: converts const char * elements to std::string
         std::forward_list<std::string> words(articles.begin(), articles.end());
+        
+        // copies up to but not including the element denoted by it
+        std::deque<std::string> authList(authors.begin(), it);
         ```
     - `C c{a, b, c...};`：列表初始化。
 - 赋值与`swap`：
