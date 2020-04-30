@@ -8,7 +8,7 @@
     - `const`常量不论是声明还是定义都添加`extern`修饰符；
     - 想要`auto`推导出引用或者常量的话，直接写清楚是坠吼的（`const auto & a = b`），别折腾顶层`const`什么的；
     - 认定应为常量表达式的变量应当声明为`constexpr`类型；
-    - `constexpr`函数、`inline`函数（包括类的`inline`成员函数）以及模板的**定义和实现都应**写进头文件；
+    - `constexpr`函数、静态`constexpr`成员、`inline`函数（包括类的`inline`成员函数）以及模板的**定义和实现都应**写进头文件；
     - `using`声明（`using std::string`、`using namespace std`、`using intptr = int *`等）**不应**写进头文件；
     - `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小；
     - 现代`C++`应使用标准库类型配合迭代器，而**不是**`C`风格的数组和指针。数组也是一种迭代器；
@@ -1242,14 +1242,14 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
         - 将容器初始化为另一容器的拷贝时，容器类型必须相同：
         ```
         // each container has three elements, initialized from the given initializers
-        list<string> authors = {"Milton", "Shakespeare", "Austen"};
-        vector<const char *> articles = {"a", "an", "the"};
+        std::list<std::string> authors = {"Milton", "Shakespeare", "Austen"};
+        std::vector<const char *> articles = {"a", "an", "the"};
         
-        list<string> list2(authors);                                 // ok: types match
-        deque<string> authList(authors);                             // error: container types don't match
-        vector<string> words(articles);                              // error: element types must match
-        // ok: converts const char * elements to string
-        forward_list<string> words(articles.begin(), articles.end());
+        std::list<std::string> list2(authors);                                   // ok: types match
+        std::deque<std::string> authList(authors);                               // error: container types don't match
+        std::vector<std::string> words(articles);                                // error: element types must match
+        // ok: converts const char * elements to std::string
+        std::forward_list<std::string> words(articles.begin(), articles.end());
         ```
     - `C c{a, b, c...};`：列表初始化。
 - 赋值与`swap`：
