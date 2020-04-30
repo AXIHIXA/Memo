@@ -1211,7 +1211,7 @@ int a2[scale(i)];                       // 错误：i不是常量表达式，sca
     - `std::deque`：双端队列。支持快速随机访问。在头尾插入删除元素很快；
     - `std::list`：双向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快；
     - `std::foward_list`：单向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快；
-    - `std::array`：固定大小数组。支持快速随机访问。**不能**添加删除元素；
+    - `std::array`：固定大小数组。支持快速随机访问。**不能**添加删除元素。**支持拷贝赋值**（内置数组不行）；
     - `std::string`：与`std::vector`相似，专门用于保存字符。随机访问快。在尾部插入删除速度快。
 - 除`std::array`外，其他容器均提供高效灵活的内存管理；
 - 除`std::foward_list`没有`size()`操作（为了达到与手写的单向链表一样的效率）外，其余容器均为常数复杂度；
@@ -1253,9 +1253,19 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
         std::forward_list<std::string> words(articles.begin(), articles.end());
         
         // copies up to but not including the element denoted by it
+        std::list<std::string>::iterator it = authors.end();
+        --it;
         std::deque<std::string> authList(authors.begin(), it);
         ```
-    - `C c{a, b, c...};`：列表初始化。
+    - `C c{a, b, c...};`或`C c = {a, b, c...};`：列表初始化；
+    - 大小相关构造函数
+        - 只有顺序容器才接受大小参数； *关联容器* **不支持**。
+    ```
+    std::vector<int> ivec(10, -1);      // 10 int elements, each initialized to -1
+    list<std::string> svec(10, "hi!");  // 10 strings; each element is "hi!"
+    std::forward_list<int> ivec(10);    // 10 elements, each initialized to 0
+    std::deque<std::string> svec(10);   // 10 elements, each an empty string
+    ```
 - 赋值与`swap`：
     - `c1 = c2;`：将`c1`中的元素全部替换为`c2`中的元素；
     - `c1 = {a, b, c...};`：将`c1`中的元素替换为列表中的元素。**不支持**`std::array`；
@@ -1316,7 +1326,6 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
 - 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求：
     - 它们或指向同一容器中的元素，或指向同一容器的尾后；
     - `begin <= end`，即：`end`不在`begin`之前
-
 
 
 
