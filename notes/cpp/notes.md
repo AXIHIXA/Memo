@@ -728,7 +728,7 @@ useBigger(s1, s2, &lengthCompare);
 useBigger(s1, s2, pf);
 ```
 
-### 🌱 构造函数
+### 🌱 类
 
 #### 合成的默认构造函数（synthesized default constructor）
 
@@ -844,73 +844,66 @@ item.combine(std::cin);                                  // 错误，对应构�
     - 接受一个单参数`const char *`的`std::string`构造函数 *不是* `explicit`的；
     - 接受容量参数的`std::vector`构造函数**是**`explicit`的；
 
-#### Further Topics
+#### Further Topics on Constructors
 
 - 13
 - 15.7
 - 18.1.3
 
-### 🌱 友元
+#### 友元
 
 - 友元不是类的成员，不受`public`、`private`以及`protected`这些访问限制的约束；
 - 友元**不具有**传递性。每个类**单独**负责控制自己的友元类或友元函数；
     - `B`有友元`A`，`C`有友元`B`，则`A`能访问`B`的私有成员，但不能访问`C`的私有成员。
 - 在类定义开始或结束的地方**集中声明**友元。
 
-#### 友元函数
-
-- 友元函数的声明仅仅是指定访问权限，并不是真正的函数声明。想要使用友元，仍**另需一单独的函数声明**；
-- 对于重载函数，必须对特定的函数（特有的参数列表）单独声明。
-
-#### 友元类
-
-- 令一个类成为友元
-
-#### 友元成员函数
- 
-- 令一个类的某个成员函数成为友元
-
-#### 友元声明和作用域
-
-- 关于这段代码最重要的是：理解友元声明的作用是**影响访问权限**，它本身**并非**普通意义上的函数声明。
-```
-struct X
-{
-    friend void f()
-    { 
-        // friend functions can be defined in the class
-        // this does NOT serve as declaration, even though this is already a defination
-        // to use this function, another declaration is REQUIRED
-    }
-
-    X()
+- *友元函数*
+    - 友元函数的声明仅仅是指定访问权限，并不是真正的函数声明。想要使用友元，仍**另需一单独的函数声明**；
+    - 对于重载函数，必须对特定的函数（特有的参数列表）单独声明。
+- *友元类*
+    - 令一个类成为友元
+- *友元成员函数*
+    - 令一个类的某个成员函数成为友元
+- *友元声明和作用域*
+    - 关于这段代码最重要的是：理解友元声明的作用是**影响访问权限**，它本身**并非**普通意义上的函数声明。
+    ```
+    struct X
     {
-        f();     // ERROR: no declaration for f
+        friend void f()
+        { 
+            // friend functions can be defined in the class
+            // this does NOT serve as declaration, even though this is already a defination
+            // to use this function, another declaration is REQUIRED
+        }
+
+        X()
+        {
+            f();     // ERROR: no declaration for f
+        } 
+        
+        void g();
+        void h();
+    };
+
+    void X::g()
+    {
+        return f();  // ERROR: f hasn't been declared
     } 
-    
-    void g();
-    void h();
-};
 
-void X::g()
-{
-    return f();  // ERROR: f hasn't been declared
-} 
+    void f();        // declares the function defined inside X
 
-void f();        // declares the function defined inside X
+    void X::h()
+    {
+        return f();  // OK: declaration for f is now in scope
+    } 
+    ```
 
-void X::h()
-{
-    return f();  // OK: declaration for f is now in scope
-} 
-```
-
-### 🌱 类的类型成员
+#### 类的类型成员
 
 - 类中的`typedef`和`using`必须先定义后使用；
 - 一般放在类定义刚开始的地方的`public`区域。
 
-### 🌱 可变数据成员（mutable data member）
+#### 可变数据成员（mutable data member）
 
 - 可用于更改`const`对象的成员：
     - `const`对象只能调用`const`成员函数；
@@ -935,7 +928,7 @@ const Screen s1;
 printf("%zu\n", s1.some_member());                 // 1
 ```
 
-### 🌱 类的前向声明
+#### 类的前向声明
 
 - 只声明不定义一个类：`class Item;`
     - 在定义之前，`Item`是<u>不完全类型</u>；
@@ -950,7 +943,7 @@ printf("%zu\n", s1.some_member());                 // 1
 - 特别地：类可以包含指向自身类型的引用或指针。
 
 
-### 🌱 类作用域
+#### 类作用域
 
 ```
 // note: this code is for illustration purposes only and reflects bad practice
@@ -974,7 +967,7 @@ Item t;
 t.print1(0);  // 0 1 2
 ```
 
-### 🌱 聚合类（aggregate class）
+#### 聚合类（aggregate class）
 
 - 聚合类使得用户可以直接访问其成员，并且具有特殊的初始化语法形式。
 - 当一个类满足如下条件（就相当于纯`C`风格的`struct`）时，我们说它是聚合的：
@@ -993,120 +986,115 @@ Entry e = {0, "Anna"};
     - 将正确初始化每个对象的每个成员的责任交给了用户，容易出错；
     - 添加或删除一个成员之后，所有的初始化语句都需要更新。
 
-### 🌱 字面值常量类
-
-#### 常量表达式（const expression）
-
-- 字面值：
-    - 算数类型；
-    - 引用和指针；
-    - 字面值常量类；
-    - 19.3
-
-- 常量表达式：值**不会改变**、并且在**编译过程中就能得到**计算结果的表达式；
-    - 字面值和用常量表达式初始化的`const`对象也是常量表达式。
-
-#### `constexpr`变量
-
-- 允许将变量声明为`constexpr`类型，以便由编译器来验证变量的值是否是一个常量表达式；
-- 声明为`constexpr`的变量一定是一个常量，而且必须用常量表达式来初始化：
-```
-constexpr int mf = 20;         // 正确
-constexpr int limit = mf + 1;  // 正确
-constexpr int sz = size();     // 当且仅当size是constexpr函数时，才正确
-```              
-- 尽管不能使用普通函数作为`constexpr`变量的初始值，但可以使用`constexpr`函数；
-- `constexpr`引用和指针：
-    - 只能绑定到固定地址的变量上：
-        - 例如全局对象，局部静态对象等；
-        - **不能**指向局部非静态对象。
-    - `constexpr`指针和变量的初始值必须是`nullptr`、`0`或者存储于某个固定地址的对象；
-    - `constexpr`指针为**顶层**`const`。
-
-#### `constexpr`函数
-
-- `constexpr`函数是指能用于常量表达式的函数；
-- 定义`constexpr`函数需要遵守：
-    - 函数的返回类型和所有形参的类型都是字面值类型；
-    - 函数体中只包含运行时不执行任何操作的语句，例如：
-        - 空语句；
-        - 类型别名；
-        - `using`声明。
-    - 函数体中如有可执行语句，只能是**一条**`return`语句。
-```
-constexpr int new_sz()  { return 42; }
-constexpr int foo = new_sz();           // 正确：foo是常量表达式
-
-// 如果arg是常量表达式，那么scale(arg)也是常量表达式
-constexpr size_t scale(size_t cnt)  { return new_sz() * cnt; }
-
-int arr[scale(2)];                      // 正确
-int i = 2;                              // i不是常量表达式
-int a2[scale(i)];                       // 错误：i不是常量表达式，scale(i)也不是
-```
-- 执行初始化时，编译器把对`constexpr`函数的调用替换成其结果值；
-- `constexpr`函数是隐式的`inline`函数； 
-- `constexpr`函数、`inline`函数以及模板的**定义和实现都应**写进头文件。
-
 #### 字面值常量类
 
-`constexpr`函数的参数和返回值都必须是字面值类型。
-除了算数类型、引用和指针以外，**字面值常量类**也是字面值类型。
-和其他类不同，字面值常量类可能含有`constexpr`函数成员。
-这样的成员必须符合`constexpr`函数的所有要求，是隐式`const`的。
-
-- 以下类是字面值常量类：
-    - 数据成员都是字面值类型的聚合类；
-    - 满足以下要求的非聚合类：
-        - 数据成员都必须是字面值类型；
-        - 类必须至少有一个`constexpr`构造函数；
-        - 如果一个数据成员含有类内初始值，则内置类型成员的初始值必须是常量表达式；
-          或者如果成员属于某种类类型，则初始值必须使用成员自己的`constexpr`构造函数；
-        - 类必须使用析构函数的默认定义，该成员负责销毁类的对象。
+- 常量表达式（const expression）
+    - 字面值：
+        - 算数类型；
+        - 引用和指针；
+        - 字面值常量类；
+        - 19.3
+    - 常量表达式：值**不会改变**、并且在**编译过程中就能得到**计算结果的表达式；
+        - 字面值和用常量表达式初始化的`const`对象也是常量表达式。
         
-- `constexpr`构造函数
-    - 字面值常量类的构造函数可以是`constexpr`，且必须有至少一个`constexpr`构造函数；
-    - `constexpr`构造函数可以声明成`= default;`的或者`= delete;`的；
-    - `constexpr`构造函数的函数体是**空的**；
-        - 既要满足构造函数的要求（不能有返回语句）
-        - 又要满足`constexpr`函数的要求（函数体中如有可执行语句，只能是**一条**`return`语句）
-    - `constexpr`构造函数必须初始化**所有**数据成员，初始值或者使用`constexpr`构造函数，或者是一条常量表达式；
-    - `constexpr`构造函数用于生成`constexpr`对象以及`constexpr`函数的参数或返回类型：
+- `constexpr`变量
+    - 允许将变量声明为`constexpr`类型，以便由编译器来验证变量的值是否是一个常量表达式；
+    - 声明为`constexpr`的变量一定是一个常量，而且必须用常量表达式来初始化：
     ```
-    class Debug 
-    {
-    public:
-        constexpr Debug(bool b = true): hw(b), io(b), other(b) {}
-        constexpr Debug(bool h, bool i, bool o): hw(h), io(i), other(o) {}
+    constexpr int mf = 20;         // 正确
+    constexpr int limit = mf + 1;  // 正确
+    constexpr int sz = size();     // 当且仅当size是constexpr函数时，才正确
+    ```              
+    - 尽管不能使用普通函数作为`constexpr`变量的初始值，但可以使用`constexpr`函数；
+    - `constexpr`引用和指针：
+        - 只能绑定到固定地址的变量上：
+            - 例如全局对象，局部静态对象等；
+            - **不能**指向局部非静态对象。
+        - `constexpr`指针和变量的初始值必须是`nullptr`、`0`或者存储于某个固定地址的对象；
+        - `constexpr`指针为**顶层**`const`。
         
-        constexpr bool any() { return hw || io || other; }
-        
-        void set_io(bool b) { io = b; }
-        void set_hw(bool b) { hw = b; }
-        void set_other(bool b) { hw = b; }
-        
-    private:
-        bool hw;                                 // hardware errors other than IO errors
-        bool io;                                 // IO errors
-        bool other;                              // other errors
-    };
-    
-    constexpr Debug io_sub(false, true, false);  // debugging IO
-    
-    if (io_sub.any())                            // equivalent to if(true)
-    {
-        std::cerr << "print appropriate error messages" << std::endl;
-    }    
-        
-    constexpr Debug prod(false);                 // no debugging during production
-    
-    if (prod.any())                              // equivalent to if(false)
-    {
-        std::cerr << "print an error message" << std::endl;
-    }
+- `constexpr`函数
+    - `constexpr`函数是指能用于常量表达式的函数；
+    - 定义`constexpr`函数需要遵守：
+        - 函数的返回类型和所有形参的类型都是字面值类型；
+        - 函数体中只包含运行时不执行任何操作的语句，例如：
+            - 空语句；
+            - 类型别名；
+            - `using`声明。
+        - 函数体中如有可执行语句，只能是**一条**`return`语句。
     ```
+    constexpr int new_sz()  { return 42; }
+    constexpr int foo = new_sz();           // 正确：foo是常量表达式
 
-### 🌱 类的静态成员
+    // 如果arg是常量表达式，那么scale(arg)也是常量表达式
+    constexpr size_t scale(size_t cnt)  { return new_sz() * cnt; }
+
+    int arr[scale(2)];                      // 正确
+    int i = 2;                              // i不是常量表达式
+    int a2[scale(i)];                       // 错误：i不是常量表达式，scale(i)也不是
+    ```
+    - 执行初始化时，编译器把对`constexpr`函数的调用替换成其结果值；
+    - `constexpr`函数是隐式的`inline`函数； 
+    - `constexpr`函数、`inline`函数以及模板的**定义和实现都应**写进头文件。
+    
+- 字面值常量类
+    - `constexpr`函数的参数和返回值都必须是字面值类型。
+      除了算数类型、引用和指针以外，**字面值常量类**也是字面值类型。
+      和其他类不同，字面值常量类可能含有`constexpr`函数成员。
+      这样的成员必须符合`constexpr`函数的所有要求，是隐式`const`的。
+
+    - 以下类是字面值常量类：
+        - 数据成员都是字面值类型的聚合类；
+        - 满足以下要求的非聚合类：
+            - 数据成员都必须是字面值类型；
+            - 类必须至少有一个`constexpr`构造函数；
+            - 如果一个数据成员含有类内初始值，则内置类型成员的初始值必须是常量表达式；
+              或者如果成员属于某种类类型，则初始值必须使用成员自己的`constexpr`构造函数；
+            - 类必须使用析构函数的默认定义，该成员负责销毁类的对象。
+            
+    - `constexpr`构造函数
+        - 字面值常量类的构造函数可以是`constexpr`，且必须有至少一个`constexpr`构造函数；
+        - `constexpr`构造函数可以声明成`= default;`的或者`= delete;`的；
+        - `constexpr`构造函数的函数体是**空的**；
+            - 既要满足构造函数的要求（不能有返回语句）
+            - 又要满足`constexpr`函数的要求（函数体中如有可执行语句，只能是**一条**`return`语句）
+        - `constexpr`构造函数必须初始化**所有**数据成员，初始值或者使用`constexpr`构造函数，或者是一条常量表达式；
+        - `constexpr`构造函数用于生成`constexpr`对象以及`constexpr`函数的参数或返回类型：
+        ```
+        class Debug 
+        {
+        public:
+            constexpr Debug(bool b = true): hw(b), io(b), other(b) {}
+            constexpr Debug(bool h, bool i, bool o): hw(h), io(i), other(o) {}
+            
+            constexpr bool any() { return hw || io || other; }
+            
+            void set_io(bool b) { io = b; }
+            void set_hw(bool b) { hw = b; }
+            void set_other(bool b) { hw = b; }
+            
+        private:
+            bool hw;                                 // hardware errors other than IO errors
+            bool io;                                 // IO errors
+            bool other;                              // other errors
+        };
+        
+        constexpr Debug io_sub(false, true, false);  // debugging IO
+        
+        if (io_sub.any())                            // equivalent to if(true)
+        {
+            std::cerr << "print appropriate error messages" << std::endl;
+        }    
+            
+        constexpr Debug prod(false);                 // no debugging during production
+        
+        if (prod.any())                              // equivalent to if(false)
+        {
+            std::cerr << "print an error message" << std::endl;
+        }
+        ```
+
+#### 类的静态成员
 
 - 声明：
     - 通过在成员声明之前加上`static`使得其与类关联在一起；
@@ -1408,7 +1396,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### 关系运算符
 
 - 每个容器类型都支持 *相等运算符* `==`和`!=`；
-- **除** *无序关联容器* **外**，所有容器都支持 *关系运算符* `>`、`>=`、`<`、`<=`。
+- **除** *无序关联容器* **外**，所有容器都支持 *关系运算符* `>`、`>=`、`<`和`<=`。
     - *关系运算符* 左右的容器必须为**相同类型**;
     - 比较两个容器的方式与`std::string`类似，为 *逐元素字典序* ;
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器。
@@ -1422,3 +1410,30 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     v1 == v4  // true; each element is equal and v1 and v4 have the same size()
     v1 == v2  // false; v2 has fewer elements than v1
     ```
+    
+#### 顺序容器操作
+
+- 插入元素：
+    - 
+    - 
+- 访问元素：
+    - 
+    - 
+- 删除元素：
+    - 
+    - 
+- 特殊的`std::foward_list`操作：
+    - 
+    - 
+- 改变容器大小：
+    - 
+    - 
+- 容器操作可能使迭代器失效。
+
+#### 额外的`std::string`操作
+
+
+#### 容器适配器
+
+
+
