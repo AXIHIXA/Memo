@@ -1322,8 +1322,7 @@ std::forward_list<std::string> words(articles.begin(), articles.end());
 std::list<std::string>::iterator it = authors.end();
 --it;
 std::deque<std::string> authList(authors.begin(), it);
-```                
-                
+```                   
 只有 *顺序容器* （**不包括**`std::array`）的构造函数才能接受大小参数：
 - `C seq(n);`：`seq`包含`n`个元素，这些元素进行了 *值初始化* ；
                此构造函数是`explicit`的。**不适用**于`std::string`；
@@ -1334,7 +1333,6 @@ list<std::string> svec(10, "hi!");  // 10 strings; each element is "hi!"
 std::forward_list<int> ivec(10);    // 10 elements, each initialized to 0
 std::deque<std::string> svec(10);   // 10 elements, each an empty string
 ```
-
 
 #### 赋值和`swap`
 
