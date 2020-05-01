@@ -23,6 +23,7 @@
     - 应把静态数据成员的定义与其他非内联函数的定义放在**同一个文件**中；
     - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）；
     - 不需要写访问时，应当使用`const_iterator`；
+    - 改变容器内容之后，一律手动更新迭代器；
     
 - 一些常识
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）；
@@ -756,7 +757,7 @@ useBigger(s1, s2, pf);
     - *值初始化* 在以下情况下发生：
         - 在数组初始化过程中，如果我们提供的初始值数量少于数组的大小时；
         - 当我们不使用初始值，定义一个局部静态变量时；
-        - 当我们通过书写形如`T()`的表达式显式地请求值初始化时，其中`T`是类型名，
+        - 当我们通过书写形如`T()`的表达式显式地请求值初始化时，其中`T`是类型名
           （`std::vector`的一个构造函数只接受一个实参用于说明其大小，
             它就是使用一个这种形式的实参来对它的元素初始化器进行值初始化）。
     - 类必须包含默认构造函数以便在上述情况下使用。实际应用中，如果提供了其它构造函数，最好也提供一个默认构造函数。
@@ -1217,7 +1218,7 @@ int a2[scale(i)];                       // 错误：i不是常量表达式，sca
     std::array<int, 10> ia2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};     // list initialization
     std::array<int, 10> ia3 = {42};                               // ia3[0] is 42, remaining elements are 0
 
-    int digs[10] = {0,1,2,3,4,5,6,7,8,9};
+    int digs[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     int cpy[10] = digs;                                           // error: no copy or assignment for built-in arrays
     std::array<int, 10> digits = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::array<int, 10> copy = digits;                            // ok: so long as array types match
@@ -1251,31 +1252,10 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `C c(b, e);`：构造`c`，将迭代器`b`和`e`指定的范围内的元素拷贝到`c`。**不支持**`std::array`；
         - 将容器初始化为另一容器的拷贝时，两个容器的容器类型和元素类型都必须相同；
         - 如果用迭代器指定范围，则仅元素类型相同即可。
-        ```
-        // each container has three elements, initialized from the given initializers
-        std::list<std::string> authors = {"Milton", "Shakespeare", "Austen"};
-        std::vector<const char *> articles = {"a", "an", "the"};
-        
-        std::list<std::string> list2(authors);                                   // ok: types match
-        std::deque<std::string> authList(authors);                               // error: container types don't match
-        std::vector<std::string> words(articles);                                // error: element types must match
-        // ok: converts const char * elements to std::string
-        std::forward_list<std::string> words(articles.begin(), articles.end());
-        
-        // copies up to but not including the element denoted by it
-        std::list<std::string>::iterator it = authors.end();
-        --it;
-        std::deque<std::string> authList(authors.begin(), it);
-        ```
+
     - `C c{a, b, c...};`或`C c = {a, b, c...};`：列表初始化；
     - 大小相关构造函数
         - 只有顺序容器才接受大小参数； *关联容器* **不支持**。
-    ```
-    std::vector<int> ivec(10, -1);      // 10 int elements, each initialized to -1
-    list<std::string> svec(10, "hi!");  // 10 strings; each element is "hi!"
-    std::forward_list<int> ivec(10);    // 10 elements, each initialized to 0
-    std::deque<std::string> svec(10);   // 10 elements, each an empty string
-    ```
 - 赋值与`swap`：
     - `c1 = c2;`：将`c1`中的元素全部替换为`c2`中的元素；
     - `c1 = {a, b, c...};`：将`c1`中的元素替换为列表中的元素。**不支持**`std::array`；
@@ -1337,8 +1317,91 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - 它们或指向同一容器中的元素，或指向同一容器的尾后；
     - `begin <= end`，即：`end`不在`begin`之前
 
+#### 容器定义和初始化
+
+- `C c;`：默认构造函数。如果`C`是一个`std::array`，则`c`中元素按默认方式初始化；否则`c`为空；
+- `C c1(c2);`，`C c1 = c2;`：`c1`初始化为`c2`的拷贝。
+                             `c1`和`c2`必须是**相同类型**
+                             （即：相同的容器类型和元素类型，对于`std::array`还有相同大小）；
+- `C c{a, b, c...};`，`C c = {a, b, c...};`：`c`初始化为初始化列表中元素的拷贝。
+                                             列表中元素类型必须与`C`兼容。
+                                             对于`std::array`，列表中元素数目不大于`array`大小，
+                                             遗漏元素一律 *值初始化* ；
+- `C c(b, e);`：`c`初始化为迭代器`b`和`e`指定范围中的元素的拷贝。
+                范围中元素的类型必须与`C`兼容（`std::array`**不适用**）；
+```
+// each container has three elements, initialized from the given initializers
+std::list<std::string> authors = {"Milton", "Shakespeare", "Austen"};
+std::vector<const char *> articles = {"a", "an", "the"};
+
+std::list<std::string> list2(authors);                                   // ok: types match
+std::deque<std::string> authList(authors);                               // error: container types don't match
+std::vector<std::string> words(articles);                                // error: element types must match
+// ok: converts const char * elements to std::string
+std::forward_list<std::string> words(articles.begin(), articles.end());
+
+// copies up to but not including the element denoted by it
+std::list<std::string>::iterator it = authors.end();
+--it;
+std::deque<std::string> authList(authors.begin(), it);
+```                
+                
+只有 *顺序容器* （**不包括**`std::array`）的构造函数才能接受大小参数：
+- `C seq(n);`：`seq`包含`n`个元素，这些元素进行了 *值初始化* ；
+               此构造函数是`explicit`的。**不适用**于`std::string`；
+- `C seq(n, t);`：`seq`包含`n`个初始化为值`t`的元素。
+```
+std::vector<int> ivec(10, -1);      // 10 int elements, each initialized to -1
+list<std::string> svec(10, "hi!");  // 10 strings; each element is "hi!"
+std::forward_list<int> ivec(10);    // 10 elements, each initialized to 0
+std::deque<std::string> svec(10);   // 10 elements, each an empty string
+```
 
 
+#### 赋值和`swap`
+
+- 以下赋值运算符可用于所有容器：
+    - `c1 = c2;`：将`c1`中的元素替换为`c2`中元素的拷贝。`c1`和`c2`必须具有相同的类型；
+    - `c = {a, b, c...};`：将`c1`中元素替换为初始化列表中元素的拷贝（`std::array`**不适用**）；
+    ```
+    std::array<int, 10> a1 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::array<int, 10> a2 = {0};                             // OK: elements all have value 0
+    a1 = a2;                                                  // OK: replaces elements in a1
+    a2 = {0};                                                 // error: cannot assign to an array 
+                                                              //        from a braced list
+    ```
+    - `std::swap(c1, c2);`，`c1.swap(c2);`：交换`c1`和`c2`中的元素。
+                                            `c1`和`c2`必须具有**相同类型**。
+                                            `swap`通常比从`c2`向`c1`拷贝元素快很多；
+        - 除`std::array`**以外**，`swap`不对任何元素进行拷贝，删除或插入操作，因此可以保证 *常数复杂度* ；
+        - 元素不被移动意味着除`std::array`和`std::string`**以外**，原先的迭代器、指针和引用 *不会失效* ；
+    ```
+    std::vector<std::string> svec1(10);  // vector with 10 elements
+    std::vector<std::string> svec2(24);  // vector with 24 elements
+    std::swap(svec1, svec2);
+    ```
+- `assign`操作**不适用于** *关联容器* 以及`std::array`：
+    - `seq.assign(b, e);`：将`seq`中的元素替换为迭代器`b`和`e`所表示范围中的元素。
+                           迭代器`b`和`e`**不能**指向`seq`中的元素；
+        - 由于旧元素被 *替换* ，因此传递给`assign`的迭代器不能指向调用`assign`的容器。
+    ```
+    std::list<std::string> names;
+    std::vector<const char *> oldstyle;
+    names = oldstyle;                    // error: container types don't match
+                                         // ok: can convert from const char * to string
+    names.assign(oldstyle.cbegin(), oldstyle.cend());
+    ```
+    - `seq.assign({a, b, c...});`：将`seq`中的元素替换为初始化列表中的元素；
+    - `seq.assign(n, t);`：将`seq`中的元素替换为`n`个值为`t`的元素；
+    ```
+    // equivalent to: slist1.clear(); 
+    //                slist1.insert(slist1.begin(), 10, "Hiya!");
+    std::list<std::string> slist1(1); // one element, which is the empty string
+    slist1.assign(10, "Hiya!");       // ten elements; each one is Hiya !
+    ```
+- 赋值运算会导致指向左边容器内部的迭代器、引用和指针**失效**。
+  而`swap`操作将容器内容交换，**不会**导致指向容器的迭代器、引用和指针失效
+  （`std::array`和`std::string`**除外**）。
 
 
 
