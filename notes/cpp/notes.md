@@ -1,4 +1,4 @@
-# 《C++ Primer 5th Edition》拾遗
+# 《C++ Primer 5th Edition》笔记
 
 记录一些对C++理解得不到位的地方。
 
@@ -325,7 +325,6 @@ sizeof expr   // 返回表达式结果类型大小
     ```
 - `reinterpret_cast<T>(expr)`：
     - 强制编译器按照`T`类型重新解读一块内存。
-    
     ```
     int * a = new int(1);
     char * pc = reinterpret_cast<char *>(a);                     // 正确
@@ -373,7 +372,6 @@ sizeof expr   // 返回表达式结果类型大小
 T t = T(expr);   // 函数式
 T t = (T) expr;  // C风格
 ```
-
 - 根据具体位置不同，旧式的强制类型转换的效果与`static_cast`、`const_cast`或`reinterpret_cast`相同。具体来讲，定义为以下各项中第一个成功的：
     - `const_cast`
     - `static_cast` (though ignoring access restrictions)
@@ -440,7 +438,6 @@ default:
         >     - `out_of_range`：逻辑错误，使用了一个超出有效范围的值
     - `new`：`bad_alloc`异常类。12.1.2
     - `type_info`：`bad_cast`异常类。19.2
-    
 - `excpetion`，`bad_alloc`和`bad_cast`只能默认初始化，不能传参；其余异常必须传参（`C`风格字符串）。
 - 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
   如果此异常传入了初始参数，则返回之；否则返回值由编译器决定。
@@ -1414,6 +1411,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 1
     - 1
 - 容器操作可能使迭代器失效。
+
+#### 顺序容器内存管理
+
 
 #### 额外的`std::string`操作
 
