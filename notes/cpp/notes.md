@@ -1363,9 +1363,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     ```
     std::list<std::string> names;
     std::vector<const char *> oldstyle;
-    names = oldstyle;                    // error: container types don't match
-                                         // ok: can convert from const char * to string
-    names.assign(oldstyle.cbegin(), oldstyle.cend());
+    names = oldstyle;                                  // error: container types don't match
+    names.assign(oldstyle.cbegin(), oldstyle.cend());  // ok: can convert from const char * to string
     ```
     - `seq.assign({a, b, c...});`：将`seq`中的元素替换为初始化列表中的元素；
     - `seq.assign(n, t);`：将`seq`中的元素替换为`n`个值为`t`的元素；
