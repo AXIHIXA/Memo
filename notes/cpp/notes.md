@@ -24,6 +24,7 @@
     - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）；
     - 不需要写访问时，应当使用`const_iterator`；
     - 改变容器内容之后，一律手动更新迭代器；
+    - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`；
     
 - 一些常识
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）；
@@ -42,6 +43,7 @@
     - 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则；
     - 非`constexpr`静态成员只能在**类外**初始化；在类外部定义静态成员时，**不能**重复`static`关键字；
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器；
+    - 只有当其元素类型也定义了相应的比较运算符时，才可以使用关系运算符来比较两个容器；
     
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向；
@@ -1371,10 +1373,10 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                                                               //        from a braced list
     ```
     - `std::swap(c1, c2);`，`c1.swap(c2);`：交换`c1`和`c2`中的元素。
-                                            `c1`和`c2`必须具有**相同类型**。
-                                            `swap`通常比从`c2`向`c1`拷贝元素快很多；
+                                            `c1`和`c2`必须具有**相同类型**；
         - 除`std::array`**以外**，`swap`不对任何元素进行拷贝，删除或插入操作，因此可以保证 *常数复杂度* ；
         - 元素不被移动意味着除`std::array`和`std::string`**以外**，原先的迭代器、指针和引用 *不会失效* ；
+        - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`。
     ```
     std::vector<std::string> svec1(10);  // vector with 10 elements
     std::vector<std::string> svec2(24);  // vector with 24 elements
@@ -1383,7 +1385,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 - `assign`操作**不适用于** *关联容器* 以及`std::array`：
     - `seq.assign(b, e);`：将`seq`中的元素替换为迭代器`b`和`e`所表示范围中的元素。
                            迭代器`b`和`e`**不能**指向`seq`中的元素；
-        - 由于旧元素被 *替换* ，因此传递给`assign`的迭代器不能指向调用`assign`的容器。
+        - 由于旧元素被 *替换* ，因此传递给`assign`的迭代器**不能**指向调用`assign`的容器。
     ```
     std::list<std::string> names;
     std::vector<const char *> oldstyle;
@@ -1403,6 +1405,20 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
   而`swap`操作将容器内容交换，**不会**导致指向容器的迭代器、引用和指针失效
   （`std::array`和`std::string`**除外**）。
 
+#### 关系运算符
 
-
-
+- 每个容器类型都支持 *相等运算符* `==`和`!=`；
+- **除** *无序关联容器* **外**，所有容器都支持 *关系运算符* `>`、`>=`、`<`、`<=`。
+    - *关系运算符* 左右的容器必须为**相同类型**;
+    - 比较两个容器的方式与`std::string`类似，为 *逐元素字典序* ;
+    - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器。
+    ```
+    std::vector<int> v1 = {1, 3, 5, 7, 9, 12};
+    std::vector<int> v2 = {1, 3, 9};
+    std::vector<int> v3 = {1, 3, 5, 7};
+    std::vector<int> v4 = {1, 3, 5, 7, 9, 12};
+    v1 < v2   // true; v1 and v2 differ at element [2]: v1[2] is less than v2[2]
+    v1 < v3   // false; all elements are equal, but v3 has fewer of them;
+    v1 == v4  // true; each element is equal and v1 and v4 have the same size()
+    v1 == v2  // false; v2 has fewer elements than v1
+    ```
