@@ -1422,3 +1422,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 
 
+### 🌱 泛型算法
+
+大部分泛型算法定义于头文件`<algorithm>`中。
