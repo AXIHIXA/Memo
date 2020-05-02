@@ -20,12 +20,13 @@ gedit ~/.bashrc
 
 # anaconda
 conda deactivate
-export PATH="/home/ax/opt/anaconda3/bin:${PATH}"
+export PATH=/home/ax/opt/anaconda3/bin:${PATH}
 
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /media/ax/DATAIN/workspace"
 alias jl="cd /media/ax/DATAIN/workspace; jupyter lab"
+alias cls=reset
 ```
 
 ##### `WSL`
@@ -35,12 +36,13 @@ gedit ~/.bashrc
 
 # anaconda
 conda deactivate
-export PATH="/home/ax/opt/anaconda3/bin:${PATH}"
+export PATH=/home/ax/opt/anaconda3/bin:${PATH}
 
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /mnt/d/workspace"
 alias jl="cd /mnt/d/workspace; jupyter lab"
+alias cls=reset
 ```
     
 ### jupyter lab
