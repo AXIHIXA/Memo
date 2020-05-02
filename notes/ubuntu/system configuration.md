@@ -50,6 +50,12 @@ sudo gedit /etc/fstab
 .host:/    /media/ax/DATAIN    fuse.vmhgfs-fuse    defaults,allow_other,uid=1000     0    0
 ```
 
+## Disable `apt.daily.*`
+
+```
+Show Applications => Updates => Automatically check for updates: Never
+```
+
 ## Application Entry
 
 ### current user
