@@ -3,7 +3,7 @@
 ### 🌱 配置`ssh`
 
 ```
-sudo apt install openssl-server
+sudo apt install openssh-server
 dpkg -l | grep ssh  # 应该看到 openssh-server
 ps -e | grep ssh  # 应该看到 sshd
 ```
@@ -24,6 +24,22 @@ sudo /etc/init.d/ssh start
 
 - ssh免密码登录：将需要免密码的机器的`ssh`公钥`id_rsa.pub`拷贝至`${HOME}/.ssh/authorized_ssh`。
 
+#### `WSL`
+
+```
+sudo apt remove openssh-server
+sudo apt install openssh-server
+sudo vi /etc/ssh/sshd_config
+
+# change following things:
+# 1. remove the comment on `port 22`
+# 2. PermitRootLogin no => PermitRootLogin yes
+
+sudo service ssh --full-restart
+
+# e.g. in Windows Powershell
+ssh ax@127.0.0.1 -p 22
+```
 
 ### 🌱 配置`fail2ban`
 
