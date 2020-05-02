@@ -42,7 +42,6 @@ alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /mnt/d/workspace"
 alias jl="cd /mnt/d/workspace; jupyter lab"
-alias cls=reset
 ```
     
 ### jupyter lab
