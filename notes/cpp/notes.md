@@ -1632,18 +1632,29 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 		std::stack<std::string, std::vector<std::string>> str_stk2(svec);
 		```
 		- 特有操作
-			- `s.pop()`：删除栈顶元素，但不返回该元素的值
+			- `s.pop()`：弹出栈顶元素，但不返回该元素的值
 			- `s.push(item)`：压栈一个值为`item`的元素
 			- `s.emplace(args)`：压栈一个用`args` *构造* 的元素
-			- `s.pop()`：返回栈顶元素，但不将元素弹出栈
+			- `s.top()`：返回栈顶元素，但不将其弹出
 	- `std::queue`（位于头文件`<queue>`中）
 		- 默认基于`std::deque`实现，也可以接受除`std::array`、`std::forward_list`以及`std::vector`之外的任一顺序容器
+		- 默认 *先入先出* （`FIFO`），队尾入队，队首出队
 		- 特有操作
-			- `q.pop()`
-			- ``
+			- `q.pop()`：弹出首元素，但不返回该元素的值
+			- `q.front()`：返回首元素，但不将其弹出
+			- `q.back()`：返回尾元素，但不将其弹出
+			- `q.push(item)`：入队（在队列末尾）一个值为`item`的元素
+			- `q.emplace(args)`：入队（在队列末尾）一个用`args` *构造* 的元素
 	- `std::priority_queue`（位于头文件`<queue>`中）
 		- 默认基于`std::vector`实现，也可以接受`std::deque`
+		- 默认是 *小顶堆* ，即若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
+			- 重载`<`运算符
+			- 插入相反数
 		- 特有操作
+			- `q.pop()`：弹出最高优先级元素，但不返回该元素的值
+			- `q.top()`：返回最高优先级元素，但不将其弹出
+			- `q.push(item)`：（在适当位置）插入一个值为`item`的元素
+			- `q.emplace(args)`：（在适当位置）插入一个用`args` *构造* 的元素
 - *所有* 容器适配器 *都支持* 的操作和类型
 	- `size_type`
 	- `value_type`
