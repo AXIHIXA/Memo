@@ -23,7 +23,7 @@
     - 应把静态数据成员的定义与其他非内联函数的定义放在**同一个文件**中
     - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）
     - 不需要写访问时，应当使用`const_iterator`
-    - 改变容器 *大小* 之后（插入删除），几乎所有 *迭代器* 、 *引用* 或 *指针* 都会失效，一律手动更新了事
+    - 改变容器 *大小* 之后，则 *所有* 指向此容器的迭代器、引用和指针都 *可能* 失效，所以一律更新一波才是 *坠吼的* 。此外，永远**不要缓存**尾后迭代器（这玩意常年变来变去），现用现制，用后即弃
     - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`；
 - 一些小知识
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -1273,6 +1273,24 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - 它们或指向同一容器中的元素，或指向同一容器的尾后
     - `begin <= end`，即：`end`不在`begin`之前
 
+#### 容器操作可能导致迭代器、引用和指针失效
+
+- 总则
+    - 总而言之，容器大小一旦动了，则 *所有* 指向此容器的迭代器、引用和指针都 *可能* 失效，所以一律更新一波才是 *坠吼的* 
+    - 此外，永远**不要缓存**尾后迭代器（这玩意常年变来变去），现用现制，用后即弃，`end()`的实现都是很快的
+- 辨析
+    - 插入元素
+        - 对于`std::vector`和`std::string`，如果存储空间 *重新分配* ，则 *所有* 指向此容器的迭代器、引用和指针**都会失效**。如果 *未重新分配* ，指向 *插入位置之前* 的元素的迭代器、 引用和指针 *仍有效* ，但指向 *插入位置之后* 的元素的迭代器、 引用和指针**都会失效**
+        - 对于`std::deque`，插入到首尾位置之外的任何位置都会导致 *所有* 指向此容器的迭代器、引用和指针**失效**。如果在首尾位置添加元素，则 *迭代器* 会**失效**，但指向 *存在的元素* 的 *引用* 和 *指针* *仍有效*
+        - 对于`std::list`和`std::foward_list`，指向容器的迭代器（包括首前和尾后迭代器）、指针和引用 *仍有效*
+    - 删除元素
+        - 对于`std::vector`和`std::string`，指向 *被删除元素之前* 的元素的迭代器、 引用和指针 *仍有效* ，但指向 *插入位置之后* 的元素的迭代器、 引用和指针**都会失效**。 *尾后迭代器* **一定会失效**
+        - 对于`std::deque`，在首尾位置之外的任何位置删除元素都会导致 *所有* 指向此容器的迭代器、引用和指针**失效**。如果删除 *尾元素* ，则 *尾后迭代器* 也会**失效**，但 *其他* *迭代器* 、 *引用* 和 *指针* *不受影响* ；如果删除 *首元素* ，这些也 *不受影响*
+        - 对于`std::list`和`std::foward_list`，指向容器的迭代器（包括首前和尾后迭代器）、指针和引用 *仍有效*
+    - 改变容器大小
+        - 如果`resize()`缩小容器，则指向 *被删除元素* 的 *迭代器* 、 *引用* 和 *指针* **失效**
+        - 对于`resize()`导致存储空间重新分配（对于`std::vector`，`std::string`以及`std::deque`），则 *所有* 指向此容器的 *迭代器* 、 *引用* 和 *指针* **都会失效**
+
 #### 容器定义和初始化
 
 - `C c`：默认构造函数。如果`C`是一个`std::array`，则`c`中元素按默认方式初始化；否则`c`为空
@@ -1400,7 +1418,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `c.insert(p, b, e)`：将迭代器`b`和`e`指定的范围内的元素插入到迭代器`p`指向的元素 *之前* 。`b`和`e`**不能**指向`c`中的元素。返回指向新添加第一个元素的迭代器；若范围为空，则返回`p`
     - `c.insert(p, {a, b, c...})`：将列表`{a, b, c...}`中的 *元素* 插入到迭代器`p`指向的元素 *之前* 。返回指向新添加的第一个元素的迭代器；若列表为空，返回`p`
     - 注意事项
-        - 向`std::vector`、`std::string`或`std::deque`插入元素会使 *所有* 指向该容器的 *迭代器* 、 *引用* 和 *指针* **失效**
+        - 向`std::vector`、`std::string`或`std::deque`插入元素会使 *很多* 指向该容器的 *迭代器* 、 *引用* 和 *指针* **失效**
         - `std::forward_list`有自己专属版本的`insert`和`emplace`，**不支持**`push_back`以及`emplace_back`
         - `std::vector`**不支持**`push_front`以及`emplace_front`
         - `std::string`**不支持**`push_front`以及`emplace_front`
@@ -1428,6 +1446,22 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - `std::vector`**不支持**`pop_front`
         - `std::string`**不支持**`pop_front`
         - `std::array`**不支持**以上全部
+    ```
+    list<int> lst = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    auto it = lst.begin();
+    
+    while (it != lst.end())
+    {
+        if (*it % 2)                        // if the element is odd
+        {
+            it = lst.erase(it);             // erase this element
+        }  
+        else
+        {
+            ++it;
+        }  
+    }
+    ```
 - `std::foward_list`的特殊操作
     - `lst.before_begin()`，`lst.cbefore_begin()`：返回头哨兵元素的迭代器和`const_iterator`。**不能**解引用
     - `lst.insert_after(p, t)`：在迭代器`p` *之后* 的位置插入`t`。返回指向最后一个插入元素的迭代器
@@ -1441,6 +1475,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     forward_list<int> flst = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     auto prev = flst.before_begin();        // denotes element "off the start" of flst
     auto curr = flst.begin();               // denotes the first element in flst
+    
     while (curr != flst.end())              // while there are still elements to process
     { 
         if (*curr % 2)                      // if the element is odd
@@ -1455,9 +1490,12 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     }
     ```
 - 改变容器大小
-    - 1
-    - 1
-- 容器操作可能使迭代器失效
+    - `c.resize(n)`：调整`c`的大小为`n`个元素，若`n < c.size()`，则多出的元素被**丢弃**。若必须添加新元素，则新元素进行 *值初始化* 
+    - `c.resize(n, t)`：调整`c`的大小为`n`个元素，若`n < c.size()`，则多出的元素被**丢弃**。若必须添加新元素，则新元素值初始化为`t`
+    - 注意事项
+        - 如果`resize()`缩小容器，则指向 *被删除元素* 的 *迭代器* 、 *引用* 和 *指针* **失效**
+        - 对于`resize()`导致存储空间重新分配（对于`std::vector`，`std::string`以及`std::deque`），则 *所有* 指向此容器的 *迭代器* 、 *引用* 和 *指针* **都会失效**
+        - `std::array`**不支持**以上全部
 
 #### 顺序容器内存管理
 
