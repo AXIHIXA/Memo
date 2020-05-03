@@ -1550,7 +1550,12 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `b, e`：迭代器`b`和`e`指定的范围内的字符
             - `{'a', 'b', 'c'...}`：字符组成的初始化列表
 - 字符串搜索
-	- 
+	- `s.find(args)`：查找`args`第一次出现的位置
+	- `s.rfind(args)`：查找`args`最后一次出现的位置
+	- `s.find_first_of(args)`：查找`args`中 *任何一个字符* 第一次出现的位置
+	- `s.find_last_of(args)`：查找`args`中 *任何一个字符* 最后一次出现的位置
+	- `s.find_first_not_of(args)`：查找第一个 *不在* `args`中的字符
+	- `s.find_last_not_of(args)`：查找最后一个 *不在* `args`中的字符
 	- 注意事项
 		- `args`**必须**是以下形式之一
 			- `c, pos`：从`s`中位置`pos`开始查找字符`c`。`pos`默认值为`0`
@@ -1561,15 +1566,23 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 			- 成功，返回`std::string::size_type`（`size_t` aka `unsigned long`），表示匹配发生位置的 *下标* 
 			- 失败，返回`std::string::npos` *静态成员* ，类型也为`std::string::size_type`，初始化为值`-1`
 	```
+	std::string numbers("0123456789"), name("r2d2");
 	std::string::size_type pos = 0;
 	
 	// each iteration finds the next number in name
 	while ((pos = name.find_first_of(numbers, pos)) != std::string::npos) 
 	{
-		std::cout << "found number at index: " << pos << " element is " << name[pos] << std::endl;
+		std::cout << "found number at index: " << pos << ", element is " << name[pos] << std::endl;
 		++pos;  // move to the next character
 	}
 	```
+- 字符串 *字典序* 比较
+	- `s.compare(s2)`：比较`s`和`s2`
+	- `s.compare(pos1, n1, s2)`：比较`s`中`pos1`开始的`n1`个字符和`s2`
+	- `s.compare(pos1, n1, s2, pos2, n2)`：字典序比较`s`中`pos1`开始的`n1`个字符和`s2`中`pos2`开始的`n2`个字符
+	- `s.compare(cp)`：比较`s`和`cp`指向的以`'\0'`结尾的字符数组
+	- `s.compare(pos1, n1, cp)`：比较`s`中`pos1`开始的`n1`个字符和`cp`指向的以`'\0'`结尾的字符数组
+	- `s.compare(pos1, n1, cp, n2)`：比较`s`中`pos1`开始的`n1`个字符和`cp + n2`指向的以`'\0'`结尾的字符数组
 
 #### 容器适配器
 
