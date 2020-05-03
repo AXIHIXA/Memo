@@ -1374,6 +1374,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 - 插入元素
     - `c.push_back(t)`，`c.emplace_back(args)`：在`c`的尾部创建一个值为`t`或由`args`创建的元素。返回`void`
+        - `clang`建议：使用`emplace_back`，**而不是**`push_back`
     - `c.push_front(t)`，`c.emplace_front(args)`：在`c`的头部创建一个值为`t`或由`args`创建的元素。返回`void`
     - `c.insert(p, t)`，`c.emplace(p, args)`：在迭代器`p`指向的元素 *之前* 创建一个值为`t`或由`args`创建的元素。返回指向新添加的元素的迭代器
         - `emplace`函数在容器中直接 *构建* 新元素。传递给`emplace`函数的参数必须与元素类型的构造函数参数相匹配
@@ -1382,15 +1383,17 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         {
             Entry() = default;
             Entry(int _k, std::string _v) : k(_k), v(_v) {}
-            int k;
-            std::string v;
+            int k{0};
+            std::string v{""};
         };
         
         std::vector<Entry> v;
         
         // 以下等价
-        v.insert(v.end(), Entry(1, "str1"));
+        v.push_back(Entry(1, "str1"));
+        v.emplace_back(1, "str1");
         v.emplace(v.end(), 1, "str1");
+        v.insert(v.end(), Entry(1, "str1"));
         ```
     - `c.insert(p, n, t)`：在迭代器`p`指向的元素 *之前* 创建`n`个值为`t`或由`args`创建的元素。返回指向新添加的第一个元素的迭代器
     - `c.insert(p, b, e)`：将迭代器`b`和`e`指定的范围内的元素插入到迭代器`p`指向的元素 *之前* 。`b`和`e`**不能**指向`c`中的元素。返回指向新添加第一个元素的迭代器；若范围为空，则返回`p`
