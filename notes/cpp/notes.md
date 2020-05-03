@@ -1261,7 +1261,7 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
                                           如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
                                           则相等；反之，不相等。
-- 迭代器运算（iterator arithmetic），**只支持**`std::vector`以及`std::string`：
+- 迭代器算术运算（iterator arithmetic）。**不**支持`std::list`以及`std::forward_list`
     - `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
     - `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
     - `iter += n`
@@ -1614,23 +1614,32 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### 容器适配器
 
 - 除顺序容器外，标准库还定义了三个 *顺序容器适配器* ：
-	- `std::stack`
-		- 默认用`std::deque`实现
+	- `std::stack`（位于头文件`<stack>`中）
+		- 默认基于`std::deque`实现
 		```
 		// copies elements from deq into stk
 		std::stack<int> stk(deq);
 		```
-		- 也可以接受除`std::array`与`std::forward_list`以外的任一顺序容器，封装成一个栈
+		- 也可以接受除`std::array`以及`std::forward_list`之外的任一顺序容器，封装成一个栈
 		```
 		// empty stack implemented on top of vector
 		std::stack<std::string, std::vector<std::string>> str_stk;
 		// str_stk2 is implemented on top of vector and initially holds a copy of svec
 		std::stack<std::string, std::vector<std::string>> str_stk2(svec);
 		```
-	- `std::queue`
-		- 默认用`std::deque`实现
-	- `std::priority_queue`
-		- 默认用`std::vector`实现
+		- 特有操作
+			- `s.pop()`：删除栈顶元素，但不返回该元素的值
+			- `s.push(item)`：压栈一个值为`item`的元素
+			- `s.emplace(args)`：压栈一个用`args` *构造* 的元素
+			- `s.pop()`：返回栈顶元素，但不将元素弹出栈
+	- `std::queue`（位于头文件`<queue>`中）
+		- 默认基于`std::deque`实现，也可以接受除`std::array`、`std::forward_list`以及`std::vector`之外的任一顺序容器
+		- 特有操作
+			- `q.pop()`
+			- ``
+	- `std::priority_queue`（位于头文件`<queue>`中）
+		- 默认基于`std::vector`实现，也可以接受`std::deque`
+		- 特有操作
 - *所有* 容器适配器 *都支持* 的操作和类型
 	- `size_type`
 	- `value_type`
