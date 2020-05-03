@@ -63,7 +63,7 @@ int a(1);
 int a = {1};     // 列表初始化。如会损失精度，则CE
 int a{1};        // 列表初始化。如会损失精度，则CE
 
-// e.g.
+// e.g.           
 int a = {3.14};  // 列表初始化。会损失精度，报CE
 int a{3.14};     // 列表初始化。会损失精度，报CE
 
@@ -1507,12 +1507,48 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 #### `std::string`的特殊操作
 
-- 额外的构造方法
-    - `std::string s(cp, n)`：
-    - `std::string s(s2, pos2)`：
-    - `std::string s(s2, pos2, len2)`：
-- `substr`
+- 额外构造方法
+    - `std::string s(cp, n)`：`s`是`cp`指向的字符数组中前`n`个字符的拷贝，此数组应至少包含`n`个字符，且**必须**以`\0`结尾
+    - `std::string s(s2, pos2)`：`s`是`std::string s2`从下标`pos2`开始的字符的拷贝。若`pos2 > s2.size()`，构造函数行为**未定义**
+    - `std::string s(s2, pos2, len2)`：`s`是`std::string s2`从下标`pos2`开始`len2`个字符的拷贝。若`pos2 > s2.size()`，构造函数行为**未定义**。不管`len2`的值是多少，构造函数至多拷贝`s2.size() - len2`个字符
+    ```
+    const char *cp = "Hello World!!!";       // null-terminated array
+    char noNull[] = {'H', 'i'};              // not null terminated
+    std::string s1(cp);                      // copy up to the null in cp; s1 == "Hello World!!!"
+    std::string s2(noNull, 2);               // copy two characters from no_null; s2 == "Hi"
+    std::string s3(noNull);                  // undefined: noNull not null terminated
+    std::string s4(cp + 6, 5);               // copy 5 characters starting at cp[6]; s4 == "World"
+    std::string s5(s1, 6, 5);                // copy 5 characters starting at s1[6]; s5 == "World"
+    std::string s6(s1, 6);                   // copy from s1 [6] to end of s1; s6 == "World!!!"
+    std::string s7(s1, 6, 20);               // ok, copies only to end of s1; s7 == "World!!!"
+    std::string s8(s1, 16);                  // throws an out_of_range exception
+    ```
+- 取子串
+    - `s.substr(pos, n)`：返回一个`std::string`，包含`s`中从`pos`开始 *最多* `n`个字符的拷贝。`pos`的默认值是`0`。`n`的默认值是`s.size() - pos`，即拷贝从`pos`开始的全部内容。如果`pos > s.size()`，则抛出`out_of_range`异常；如果`pos + n > s.size()`，则`substr()`会调整数值为`s.size()`
+    ```
+    std::string s("hello world");
+    std::string s2 = s.substr(0, 5);         // s2 = hello
+    std::string s3 = s.substr(6);            // s3 = world
+    std::string s4 = s.substr(6, 11);        // s3 = world
+    std::string s5 = s.substr(12);           // throws an out_of_range exception
+    ```
 - 额外修改方法
+    - `s.insert(idx, args)`：在下标`idx` *之前* 插入`args`指定的字符。返回一个指向`s`的引用
+    - `s.insert(iter, args)`：在迭代器`iter`指向位置 *之前* 插入`args`指定的字符。返回指向第一个字符的迭代器
+    - `s.erase(pos, len)`：删除从位置`pos`开始的`len`个字符。如果`len`被省略，则一路删到`s`末尾。返回一个指向`s`的引用
+    - `s.assign(args)`：将`s`中的字符替换为`args`指定的字符。返回一个指向`s`的引用
+    - `s.append(args)`：将`args`追加到`s`。返回一个指向`s`的引用
+    - `s.replace(idx, len, args)`：把`s`中从下标`idx`开始的`len`个字符替换为`args`指定的字符。返回一个指向`s`的引用
+    - `s.replace(b, e, args)`：把`s`中迭代器`b`和`e`指定的范围内的字符替换为`args`指定的字符。返回一个指向`s`的引用
+    - 注意事项
+        - `args` *可能可以* 是以下选项之一，具体那个函数不能用谁还是指望`IDE`的语法提示罢
+            - `str`：`std::string`，不能与`s`相同 
+            - `str, pos, len`：`str`从下标`pos`开始 *最多* `len`个字符的拷贝
+            - `cp`：指向以`\0`结尾的字符数组
+            - `cp, len`：`cp`的 *最多* 前`len`个字符
+            - `n, c`：`n`个字符`c`
+            - `b, e`：迭代器`b`和`e`指定的范围内的字符
+            - `{'a', 'b', 'c'...}`：字符组成的初始化列表
 - 
 
 #### 容器适配器
