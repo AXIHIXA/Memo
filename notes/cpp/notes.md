@@ -1166,10 +1166,11 @@ Entry e = {0, "Anna"};
 
 - 顺序容器类型
     - `std::vector`：可变大小数组。支持快速随机访问。在尾部之外的位置插入删除元素可能很慢
+    - `std::string`：与`std::vector`相似，专门用于保存字符。随机访问快。在尾部插入删除速度快
     - `std::deque`：双端队列。支持快速随机访问。在头尾插入删除元素很快
     - `std::list`：双向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
     - `std::foward_list`：单向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
-    - `std::array`：固定大小数组。支持快速随机访问。**不能**添加删除元素。**支持拷贝赋值**（内置数组不行）
+    - `std::array`： *固定大小* 数组。支持快速随机访问。**不能**添加删除元素。**支持拷贝赋值**（内置数组不行）
     ```
     std::array<int, 10> ia1; // ten default-initialized ints
     std::array<int, 10> ia2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};     // list initialization
@@ -1180,7 +1181,6 @@ Entry e = {0, "Anna"};
     std::array<int, 10> digits = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::array<int, 10> copy = digits;                            // ok: so long as array types match
     ```
-    - `std::string`：与`std::vector`相似，专门用于保存字符。随机访问快。在尾部插入删除速度快
 - 除`std::array`外，其他容器均提供高效灵活的内存管理
 - 除`std::foward_list`没有`size()`操作（为了达到与手写的单向链表一样的效率）外，其余容器均为常数复杂度
 - 顺序容器构造函数的一个版本接受容器大小参数，它使用了元素类型的**默认**构造函数
@@ -1204,28 +1204,28 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `reference`：元素的左值引用类型，等价于`value_type &`
     - `const_reference`：元素的常引用类型，等价于`const value_type &`
 - 构造函数
-    - `C c;`：默认构造函数，构造空容器
-    - `C c1(c2);`：拷贝构造，将`c2`中所有元素拷贝到`c1`
-    - `C c(b, e);`：构造`c`，将迭代器`b`和`e`指定的范围内的元素拷贝到`c`。**不支持**`std::array`
+    - `C c`：默认构造函数，构造空容器
+    - `C c1(c2)`：拷贝构造，将`c2`中所有元素拷贝到`c1`
+    - `C c(b, e)`：构造`c`，将迭代器`b`和`e`指定的范围内的元素拷贝到`c`。**不支持**`std::array`
         - 将容器初始化为另一容器的拷贝时，两个容器的容器类型和元素类型都必须相同
         - 如果用迭代器指定范围，则仅元素类型相同即可
-    - `C c{a, b, c...};`或`C c = {a, b, c...};`：列表初始化
+    - `C c{a, b, c...}`或`C c = {a, b, c...};`：列表初始化
     - 大小相关构造函数
         - 只有顺序容器才接受大小参数； *关联容器* **不支持**
 - 赋值与`swap`
-    - `c1 = c2;`：将`c1`中的元素全部替换为`c2`中的元素
-    - `c1 = {a, b, c...};`：将`c1`中的元素替换为列表中的元素。**不支持**`std::array`
-    - `a.swap(b);`：交换`a`与`b`中的元素
-    - `std::swap(a, b);`：交换`a`与`b`中的元素
+    - `c1 = c2`：将`c1`中的元素全部替换为`c2`中的元素
+    - `c1 = {a, b, c...}`：将`c1`中的元素替换为列表中的元素。**不支持**`std::array`
+    - `a.swap(b)`：交换`a`与`b`中的元素
+    - `std::swap(a, b)`：交换`a`与`b`中的元素
 - 大小
-    - `c.size();`：`c`中元素的数目。常数复杂度。**不支持**`std::foward_list`
-    - `c.max_size();`：`c`可保存的最大元素数目
-    - `c.empty();`：若`c`中存储了元素，返回`false`，否则返回`true`
+    - `c.size()`：`c`中元素的数目。常数复杂度。**不支持**`std::foward_list`
+    - `c.max_size()`：`c`可保存的最大元素数目
+    - `c.empty()`：若`c`中存储了元素，返回`false`，否则返回`true`
 - 添加删除元素（**不支持**`std::array`）
-    - `c.insert(args);`：将`args`中的元素拷贝进`c`
-    - `c.emplace(init);`：使用`inits`构造`c`中的一个元素
-    - `c.erase(args);`：删除`args`指定的元素
-    - `c.clear();`：删除`c`中所有元素，返回`void`
+    - `c.insert(args)`：将`args`中的元素拷贝进`c`
+    - `c.emplace(init)`：使用`inits`构造`c`中的一个元素
+    - `c.erase(args)`：删除`args`指定的元素
+    - `c.clear()`：删除`c`中所有元素，返回`void`
 - 关系运算符
     - `==`，`!=`：所有容器都支持相等和不等运算符
     - `<`，`<=`，`>`，`>=`：关系运算符。**不支持**无序关联容器
@@ -1275,15 +1275,15 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
 
 #### 容器定义和初始化
 
-- `C c;`：默认构造函数。如果`C`是一个`std::array`，则`c`中元素按默认方式初始化；否则`c`为空
-- `C c1(c2);`，`C c1 = c2;`：`c1`初始化为`c2`的拷贝。
+- `C c`：默认构造函数。如果`C`是一个`std::array`，则`c`中元素按默认方式初始化；否则`c`为空
+- `C c1(c2)`，`C c1 = c2`：`c1`初始化为`c2`的拷贝。
                              `c1`和`c2`必须是**相同类型**
                              （即：相同的容器类型和元素类型，对于`std::array`还有相同大小）
-- `C c{a, b, c...};`，`C c = {a, b, c...};`：`c`初始化为初始化列表中元素的拷贝。
+- `C c{a, b, c...}`，`C c = {a, b, c...}`：`c`初始化为初始化列表中元素的拷贝。
                                              列表中元素类型必须与`C`兼容。
                                              对于`std::array`，列表中元素数目不大于`array`大小，
                                              遗漏元素一律 *值初始化* 
-- `C c(b, e);`：`c`初始化为迭代器`b`和`e`指定范围中的元素的拷贝。
+- `C c(b, e)`：`c`初始化为迭代器`b`和`e`指定范围中的元素的拷贝。
                 范围中元素的类型必须与`C`兼容（`std::array`**不适用**）
 ```
 // each container has three elements, initialized from the given initializers
@@ -1302,8 +1302,8 @@ std::list<std::string>::iterator it = authors.end();
 std::deque<std::string> authList(authors.begin(), it);
 ```                   
 只有 *顺序容器* （**不包括**`std::array`）的构造函数才能接受大小参数
-- `C seq(n);`：`seq`包含`n`个元素，这些元素进行了 *值初始化* 。此构造函数是`explicit`的。**不适用**于`std::string`
-- `C seq(n, t);`：`seq`包含`n`个初始化为值`t`的元素
+- `C seq(n)`：`seq`包含`n`个元素，这些元素进行了 *值初始化* 。此构造函数是`explicit`的。**不适用**于`std::string`
+- `C seq(n, t)`：`seq`包含`n`个初始化为值`t`的元素
 ```
 std::vector<int> ivec(10, -1);      // 10 int elements, each initialized to -1
 list<std::string> svec(10, "hi!");  // 10 strings; each element is "hi!"
@@ -1314,8 +1314,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### 赋值和`swap`
 
 - 以下赋值运算符可用于所有容器
-    - `c1 = c2;`：将`c1`中的元素替换为`c2`中元素的拷贝。`c1`和`c2`必须具有相同的类型
-    - `c = {a, b, c...};`：将`c1`中元素替换为初始化列表中元素的拷贝（`std::array`**不适用**）
+    - `c1 = c2`：将`c1`中的元素替换为`c2`中元素的拷贝。`c1`和`c2`必须具有相同的类型
+    - `c = {a, b, c...}`：将`c1`中元素替换为初始化列表中元素的拷贝（`std::array`**不适用**）
     ```
     std::array<int, 10> a1 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::array<int, 10> a2 = {0};                             // OK: elements all have value 0
@@ -1341,8 +1341,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     names = oldstyle;                                  // error: container types don't match
     names.assign(oldstyle.cbegin(), oldstyle.cend());  // ok: can convert from const char * to string
     ```
-    - `seq.assign({a, b, c...});`：将`seq`中的元素替换为初始化列表中的元素
-    - `seq.assign(n, t);`：将`seq`中的元素替换为`n`个值为`t`的元素
+    - `seq.assign({a, b, c...})`：将`seq`中的元素替换为初始化列表中的元素
+    - `seq.assign(n, t)`：将`seq`中的元素替换为`n`个值为`t`的元素
     ```
     // equivalent to: slist1.clear(); 
     //                slist1.insert(slist1.begin(), 10, "Hiya!");
@@ -1373,13 +1373,18 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### 顺序容器操作
 
 - 插入元素
-    - `std::forward_list` **不支持** `push_back`以及`emplace_back`
-        - `insert`=> 9.3.4
-        - `emplace`
-        - 
-    - `std::vector`**不支持**`push_front`以及`emplace_front`
-    - `std::string`**不支持**`push_front`以及`emplace_front`
-    - `std::array`**不支持**以上全部
+    - `c.push_back(t)`，`c.emplace_back(args)`：在`c`的尾部创建一个值为`t`或由`args`创建的元素。返回`void`
+    - `c.push_front(t)`，`c.emplace_front(args)`：在`c`的头部创建一个值为`t`或由`args`创建的元素。返回`void`
+    - `c.insert(p, t)`，`c.emplace(p, args)`：在迭代器`p`指向的元素之前创建一个值为`t`或由`args`创建的元素。返回指向新添加的元素的迭代器
+    - `c.insert(p, n, t)`：在迭代器`p`指向的元素之前创建`n`个值为`t`或由`args`创建的元素。返回指向新添加的第一个元素的迭代器
+    - `c.insert(p, b, e)`：将迭代器`b`和`e`指定的范围内的元素插入到迭代器`p`指向的元素之前。`b`和`e`**不能**指向`c`中的元素。返回指向新添加第一个元素的迭代器；若范围为空，则返回`p`
+    - `c.insert(p, {a, b, c...})`：将列表`{a, b, c...}`中的 *元素* 插入到迭代器`p`指向的元素之前。返回指向新添加的第一个元素的迭代器；若列表为空，返回`p`
+    - 注意事项
+        - 向`std::vector`、`std::string`或`std::deque`插入元素会使 *所有* 指向该容器的 *迭代器* 、 *引用* 和 *指针* **失效**
+        - `std::forward_list`有自己专属版本的`insert`和`emplace`，**不支持**`push_back`以及`emplace_back`
+        - `std::vector`**不支持**`push_front`以及`emplace_front`
+        - `std::string`**不支持**`push_front`以及`emplace_front`
+        - `std::array`**不支持**以上全部
 - 访问元素
     - 1
     - 2
