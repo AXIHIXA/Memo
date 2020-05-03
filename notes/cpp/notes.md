@@ -1435,8 +1435,25 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `lst.insert_after(p, b, e)`：在迭代器`p` *之后* 的位置插入迭代器`b`和`e`所指定范围之间的元素。`b`和`e`**不能**指向`lst`内。如果范围为空，则返回`p`。如果`p`是尾后迭代器，则函数行为**未定义**
     - `lst.insert_after(p, {a, b, c...})`：在迭代器`p` *之后* 的位置插入列表`{a, b, c...}`中的 *元素*
     - `lst.emplace_after(p, args)`：使用`args`在`p`指定位置 *之后* *创建* 一个元素。返回指向这个新元素的迭代器。如果`p`是尾后迭代器，则函数行为**未定义**
-    - `lst.erase_after(p)`：删除迭代器`p`指向位置之后的元素
+    - `lst.erase_after(p)`：删除迭代器`p`指向位置之后的 *一个* 元素
     - `lst.erase_after(b, e)`：删除迭代器`b`和`e`所指定范围之间（不包括`e`）的元素。返回指向被删元素下一个元素的迭代器。如果`p`指向尾元素或者是一个尾后迭代器，则函数行为**未定义**
+    ```
+    forward_list<int> flst = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    auto prev = flst.before_begin();        // denotes element "off the start" of flst
+    auto curr = flst.begin();               // denotes the first element in flst
+    while (curr != flst.end())              // while there are still elements to process
+    { 
+        if (*curr % 2)                      // if the element is odd
+        {
+            curr = flst.erase_after(prev);  // erase it and move curr
+        }
+        else 
+        {
+            prev = curr;                    // move the iterators to denote the next
+            ++curr;                         // element and one before the next element
+        }
+    }
+    ```
 - 改变容器大小
     - 1
     - 1
