@@ -163,34 +163,3 @@ sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 ## 🌱 `MongoDB`
 
 [Installation | MongoDB Community Edition](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/)
-
-## 🌱 Some Alienware Key Shortcut
-
-```
-Fn + F6 : disables / enables WIN key
-```
-
-## 🌱 Windows Fallback Font
-
-```
-WIN + R regedit
-Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontLink\SystemLink
-New -> MultiString Value
-
-JetBrains Mono Bold
-JetBrains Mono Bold Italic
-JetBrains Mono ExtraBold
-JetBrains Mono ExtraBold Italic
-=>
-MSYHBD.TTC,Microsoft YaHei UI Bold,128,96
-MSYHBD.TTC,Microsoft YaHei UI Bold
-
-JetBrains Mono
-JetBrains Mono Italic
-JetBrains Mono Medium
-JetBrains Mono Medium Italic
-JetBrains Mono Regular
-=>
-MSYH.TTC,Microsoft YaHei UI,128,96
-MSYH.TTC,Microsoft YaHei UI
-```

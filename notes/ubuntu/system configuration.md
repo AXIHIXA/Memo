@@ -91,3 +91,9 @@ StartupWMClass=jetbrains-pycharm
 ## ex****** passport
 
 For people getting the white screen error, go to Library > History > Show All History, right click on ex******, and Forget About This Site
+
+## 🌱 Some Alienware Key Shortcut
+
+```
+Fn + F6 : disables / enables WIN key
+```

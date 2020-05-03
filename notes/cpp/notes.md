@@ -1524,13 +1524,13 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     std::string s8(s1, 16);                  // throws an out_of_range exception
     ```
 - 取子串
-    - `s.substr(pos, n)`：返回一个`std::string`，包含`s`中从`pos`开始 *最多* `n`个字符的拷贝。`pos`的默认值是`0`。`n`的默认值是`s.size() - pos`，即拷贝从`pos`开始的全部内容。如果`pos > s.size()`，则抛出`out_of_range`异常；如果`pos + n > s.size()`，则`substr()`会调整数值为`s.size()`
+    - `s.substr(idx, n)`：返回一个`std::string`，包含`s`中从下标`idx`开始 *最多* `n`个字符的拷贝。`idx`的默认值是`0`。`n`的默认值是`s.size() - idx`，即拷贝从`idx`开始的全部内容。如果`idx > s.size()`，则抛出`out_of_range`异常；如果`idx + n > s.size()`，则`substr()`会调整数值为`s.size()`
     ```
     std::string s("hello world");
     std::string s2 = s.substr(0, 5);         // s2 = hello
     std::string s3 = s.substr(6);            // s3 = world
     std::string s4 = s.substr(6, 11);        // s3 = world
-    std::string s5 = s.substr(12);           // throws an out_of_range exception
+    std::string s5 = s.substr(12);           // RE: out_of_range exception
     ```
 - 额外修改方法
     - `s.insert(idx, args)`：在下标`idx` *之前* 插入`args`指定的字符。返回一个指向`s`的引用
@@ -1549,7 +1549,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `n, c`：`n`个字符`c`
             - `b, e`：迭代器`b`和`e`指定的范围内的字符
             - `{'a', 'b', 'c'...}`：字符组成的初始化列表
-- 
+- 字符串搜索
+    - 搜索函数返回`std::string::size_type`
 
 #### 容器适配器
 
