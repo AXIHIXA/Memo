@@ -1198,8 +1198,8 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `const_iterator`：可以读取元素，但不能修改元素的迭代器类型
     - `reverse_iterator`：按逆序寻址元素的迭代器，**不支持**`std::foward_list`
     - `const_reverse_iterator`：不能修改的逆序迭代器，**不支持**`std::foward_list`
-    - `size_type`：无符号整数类型（`size_t`，aka `unsigned long`），足够保存此种容器类型最大可能容器的大小
-    - `difference_type`：带符号整数类型（`ptrdiff_t`，aka `long`），足够保存两个该容器类型的迭代器之间的距离
+    - `size_type`：`size_t` aka `unsigned long`，足够保存此种容器类型最大可能容器的大小
+    - `difference_type`：`ptrdiff_t` aka `long`，足够保存两个该容器类型的 *迭代器之间* 的距离
     - `value_type`：元素类型
     - `reference`：元素的左值引用类型，等价于`value_type &`
     - `const_reference`：元素的常引用类型，等价于`const value_type &`
@@ -1508,7 +1508,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### `std::string`的特殊操作
 
 - 额外构造方法
-    - `std::string s(cp, n)`：`s`是`cp`指向的字符数组中前`n`个字符的拷贝，此数组应至少包含`n`个字符，且**必须**以`\0`结尾
+    - `std::string s(cp, n)`：`s`是`cp`指向的字符数组中前`n`个字符的拷贝，此数组应至少包含`n`个字符，且**必须**以`'\0'`结尾
     - `std::string s(s2, pos2)`：`s`是`std::string s2`从下标`pos2`开始的字符的拷贝。若`pos2 > s2.size()`，构造函数行为**未定义**
     - `std::string s(s2, pos2, len2)`：`s`是`std::string s2`从下标`pos2`开始`len2`个字符的拷贝。若`pos2 > s2.size()`，构造函数行为**未定义**。不管`len2`的值是多少，构造函数至多拷贝`s2.size() - len2`个字符
     ```
@@ -1535,7 +1535,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 - 额外修改方法
     - `s.insert(idx, args)`：在下标`idx` *之前* 插入`args`指定的字符。返回一个指向`s`的引用
     - `s.insert(iter, args)`：在迭代器`iter`指向位置 *之前* 插入`args`指定的字符。返回指向第一个字符的迭代器
-    - `s.erase(pos, len)`：删除从位置`pos`开始的`len`个字符。如果`len`被省略，则一路删到`s`末尾。返回一个指向`s`的引用
+    - `s.erase(idx, len)`：删除从下标`idx`开始的`len`个字符。如果`len`被省略，则一路删到`s`末尾。返回一个指向`s`的引用
     - `s.assign(args)`：将`s`中的字符替换为`args`指定的字符。返回一个指向`s`的引用
     - `s.append(args)`：将`args`追加到`s`。返回一个指向`s`的引用
     - `s.replace(idx, len, args)`：把`s`中从下标`idx`开始的`len`个字符替换为`args`指定的字符。返回一个指向`s`的引用
@@ -1544,13 +1544,32 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - `args` *可能可以* 是以下选项之一，具体那个函数不能用谁还是指望`IDE`的语法提示罢
             - `str`：`std::string`，不能与`s`相同 
             - `str, pos, len`：`str`从下标`pos`开始 *最多* `len`个字符的拷贝
-            - `cp`：指向以`\0`结尾的字符数组
+            - `cp`：指向以`'\0'`结尾的字符数组
             - `cp, len`：`cp`的 *最多* 前`len`个字符
             - `n, c`：`n`个字符`c`
             - `b, e`：迭代器`b`和`e`指定的范围内的字符
             - `{'a', 'b', 'c'...}`：字符组成的初始化列表
 - 字符串搜索
-    - 搜索函数返回`std::string::size_type`
+	- 
+	- 注意事项
+		- `args`**必须**是以下形式之一
+			- `c, pos`：从`s`中位置`pos`开始查找字符`c`。`pos`默认值为`0`
+			- `s2, pos`：从`s`中位置`pos`开始查找字符串`s2`。`pos`默认值为`0`
+			- `cp, pos`：从`s`中位置`pos`开始查找字符指针`cp`指向的以`'\0'`结尾的字符数组。`pos`默认值为`0`
+			- `cp, pos, n`：从`s`中位置`pos`开始查找字符指针`cp`指向的以`'\0'`结尾的字符数组的前`n`个字符。`pos`和`n`**没有默认值**
+		- 搜索函数返回值
+			- 成功，返回`std::string::size_type`（`size_t` aka `unsigned long`），表示匹配发生位置的 *下标* 
+			- 失败，返回`std::string::npos` *静态成员* ，类型也为`std::string::size_type`，初始化为值`-1`
+	```
+	std::string::size_type pos = 0;
+	
+	// each iteration finds the next number in name
+	while ((pos = name.find_first_of(numbers, pos)) != std::string::npos) 
+	{
+		std::cout << "found number at index: " << pos << " element is " << name[pos] << std::endl;
+		++pos;  // move to the next character
+	}
+	```
 
 #### 容器适配器
 
