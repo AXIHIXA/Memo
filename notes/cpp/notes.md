@@ -42,7 +42,7 @@
     - 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则
     - 非`constexpr`静态成员只能在**类外**初始化；在类外部定义静态成员时，**不能**重复`static`关键字
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
-	- 迭代器算术运算（iterator arithmatic）**不**支持`std::list`、`std::forward_list`，因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
+    - 迭代器算术运算（iterator arithmatic）**不**支持`std::list`、`std::forward_list`，因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向
@@ -1270,9 +1270,9 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
                        即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
     - `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
                             如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者
-	- 注意事项
-		- **不**支持`std::list`、`std::forward_list`
-		- 因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
+    - 注意事项
+        - **不**支持`std::list`、`std::forward_list`
+        - 因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
 - 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
     - 它们或指向同一容器中的元素，或指向同一容器的尾后
     - `begin <= end`，即：`end`不在`begin`之前
@@ -1554,120 +1554,120 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `b, e`：迭代器`b`和`e`指定的范围内的字符
             - `{'a', 'b', 'c'...}`：字符组成的初始化列表
 - 字符串搜索
-	- `s.find(args)`：查找`args`第一次出现的位置
-	- `s.rfind(args)`：查找`args`最后一次出现的位置
-	- `s.find_first_of(args)`：查找`args`中 *任何一个字符* 第一次出现的位置
-	- `s.find_last_of(args)`：查找`args`中 *任何一个字符* 最后一次出现的位置
-	- `s.find_first_not_of(args)`：查找第一个 *不在* `args`中的字符
-	- `s.find_last_not_of(args)`：查找最后一个 *不在* `args`中的字符
-	- 注意事项
-		- `args`**必须**是以下形式之一
-			- `c, pos`：从`s`中位置`pos`开始查找字符`c`。`pos`默认值为`0`
-			- `s2, pos`：从`s`中位置`pos`开始查找字符串`s2`。`pos`默认值为`0`
-			- `cp, pos`：从`s`中位置`pos`开始查找字符指针`cp`指向的以`'\0'`结尾的字符数组。`pos`默认值为`0`
-			- `cp, pos, n`：从`s`中位置`pos`开始查找字符指针`cp`指向的以`'\0'`结尾的字符数组的前`n`个字符。`pos`和`n`**没有默认值**
-		- 搜索函数返回值
-			- 成功，返回`std::string::size_type`（`size_t` aka `unsigned long`），表示匹配发生位置的 *下标* 
-			- 失败，返回`std::string::npos` *静态成员* ，类型也为`std::string::size_type`，初始化为值`-1`
-	```
-	std::string numbers("0123456789"), name("r2d2");
-	std::string::size_type pos = 0;
-	
-	// each iteration finds the next number in name
-	while ((pos = name.find_first_of(numbers, pos)) != std::string::npos) 
-	{
-		std::cout << "found number at index: " << pos << ", element is " << name[pos] << std::endl;
-		++pos;  // move to the next character
-	}
-	```
+    - `s.find(args)`：查找`args`第一次出现的位置
+    - `s.rfind(args)`：查找`args`最后一次出现的位置
+    - `s.find_first_of(args)`：查找`args`中 *任何一个字符* 第一次出现的位置
+    - `s.find_last_of(args)`：查找`args`中 *任何一个字符* 最后一次出现的位置
+    - `s.find_first_not_of(args)`：查找第一个 *不在* `args`中的字符
+    - `s.find_last_not_of(args)`：查找最后一个 *不在* `args`中的字符
+    - 注意事项
+        - `args`**必须**是以下形式之一
+            - `c, pos`：从`s`中位置`pos`开始查找字符`c`。`pos`默认值为`0`
+            - `s2, pos`：从`s`中位置`pos`开始查找字符串`s2`。`pos`默认值为`0`
+            - `cp, pos`：从`s`中位置`pos`开始查找字符指针`cp`指向的以`'\0'`结尾的字符数组。`pos`默认值为`0`
+            - `cp, pos, n`：从`s`中位置`pos`开始查找字符指针`cp`指向的以`'\0'`结尾的字符数组的前`n`个字符。`pos`和`n`**没有默认值**
+        - 搜索函数返回值
+            - 成功，返回`std::string::size_type`（`size_t` aka `unsigned long`），表示匹配发生位置的 *下标* 
+            - 失败，返回`std::string::npos` *静态成员* ，类型也为`std::string::size_type`，初始化为值`-1`
+    ```
+    std::string numbers("0123456789"), name("r2d2");
+    std::string::size_type pos = 0;
+    
+    // each iteration finds the next number in name
+    while ((pos = name.find_first_of(numbers, pos)) != std::string::npos) 
+    {
+        std::cout << "found number at index: " << pos << ", element is " << name[pos] << std::endl;
+        ++pos;  // move to the next character
+    }
+    ```
 - 字符串 *字典序* 比较
-	- `s.compare(s2)`：比较`s`和`s2`
-	- `s.compare(pos1, n1, s2)`：比较`s`中`pos1`开始的`n1`个字符和`s2`
-	- `s.compare(pos1, n1, s2, pos2, n2)`：比较`s`中`pos1`开始的`n1`个字符和`s2`中`pos2`开始的`n2`个字符
-	- `s.compare(cp)`：比较`s`和`cp`指向的以`'\0'`结尾的字符数组
-	- `s.compare(pos1, n1, cp)`：比较`s`中`pos1`开始的`n1`个字符和`cp`指向的以`'\0'`结尾的字符数组
-	- `s.compare(pos1, n1, cp, n2)`：比较`s`中`pos1`开始的`n1`个字符和`cp + n2`指向的以`'\0'`结尾的字符数组
+    - `s.compare(s2)`：比较`s`和`s2`
+    - `s.compare(pos1, n1, s2)`：比较`s`中`pos1`开始的`n1`个字符和`s2`
+    - `s.compare(pos1, n1, s2, pos2, n2)`：比较`s`中`pos1`开始的`n1`个字符和`s2`中`pos2`开始的`n2`个字符
+    - `s.compare(cp)`：比较`s`和`cp`指向的以`'\0'`结尾的字符数组
+    - `s.compare(pos1, n1, cp)`：比较`s`中`pos1`开始的`n1`个字符和`cp`指向的以`'\0'`结尾的字符数组
+    - `s.compare(pos1, n1, cp, n2)`：比较`s`中`pos1`开始的`n1`个字符和`cp + n2`指向的以`'\0'`结尾的字符数组
 - 数值转换
-	- `std::to_string(val)`
-	- `std::stoi(s, p, b)`
-	- `std::stol(s, p, b)`
-	- `std::stoul(s, p, b)`
-	- `std::stoll(s, p, b)`
-	- `std::stoull(s, p, b)`
-	- `std::stof(s, p)`
-	- `std::stod(s, p)`
-	- `std::stold(s, p)`
-	- 注意事项
-		- `s`是`std::string`，第一个非空白字符必须是以下内容之一
-			- 正负号（`+`，`-`）
-			- 数字（`[0-9]`）
-			- 十六进制符号（`0x`，`0X`）
-			- 小数点（`.`）
-		- `s`的其他字符字符还可以有
-			- 指数符号（`e`，`E`）
-			- 字母字符（对应该进制中大于`9`的数字）
-		- `p`是 *输出参数* ，类型为`size_t *`，用来保存`s`中第一个非数值字符的下标。默认值为`0`，即：函数不保存下标
-		- `b`为基数，默认`10`
-		- 如果`std::string s`参数不能转换成数值，则抛出`invalid_argument`异常；如果转换得到的数值溢出，则抛出`out_of_range`异常
-	```
-	size_t idx;
+    - `std::to_string(val)`
+    - `std::stoi(s, p, b)`
+    - `std::stol(s, p, b)`
+    - `std::stoul(s, p, b)`
+    - `std::stoll(s, p, b)`
+    - `std::stoull(s, p, b)`
+    - `std::stof(s, p)`
+    - `std::stod(s, p)`
+    - `std::stold(s, p)`
+    - 注意事项
+        - `s`是`std::string`，第一个非空白字符必须是以下内容之一
+            - 正负号（`+`，`-`）
+            - 数字（`[0-9]`）
+            - 十六进制符号（`0x`，`0X`）
+            - 小数点（`.`）
+        - `s`的其他字符字符还可以有
+            - 指数符号（`e`，`E`）
+            - 字母字符（对应该进制中大于`9`的数字）
+        - `p`是 *输出参数* ，类型为`size_t *`，用来保存`s`中第一个非数值字符的下标。默认值为`0`，即：函数不保存下标
+        - `b`为基数，默认`10`
+        - 如果`std::string s`参数不能转换成数值，则抛出`invalid_argument`异常；如果转换得到的数值溢出，则抛出`out_of_range`异常
+    ```
+    size_t idx;
     double res = std::stod("+3.14159pi", &idx);
     printf("%lf %zu\n", res, idx);               // 3.141590 8
-	```
-	
+    ```
+    
 #### 容器适配器
 
 - 除顺序容器外，标准库还定义了三个 *顺序容器适配器* ：
-	- `std::stack`（位于头文件`<stack>`中）
-		- 默认基于`std::deque`实现
-		```
-		// copies elements from deq into stk
-		std::stack<int> stk(deq);
-		```
-		- 也可以接受除`std::array`以及`std::forward_list`之外的任一顺序容器，封装成一个栈
-		```
-		// empty stack implemented on top of vector
-		std::stack<std::string, std::vector<std::string>> str_stk;
-		// str_stk2 is implemented on top of vector and initially holds a copy of svec
-		std::stack<std::string, std::vector<std::string>> str_stk2(svec);
-		```
-		- 特有操作
-			- `s.pop()`：弹出栈顶元素，但不返回该元素的值
-			- `s.push(item)`：压栈一个值为`item`的元素
-			- `s.emplace(args)`：压栈一个用`args` *构造* 的元素
-			- `s.top()`：返回栈顶元素，但不将其弹出
-	- `std::queue`（位于头文件`<queue>`中）
-		- 默认基于`std::deque`实现，也可以接受除`std::array`、`std::forward_list`以及`std::vector`之外的任一顺序容器
-		- 默认 *先入先出* （`FIFO`），队尾入队，队首出队
-		- 特有操作
-			- `q.pop()`：弹出首元素，但不返回该元素的值
-			- `q.front()`：返回首元素，但不将其弹出
-			- `q.back()`：返回尾元素，但不将其弹出
-			- `q.push(item)`：入队（在队列末尾）一个值为`item`的元素
-			- `q.emplace(args)`：入队（在队列末尾）一个用`args` *构造* 的元素
-	- `std::priority_queue`（位于头文件`<queue>`中）
-		- 默认基于`std::vector`实现，也可以接受`std::deque`
-		- 标准库的实现写死了，是 *小顶堆* 。即：若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
-			- 重载`<`运算符 => 11.2.2
-			- 插入相反数
-		- 特有操作
-			- `q.pop()`：弹出最高优先级元素，但不返回该元素的值
-			- `q.top()`：返回最高优先级元素，但不将其弹出
-			- `q.push(item)`：（在适当位置）插入一个值为`item`的元素
-			- `q.emplace(args)`：（在适当位置）插入一个用`args` *构造* 的元素
+    - `std::stack`（位于头文件`<stack>`中）
+        - 默认基于`std::deque`实现
+        ```
+        // copies elements from deq into stk
+        std::stack<int> stk(deq);
+        ```
+        - 也可以接受除`std::array`以及`std::forward_list`之外的任一顺序容器，封装成一个栈
+        ```
+        // empty stack implemented on top of vector
+        std::stack<std::string, std::vector<std::string>> str_stk;
+        // str_stk2 is implemented on top of vector and initially holds a copy of svec
+        std::stack<std::string, std::vector<std::string>> str_stk2(svec);
+        ```
+        - 特有操作
+            - `s.pop()`：弹出栈顶元素，但不返回该元素的值
+            - `s.push(item)`：压栈一个值为`item`的元素
+            - `s.emplace(args)`：压栈一个用`args` *构造* 的元素
+            - `s.top()`：返回栈顶元素，但不将其弹出
+    - `std::queue`（位于头文件`<queue>`中）
+        - 默认基于`std::deque`实现，也可以接受除`std::array`、`std::forward_list`以及`std::vector`之外的任一顺序容器
+        - 默认 *先入先出* （`FIFO`），队尾入队，队首出队
+        - 特有操作
+            - `q.pop()`：弹出首元素，但不返回该元素的值
+            - `q.front()`：返回首元素，但不将其弹出
+            - `q.back()`：返回尾元素，但不将其弹出
+            - `q.push(item)`：入队（在队列末尾）一个值为`item`的元素
+            - `q.emplace(args)`：入队（在队列末尾）一个用`args` *构造* 的元素
+    - `std::priority_queue`（位于头文件`<queue>`中）
+        - 默认基于`std::vector`实现，也可以接受`std::deque`
+        - 标准库的实现写死了，是 *小顶堆* 。即：若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
+            - 重载`<`运算符 => 11.2.2
+            - 插入相反数
+        - 特有操作
+            - `q.pop()`：弹出最高优先级元素，但不返回该元素的值
+            - `q.top()`：返回最高优先级元素，但不将其弹出
+            - `q.push(item)`：（在适当位置）插入一个值为`item`的元素
+            - `q.emplace(args)`：（在适当位置）插入一个用`args` *构造* 的元素
 - *所有* 容器适配器 *都支持* 的操作和类型
-	- `size_type`
-	- `value_type`
-	- `container_type`：实现此适配器的底层容器的类型
-	- `A a`
-	- `A a(c)`
-	- *关系运算符* ：`==`，`!=`，`<`，`<=`，`>`，`>=`
-	- `a.empty()`
-	- `a.size()`
-	- `std::swap(a, b)`，`a.swap(b)`
-	
-	
-	
+    - `size_type`
+    - `value_type`
+    - `container_type`：实现此适配器的底层容器的类型
+    - `A a`
+    - `A a(c)`
+    - *关系运算符* ：`==`，`!=`，`<`，`<=`，`>`，`>=`
+    - `a.empty()`
+    - `a.size()`
+    - `std::swap(a, b)`，`a.swap(b)`
+    
+    
+    
 ### 🌱 泛型算法
 
 大部分泛型算法定义于头文件`<algorithm>`中。
