@@ -1648,7 +1648,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 	- `std::priority_queue`（位于头文件`<queue>`中）
 		- 默认基于`std::vector`实现，也可以接受`std::deque`
 		- 默认是 *小顶堆* ，即若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
-			- 重载`<`运算符
+			- 重载`<`运算符 => 11.2.2
 			- 插入相反数
 		- 特有操作
 			- `q.pop()`：弹出最高优先级元素，但不返回该元素的值
