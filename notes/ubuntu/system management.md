@@ -197,10 +197,10 @@ ${HADOOP_HOME}/sbin/start-all.sh
 ${HADOOP_HOME}/sbin/stop-all.sh
 ```
 - 测试`hdfs`，不报错：
+    - 或者浏览器中打开`http://localhost:9870`，这个是`hadoop`状态页。
 ```
 hdfs dfs -ls /
 ```
-    - 或者浏览器中打开`http://localhost:9870`，这个是`hadoop`状态页。
     
 ## 🌱 `spark`
 
