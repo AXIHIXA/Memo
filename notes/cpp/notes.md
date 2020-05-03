@@ -420,7 +420,7 @@ default:
             - `domain_error`：逻辑错误，参数对应的结果值不存在
             - `invalid_argument`：逻辑错误，无效参数
             - `length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
-            - `out_of_range`：逻辑错误，使用了一个超出有效范围的值（例：下标越界）
+            - `out_of_range`：逻辑错误，使用了一个超出有效范围的值
     - `new`：`bad_alloc`异常类 => 12.1.2
     - `type_info`：`bad_cast`异常类 => 19.2
 - `excpetion`，`bad_alloc`和`bad_cast`只能默认初始化，不能传参；其余异常必须传参（`C`风格字符串）
@@ -1579,11 +1579,38 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 - 字符串 *字典序* 比较
 	- `s.compare(s2)`：比较`s`和`s2`
 	- `s.compare(pos1, n1, s2)`：比较`s`中`pos1`开始的`n1`个字符和`s2`
-	- `s.compare(pos1, n1, s2, pos2, n2)`：字典序比较`s`中`pos1`开始的`n1`个字符和`s2`中`pos2`开始的`n2`个字符
+	- `s.compare(pos1, n1, s2, pos2, n2)`：比较`s`中`pos1`开始的`n1`个字符和`s2`中`pos2`开始的`n2`个字符
 	- `s.compare(cp)`：比较`s`和`cp`指向的以`'\0'`结尾的字符数组
 	- `s.compare(pos1, n1, cp)`：比较`s`中`pos1`开始的`n1`个字符和`cp`指向的以`'\0'`结尾的字符数组
 	- `s.compare(pos1, n1, cp, n2)`：比较`s`中`pos1`开始的`n1`个字符和`cp + n2`指向的以`'\0'`结尾的字符数组
-
+- 数值转换
+	- `std::to_string(val)`
+	- `std::stoi(s, p, b)`
+	- `std::stol(s, p, b)`
+	- `std::stoul(s, p, b)`
+	- `std::stoll(s, p, b)`
+	- `std::stoull(s, p, b)`
+	- `std::stof(s, p)`
+	- `std::stod(s, p)
+	- `std::stold(s, p)`
+	- 注意事项
+		- `s`是`std::string`，第一个非空白字符必须是以下内容之一
+			- 正负号（`+`，`-`）
+			- 数字（`[0-9]`）
+			- 十六进制符号（`0x`，`0X`）
+			- 小数点（`.`）
+		- `s`的其他字符字符还可以有
+			- 指数符号（`e`，`E`）
+			- 字母字符（对应该进制中大于`9`的数字）
+		- `p`是 *输出参数* ，类型为`size_t *`，用来保存`s`中第一个非数值字符的下标。默认值为`0`，即：函数不保存下标
+		- `b`为基数，默认`10`
+		- 如果`std::string s`参数不能转换成数值，则抛出`invalid_argument`异常；如果转换得到的数值溢出，则抛出`out_of_range`异常
+	```
+	size_t idx;
+    double res = std::stod("+3.14159pi", &idx);
+    printf("%lf %zu\n", res, idx);              // 3.141590 8
+	```
+	
 #### 容器适配器
 
 
