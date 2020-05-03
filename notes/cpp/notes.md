@@ -688,7 +688,7 @@ useBigger(s1, s2, pf);
 ### 🌱 `I/O`库
 
 - Chap 8
-- 这章挺没意思的，不看了
+- 这章挺没意思的，全篇在讲`<iostream>`，还是`C`风格`I/O`用着舒服
 
 ### 🌱 类（基础感念）
 
@@ -805,7 +805,7 @@ item.combine(std::cin);                                  // 错误，对应构�
     - 接受一个单参数`const char *`的`std::string`构造函数 *不是* `explicit`的
     - 接受容量参数的`std::vector`构造函数**是**`explicit`的
 
-#### Further Topics on Constructors
+#### 其他构造函数
 
 - 13
 - 15.7
@@ -1690,27 +1690,20 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### 定制操作
 
 - 向算法传递函数
-
 - `lambda`表达式
-
 - `lambda`捕获和返回
-
 - 参数绑定
 
 #### 再探迭代器
 
 - 插入迭代器
-
 - `iostream`迭代器
-
 - 反向迭代器
 
 #### 泛型算法结构
 
 - 类迭代器
-
 - 算法形参模式
-
 - 算法命名规范
 
 #### 特定容器算法
