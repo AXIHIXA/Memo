@@ -1392,7 +1392,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         // 以下等价
         v.push_back(Entry(1, "str1"));
         v.emplace_back(1, "str1");
+        v.emplace_back(Entry(1, "str1"));
         v.emplace(v.end(), 1, "str1");
+        v.emplace(v.end(), Entry(1, "str1"));
         v.insert(v.end(), Entry(1, "str1"));
         ```
     - `c.insert(p, n, t)`：在迭代器`p`指向的元素 *之前* 创建`n`个值为`t`或由`args`创建的元素。返回指向新添加的第一个元素的迭代器
