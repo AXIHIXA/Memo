@@ -1375,10 +1375,26 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 - 插入元素
     - `c.push_back(t)`，`c.emplace_back(args)`：在`c`的尾部创建一个值为`t`或由`args`创建的元素。返回`void`
     - `c.push_front(t)`，`c.emplace_front(args)`：在`c`的头部创建一个值为`t`或由`args`创建的元素。返回`void`
-    - `c.insert(p, t)`，`c.emplace(p, args)`：在迭代器`p`指向的元素之前创建一个值为`t`或由`args`创建的元素。返回指向新添加的元素的迭代器
-    - `c.insert(p, n, t)`：在迭代器`p`指向的元素之前创建`n`个值为`t`或由`args`创建的元素。返回指向新添加的第一个元素的迭代器
-    - `c.insert(p, b, e)`：将迭代器`b`和`e`指定的范围内的元素插入到迭代器`p`指向的元素之前。`b`和`e`**不能**指向`c`中的元素。返回指向新添加第一个元素的迭代器；若范围为空，则返回`p`
-    - `c.insert(p, {a, b, c...})`：将列表`{a, b, c...}`中的 *元素* 插入到迭代器`p`指向的元素之前。返回指向新添加的第一个元素的迭代器；若列表为空，返回`p`
+    - `c.insert(p, t)`，`c.emplace(p, args)`：在迭代器`p`指向的元素 *之前* 创建一个值为`t`或由`args`创建的元素。返回指向新添加的元素的迭代器
+        - `emplace`函数在容器中直接 *构建* 新元素。传递给`emplace`函数的参数必须与元素类型的构造函数参数相匹配
+        ```
+        struct Entry 
+        {
+            Entry() = default;
+            Entry(int _k, std::string _v) : k(_k), v(_v) {}
+            int k;
+            std::string v;
+        };
+        
+        std::vector<Entry> v;
+        
+        // 以下等价
+        v.insert(v.end(), Entry(1, "str1"));
+        v.emplace(v.end(), 1, "str1");
+        ```
+    - `c.insert(p, n, t)`：在迭代器`p`指向的元素 *之前* 创建`n`个值为`t`或由`args`创建的元素。返回指向新添加的第一个元素的迭代器
+    - `c.insert(p, b, e)`：将迭代器`b`和`e`指定的范围内的元素插入到迭代器`p`指向的元素 *之前* 。`b`和`e`**不能**指向`c`中的元素。返回指向新添加第一个元素的迭代器；若范围为空，则返回`p`
+    - `c.insert(p, {a, b, c...})`：将列表`{a, b, c...}`中的 *元素* 插入到迭代器`p`指向的元素 *之前* 。返回指向新添加的第一个元素的迭代器；若列表为空，返回`p`
     - 注意事项
         - 向`std::vector`、`std::string`或`std::deque`插入元素会使 *所有* 指向该容器的 *迭代器* 、 *引用* 和 *指针* **失效**
         - `std::forward_list`有自己专属版本的`insert`和`emplace`，**不支持**`push_back`以及`emplace_back`
