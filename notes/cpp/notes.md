@@ -1686,7 +1686,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - 函数对象（重载了调用运算符的类的实例） => 14.8
             - `lambda`表达式 => 10.3.2
 - 只读算法
-    - `template<typename _InputIterator, typename _Tp> inline _InputIterator find(_InputIterator __first, _InputIterator __last, const _Tp& __val)`
+    - `template<typename _InputIterator, typename _Tp> <br> inline _InputIterator find(_InputIterator __first, _InputIterator __last, const _Tp& __val)`
         - 返回指向第一个等于给定值的常迭代器，否则返回`e`表示失败
         ```
         std::vector<int> vec{0, 1, 2, 3...};
