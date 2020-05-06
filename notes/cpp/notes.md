@@ -1686,7 +1686,23 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - 函数对象（重载了调用运算符的类的实例） => 14.8
             - `lambda`表达式 => 10.3.2
 - 只读算法
-    - `template<typename _InputIterator, typename _Tp> <br> inline _InputIterator find(_InputIterator __first, _InputIterator __last, const _Tp& __val)`
+    - `std::find()`
+        - 原型
+        ```
+          /**
+           *  @brief Find the first occurrence of a value in a sequence.
+           *  @ingroup non_mutating_algorithms
+           *  @param  __first  An input iterator.
+           *  @param  __last   An input iterator.
+           *  @param  __val    The value to find.
+           *  @return   The first iterator @c i in the range @p [__first,__last)
+           *  such that @c *i == @p __val, or @p __last if no such iterator exists.
+          */
+          template<typename _InputIterator, typename _Tp>
+            inline _InputIterator
+            find(_InputIterator __first, _InputIterator __last,
+             const _Tp& __val)
+        ```
         - 返回指向第一个等于给定值的常迭代器，否则返回`e`表示失败
         ```
         std::vector<int> vec{0, 1, 2, 3...};
