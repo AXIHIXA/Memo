@@ -24,7 +24,8 @@
     - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）
     - 不需要写访问时，应当使用`const_iterator`
     - 改变容器 *大小* 之后，则 *所有* 指向此容器的迭代器、引用和指针都 *可能* 失效，所以一律更新一波才是 *坠吼的* 。此外，永远**不要缓存**尾后迭代器（这玩意常年变来变去），现用现制，用后即弃
-    - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`；
+    - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`
+    - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
 - 一些小知识
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
     - 指针解引用的结果是其指向对象的**左值**引用
@@ -300,7 +301,7 @@ sizeof expr   // 返回表达式结果类型大小
         const int & c3 = b;                                      // 正确
         ```
     - 只能用于更改`const`属性，不能更改类型
-    - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为；但如果对象本身是常量，则结果未定义
+    - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为；但如果对象本身是常量，则结果**未定义**
     ```
     const char * pc;
     char * p = const_cast<char *>(pc);                           // 正确，但通过p写值是未定义的行为
@@ -570,7 +571,7 @@ std::vector<std::string> process()
 ```
 - 返回数组指针的若干骚操作
     - 正常写：`int (*fun(int i))[10];`
-    - 使用尾置返回值：`auto fun(int i) -> int (*)[10];`
+    - 使用 *尾置返回值* ：`auto fun(int i) -> int (*)[10];`
     - 使用`decltype`：在已知要返回的是谁的情况下
     ```
     int odd[] = {1, 3, 5, 7, 9};
@@ -708,7 +709,7 @@ useBigger(s1, s2, pf);
     - 如果类中包含其他类类型成员，且它没有默认构造函数，则这个类**不能**生成默认构造函数
     - 13.1.6
 - 如果类内包含内置类型或复合类型的变量，则只有当这些成员全部被赋予了类内初始值时，这个类才适合于使用默认构造函数
-    - 注意：类成员变量从属于内部作用域，默认初始化是未定义的，不能指望！
+    - 注意：类成员变量从属于内部作用域，默认初始化是**未定义**的，不能指望！
 - 作用：当对象被 *默认初始化* 或者 *值初始化* 时，执行默认构造函数
     - *默认初始化* 在以下情况下发生
         - 当我们不使用初始值，定义一个 *局部非静态变量或数组* 时
@@ -1685,7 +1686,11 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - 函数指针
             - 函数对象（重载了调用运算符的类的实例） => 14.8
             - `lambda`表达式 => 10.3.2
-- 只读算法
+    - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
+- 公认假设
+    - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定第二个序列至少与第一个序列一样长
+    - 向目的位置迭代器写数据的算法都假定目的位置足够大，能容纳要写入的元素
+- 只读算法 *举例*
     - `std::find()`
         - 原型
         ```
@@ -1693,7 +1698,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         inline _InputIterator
         find(_InputIterator __first, 
              _InputIterator __last,
-             const _Tp& __val);
+             const _Tp &    __val);
         ```
         - 返回：第一个在区间`[__first, __last)`之内的值为`__val`的迭代器，入不存在则返回`__last`
         ```
@@ -1714,11 +1719,101 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
         template<typename _IIter, typename _Tp>
         typename iterator_traits<_IIter>::difference_type
-        count(_IIter __first,
-              _IIter __last, 
-              const _Tp& __val);
+        count(_IIter      __first,
+              _IIter      __last, 
+              const _Tp & __val);
         ```
         - 返回：`ptrdiff_t` aka `long int`，区间`[__first, __last)`之内等于`__val`的值的个数
+    - `std::accumlate()`
+        - 原型
+        ```
+        template<typename _InputIterator, typename _Tp>
+        inline _Tp
+        accumulate(_InputIterator __first, 
+                   _InputIterator __last, 
+                   _Tp            __init)；
+        ```
+        - 返回：区间`[__first, __last)`之内所有元素以及`__init`的 *总和* 
+    - `std::equal()`
+        - 原型
+        ```
+        template<typename _IIter1, typename _IIter2>
+        bool
+        equal(_IIter1 __first, 
+              _IIter1 __last, 
+              _IIter2 __dest);
+        ```
+        - 返回：如果序列1中所有元素都与序列2中对应位置元素相等，则返回`true`，反之返回`false`
+- 写算法 *举例*
+    - `std::fill()`
+        - 原型
+        ```
+        template<typename _FIter, typename _Tp>
+        void
+        fill(_FIter      __first, 
+             _FIter      __last, 
+             const _Tp & __val);
+        ```
+        - 将区间`[__first, __last)`之内所有元素都赋值为`__val` 
+        ```
+        std::fill(vec.begin(), vec.end(), 0));
+        std::fill(vec.begin(), vec.begin() + vec.size() / 2, 0));
+        ```
+    - `std::fill_n()`
+        - 原型
+        ```
+        template<typename _OIter, typename _Size, typename _Tp>
+        _OIter
+        fill_n(_OIter      __dest, 
+               _Size       __sz, 
+               const _Tp & __val);
+        ```
+        - 将区间`[__dest, __dest + __sz)`之内所有元素都赋值为`__val` 
+            - `std::fill_n()`**不**检查写区间`[__dest, __dest + __sz)`是否合法，这是程序员的责任
+            - 在 *空容器* 上调用`std::fill_n()`或其它写算法是**未定义行为**
+- `std::back_inserter()`
+    - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
+    - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
+    ```
+    std::vector<int> vec;                                     // empty vector
+    std::vector<int>::iterator it = std::back_inserter(vec);
+    *it = 42;                                                 // equal to: vec.push_back(42);
+    ```
+    - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
+    ```
+    std::vector<int> vec;                                     // empty vector
+    std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
+    ```
+- 拷贝算法
+    - `std::copy()`
+        - 原型
+        ```
+        template<typename _IIter, typename _OIter>
+        _OIter
+        copy(_IIter __first,
+             _IIter __last,
+             _OIter __dest);
+        ```
+        - 将区间`[__first, __last)`之内所有元素拷贝至以`__dest`开始的一片内存中，返回拷贝生成的序列的尾后迭代器
+            - 需保证写`__dest`开始的这一片内存是合法行为
+        ```
+        int a1[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}; 
+        int a2[sizeof(a1) / sizeof(*a1)]; 
+        int * res = std::copy(std::begin(a1), std::end(a1), a2); 
+        ```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #### 定制操作
 
