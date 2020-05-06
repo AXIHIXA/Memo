@@ -45,6 +45,8 @@
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
     - 迭代器算术运算（iterator arithmatic）**不**支持`std::list`、`std::forward_list`，因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
+    - `std::unique()`只负责将 *连续的* 相同元素除第一个移动至末尾，因此使用前**应该**先调用`std::sort()`，之后再调用容器的`erase()`方法
+        - 标准库算法对迭代器而不是容器进行操作，因此，**标准库算法不能（直接）添加或删除元素**
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向
       括号内分析完就跳出括号，还是按先右后左的顺序，如此循环，直到整个声明分析完
@@ -149,7 +151,7 @@ const int & a = pi;      // ok
 int tmp = pi;
 const int & a = tmp;
 
-// 如果不是常量引用，改的就不`pi而是临时量tmp，容易造成人祸，因`C++直接规定非常量引用不能绑定给临时量。
+// 如果不是常量引用，改的就不是pi而是临时量tmp，容易造成人祸，因`C++直接规定非常量引用不能绑定给临时量。
 ```
 - *常量指针* （指针指向常量）和 *指针常量* （指针本身是常量）不一样
 ```
@@ -1727,23 +1729,36 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::accumlate()`
         - 原型
         ```
-        template <typename _InputIterator, typename _Tp>
+        template <typename _InputIterator, typename _Tp, typename _BinaryOperation>
         inline _Tp
-        accumulate(_InputIterator __first, 
-                   _InputIterator __last, 
-                   _Tp            __init)；
+        accumulate(_InputIterator   __first, 
+                   _InputIterator   __last, 
+                   _Tp              __init, 
+                   _BinaryOperation __binary_op)；
         ```
-        - 返回：区间`[__first, __last)`之内所有元素以及`__init`的 *总和* 
+        - 返回：区间`[__first, __last)`之内所有元素以及`__init`的 *基于* `__binary_op` 的 *总和* 
+            - 实际操作 *示例* 
+            ```
+            for (; __first != __last; ++__first)
+            {
+                __init = __binary_op(__init, *__first);
+            }
+            
+            return __init;
+            ```
     - `std::equal()`
         - 原型
         ```
-        template <typename _IIter1, typename _IIter2>
+        template <typename _IIter1, typename _IIter2, typename _BinaryPredicate>
         bool
-        equal(_IIter1 __first, 
-              _IIter1 __last, 
-              _IIter2 __dest);
+        equal(_IIter1          __first, 
+              _IIter1          __last, 
+              _IIter2          __dest, 
+              _BinaryPredicate __bin_pred);
         ```
-        - 返回：如果序列1中所有元素都与序列2中对应位置元素相等，则返回`true`，反之返回`false`
+        - `__bin_pred`：`bool (*__bin_pred)(const Type1 & a, const Type2 & b)`，如果`a == b`则返回`true`
+            - *常引用* **不是强制**要求，但此谓词不能改变`a`和`b`
+        - 返回：如果 *序列1* 中所有元素都与 *序列2* 中对应位置元素 *相等* ，则返回`true`，反之返回`false`
 - 写算法 *举例*
     - `std::fill()`
         - 原型
@@ -1752,9 +1767,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         void
         fill(_FIter      __first, 
              _FIter      __last, 
-             const _Tp & __val);
+             const _Tp & __value);
         ```
-        - 将区间`[__first, __last)`之内所有元素都赋值为`__val` 
+        - 将区间`[__first, __last)`之内所有元素都赋值为`__value` 
         ```
         std::fill(vec.begin(), vec.end(), 0));
         std::fill(vec.begin(), vec.begin() + vec.size() / 2, 0));
@@ -1831,12 +1846,43 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
         std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
         ```        
-
-
-
-
-
-
+- 重排容器元素算法
+    - `std::sort()`
+        - 原型
+        ```
+        template <typename _RAIter, typename _Compare>
+        void
+        sort(_RAIter  __first, 
+             _RAIter  __last, 
+             _Compare __comp);
+        ```
+        - `__comp`: `bool (*__comp)(const Type1 & a, const Type2 & b)`，当`a < b`时返回`true`
+            - *常引用* **不是强制**要求，但此谓词不能改变`a`和`b`
+        - 排序修改`[__first, __last)`
+    - `std::unique()`
+        - 原型
+        ```
+        template <typename _FIter, typename _BinaryPredicate>
+        _FIter
+        unique(_FIter           __first, 
+               _FIter           __last, 
+               _BinaryPredicate __bin_pred);
+        ```
+        - `__bin_pred`：`bool (*__bin_pred)(const Type1 & a, const Type2 & b)`，如果`a == b`则返回`true`
+            - *常引用* **不是强制**要求，但此谓词不能改变`a`和`b`
+        - 对`[__first, __last)`中每一组 **连续的** 相同的值，只保留第一个，其余的全部 **移动至末尾**。返回不重复值范围区间的尾后迭代器
+            - 只是移动，**并没有删除重复元素**
+                - 标准库算法对迭代器而不是容器进行操作，因此，**标准库算法不能（直接）添加或删除元素**
+            - 使用之前**必须**提前调用`std::sort()`，向量去重示例：
+            ```
+            void eliminateDuplicates(std::vector<int> & vec)
+            {
+                std::sort(vec.begin(), vec.end());
+                std::vector<int>::iterator dup_begin = std::unique(vec.begin(), vec.end());
+                vec.erase(dup_begin, vec.end());
+            }
+            ```
+            
 
 
 
