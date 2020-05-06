@@ -1694,7 +1694,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::find()`
         - 原型
         ```
-        template<typename _InputIterator, typename _Tp>
+        template <typename _InputIterator, typename _Tp>
         inline _InputIterator
         find(_InputIterator __first, 
              _InputIterator __last,
@@ -1717,7 +1717,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::count()`
         - 原型
         ```
-        template<typename _IIter, typename _Tp>
+        template <typename _IIter, typename _Tp>
         typename iterator_traits<_IIter>::difference_type
         count(_IIter      __first,
               _IIter      __last, 
@@ -1727,7 +1727,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::accumlate()`
         - 原型
         ```
-        template<typename _InputIterator, typename _Tp>
+        template <typename _InputIterator, typename _Tp>
         inline _Tp
         accumulate(_InputIterator __first, 
                    _InputIterator __last, 
@@ -1737,7 +1737,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::equal()`
         - 原型
         ```
-        template<typename _IIter1, typename _IIter2>
+        template <typename _IIter1, typename _IIter2>
         bool
         equal(_IIter1 __first, 
               _IIter1 __last, 
@@ -1748,7 +1748,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::fill()`
         - 原型
         ```
-        template<typename _FIter, typename _Tp>
+        template <typename _FIter, typename _Tp>
         void
         fill(_FIter      __first, 
              _FIter      __last, 
@@ -1762,7 +1762,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::fill_n()`
         - 原型
         ```
-        template<typename _OIter, typename _Size, typename _Tp>
+        template <typename _OIter, typename _Size, typename _Tp>
         _OIter
         fill_n(_OIter      __dest, 
                _Size       __sz, 
@@ -1788,7 +1788,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::copy()`
         - 原型
         ```
-        template<typename _IIter, typename _OIter>
+        template <typename _IIter, typename _OIter>
         _OIter
         copy(_IIter __first,
              _IIter __last,
@@ -1801,8 +1801,36 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         int a2[sizeof(a1) / sizeof(*a1)]; 
         int * res = std::copy(std::begin(a1), std::end(a1), a2); 
         ```
-
-
+    - `std::replace()`
+        - 原型
+        ```
+        template <typename _FIter, typename _Tp>
+        void
+        replace(_FIter      __first, 
+                _FIter      __last, 
+                const _Tp & __old_value, 
+                const _Tp & __new_value);
+        ```
+        - 将区间`[__first, __last)`之内所有值为`__old_value`元素修改为`__new_value`
+        ```
+        std::replace(lst.begin(), lst.end(), 0, 42);
+        ```
+    - `std::replace_copy()`
+        - 原型
+        ```
+        template <typename _IIter, typename _OIter, typename _Tp>
+        _OIter
+        replace_copy(_IIter      __first, 
+                     _IIter      __last, 
+                     _OIter      __dest, 
+                     const _Tp & __old_value, 
+                     const _Tp & __new_value);
+        ```
+        - 在`__dest`开始的一片内存中生成区间`[__first, __last)`的副本，且其中所有值为`__old_value`元素都被修改为`__new_value`
+        ```
+        // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
+        std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
+        ```        
 
 
 
