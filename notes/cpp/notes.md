@@ -1199,7 +1199,7 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `reverse_iterator`：按逆序寻址元素的迭代器，**不支持**`std::foward_list`
     - `const_reverse_iterator`：不能修改的逆序迭代器，**不支持**`std::foward_list`
     - `size_type`：`size_t` aka `unsigned long`，足够保存此种容器类型最大可能容器的大小
-    - `difference_type`：`ptrdiff_t` aka `long`，足够保存两个该容器类型的 *迭代器之间* 的距离
+    - `difference_type`：`ptrdiff_t` aka `long int`，足够保存两个该容器类型的 *迭代器之间* 的距离
     - `value_type`：元素类型
     - `reference`：元素的左值引用类型，等价于`value_type &`
     - `const_reference`：元素的常引用类型，等价于`const value_type &`
@@ -1687,7 +1687,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `lambda`表达式 => 10.3.2
 - 只读算法
     - `std::find()`
-        - Prototype
+        - 原型
         ```
         template<typename _InputIterator, typename _Tp>
         inline _InputIterator
@@ -1695,7 +1695,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
              _InputIterator __last,
              const _Tp& __val);
         ```
-        - Return: 1st iterator `it` in `[__first, __last)` s.t. `*it == __val`, or `__last` if no such iterator exists.
+        - 返回：第一个在区间`[__first, __last)`之内的值为`__val`的迭代器，入不存在则返回`__last`
         ```
         std::vector<int> vec{0, 1, 2, 3, 4, 5, 6...};
         int val = 3;
@@ -1706,16 +1706,19 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
         int arr[]{0, 1, 2, 3, 4, 5, 6...};
         int val = 3;
-        int * res = std::find(std::begin(arr), std::end(arr), val);
-        int * res2 = std::find(arr + 1, arr + 4, val);
+        int * res_1 = std::find(std::begin(arr), std::end(arr), val);
+        int * res_2 = std::find(arr + 1, arr + 4, val);
         ```
     - `std::count()`
-        - Prototype
+        - 原型
         ```
         template<typename _IIter, typename _Tp>
         typename iterator_traits<_IIter>::difference_type
-        count(_IIter, _IIter, const _Tp&);
+        count(_IIter __first,
+              _IIter __last, 
+              const _Tp& __val);
         ```
+        - 返回：`ptrdiff_t` aka `long int`，区间`[__first, __last)`之内等于`__val`的值的个数
 
 #### 定制操作
 
