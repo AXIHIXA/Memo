@@ -1677,7 +1677,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 大部分泛型算法定义于头文件`<algorithm>`中
     - 标准库还在头文件`<numeric>`中定义了一组数值泛型算法
 - 原则
-    - 泛型算法永远不会执行特定容器的操作，只会运行于 *迭代器* 之上
+    - 泛型算法永远不会直接操作容器（执行特定容器的操作），只会运行于 *迭代器* 之上
     - 但仍旧依赖于元素类型的操作
         - 大多数算法提供接口，允许我们用 *可调用对象* 代替默认的运算符
         - *可调用对象* 包括
@@ -1685,6 +1685,22 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - 函数指针
             - 函数对象（重载了调用运算符的类的实例） => 14.8
             - `lambda`表达式 => 10.3.2
+- 只读算法
+    - `template<typename _InputIterator, typename _Tp> inline _InputIterator find(_InputIterator __first, _InputIterator __last, const _Tp& __val)`
+        - 返回指向第一个等于给定值的常迭代器，否则返回`e`表示失败
+        ```
+        std::vector<int> vec{0, 1, 2, 3...};
+        int val = 3;
+        std::vector<int>::const_iterator res = std::find(vec.cbegin(), vec.cend(), val);
+        std::cout << "The value " << val << (res == vec.cend()) ? " is NOT present" ： “ is present” << std::endl;
+        ```
+        - 指针就是一种迭代器，因此`std::find()`可用于内置数组
+        ```
+        int arr[] = {0, 1, 2, 3...};
+        int val = 3;
+        int * res = std::find(std::begin(arr), std::end(arr), val);
+        ```
+    - `std::count()`
 
 #### 定制操作
 
