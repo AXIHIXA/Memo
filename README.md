@@ -10,7 +10,7 @@
 
     - [System Installation](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/01-system-installation.md)
     - [System Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/02-system-configuration.md)
-    - [Environment Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/03-environmen-configuration.md)
+    - [Environment Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/03-environment-configuration.md)
     - [System Management](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/04-system-management.md)
 
 ### 🌱 Sample Code
