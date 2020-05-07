@@ -50,10 +50,22 @@ sudo gedit /etc/fstab
 .host:/    /media/ax/DATAIN    fuse.vmhgfs-fuse    defaults,allow_other,uid=1000     0    0
 ```
 
-## Disable `apt.daily.*`
+## Disable `apt-daily-update`
 
 ```
 Show Applications => Updates => Automatically check for updates: Never
+
+sudo systemctl disable apt-daily.service
+sudo systemctl disable apt-daily.timer
+sudo systemctl disable apt-daily-upgrade.service
+sudo systemctl disable apt-daily-upgrade.timer
+
+sudo gedit /etc/apt/apt.conf.d/20auto-updates
+
+APT::Periodic::Update-Package-Lists "0";
+APT::Periodic::Download-Upgradeable-Packages "0";
+APT::Periodic::AutocleanInterval "0";
+APT::Periodic::Unattended-Upgrade "0";
 ```
 
 ## Application Entry
