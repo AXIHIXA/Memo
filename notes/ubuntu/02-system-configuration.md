@@ -60,7 +60,7 @@ sudo systemctl disable apt-daily.timer
 sudo systemctl disable apt-daily-upgrade.service
 sudo systemctl disable apt-daily-upgrade.timer
 
-sudo gedit /etc/apt/apt.conf.d/20auto-updates
+sudo gedit /etc/apt/apt.conf.d/20auto-upgrades
 
 APT::Periodic::Update-Package-Lists "0";
 APT::Periodic::Download-Upgradeable-Packages "0";
