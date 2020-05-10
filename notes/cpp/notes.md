@@ -287,8 +287,10 @@ sizeof expr   // 返回表达式结果类型大小
 
 - `static_cast<T>(expr)`
     - 用于任何具有明确定义的不包含底层`const`的强制类型转换。结果的值和被转换对象的值可能不同。例如
-        - `double`强转`int`（有精度损失）
-        - `void *`强转`Type *`（这一条其实也可以用`reinterpret_cast`，因为`void *`强转`Type *`的语义就是强行按照`Type *`解释那块内存）
+        - `double`强转`int`
+            - 即强制截取整数部分，有精度损失
+        - `void *`强转`Type *`
+            - 其实这一条其实也可以用`reinterpret_cast`，因为`void *`强转`Type *`的语义就是强行按照`Type *`解释那块内存
 - `dynamic_cast<T>(expr)`
     - 支持运行时的类型识别 => 19.2
 - `const_cast<T>(expr)`
@@ -1809,7 +1811,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
             - 在 *空容器* 上调用`std::fill_n()`或其它写算法是**未定义行为**
         - 返回：迭代器`first + count`
-- `std::back_inserter()`
+- `std::back_inserter`
     - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
     - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
     ```
@@ -1837,20 +1839,20 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - **不能**复制序列中的元素
     - 返回：形参`f`的拷贝，经过迭代之后返回之
         - `f`不是引用类型，因此传入的`f`**不会**被修改
-        - 想要获得经历过迭代的`f`，则只能依靠返回值。例如下面代码
-        ```
-        struct Sum
-        {
-            void operator()(int n) { sum += n; }
-            int sum{0};
-        };
-         
-        std::vector<int> nums{3, 4, 2, 8, 15, 267};
-        std::for_each(nums.begin(), nums.end(), [](int &n){ n++; });  // nums chamges to: 4 5 3 9 16 268
-        Sum tmp;
-        Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum == 0 !!!
-                                                                      // sum.sum == 305
-        ```
+        - 想要获得经历过迭代的`f`，则 *只能依靠返回值* 。例如下面代码
+    ```
+    struct Sum
+    {
+        void operator()(int n) { sum += n; }
+        int sum{0};
+    };
+     
+    std::vector<int> nums{3, 4, 2, 8, 15, 267};
+    std::for_each(nums.begin(), nums.end(), [](int &n){ n++; });  // nums chamges to: 4 5 3 9 16 268
+    Sum tmp;
+    Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum == 0 !!!
+                                                                  // sum.sum == 305
+    ```
 - 拷贝算法
     - `std::copy()`
         - 原型
