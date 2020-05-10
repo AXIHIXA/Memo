@@ -1703,7 +1703,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 向目的位置迭代器写数据的算法都假定目的位置足够大，能容纳要写入的元素
 - 只读算法 *举例*
     - `std::find()`
-        - 原型
         ```
         template <class InputIt, class T>
         InputIt 
@@ -1741,7 +1740,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         int * res_2 = std::find(arr + 1, arr + 4, val);
         ```
     - `std::count()`
-        - 原型
         ```
         template <class InputIt, class T>
         typename iterator_traits<InputIt>::difference_type
@@ -1751,7 +1749,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
         - 返回：`ptrdiff_t` aka `long int`，区间`[first, last)`之内等于`value`的值的个数
     - `std::accumlate()`
-        - 原型
         ```
         template <class InputIt, class T, class BinaryOperation>
         T 
@@ -1771,7 +1768,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             return init;
             ```
     - `std::equal()`
-        - 原型
         ```
         template <class InputIt1, class InputIt2, class BinaryPredicate>
         bool 
@@ -1793,7 +1789,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `equal_if`：`p(*iter1, *iter2) == true` 
 - 写算法 *举例*
     - `std::fill()`
-        - 原型
         ```
         template <class ForwardIt, class T>
         void 
@@ -1807,7 +1802,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         std::fill(vec.begin(), vec.begin() + vec.size() / 2, 0));
         ```
     - `std::fill_n()`
-        - 原型
         ```
         template <class OutputIt, class Size, class T>
         OutputIt 
@@ -1863,7 +1857,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
 - 拷贝算法 *举例*
     - `std::copy()`
-        - 原型
         ```
         template <class InputIt, class OutputIt>
         OutputIt 
@@ -1888,7 +1881,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         int * res = std::copy(std::begin(a1), std::end(a1), a2); 
         ```
     - `std::replace()`
-        - 原型
         ```
         template <class ForwardIt, class T>
         void 
@@ -1911,7 +1903,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         std::replace(lst.begin(), lst.end(), 0, 42);
         ```
     - `std::replace_copy()`
-        - 原型
         ```
         template <class InputIt, class OutputIt, class T>
         OutputIt 
@@ -1938,7 +1929,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```        
 - 排序算法 *举例*
     - `std::sort()`
-        - 原型
         ```
         template <class RandomIt>
         void 
@@ -1958,7 +1948,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
     - `std::unique()`
-        - 原型
         ```
         template <class ForwardIt>
         ForwardIt 
