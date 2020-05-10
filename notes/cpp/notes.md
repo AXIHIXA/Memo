@@ -1822,6 +1822,35 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     std::vector<int> vec;                                     // empty vector
     std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
     ```
+- `for_each`算法
+    - 原型
+    ```
+    template <class InputIt, class UnaryFunction>
+    UnaryFunction 
+    for_each(InputIt first, 
+             InputIt last, 
+             UnaryFunction f);
+    ```
+    - 依次对区间`[first, last)`内每个元素调用`f(*iter)`
+        - 如果`InputIt`不是常迭代器，则`f`可以修改元素。
+        - `f`如有返回值，则直接被丢弃
+        - **不能**复制序列中的元素
+    - 返回：形参`f`的拷贝，经过迭代之后返回之
+        - `f`不是引用类型，因此传入的`f`**不会**被修改
+        - 想要获得经历过迭代的`f`，则只能依靠返回值。例如下面代码
+        ```
+        struct Sum
+        {
+            void operator()(int n) { sum += n; }
+            int sum{0};
+        };
+         
+        std::vector<int> nums{3, 4, 2, 8, 15, 267};
+        std::for_each(nums.begin(), nums.end(), [](int &n){ n++; });  // nums chamges to: 4 5 3 9 16 268
+        Sum tmp;
+        Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum == 0 !!!
+                                                                      // sum.sum == 305
+        ```
 - 拷贝算法
     - `std::copy()`
         - 原型
@@ -1946,24 +1975,23 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             std::vector<int>::iterator dup_begin = std::unique(vec.begin(), vec.end());
             vec.erase(dup_begin, vec.end());
         }
-        ```
+        ```   
 
-#### 定制操作
+#### 谓词
 
-- 向算法传递函数
-    - *谓词* （predicate）
-        - 谓词是可调用的表达式，返回结果为`bool`。包括
-            - 函数头
-            - 函数指针
-            - 函数对象（重载了调用运算符的类的实例） => 14.8
-            - `lambda`表达式 => 10.3.2
-        - 标准库算法使用以下两类谓词
-            - *一元谓词* （unary predicate）
-                - 接受单一参数（迭代器指向元素类型的常引用）
-                - 返回`bool`（或能转化为`bool`的类型）
-            - *二元谓词* （binary predicate）
-                - 接受两个参数（均为迭代器指向元素类型的常引用）
-                - 返回`bool`（或能转化为`bool`的类型）
+- *谓词* （predicate）
+    - 谓词是可调用的表达式，返回结果为`bool`。包括
+        - 函数头
+        - 函数指针
+        - 函数对象（重载了调用运算符的类的实例） => 14.8
+        - `lambda`表达式 => 10.3.2
+    - 标准库算法使用以下两类谓词
+        - *一元谓词* （unary predicate）
+            - 接受单一参数（迭代器指向元素类型的常引用）
+            - 返回`bool`（或能转化为`bool`的类型）
+        - *二元谓词* （binary predicate）
+            - 接受两个参数（均为迭代器指向元素类型的常引用）
+            - 返回`bool`（或能转化为`bool`的类型）
 - `lambda`表达式
     - 可以理解为未命名的`inline`函数
     - 定义格式
@@ -1986,9 +2014,13 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         auto f = [] { return 42; };
         std::cout << f() << std::endl;  // 42
         
-        std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) { return a.size() < b.size(); })
+        std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) { return a.size() < b.size(); });
         ```
 - `lambda`捕获和返回
+    - 捕获列表
+        - 把`lambda`表达式 *所在的函数中的局部非静态变量* 声明在捕获列表里，就可以在`lambda`表达式函数体使用该变量
+        - 对于局部静态变量或者全局变量，则**不需捕获**即可使用
+        
 - 参数绑定
 
 #### 再探迭代器
