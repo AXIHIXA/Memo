@@ -1819,49 +1819,50 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
             - 在 *空容器* 上调用`std::fill_n()`或其它写算法是**未定义行为**
         - 返回：迭代器`first + count`
-- `std::back_inserter`
-    - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
-    - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
-    ```
-    std::vector<int> vec;                                     // empty vector
-    std::vector<int>::iterator it = std::back_inserter(vec);
-    *it = 42;                                                 // equal to: vec.push_back(42);
-    ```
-    - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
-    ```
-    std::vector<int> vec;                                     // empty vector
-    std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
-    ```
-- `for_each`算法
-    - 原型
-    ```
-    template <class InputIt, class UnaryFunction>
-    UnaryFunction 
-    for_each(InputIt first, 
-             InputIt last, 
-             UnaryFunction f);
-    ```
-    - 依次对区间`[first, last)`内每个元素调用`f(*iter)`
-        - 如果`InputIt`不是常迭代器，则`f`可以修改元素。
-        - `f`如有返回值，则直接被丢弃
-        - **不能**复制序列中的元素
-    - 返回：形参`f`的拷贝，经过迭代之后返回之
-        - `f`不是引用类型，因此传入的`f`**不会**被修改
-        - 想要获得经历过迭代的`f`，则 *只能依靠返回值* 。例如下面代码
-    ```
-    struct Sum
-    {
-        void operator()(int n) { sum += n; }
-        int sum{0};
-    };
-     
-    std::vector<int> nums{3, 4, 2, 8, 15, 267};
-    std::for_each(nums.begin(), nums.end(), [](int &n){ n++; });  // nums chamges to: 4 5 3 9 16 268
-    Sum tmp;
-    Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum == 0 !!!
-                                                                  // sum.sum == 305
-    ```
-- 拷贝算法
+    - `std::back_inserter()`
+        - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
+        - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
+        ```
+        std::vector<int> vec;                                     // empty vector
+        std::vector<int>::iterator it = std::back_inserter(vec);
+        *it = 42;                                                 // equal to: vec.push_back(42);
+        ```
+        - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
+        ```
+        std::vector<int> vec;                                     // empty vector
+        std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
+        ```
+- 并行算法 *举例*
+    - `std::for_each()`
+        - 原型
+        ```
+        template <class InputIt, class UnaryFunction>
+        UnaryFunction 
+        for_each(InputIt first, 
+                 InputIt last, 
+                 UnaryFunction f);
+        ```
+        - 依次对区间`[first, last)`内每个元素调用`f(*iter)`
+            - 如果`InputIt`不是常迭代器，则`f`可以修改元素。
+            - `f`如有返回值，则直接被丢弃
+            - **不能**复制序列中的元素
+        - 返回：形参`f`的拷贝，经过迭代之后返回之
+            - `f`不是引用类型，因此传入的`f`**不会**被修改
+            - 想要获得经历过迭代的`f`，则 *只能依靠返回值* 。例如下面代码
+        ```
+        struct Sum
+        {
+            void operator()(int n) { sum += n; }
+            int sum{0};
+        };
+         
+        std::vector<int> nums{3, 4, 2, 8, 15, 267};
+        std::for_each(nums.begin(), nums.end(), [](int &n){ n++; });  // nums chamges to: 4 5 3 9 16 268
+        Sum tmp;
+        Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum == 0 !!!
+                                                                      // sum.sum == 305
+        ```
+- 拷贝算法 *举例*
     - `std::copy()`
         - 原型
         ```
