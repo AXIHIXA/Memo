@@ -1998,7 +1998,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 可以理解为未命名的`inline`函数
     - 定义格式
     ```
-    auto lambda_expr = [capture_list] (paramater_list) -> return_type { function_body; };
+    auto f = [capture_list] (paramater_list) -> return_type { function_body; };
     ```
     - 内容物
         - 捕获列表
@@ -2048,7 +2048,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         v1 = 0;
         size_t j3 = f3();                                                         // f3 v1 = 0 @ 0x7ffcc11095e0
         printf("after f3: v1 = %zu, j3 = %zu\n", v1, j3);                         // after f3: v1 = 1, j3 = 1
-          
         ```
     - 当定义`lambda`时
         - 编译器生成一个与此`lambda`对应的新的未命名类类型，与一个该类型的未命名实例（函数对象） => 14.8.1
