@@ -1932,10 +1932,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                ForwardIt       last, 
                BinaryPredicate p);
         ```
-        - 对区间`[first, last)`中每一组 *连续的* 相等元素，只保留第一个， *清除* 其余元素
-            - *清除* 是指
-                - 用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
-            - 
+        - 对区间`[first, last)`中每一组 *连续的* *相等* 元素，只保留第一个， *清除* 其余元素
+            - *清除* ：用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
+            - *相等* ：`*iter1 == *iter2`或`p(*iter1, *iter2) == true`
         - 返回：清除完成后的逻辑区间的尾后迭代器（past-the-end iterator for the new logical end of the range）
             - 此迭代器后面的元素仍可被解引用访问，但值 *未定义*
         - 使用前应该**先调用**`std::sort()`，之后**再调用**容器的`erase()`方法
