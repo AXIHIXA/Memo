@@ -837,15 +837,14 @@ useBigger(s1, s2, pf);
         int a4(0);     // 错误！
         ```
     - *默认初始化* 或 *值初始化* 该成员
-        - *默认初始化* 在以下情况下发生
+        - *默认初始化* 
             ```
             T object;                             (1)
             new T                                 (2)
             ```
-            - 当我们不使用初始值，定义一个 *局部非静态变量或数组* 时
-            - 当一个类本身含有类类型成员，且使用 *合成的默认构造函数* 时
-            - 当类类型成员 *没有在构造函数初始化列表中显式地初始化* 时
-        - *值初始化* 在以下情况下发生
+            1. if `T` is an array type, every element of the array is *default-initialized* ;
+            2. otherwise, nothing is done: the objects with automatic storage duration (and their subobjects) are initialized to *indeterminate values* . 
+        - *值初始化* 
             ```
             T()                                   (1)
             new T ()                              (2)
@@ -855,11 +854,10 @@ useBigger(s1, s2, pf);
             new T {}                              (6)
             Class::Class(...) : member{} { ... }  (7)
             ```
-            - 在 *数组* 或 *聚合类* （比如纯`C`风格`struct`）初始化过程中，如果我们提供的初始值数量少于数组的大小时
-            - 当我们不使用初始值，定义一个 *局部静态变量* 时
-            - 当我们通过书写形如`T()`的表达式 *显式请求* 值初始化时，其中`T`是类型名
-              （`std::vector`的一个构造函数只接受一个实参用于说明其大小。
-                它就是使用一个这种形式的实参来对它的元素初始化器进行值初始化）
+            1. if `T` is a class type with no default constructor or with a user-provided or deleted default constructor, the object is *default-initialized* ;
+            2. if `T` is a class type with a default constructor that is neither user-provided nor deleted (that is, it may be a class with an implicitly-defined or defaulted default constructor), the object is *zero-initialized* and then it is *default-initialized* if it has a non-trivial default constructor;
+            3. if `T` is an array type, each element of the array is *value-initialized*;
+            4. otherwise, the object is *zero-initialized* .
 - 生成条件：
     - 只有类**没有声明任何构造函数**时，编译器才会自动生成默认构造函数
     - 如果类中包含其他类类型成员，且它没有默认构造函数，则这个类**不能**生成默认构造函数
