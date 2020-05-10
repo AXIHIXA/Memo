@@ -2027,6 +2027,12 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 - 可以理解为未命名的`inline`函数
     - 向函数传递`lambda`时，`lambda`会 *立即执行*
+    - 编译器实现：当定义`lambda`时
+        - 编译器生成一个与此`lambda`对应的新的未命名类类型，与一个该类型的未命名实例（函数对象） => 14.8.1
+        - 匿名`lambda`用于传参时，传递的就是现生成的该类的一个临时实例（的拷贝）
+        - 用`auto`定义一个用`lambda`初始化的变量时，则定义了一个从`lambda`生成的该类型对象实例
+        - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
+        - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
 - 定义格式
 ```
 auto f = [capture_list] (paramater_list) -> return_type { function_body; };
@@ -2082,21 +2088,27 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
     - 返回值类型
         - 可以忽略，此时返回值类型由返回的表达式的类型推断而来
             - 如果`lambda`的函数体包含任何单一`return`语句之外的内容，且未指定返回值类型，则返回`void`
-            ```
-            // ok. refers returning int
-            std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
-            {
-                return i < 0 ? -i : i;  
-            });
-            
-            // error. refers returning void but returns int -- from C++ Primer 5th Edition
-            // note: at least on g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0 this one runs correctly with -std=c++11
-            std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
-            {
-                if (i < 0) return -i; else return i;
-            });
-            ```
         - 如不忽略，则必须使用 *尾置返回* 
+        ```
+        // ok. refers returning int
+        std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
+        {
+            return i < 0 ? -i : i;  
+        });
+        
+        // error. refers returning void but returns int -- from C++ Primer 5th Edition
+        // note: at least on g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0 this one runs correctly with -std=c++11
+        std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
+        {
+            if (i < 0) return -i; else return i;
+        });
+        
+        // ok. returns int
+        std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  -> int
+        {
+            if (i < 0) return -i; else return i;
+        });
+            ```
     - 函数体：必要组成部分
     ```
     auto f = [] { return 42; };
@@ -2108,12 +2120,27 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
     });
     ```
 - 参数绑定
-- 编译器实现：当定义`lambda`时
-    - 编译器生成一个与此`lambda`对应的新的未命名类类型，与一个该类型的未命名实例（函数对象） => 14.8.1
-    - 匿名`lambda`用于传参时，传递的就是现生成的该类的一个临时实例（的拷贝）
-    - 用`auto`定义一个用`lambda`初始化的变量时，则定义了一个从`lambda`生成的该类型对象实例
-    - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
-    - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
+    - 用函数代替`lambda`
+        - 对于要多次使用的操作，应当编写函数并复用，而不是编写一堆重复的`lambda`
+        - 捕获列表为空的`lambda`也可以用函数来代替
+    - 如果要用函数代替捕获了局部变量的`lambda`，可以使用`std::bind()`对函数进行 *参数绑定* 
+        - 头文件`<functional>`。使用方法
+        ```
+        auto newCallable = std::bind(callable, arg_list);
+        ```
+        - 可以看做通用的函数适配器。调用`newCallable`时，`newCallable`会调用`callable`，并向其传递`arg_list`中的参数
+        - `arg_list`：
+            - 逗号分隔的参数列表
+            - 可以包含形如`_n`的 *占位符* （`n`为整数），表示将要传递给`callable`的参数
+                - `_1`表示`newCallable`的第一个参数，`_2`为第二个，以此类推
+        ```
+        bool checkSize(const std::string & s, const std::string::size_type &sz)
+        {
+            return s.size() >= sz;
+        }
+        
+        auto check6 = std::bind(checkSize, _1, 6);
+        ```
 
 #### 再探迭代器
 
