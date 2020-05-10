@@ -45,8 +45,7 @@
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
     - 迭代器算术运算（iterator arithmatic）**不**支持`std::list`、`std::forward_list`，因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
-    - `std::unique()`只负责将 *连续的* 相同元素除第一个移动至末尾，因此使用前**应该先调用**`std::sort()`，**之后再调用**容器的`erase()`方法
-        - 标准库算法对迭代器而不是容器进行操作，因此，**标准库算法不能（直接）添加或删除元素**
+
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向
       括号内分析完就跳出括号，还是按先右后左的顺序，如此循环，直到整个声明分析完
@@ -1922,26 +1921,33 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::unique()`
         - 原型
         ```
-        template <typename _FIter, typename _BinaryPredicate>
-        _FIter
-        unique(_FIter           __first, 
-               _FIter           __last, 
-               _BinaryPredicate __bin_pred);
+        template <class ForwardIt>
+        ForwardIt 
+        unique(ForwardIt first, 
+               ForwardIt last);
+
+        template <class ForwardIt, class BinaryPredicate>
+        ForwardIt
+        unique(ForwardIt       first, 
+               ForwardIt       last, 
+               BinaryPredicate p);
         ```
-        - `__bin_pred`：`bool (*__bin_pred)(const Type1 & a, const Type2 & b)`，如果`a == b`则返回`true`
-            - *常引用* **不是强制**要求，但此谓词不能改变`a`和`b`
-        - 对`[__first, __last)`中每一组 **连续的** 相同的值，只保留第一个，其余的全部 **移动至末尾**。返回不重复值范围区间的尾后迭代器
-            - 只是移动，**并没有删除重复元素**
-                - 标准库算法对迭代器而不是容器进行操作，因此，**标准库算法不能（直接）添加或删除元素**
-            - 使用之前**必须**提前调用`std::sort()`，向量去重示例：
-            ```
-            void eliminateDuplicates(std::vector<int> & vec)
-            {
-                std::sort(vec.begin(), vec.end());
-                std::vector<int>::iterator dup_begin = std::unique(vec.begin(), vec.end());
-                vec.erase(dup_begin, vec.end());
-            }
-            ```
+        - 对区间`[first, last)`中每一组 *连续的* 相等元素，只保留第一个， *清除* 其余元素
+            - *清除* 是指
+                - 用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
+            - 
+        - 返回：清除完成后的逻辑区间的尾后迭代器（past-the-end iterator for the new logical end of the range）
+            - 此迭代器后面的元素仍可被解引用访问，但值 *未定义*
+        - 使用前应该**先调用**`std::sort()`，之后**再调用**容器的`erase()`方法
+            - *标准库算法* 操作的 *均是* 迭代器而不是容器，因此，**标准库算法不能（直接）添加或删除元素**
+        ```
+        void eliminateDuplicates(std::vector<int> & vec)
+        {
+            std::sort(vec.begin(), vec.end());
+            std::vector<int>::iterator dup_begin = std::unique(vec.begin(), vec.end());
+            vec.erase(dup_begin, vec.end());
+        }
+        ```
 
 #### 定制操作
 
