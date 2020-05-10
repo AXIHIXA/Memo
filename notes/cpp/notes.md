@@ -2002,10 +2002,23 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
         - 把`lambda`表达式 *所在的函数中的局部非静态变量* 声明在捕获列表里，就可以在`lambda`表达式函数体使用该变量
         - 对于局部静态变量或者全局变量，则**不需捕获**即可使用
         - 捕获方式：与参数传递方式类似，可以是
-            - *值捕获* ：捕获被创建时变量的 *拷贝* ，且被设置为 *只读常量*
+            - *值捕获* ：捕获被创建时变量的 *拷贝* 
+                - *可变`lambda`*
+                    - 不加`mutable`参数，则捕获的变量被设置为 *只读常量*
+                ```
+                size_t v1 = 42;
+                
+                // error: increment of read-only variable ‘v1’
+                auto f1 = [v1]            { return ++v1; }; 
+                
+                // ok
+                auto f2 = [v1] () mutable { return ++v1; };
+                ```
                 - **不能**拷贝`std::ostream`对象，因此捕获它们只能靠引用
             - *引用捕获* ：捕获被创建时变量的 *引用* 
                 - 自然，`lambda`中使用的就是被捕获的对象本身，地址是一样的
+                - 被引用捕获的变量能否 *修改* 取决于那个变量原先是不是常量
+                    - 如果是**常量**，那么捕获的引用就是常引用，自然**不能改**
                 - 引用捕获与返回捕获有相同的限制，即：必须确保`lambda`被调用时被引用的对象依然 *存在* 
                     - 如果`lambda`在函数结束后被调用，则它引用捕获的变量自然已经不存在了，行为 *未定义*
                     - 如果可能，尽量**避免**捕获指针或引用 
@@ -2018,6 +2031,8 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
             
             // error: increment of read-only variable ‘v1’
             auto f2 = [v1]  { printf("f2 v1 = %zu @ %p\n", v1, &v1); return ++v1; }; 
+            
+
 
             // ok
             auto f3 = [&v1] { printf("f3 v1 = %zu @ %p\n", v1, &v1); return ++v1; };  
@@ -2036,7 +2051,7 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
             - `[&]`： 隐式引用捕获列表。编译器自动引用捕获`lambda`函数体中使用的局部变量
             - `[=]`： 隐式值捕获列表。编译器自动值捕获`lambda`函数体中使用的局部变量
             - `[&, identifier_list]`：混合式引用捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，变量名前**不能**有`&`。这些变量采用值捕获方式，而其他被隐式捕获的变量则一律采用引用捕获
-            - `[=, identifier_list]`：混合式值捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，不能包含`this`，变量名前 *必须* 有`&`。这些变量采用引用捕获方式，而其他被隐式捕获的变量则一律采用值捕获
+            - `[=, identifier_list]`：混合式值捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，**不能**包含`this`，变量名前 *必须* 有`&`。这些变量采用引用捕获方式，而其他被隐式捕获的变量则一律采用值捕获
     - 参数列表
         - 可以连同括号一起忽略。如忽略，则等价于指定 *空的* 参数列表
         - **不能**有 *默认参数*
