@@ -1912,9 +1912,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
              RandomIt last, 
              Compare  comp);
         ```
-        - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序，**非**稳定排序
-            - 无谓词版本：`*(it + n) < *it`
-            - 有谓词版本：`comp(*(it + n), *it) == true`
+        - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序
+            - **不是**稳定排序
+            - 重排两个元素的条件：`*(it + n) < *it`或`comp(*(it + n), *it) == true`（`n > 0`）
         - 复杂度
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
