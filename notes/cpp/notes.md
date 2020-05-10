@@ -64,12 +64,12 @@
 - *整形* 
     - 可以写作十进制、八进制（以`0`开头）或十六进制（以`0x`或`0X`开头）形式
     ```
-    20         // dec，int
-    -42        // dec，int
-    42ULL      // dec，unsigned long long
-    024        // oct，int
-    0x1a       // hex，int
-    0X1A       // hex，int
+    20              // dec，int
+    -42             // dec，int
+    42ULL           // dec，unsigned long long
+    024             // oct，int
+    0x1a            // hex，int
+    0X1A            // hex，int
     ```
     - 默认（无后缀）情况下
         - 十进制字面值为`int`、`long`和`long long`中能容纳该数值的尺寸最小者
@@ -83,13 +83,13 @@
 - *浮点型* 
     - 写作一个小数或以科学计数法表示的指数，其中指数部分用`e`或`E`标识
     ```
-    3.14159    // double
-    3.14159E0  // double
-    3.14159L   // long double
-    0.         // double
-    0e0        // double
-    1E-3F      // float
-    .001       // double
+    3.14159         // double
+    3.14159E0       // double
+    3.14159L        // long double
+    0.              // double
+    0e0             // double
+    1E-3F           // float
+    .001            // double
     ```
     - 默认（无后缀）情况下为`double`
     - 可选后缀
