@@ -1898,7 +1898,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
         std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
         ```        
-- 重排容器元素算法
+- 排序算法 *举例*
     - `std::sort()`
         - 原型
         ```
@@ -1913,12 +1913,12 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
              RandomIt last, 
              Compare  comp);
         ```
-        - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）重新排列，**非**稳定排序
-            - 无谓词版本：`*(it + n) < *it` 
+        - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序，**非**稳定排序
+            - 无谓词版本：`*(it + n) < *it`
             - 有谓词版本：`comp(*(it + n), *it) == true`
         - 复杂度
-            - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* (until `C++11`)
-            - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons (since `C++11`)
+            - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
+            - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
     - `std::unique()`
         - 原型
         ```
