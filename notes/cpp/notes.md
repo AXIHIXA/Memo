@@ -305,7 +305,7 @@ sizeof expr   // 返回表达式结果类型大小
         const int & c3 = b;                                      // 正确
         ```
     - 只能用于更改`const`属性，不能更改类型
-    - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为；但如果对象本身是常量，则结果**未定义**
+    - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为；但如果对象本身是常量，则结果 *未定义* 
     ```
     const char * pc;
     char * p = const_cast<char *>(pc);                           // 正确，但通过p写值是未定义的行为
@@ -713,7 +713,7 @@ useBigger(s1, s2, pf);
     - 如果类中包含其他类类型成员，且它没有默认构造函数，则这个类**不能**生成默认构造函数
     - 13.1.6
 - 如果类内包含内置类型或复合类型的变量，则只有当这些成员全部被赋予了类内初始值时，这个类才适合于使用默认构造函数
-    - 注意：类成员变量从属于内部作用域，默认初始化是**未定义**的，不能指望！
+    - 注意：类成员变量从属于内部作用域，默认初始化是 *未定义* 的，不能指望！
 - 作用：当对象被 *默认初始化* 或者 *值初始化* 时，执行默认构造函数
     - *默认初始化* 在以下情况下发生
         - 当我们不使用初始值，定义一个 *局部非静态变量或数组* 时
@@ -1266,7 +1266,7 @@ std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始
     - `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
                                           如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
                                           则相等；反之，不相等。
-- 迭代器算术运算（iterator arithmetic）。
+- 迭代器算术运算（iterator arithmetic）
     - `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
     - `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
     - `iter += n`
@@ -1432,18 +1432,18 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - `std::string`**不支持**`push_front`以及`emplace_front`
         - `std::array`**不支持**以上全部
 - 访问元素
-    - `c.back()`：返回`c`中尾元素的 *引用* 。若`c`为空，函数行为**未定义**
-    - `c.front()`：返回`c`中首元素的 *引用* 。若`c`为空，函数行为**未定义**
-    - `c[i]`：返回`c`中下标为`i`的元素的 *引用* 。若下标越界，函数行为**未定义**
+    - `c.back()`：返回`c`中尾元素的 *引用* 。若`c`为空，函数行为 *未定义* 
+    - `c.front()`：返回`c`中首元素的 *引用* 。若`c`为空，函数行为 *未定义* 
+    - `c[i]`：返回`c`中下标为`i`的元素的 *引用* 。若下标越界，函数行为 *未定义* 
     - `c.at(i)`：返回`c`中下标为`i`的元素的 *引用* 。若下标越界，则抛出`out_of_range`异常
     - 注意事项
         - 对 *空容器* 使用`front()`或者`back()`就像下标越界一样，是一种严重的程序设计**错误**
         - `at()`和 *下标* 操作**只**适用于`std::string`，`std::vector`，`std::deque`以及`std::array`
         - `back()`**不**适用于`std::foward_list`
 - 删除元素
-    - `c.pop_back()`：删除`c`的尾元素。若`c`为空，则函数行为**未定义**。返回`void`
-    - `c.pop_front()`：删除`c`的首元素。若`c`为空，则函数行为**未定义**。返回`void`
-    - `c.erase(p)`：删除迭代器`p`指定的元素，返回指向被删除元素之后元素的迭代器。若`p`指向尾元素，则返回尾后迭代器。若`p`是尾后迭代器，函数行为**未定义**
+    - `c.pop_back()`：删除`c`的尾元素。若`c`为空，则函数行为 *未定义* 。返回`void`
+    - `c.pop_front()`：删除`c`的首元素。若`c`为空，则函数行为 *未定义* 。返回`void`
+    - `c.erase(p)`：删除迭代器`p`指定的元素，返回指向被删除元素之后元素的迭代器。若`p`指向尾元素，则返回尾后迭代器。若`p`是尾后迭代器，函数行为 *未定义* 
     - `c.erase(b, e)`：删除迭代器`b`和`e`所指定范围内的元素，返回指向最后一个被删除元素之后元素的迭代器。若`e`本身就是尾后迭代器，也返回尾后迭代器
     - `c.clear()`：删除`c`中所有元素。等价于`c.erase(c.begin(), c.end())`。返回`void`
     - 注意事项
@@ -1474,11 +1474,11 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `lst.before_begin()`，`lst.cbefore_begin()`：返回头哨兵元素的迭代器和`const_iterator`。**不能**解引用
     - `lst.insert_after(p, t)`：在迭代器`p` *之后* 的位置插入`t`。返回指向最后一个插入元素的迭代器
     - `lst.insert_after(p, n, t)`：在迭代器`p` *之后* 的位置插入`n`个`t`。返回指向最后一个插入元素的迭代器
-    - `lst.insert_after(p, b, e)`：在迭代器`p` *之后* 的位置插入迭代器`b`和`e`所指定范围之间的元素。`b`和`e`**不能**指向`lst`内。如果范围为空，则返回`p`。如果`p`是尾后迭代器，则函数行为**未定义**
+    - `lst.insert_after(p, b, e)`：在迭代器`p` *之后* 的位置插入迭代器`b`和`e`所指定范围之间的元素。`b`和`e`**不能**指向`lst`内。如果范围为空，则返回`p`。如果`p`是尾后迭代器，则函数行为 *未定义* 
     - `lst.insert_after(p, {a, b, c...})`：在迭代器`p` *之后* 的位置插入列表`{a, b, c...}`中的 *元素*
-    - `lst.emplace_after(p, args)`：使用`args`在`p`指定位置 *之后* *创建* 一个元素。返回指向这个新元素的迭代器。如果`p`是尾后迭代器，则函数行为**未定义**
+    - `lst.emplace_after(p, args)`：使用`args`在`p`指定位置 *之后* *创建* 一个元素。返回指向这个新元素的迭代器。如果`p`是尾后迭代器，则函数行为 *未定义* 
     - `lst.erase_after(p)`：删除迭代器`p`指向位置之后的 *一个* 元素
-    - `lst.erase_after(b, e)`：删除迭代器`b`和`e`所指定范围之间（不包括`e`）的元素。返回指向被删元素下一个元素的迭代器。如果`p`指向尾元素或者是一个尾后迭代器，则函数行为**未定义**
+    - `lst.erase_after(b, e)`：删除迭代器`b`和`e`所指定范围之间（不包括`e`）的元素。返回指向被删元素下一个元素的迭代器。如果`p`指向尾元素或者是一个尾后迭代器，则函数行为 *未定义* 
     ```
     forward_list<int> flst = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     auto prev = flst.before_begin();        // denotes element "off the start" of flst
@@ -1517,8 +1517,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 - 额外构造方法
     - `std::string s(cp, n)`：`s`是`cp`指向的字符数组中前`n`个字符的拷贝，此数组应至少包含`n`个字符，且**必须**以`'\0'`结尾
-    - `std::string s(s2, pos2)`：`s`是`std::string s2`从下标`pos2`开始的字符的拷贝。若`pos2 > s2.size()`，构造函数行为**未定义**
-    - `std::string s(s2, pos2, len2)`：`s`是`std::string s2`从下标`pos2`开始`len2`个字符的拷贝。若`pos2 > s2.size()`，构造函数行为**未定义**。不管`len2`的值是多少，构造函数至多拷贝`s2.size() - len2`个字符
+    - `std::string s(s2, pos2)`：`s`是`std::string s2`从下标`pos2`开始的字符的拷贝。若`pos2 > s2.size()`，构造函数行为 *未定义* 
+    - `std::string s(s2, pos2, len2)`：`s`是`std::string s2`从下标`pos2`开始`len2`个字符的拷贝。若`pos2 > s2.size()`，构造函数行为 *未定义* 。不管`len2`的值是多少，构造函数至多拷贝`s2.size() - len2`个字符
     ```
     const char *cp = "Hello World!!!";       // null-terminated array
     char noNull[] = {'H', 'i'};              // not null terminated
@@ -1687,18 +1687,20 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - 因此，**泛型算法不能（直接）添加或删除元素**
         - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
     - 大多数算法提供接口，允许我们用 *谓词* （predicate）代替默认的运算符
-        - 谓词是可调用的表达式，返回结果为`bool`（或能转化为`bool`的类型）。具体传参可以用
+        - 谓词是可调用的表达式。具体传参可以用
             - 函数头
             - 函数指针
             - 函数对象（重载了调用运算符的类的实例） => 14.8
             - `lambda`表达式 => 10.3.2
         - 标准库算法使用以下两类谓词
             - *一元谓词* （unary predicate）
-                - 接受单一参数（迭代器指向元素类型的常引用）
-                - 返回`bool`（或能转化为`bool`的类型）
+                - 接受单一参数
+                - 一般为迭代器指向元素类型的常引用
+                    - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
             - *二元谓词* （binary predicate）
-                - 接受两个参数（均为迭代器指向元素类型的常引用）
-                - 返回`bool`（或能转化为`bool`的类型）
+                - 接受两个参数
+                - 一般均为迭代器指向元素类型的常引用
+                    - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
 - 公认假设
     - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定第二个序列至少与第一个序列一样长
     - 向目的位置迭代器写数据的算法都假定目的位置足够大，能容纳要写入的元素
@@ -1909,6 +1911,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - 将区间`[first, last)`之内所有满足条件的元素修改为`new_value`
             - `replace`：值为`old_value`的元素
             - `replace_if`：满足`p(*iter) == true`的元素
+        - 返回：拷贝生成的序列的尾后迭代器
         ```
         std::replace(lst.begin(), lst.end(), 0, 42);
         ```
@@ -1931,13 +1934,44 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                         UnaryPredicate p, 
                         const T &      new_value);
         ```
-        - 在`d_first`开始的一片内存中生成区间`[first, last)`的副本，且
+        - 将对应 *替换规则* 应用于区间`[first, last)`内，并将结果存储于`d_first`开始的一片区域中
             - `replace_copy`：其中所有值为`old_value`元素都被修改为`new_value`
             - `replace_copy_if`：只替换满足`p(*iter) == true`的元素
+        - 返回：拷贝生成的序列的尾后迭代器
         ```
         // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
         std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
-        ```        
+        ```
+    - `std::transform()`
+        - 原型
+        ```
+        template <class InputIt, class OutputIt, class UnaryOperation>
+        OutputIt 
+        transform(InputIt first1, 
+                  InputIt last1, 
+                  OutputIt d_first,
+                  UnaryOperation unary_op);
+        
+        template <class InputIt1, class InputIt2, class OutputIt, class BinaryOperation>
+        OutputIt 
+        transform(InputIt1 first1, 
+                  InputIt1 last1, 
+                  InputIt2 first2,
+                  OutputIt d_first, 
+                  BinaryOperation binary_op);
+        ```
+        - 将 *对应函数* 应用于 *一片区间* 内，并将结果存储于`d_first`开始的一片区域中
+            1. 将`unary_op`应用于`[first, last)`上的每个元素，取其返回值
+            2. 将`binary_op`应用如下定义的一对元素上：一个定义在`[first, last)`上，另一个取自从`first2`开始的对应位置，取其返回值
+        - 输出对象可以是 *自己* 
+        - 返回：拷贝生成的序列的尾后迭代器
+        ```
+        // turn all elements of a int vector into their absolute values
+        std::transform(vec.begin(), vec.end(), vec.begin(), [] (const int & i)
+        {
+            return i < 0 ? -i : i;
+        });
+        ```
 - 排序算法 *举例*
     - `std::sort()`
         - 原型
@@ -2015,7 +2049,7 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
                 - **不能**拷贝`std::ostream`对象，因此捕获它们只能靠引用
             - *引用捕获* ：捕获被创建时变量的 *引用* 
                 - 自然，`lambda`中使用的就是被捕获的对象本身，地址是一样的
-                - 被引用捕获的变量能否 *修改* 取决于那个变量原先是不是常量
+                - 被引用捕获的变量能否 *修改* 取决于那个变量原先 *是不是常量* 
                     - 如果是**常量**，那么捕获的引用就是常引用，自然**不能改**
                 - 引用捕获与返回捕获有相同的限制，即：必须确保`lambda`被调用时被引用的对象依然 *存在* 
                     - 如果`lambda`在函数结束后被调用，则它引用捕获的变量自然已经不存在了，行为 *未定义*
@@ -2043,11 +2077,25 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
             - `[&, identifier_list]`：混合式引用捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，变量名前**不能**有`&`。这些变量采用值捕获方式，而其他被隐式捕获的变量则一律采用引用捕获
             - `[=, identifier_list]`：混合式值捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，**不能**包含`this`，变量名前 *必须* 有`&`。这些变量采用引用捕获方式，而其他被隐式捕获的变量则一律采用值捕获
     - 参数列表
-        - 可以连同括号一起忽略。如忽略，则等价于指定 *空的* 参数列表
+        - 对于非可变`lambda`，可以连同括号一起忽略。如忽略，则等价于指定 *空的* 参数列表
         - **不能**有 *默认参数*
     - 返回值类型
         - 可以忽略，此时返回值类型由返回的表达式的类型推断而来
             - 如果`lambda`的函数体包含任何单一`return`语句之外的内容，且未指定返回值类型，则返回`void`
+            ```
+            // ok. refers returning int
+            std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
+            {
+                return i < 0 ? -i : i;  
+            });
+            
+            // error. refers returning void but returns int -- from C++ Primer 5th Edition
+            // note: at least on g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0 this one runs correctly with -std=c++11
+            std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
+            {
+                if (i < 0) return -i; else return i;
+            });
+            ```
         - 如不忽略，则必须使用 *尾置返回* 
     - 函数体：必要组成部分
     ```
