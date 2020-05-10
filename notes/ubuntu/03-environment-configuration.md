@@ -112,6 +112,7 @@ export PATH=${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}
 - 格式化：格式化import列表Ctrl+Alt+O，格式化代码Ctrl+Alt+L
 - 运行：运行程序Alt+Shift+F10，启动调试Shift+F9
 - 方法分隔符：【File】→【Settings...】→【Editor】→【General】→【Appearance】→【Show method separators】
+- 模板提示：`Ctrl + J`即可选择插入根据上下文预定义好的代码片段
 
 #### heap size
 

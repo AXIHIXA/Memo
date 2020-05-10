@@ -45,7 +45,7 @@
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
     - 迭代器算术运算（iterator arithmatic）**不**支持`std::list`、`std::forward_list`，因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
-    - `std::unique()`只负责将 *连续的* 相同元素除第一个移动至末尾，因此使用前**应该**先调用`std::sort()`，之后再调用容器的`erase()`方法
+    - `std::unique()`只负责将 *连续的* 相同元素除第一个移动至末尾，因此使用前**应该先调用**`std::sort()`，**之后再调用**容器的`erase()`方法
         - 标准库算法对迭代器而不是容器进行操作，因此，**标准库算法不能（直接）添加或删除元素**
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向
@@ -1696,13 +1696,28 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::find()`
         - 原型
         ```
-        template <typename _InputIterator, typename _Tp>
-        inline _InputIterator
-        find(_InputIterator __first, 
-             _InputIterator __last,
-             const _Tp &    __val);
+        template <class InputIt, class T>
+        InputIt 
+        find(InputIt   first, 
+             InputIt   last, 
+             const T & value);
+             
+        template <class InputIt, class UnaryPredicate>
+        InputIt 
+        find_if(InputIt        first, 
+                InputIt        last,
+                UnaryPredicate p);
+                
+        template <class InputIt, class UnaryPredicate>
+        InputIt 
+        find_if_not(InputIt        first, 
+                    InputIt        last,
+                    UnaryPredicate q);
         ```
-        - 返回：第一个在区间`[__first, __last)`之内的值为`__val`的迭代器，入不存在则返回`__last`
+        - 返回
+            - `find`：第一个在区间`[first, last)`之内的值为`value`的迭代器，如不存在则返回`last`
+            - `find`：值满足`p(*iter) == true`
+            - `find_if_not`：值满足`q(*iter) == false`
         ```
         std::vector<int> vec{0, 1, 2, 3, 4, 5, 6...};
         int val = 3;
@@ -1719,57 +1734,65 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::count()`
         - 原型
         ```
-        template <typename _IIter, typename _Tp>
-        typename iterator_traits<_IIter>::difference_type
-        count(_IIter      __first,
-              _IIter      __last, 
-              const _Tp & __val);
+        template <class InputIt, class T>
+        typename iterator_traits<InputIt>::difference_type
+        count(InputIt   first, 
+              InputIt   last, 
+              const T & value);
         ```
-        - 返回：`ptrdiff_t` aka `long int`，区间`[__first, __last)`之内等于`__val`的值的个数
+        - 返回：`ptrdiff_t` aka `long int`，区间`[first, last)`之内等于`value`的值的个数
     - `std::accumlate()`
         - 原型
         ```
-        template <typename _InputIterator, typename _Tp, typename _BinaryOperation>
-        inline _Tp
-        accumulate(_InputIterator   __first, 
-                   _InputIterator   __last, 
-                   _Tp              __init, 
-                   _BinaryOperation __binary_op)；
+        template <class InputIt, class T, class BinaryOperation>
+        T 
+        accumulate(InputIt         first, 
+                   InputIt         last, 
+                   T               init,
+                   BinaryOperation op);
         ```
-        - 返回：区间`[__first, __last)`之内所有元素以及`__init`的 *基于* `__binary_op` 的 *总和* 
+        - 返回：区间`[first, last)`之内所有元素以及`init`的 *基于* `op` 的 *总和* 
             - 实际操作 *示例* 
             ```
-            for (; __first != __last; ++__first)
+            for (; first != last; ++first)
             {
-                __init = __binary_op(__init, *__first);
+                init = binary_op(init, *first);
             }
             
-            return __init;
+            return init;
             ```
     - `std::equal()`
         - 原型
         ```
-        template <typename _IIter1, typename _IIter2, typename _BinaryPredicate>
-        bool
-        equal(_IIter1          __first, 
-              _IIter1          __last, 
-              _IIter2          __dest, 
-              _BinaryPredicate __bin_pred);
+        template <class InputIt1, class InputIt2, class BinaryPredicate>
+        bool 
+        equal(InputIt1        first1, 
+              InputIt1        last1,
+              InputIt2        first2, 
+              BinaryPredicate p);
+            
+        template <class InputIt1, class InputIt2, class BinaryPredicate>
+        bool 
+        equal(InputIt1        first1, 
+              InputIt1        last1,
+              InputIt2        first2, 
+              InputIt2        last2,
+              BinaryPredicate p);
         ```
-        - `__bin_pred`：`bool (*__bin_pred)(const Type1 & a, const Type2 & b)`，如果`a == b`则返回`true`
-            - *常引用* **不是强制**要求，但此谓词不能改变`a`和`b`
-        - 返回：如果 *序列1* 中所有元素都与 *序列2* 中对应位置元素 *相等* ，则返回`true`，反之返回`false`
+        - 返回：如果 *序列1* 中所有元素都与 *序列2* 中对应位置元素满足 *相等条件* ，则返回`true`，反之返回`false`
+            - `equal`：`*iter1 == *iter2`
+            - `equal_if`：`p(*iter1, *iter2) == true` 
 - 写算法 *举例*
     - `std::fill()`
         - 原型
         ```
-        template <typename _FIter, typename _Tp>
-        void
-        fill(_FIter      __first, 
-             _FIter      __last, 
-             const _Tp & __value);
+        template <class ForwardIt, class T>
+        void 
+        fill(ForwardIt first, 
+             ForwardIt last, 
+             const T & value);
         ```
-        - 将区间`[__first, __last)`之内所有元素都赋值为`__value` 
+        - 将区间`[first, last)`之内所有元素都赋值为`value` 
         ```
         std::fill(vec.begin(), vec.end(), 0));
         std::fill(vec.begin(), vec.begin() + vec.size() / 2, 0));
@@ -1777,15 +1800,16 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::fill_n()`
         - 原型
         ```
-        template <typename _OIter, typename _Size, typename _Tp>
-        _OIter
-        fill_n(_OIter      __dest, 
-               _Size       __sz, 
-               const _Tp & __val);
+        template <class OutputIt, class Size, class T>
+        OutputIt 
+        fill_n(OutputIt  first, 
+               Size      count, 
+               const T & value);
         ```
-        - 将区间`[__dest, __dest + __sz)`之内所有元素都赋值为`__val` 
-            - `std::fill_n()`**不**检查写区间`[__dest, __dest + __sz)`是否合法，这是程序员的责任
+        - 将区间`[first, first + count)`之内所有元素都赋值为`value` 
+            - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
             - 在 *空容器* 上调用`std::fill_n()`或其它写算法是**未定义行为**
+        - 返回：迭代器`first + count`
 - `std::back_inserter()`
     - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
     - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
@@ -1803,14 +1827,23 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::copy()`
         - 原型
         ```
-        template <typename _IIter, typename _OIter>
-        _OIter
-        copy(_IIter __first,
-             _IIter __last,
-             _OIter __dest);
+        template <class InputIt, class OutputIt>
+        OutputIt 
+        copy(InputIt  first, 
+             InputIt  last, 
+             OutputIt d_first);
+             
+        template <class InputIt, class OutputIt, class UnaryPredicate>
+        OutputIt 
+        copy_if(InputIt first, 
+                InputIt last,
+                OutputIt d_first,
+                UnaryPredicate pred);
         ```
-        - 将区间`[__first, __last)`之内所有元素拷贝至以`__dest`开始的一片内存中，返回拷贝生成的序列的尾后迭代器
-            - 需保证写`__dest`开始的这一片内存是合法行为
+        - 将区间`[first, last)`之内所有元素拷贝至以`d_first`开始的一片内存中，
+            - `copy_if`：只拷贝满足`pred(*iter) == true`的元素
+            - 需保证写`d_first`开始的这一片内存是合法行为
+        - 返回：拷贝生成的序列的尾后迭代器
         ```
         int a1[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}; 
         int a2[sizeof(a1) / sizeof(*a1)]; 
@@ -1819,29 +1852,48 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::replace()`
         - 原型
         ```
-        template <typename _FIter, typename _Tp>
-        void
-        replace(_FIter      __first, 
-                _FIter      __last, 
-                const _Tp & __old_value, 
-                const _Tp & __new_value);
+        template <class ForwardIt, class T>
+        void 
+        replace(ForwardIt first, 
+                ForwardIt last,
+                const T & old_value, 
+                const T & new_value);
+              
+        template <class ForwardIt, class UnaryPredicate, class T>
+        void 
+        replace_if(ForwardIt      first, 
+                   ForwardIt      last,
+                   UnaryPredicate p, 
+                   const T &      new_value);
         ```
-        - 将区间`[__first, __last)`之内所有值为`__old_value`元素修改为`__new_value`
+        - 将区间`[first, last)`之内所有满足条件的元素修改为`new_value`
+            - `replace`：值为`old_value`的元素
+            - `replace_if`：满足`p(*iter) == true`的元素
         ```
         std::replace(lst.begin(), lst.end(), 0, 42);
         ```
     - `std::replace_copy()`
         - 原型
         ```
-        template <typename _IIter, typename _OIter, typename _Tp>
-        _OIter
-        replace_copy(_IIter      __first, 
-                     _IIter      __last, 
-                     _OIter      __dest, 
-                     const _Tp & __old_value, 
-                     const _Tp & __new_value);
+        template <class InputIt, class OutputIt, class T>
+        OutputIt 
+        replace_copy(InputIt   first, 
+                     InputIt   last, 
+                     OutputIt  d_first,
+                     const T & old_value, 
+                     const T & new_value);
+                       
+        template <class InputIt, class OutputIt, class UnaryPredicate, class T>
+        OutputIt 
+        replace_copy_if(InputIt        first, 
+                        InputIt        last, 
+                        OutputIt       d_first,
+                        UnaryPredicate p, 
+                        const T &      new_value);
         ```
-        - 在`__dest`开始的一片内存中生成区间`[__first, __last)`的副本，且其中所有值为`__old_value`元素都被修改为`__new_value`
+        - 在`d_first`开始的一片内存中生成区间`[first, last)`的副本，且
+            - `replace_copy`：其中所有值为`old_value`元素都被修改为`new_value`
+            - `replace_copy_if`：只替换满足`p(*iter) == true`的元素
         ```
         // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
         std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
@@ -1850,15 +1902,23 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `std::sort()`
         - 原型
         ```
-        template <typename _RAIter, typename _Compare>
-        void
-        sort(_RAIter  __first, 
-             _RAIter  __last, 
-             _Compare __comp);
+        template <class RandomIt>
+        void 
+        sort(RandomIt first, 
+             RandomIt last);
+        
+        template <class RandomIt, class Compare>
+        void 
+        sort(RandomIt first, 
+             RandomIt last, 
+             Compare  comp);
         ```
-        - `__comp`: `bool (*__comp)(const Type1 & a, const Type2 & b)`，当`a < b`时返回`true`
-            - *常引用* **不是强制**要求，但此谓词不能改变`a`和`b`
-        - 排序修改`[__first, __last)`
+        - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）重新排列，**非**稳定排序
+            - 无谓词版本：`*(it + n) < *it` 
+            - 有谓词版本：`comp(*(it + n), *it) == true`
+        - 复杂度
+            - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* (until `C++11`)
+            - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons (since `C++11`)
     - `std::unique()`
         - 原型
         ```
@@ -1893,8 +1953,12 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - 函数对象（重载了调用运算符的类的实例） => 14.8
             - `lambda`表达式 => 10.3.2
         - 标准库算法使用以下两类谓词
-            - 一元谓词（unary predicate）：只接受单一参数
-            - 二元谓词（binary predicate）：接受两个参数
+            - *一元谓词* （unary predicate）
+                - 接受单一参数（迭代器指向元素类型的常引用）
+                - 返回`bool`（或能转化为`bool`的类型）
+            - *二元谓词* （binary predicate）
+                - 接受两个参数（均为迭代器指向元素类型的常引用）
+                - 返回`bool`（或能转化为`bool`的类型）
 - `lambda`表达式
     - 可以理解为未命名的`inline`函数
     - 定义格式
@@ -1916,6 +1980,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
         auto f = [] { return 42; };
         std::cout << f() << std::endl;  // 42
+        
+        std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) { return a.size() < b.size(); })
         ```
 - `lambda`捕获和返回
 - 参数绑定
