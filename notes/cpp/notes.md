@@ -2033,15 +2033,12 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         printf("v1 = %zu @ %p\n", v1, &v1);                                       // v1 = 42 @ 0x7ffcc11095e0
 
         // ok
-        // f1 stores a copy of v1
         auto f1 = [v1]  { printf("f1 v1 = %zu @ %p\n", v1, &v1); return v1;   };  
         
         // error: increment of read-only variable ‘v1’
-        // f1 stores a copy of v1
         auto f2 = [v1]  { printf("f2 v1 = %zu @ %p\n", v1, &v1); return ++v1; }; 
 
         // ok
-        // f1 stores a reference of v1
         auto f3 = [&v1] { printf("f3 v1 = %zu @ %p\n", v1, &v1); return ++v1; };  
 
         v1 = 0;
