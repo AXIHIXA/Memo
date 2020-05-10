@@ -1682,14 +1682,21 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 标准库还在头文件`<numeric>`中定义了一组数值泛型算法
 - 原则
     - 泛型算法永远不会直接操作容器（即：不会执行特定容器的操作，甚至不需在意自己遍历的是不是容器），只会运行于 *迭代器* 之上
+        - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
     - 但仍旧依赖于元素类型的操作
-        - 大多数算法提供接口，允许我们用 *谓词* （即可调用对象）代替默认的运算符
-        - *谓词* 包括
+    - 大多数算法提供接口，允许我们用 *谓词* （predicate）代替默认的运算符
+        - 谓词是可调用的表达式，返回结果为`bool`（或能转化为`bool`的类型）。具体传参可以用
             - 函数头
             - 函数指针
             - 函数对象（重载了调用运算符的类的实例） => 14.8
             - `lambda`表达式 => 10.3.2
-    - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
+        - 标准库算法使用以下两类谓词
+            - *一元谓词* （unary predicate）
+                - 接受单一参数（迭代器指向元素类型的常引用）
+                - 返回`bool`（或能转化为`bool`的类型）
+            - *二元谓词* （binary predicate）
+                - 接受两个参数（均为迭代器指向元素类型的常引用）
+                - 返回`bool`（或能转化为`bool`的类型）
 - 公认假设
     - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定第二个序列至少与第一个序列一样长
     - 向目的位置迭代器写数据的算法都假定目的位置足够大，能容纳要写入的元素
@@ -1978,84 +1985,69 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             vec.erase(dup_begin, vec.end());
         }
         ```   
+   
+#### `lambda`表达式
 
-#### 谓词
-
-- *谓词* （predicate）
-    - 谓词是可调用的表达式，返回结果为`bool`。包括
-        - 函数头
-        - 函数指针
-        - 函数对象（重载了调用运算符的类的实例） => 14.8
-        - `lambda`表达式 => 10.3.2
-    - 标准库算法使用以下两类谓词
-        - *一元谓词* （unary predicate）
-            - 接受单一参数（迭代器指向元素类型的常引用）
-            - 返回`bool`（或能转化为`bool`的类型）
-        - *二元谓词* （binary predicate）
-            - 接受两个参数（均为迭代器指向元素类型的常引用）
-            - 返回`bool`（或能转化为`bool`的类型）
-- `lambda`表达式
-    - 可以理解为未命名的`inline`函数
-    - 定义格式
-    ```
-    auto f = [capture_list] (paramater_list) -> return_type { function_body; };
-    ```
-    - 内容物
-        - 捕获列表
-            - 用于捕获外层域的局部变量
-            - 通常为 *空* 
-        - 参数列表
-            - 可以连同括号一起忽略。如忽略，则等价于指定 *空的* 参数列表
-            - **不能**有 *默认参数*
-        - 返回值类型
-            - 可以忽略，此时返回值类型由返回的表达式的类型推断而来
-                - 如果`lambda`的函数体包含任何单一`return`语句之外的内容，且未指定返回值类型，则返回`void`
-            - 如不忽略，则必须使用 *尾置返回* 
-        - 函数体：必要组成部分
-        ```
-        auto f = [] { return 42; };
-        std::cout << f() << std::endl;  // 42
-        
-        std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) 
-        { 
-            return a.size() < b.size(); 
-        });
-        ```
-- `lambda`捕获和返回
+- 可以理解为未命名的`inline`函数。定义格式
+```
+auto f = [capture_list] (paramater_list) -> return_type { function_body; };
+```
+- 内容物
     - 捕获列表
         - 把`lambda`表达式 *所在的函数中的局部非静态变量* 声明在捕获列表里，就可以在`lambda`表达式函数体使用该变量
         - 对于局部静态变量或者全局变量，则**不需捕获**即可使用
         - 捕获方式：与参数传递方式类似，可以是
             - *值捕获* ：捕获被创建时变量的 *拷贝* ，且被设置为 *只读常量*
-            - *引用捕获* ：捕获被创建时变量的 *引用* （自然， *地址一样* ）
-        ```
-        size_t v1 = 42;
-        printf("v1 = %zu @ %p\n", v1, &v1);                                       // v1 = 42 @ 0x7ffcc11095e0
+            - *引用捕获* ：捕获被创建时变量的 *引用* 
+                - 自然，`lambda`中使用的就是被捕获的对象本身，地址是一样的
+                - 引用捕获与返回捕获有相同的限制，即：必须确保`lambda`被调用时被引用的对象依然 *存在* 
+                    - 如果`lambda`在函数结束后被调用，则它引用捕获的变量自然已经不存在了，行为 *未定义*
+    ```
+    size_t v1 = 42;
+    printf("v1 = %zu @ %p\n", v1, &v1);                                       // v1 = 42 @ 0x7ffcc11095e0
 
-        // ok
-        auto f1 = [v1]  { printf("f1 v1 = %zu @ %p\n", v1, &v1); return v1;   };  
-        
-        // error: increment of read-only variable ‘v1’
-        auto f2 = [v1]  { printf("f2 v1 = %zu @ %p\n", v1, &v1); return ++v1; }; 
+    // ok
+    auto f1 = [v1]  { printf("f1 v1 = %zu @ %p\n", v1, &v1); return v1;   };  
+    
+    // error: increment of read-only variable ‘v1’
+    auto f2 = [v1]  { printf("f2 v1 = %zu @ %p\n", v1, &v1); return ++v1; }; 
 
-        // ok
-        auto f3 = [&v1] { printf("f3 v1 = %zu @ %p\n", v1, &v1); return ++v1; };  
+    // ok
+    auto f3 = [&v1] { printf("f3 v1 = %zu @ %p\n", v1, &v1); return ++v1; };  
 
-        v1 = 0;
-        size_t j1 = f1();                                                         // f1 v1 = 42 @ 0x7ffcc11095e8
-        printf("after f1: v1 = %zu, j1 = %zu\n", v1, j1);                         // after f1: v1 = 0, j1 = 42
+    v1 = 0;
+    size_t j1 = f1();                                                         // f1 v1 = 42 @ 0x7ffcc11095e8
+    printf("after f1: v1 = %zu, j1 = %zu\n", v1, j1);                         // after f1: v1 = 0, j1 = 42
 
-        v1 = 0;
-        size_t j3 = f3();                                                         // f3 v1 = 0 @ 0x7ffcc11095e0
-        printf("after f3: v1 = %zu, j3 = %zu\n", v1, j3);                         // after f3: v1 = 1, j3 = 1
-        ```
-    - 当定义`lambda`时
-        - 编译器生成一个与此`lambda`对应的新的未命名类类型，与一个该类型的未命名实例（函数对象） => 14.8.1
-        - 匿名`lambda`用于传参时，传递的就是现生成的该类的一个临时实例（的拷贝）
-        - 用`auto`定义一个用`lambda`初始化的变量时，则定义了一个从`lambda`生成的该类型对象实例
-        - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
-        - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
+    v1 = 0;
+    size_t j3 = f3();                                                         // f3 v1 = 0 @ 0x7ffcc11095e0
+    printf("after f3: v1 = %zu, j3 = %zu\n", v1, j3);                         // after f3: v1 = 1, j3 = 1
+    ```
+    - 参数列表
+        - 可以连同括号一起忽略。如忽略，则等价于指定 *空的* 参数列表
+        - **不能**有 *默认参数*
+    - 返回值类型
+        - 可以忽略，此时返回值类型由返回的表达式的类型推断而来
+            - 如果`lambda`的函数体包含任何单一`return`语句之外的内容，且未指定返回值类型，则返回`void`
+        - 如不忽略，则必须使用 *尾置返回* 
+    - 函数体：必要组成部分
+    ```
+    auto f = [] { return 42; };
+    std::cout << f() << std::endl;  // 42
+
+    std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) 
+    { 
+        return a.size() < b.size(); 
+    });
+    ```
 - 参数绑定
+
+- 编译器实现：当定义`lambda`时
+    - 编译器生成一个与此`lambda`对应的新的未命名类类型，与一个该类型的未命名实例（函数对象） => 14.8.1
+    - 匿名`lambda`用于传参时，传递的就是现生成的该类的一个临时实例（的拷贝）
+    - 用`auto`定义一个用`lambda`初始化的变量时，则定义了一个从`lambda`生成的该类型对象实例
+    - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
+    - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
 
 #### 再探迭代器
 
