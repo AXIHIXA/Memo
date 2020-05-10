@@ -2003,16 +2003,14 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
         - 对于局部静态变量或者全局变量，则**不需捕获**即可使用
         - 捕获方式：与参数传递方式类似，可以是
             - *值捕获* ：捕获被创建时变量的 *拷贝* 
-                - *可变`lambda`*
+                - *可变 `lambda`*
                     - 不加`mutable`参数，则捕获的变量被设置为 *只读常量*
+                    - 如果使用了`mutable`参数，则**不能**省略参数列表
                 ```
                 size_t v1 = 42;
-                
-                // error: increment of read-only variable ‘v1’
-                auto f1 = [v1]            { return ++v1; }; 
-                
-                // ok
-                auto f2 = [v1] () mutable { return ++v1; };
+                auto f1 = [v1]            { return ++v1; };  // error: increment of read-only variable ‘v1’
+                auto f2 = [v1] mutable    { return ++v1; };  // error: lambda requires '()' before 'mutable'
+                auto f3 = [v1] () mutable { return ++v1; };  // ok
                 ```
                 - **不能**拷贝`std::ostream`对象，因此捕获它们只能靠引用
             - *引用捕获* ：捕获被创建时变量的 *引用* 
@@ -2026,24 +2024,16 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
             size_t v1 = 42;
             printf("v1 = %zu @ %p\n", v1, &v1);                                       // v1 = 42 @ 0x7ffcc11095e0
 
-            // ok
             auto f1 = [v1]  { printf("f1 v1 = %zu @ %p\n", v1, &v1); return v1;   };  
-            
-            // error: increment of read-only variable ‘v1’
-            auto f2 = [v1]  { printf("f2 v1 = %zu @ %p\n", v1, &v1); return ++v1; }; 
-            
-
-
-            // ok
-            auto f3 = [&v1] { printf("f3 v1 = %zu @ %p\n", v1, &v1); return ++v1; };  
+            auto f2 = [&v1] { printf("f2 v1 = %zu @ %p\n", v1, &v1); return ++v1; };  
 
             v1 = 0;
             size_t j1 = f1();                                                         // f1 v1 = 42 @ 0x7ffcc11095e8
             printf("after f1: v1 = %zu, j1 = %zu\n", v1, j1);                         // after f1: v1 = 0, j1 = 42
 
             v1 = 0;
-            size_t j3 = f3();                                                         // f3 v1 = 0 @ 0x7ffcc11095e0
-            printf("after f3: v1 = %zu, j3 = %zu\n", v1, j3);                         // after f3: v1 = 1, j3 = 1
+            size_t j2 = f2();                                                         // f2 v1 = 0 @ 0x7ffcc11095e0
+            printf("after f2: v1 = %zu, j2 = %zu\n", v1, j2);                         // after f2: v1 = 1, j2 = 1
             ```
         - 捕获的声明
             - `[]`：空捕获列表。`lambda`不能使用所在函数中的变量
