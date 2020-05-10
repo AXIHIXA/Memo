@@ -1834,7 +1834,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
 - 并行算法 *举例*
     - `std::for_each()`
-        - 原型
         ```
         template <class InputIt, class UnaryFunction>
         UnaryFunction 
