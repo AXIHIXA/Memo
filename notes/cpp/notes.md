@@ -59,13 +59,13 @@
 
 #### 显式初始化和隐性初始化
 
-- 显式初始化
+- *显式初始化*
     - `C`风格显式初始化
     ```
     int a = 1;
     int b(1);
     ```
-    - 列表初始化。如会损失精度，则CE
+    - *列表初始化* 。如会损失精度，则CE
     ```
     int c = {1};
     int d{1};
@@ -73,7 +73,7 @@
     int e = {3.14};  // error: type 'double' can not be narrowed down to 'int' in initializer list
     int f{3.14};     // error: type 'double' can not be narrowed down to 'int' in initializer list
     ```
-- 隐式初始化
+- *隐式初始化* ：未显式初始化的变量按照如下规则执行隐式初始化
     - *全局内置变量* ：内置变量且在函数体之外，隐式初始化为`0`
     - *局部静态变量* ：函数体内的静态变量，隐式初始化为`0`
     - *局部非静态变量* ：内置变量且在函数体之内，**无**隐式初始化
