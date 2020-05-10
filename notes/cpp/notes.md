@@ -2016,7 +2016,10 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         auto f = [] { return 42; };
         std::cout << f() << std::endl;  // 42
         
-        std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) { return a.size() < b.size(); });
+        std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) 
+        { 
+            return a.size() < b.size(); 
+        });
         ```
 - `lambda`捕获和返回
     - 捕获列表
