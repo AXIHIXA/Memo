@@ -1844,7 +1844,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定第二个序列至少与第一个序列一样长
     - 向目的位置迭代器写数据的算法都假定目的位置足够大，能容纳要写入的元素
 - 只读算法 *举例*
-    - `std::find()`
+    - [`std::find()`](https://en.cppreference.com/w/cpp/algorithm/find)
         - 原型
         ```
         template <class InputIt, class T>
@@ -1882,7 +1882,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         int * res_1 = std::find(std::begin(arr), std::end(arr), val);
         int * res_2 = std::find(arr + 1, arr + 4, val);
         ```
-    - `std::count()`
+    - [`std::count()`](https://en.cppreference.com/w/cpp/algorithm/count)
         - 原型
         ```
         template <class InputIt, class T>
@@ -1892,7 +1892,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
               const T & value);
         ```
         - 返回：`ptrdiff_t` aka `long int`，区间`[first, last)`之内等于`value`的值的个数
-    - `std::accumlate()`
+    - [`std::accumlate()`](https://en.cppreference.com/w/cpp/algorithm/accumlate)
         - 原型
         ```
         template <class InputIt, class T, class BinaryOperation>
