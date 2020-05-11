@@ -2293,7 +2293,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
         return a.size() < b.size(); 
     });
     ```
-- [参数绑定](https://en.cppreference.com/w/cpp/utility/functional/bind)
+- 参数绑定：[`std::bind()`](https://en.cppreference.com/w/cpp/utility/functional/bind)
     - 头文件：`<functional>`
     - 使用方法
         ```
