@@ -2357,22 +2357,22 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 再探迭代器
 
-- 插入迭代器
+- 插入迭代器：[`std::back_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
+    - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
+    - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
+    ```
+    std::vector<int> vec;                                     // empty vector
+    std::vector<int>::iterator it = std::back_inserter(vec);
+    *it = 42;                                                 // equal to: vec.push_back(42);
+    ```
+    - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
+    ```
+    std::vector<int> vec;                                     // empty vector
+    std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
+    ```
 - `iostream`迭代器
 - 反向迭代器
-    - [`std::back_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
-        - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
-        - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
-        ```
-        std::vector<int> vec;                                     // empty vector
-        std::vector<int>::iterator it = std::back_inserter(vec);
-        *it = 42;                                                 // equal to: vec.push_back(42);
-        ```
-        - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
-        ```
-        std::vector<int> vec;                                     // empty vector
-        std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
-        ```
+
 
 #### 泛型算法结构
 
