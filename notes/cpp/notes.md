@@ -1813,7 +1813,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 - 
 
-### 🌱 [Chap 10] [泛型算法（Generic Algorithms）](https://en.cppreference.com/w/cpp/algorithm)
+### 🌱 [Chap 10] [泛型算法](https://en.cppreference.com/w/cpp/algorithm) （Generic Algorithms）
 
 #### 初识
 
