@@ -2185,9 +2185,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
 - 定义格式
 ```
-auto                                        f1 = [capture_list] (paramater_list) -> return_type { function_body; };
-
-std::function<return_type (paramater_list)> f2 = [capture_list] (paramater_list) -> return_type { function_body; };
+auto                                        f1                  = [capture_list] (paramater_list) -> return_type { function_body; };
+return_type                               (*f2)(paramater_list) = [capture_list] (paramater_list) -> return_type { function_body; };
+std::function<return_type (paramater_list)> f3                  = [capture_list] (paramater_list) -> return_type { function_body; };
 ```
 - 内容物
     - 捕获列表
