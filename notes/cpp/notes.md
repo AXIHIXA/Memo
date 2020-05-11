@@ -1890,9 +1890,15 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         count(InputIt   first, 
               InputIt   last, 
               const T & value);
+              
+        template <class InputIt, class UnaryPredicate>
+        typename iterator_traits<InputIt>::difference_type
+        count_if(InputIt first, 
+                 InputIt last, 
+                 UnaryPredicate p);
         ```
-        - 返回：`ptrdiff_t` aka `long int`，区间`[first, last)`之内等于`value`的值的个数
-    - [`std::accumlate()`](https://en.cppreference.com/w/cpp/algorithm/accumlate)
+        - 返回：`ptrdiff_t` aka `long int`，区间`[first, last)`之内等于`value`或者满足`p(*iter) == true`的值的个数
+    - [`std::accumulate()`](https://en.cppreference.com/w/cpp/algorithm/accumulate)
         - 原型
         ```
         template <class InputIt, class T, class BinaryOperation>
