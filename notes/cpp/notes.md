@@ -1306,39 +1306,89 @@ Entry e = {0, "Anna"};
 ### 🌱 [Chap 9] [顺序容器](https://en.cppreference.com/w/cpp/container)（Sequential Container）
 
 
-#### 类型
+#### 顺序容器
 
-- 顺序容器类型
-    - [`std::vector`](https://en.cppreference.com/w/cpp/container/vector)：
-      可变大小数组。支持快速随机访问。在尾部之外的位置插入删除元素可能很慢
-    - [`std::string`](https://en.cppreference.com/w/cpp/string/basic_string)：
-      与`std::vector`相似，专门用于保存字符。随机访问快。在尾部插入删除速度快
-    - [`std::deque`](https://en.cppreference.com/w/cpp/container/deque)：
-      双端队列。支持快速随机访问。在头尾插入删除元素很快
-    - [`std::list`](https://en.cppreference.com/w/cpp/container/list)：
-      双向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
-    - [`std::foward_list`](https://en.cppreference.com/w/cpp/container/forward_list)：
-      单向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
-    - [`std::array`](https://en.cppreference.com/w/cpp/container/array)：
-      *固定大小* 数组。支持快速随机访问。**不能**添加删除元素。**支持拷贝赋值**（内置数组不行）
-    ```
-    std::array<int, 10> ia1; // ten default-initialized ints
-    std::array<int, 10> ia2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};     // list initialization
-    std::array<int, 10> ia3 = {42};                               // ia3[0] is 42, remaining elements are 0
+- [`std::vector`](https://en.cppreference.com/w/cpp/container/vector)：
+  可变大小数组。支持快速随机访问。在尾部之外的位置插入删除元素可能很慢
+- [`std::string`](https://en.cppreference.com/w/cpp/string/basic_string)：
+  与`std::vector`相似，专门用于保存字符。随机访问快。在尾部插入删除速度快
+- [`std::deque`](https://en.cppreference.com/w/cpp/container/deque)：
+  双端队列。支持快速随机访问。在头尾插入删除元素很快
+- [`std::list`](https://en.cppreference.com/w/cpp/container/list)：
+  双向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
+- [`std::foward_list`](https://en.cppreference.com/w/cpp/container/forward_list)：
+  单向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
+- [`std::array`](https://en.cppreference.com/w/cpp/container/array)：
+  *固定大小* 数组。支持快速随机访问。**不能**添加删除元素。**支持拷贝赋值**（内置数组不行）
+```
+std::array<int, 10> ia1; // ten default-initialized ints
+std::array<int, 10> ia2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};     // list initialization
+std::array<int, 10> ia3 = {42};                               // ia3[0] is 42, remaining elements are 0
 
-    int digs[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    int cpy[10] = digs;                                           // error: no copy or assignment for built-in arrays
-    std::array<int, 10> digits = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    std::array<int, 10> copy = digits;                            // ok: so long as array types match
+int digs[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+int cpy[10] = digs;                                           // error: no copy or assignment for built-in arrays
+std::array<int, 10> digits = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+std::array<int, 10> copy = digits;                            // ok: so long as array types match
+```
+- 注意事项
+    - 除`std::array`外，其他容器均提供高效灵活的内存管理
+    - 除`std::foward_list`没有`size()`操作（为了达到与手写的单向链表一样的效率）外，其余容器均为常数复杂度
+    - 顺序容器构造函数的一个版本接受容器大小参数，它使用了元素类型的**默认**构造函数
+      对于没有默认构造函数的类型的容器，构造时还需传递元素初始化器
     ```
-- 除`std::array`外，其他容器均提供高效灵活的内存管理
-- 除`std::foward_list`没有`size()`操作（为了达到与手写的单向链表一样的效率）外，其余容器均为常数复杂度
-- 顺序容器构造函数的一个版本接受容器大小参数，它使用了元素类型的**默认**构造函数
-  对于没有默认构造函数的类型的容器，构造时还需传递元素初始化器
-```
-std::vector<noDefault> v1(10, init);  // 正确：提供了元素初始化器
-std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始化器
-```
+    std::vector<noDefault> v1(10, init);  // 正确：提供了元素初始化器
+    std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始化器
+    ```
+
+#### 容器适配器
+
+- [`std::stack`](https://en.cppreference.com/w/cpp/container/stack)（位于头文件`<stack>`中）
+    - 默认基于`std::deque`实现
+    ```
+    // copies elements from deq into stk
+    std::stack<int> stk(deq);
+    ```
+    - 也可以接受除`std::array`以及`std::forward_list`之外的任一顺序容器，封装成一个栈
+    ```
+    // empty stack implemented on top of vector
+    std::stack<std::string, std::vector<std::string>> str_stk;
+    // str_stk2 is implemented on top of vector and initially holds a copy of svec
+    std::stack<std::string, std::vector<std::string>> str_stk2(svec);
+    ```
+    - 特有操作
+        - `s.pop()`：弹出栈顶元素，但不返回该元素的值
+        - `s.push(item)`：压栈一个值为`item`的元素
+        - `s.emplace(args)`：压栈一个用`args` *构造* 的元素
+        - `s.top()`：返回栈顶元素，但不将其弹出
+- [`std::queue`](https://en.cppreference.com/w/cpp/container/queue)（位于头文件`<queue>`中）
+    - 默认基于`std::deque`实现，也可以接受除`std::array`、`std::forward_list`以及`std::vector`之外的任一顺序容器
+    - 默认 *先入先出* （`FIFO`），队尾入队，队首出队
+    - 特有操作
+        - `q.pop()`：弹出首元素，但不返回该元素的值
+        - `q.front()`：返回首元素，但不将其弹出
+        - `q.back()`：返回尾元素，但不将其弹出
+        - `q.push(item)`：入队（在队列末尾）一个值为`item`的元素
+        - `q.emplace(args)`：入队（在队列末尾）一个用`args` *构造* 的元素
+- [`std::priority_queue`](https://en.cppreference.com/w/cpp/container/priority_queue)（位于头文件`<queue>`中）
+    - 默认基于`std::vector`实现，也可以接受`std::deque`
+    - 标准库的实现写死了，是 *小顶堆* 。即：若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
+        - 重载`<`运算符 => 11.2.2
+        - 插入相反数
+    - 特有操作
+        - `q.pop()`：弹出最高优先级元素，但不返回该元素的值
+        - `q.top()`：返回最高优先级元素，但不将其弹出
+        - `q.push(item)`：（在适当位置）插入一个值为`item`的元素
+        - `q.emplace(args)`：（在适当位置）插入一个用`args` *构造* 的元素
+- *所有* 容器适配器 *都支持* 的操作和类型
+    - `size_type`
+    - `value_type`
+    - `container_type`：实现此适配器的底层容器的类型
+    - `A a`
+    - `A a(c)`
+    - *关系运算符* ：`==`，`!=`，`<`，`<=`，`>`，`>=`
+    - `a.empty()`
+    - `a.size()`
+    - `std::swap(a, b)`，`a.swap(b)`
 
 #### 容器操作
 
@@ -1763,57 +1813,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     double res = std::stod("+3.14159pi", &idx);
     printf("%lf %zu\n", res, idx);               // 3.141590 8
     ```
-    
-#### 容器适配器
-
-- 除顺序容器外，标准库还定义了三个 *顺序容器适配器* ：
-    - `std::stack`（位于头文件`<stack>`中）
-        - 默认基于`std::deque`实现
-        ```
-        // copies elements from deq into stk
-        std::stack<int> stk(deq);
-        ```
-        - 也可以接受除`std::array`以及`std::forward_list`之外的任一顺序容器，封装成一个栈
-        ```
-        // empty stack implemented on top of vector
-        std::stack<std::string, std::vector<std::string>> str_stk;
-        // str_stk2 is implemented on top of vector and initially holds a copy of svec
-        std::stack<std::string, std::vector<std::string>> str_stk2(svec);
-        ```
-        - 特有操作
-            - `s.pop()`：弹出栈顶元素，但不返回该元素的值
-            - `s.push(item)`：压栈一个值为`item`的元素
-            - `s.emplace(args)`：压栈一个用`args` *构造* 的元素
-            - `s.top()`：返回栈顶元素，但不将其弹出
-    - `std::queue`（位于头文件`<queue>`中）
-        - 默认基于`std::deque`实现，也可以接受除`std::array`、`std::forward_list`以及`std::vector`之外的任一顺序容器
-        - 默认 *先入先出* （`FIFO`），队尾入队，队首出队
-        - 特有操作
-            - `q.pop()`：弹出首元素，但不返回该元素的值
-            - `q.front()`：返回首元素，但不将其弹出
-            - `q.back()`：返回尾元素，但不将其弹出
-            - `q.push(item)`：入队（在队列末尾）一个值为`item`的元素
-            - `q.emplace(args)`：入队（在队列末尾）一个用`args` *构造* 的元素
-    - `std::priority_queue`（位于头文件`<queue>`中）
-        - 默认基于`std::vector`实现，也可以接受`std::deque`
-        - 标准库的实现写死了，是 *小顶堆* 。即：若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
-            - 重载`<`运算符 => 11.2.2
-            - 插入相反数
-        - 特有操作
-            - `q.pop()`：弹出最高优先级元素，但不返回该元素的值
-            - `q.top()`：返回最高优先级元素，但不将其弹出
-            - `q.push(item)`：（在适当位置）插入一个值为`item`的元素
-            - `q.emplace(args)`：（在适当位置）插入一个用`args` *构造* 的元素
-- *所有* 容器适配器 *都支持* 的操作和类型
-    - `size_type`
-    - `value_type`
-    - `container_type`：实现此适配器的底层容器的类型
-    - `A a`
-    - `A a(c)`
-    - *关系运算符* ：`==`，`!=`，`<`，`<=`，`>`，`>=`
-    - `a.empty()`
-    - `a.size()`
-    - `std::swap(a, b)`，`a.swap(b)`
     
 ### 🌱 [Chap 11] [关联容器](https://en.cppreference.com/w/cpp/container)（Associative Container）
 
