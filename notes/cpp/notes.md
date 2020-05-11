@@ -837,14 +837,14 @@ useBigger(s1, s2, pf);
         int a4(0);     // 错误！
         ```
     - *默认初始化* 或 *值初始化* 该成员
-        - *默认初始化* （ [cppreference](https://en.cppreference.com/w/cpp/language/default_initialization) ）
+        - [*默认初始化*](https://en.cppreference.com/w/cpp/language/default_initialization)
             ```
             T object;                             (1)
             new T                                 (2)
             ```
             1. if `T` is an `array type`, every element of the array is *default-initialized* ;
             2. otherwise, nothing is done: the objects with automatic storage duration (and their subobjects) are initialized to *indeterminate values* . 
-        - *值初始化* （ [cppreference](https://en.cppreference.com/w/cpp/language/value_initialization) ）
+        - [*值初始化*](https://en.cppreference.com/w/cpp/language/value_initialization)
             ```
             T()                                   (1)
             new T ()                              (2)
