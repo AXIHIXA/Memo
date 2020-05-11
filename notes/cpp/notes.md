@@ -1813,11 +1813,10 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 - 
 
-### 🌱 [Chap 10] 泛型算法（Generic Algorithms）
+### 🌱 [[Chap 10] 泛型算法（Generic Algorithms](https://en.cppreference.com/w/cpp/algorithm)
 
 #### 初识
 
-- 文档：[Algorithms library - cppreference.com](https://en.cppreference.com/w/cpp/algorithm)
 - 位置
     - 大部分泛型算法定义于头文件`<algorithm>`中
     - 标准库还在头文件`<numeric>`中定义了一组数值泛型算法
