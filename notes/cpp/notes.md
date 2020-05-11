@@ -1817,6 +1817,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 #### 初识
 
+- 文档：[Algorithms library - cppreference.com](https://en.cppreference.com/w/cpp/algorithm)
 - 位置
     - 大部分泛型算法定义于头文件`<algorithm>`中
     - 标准库还在头文件`<numeric>`中定义了一组数值泛型算法
@@ -1918,15 +1919,28 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             
             return init;
             ```
-    - `std::equal()`
+    - [`std::equal()`](https://en.cppreference.com/w/cpp/algorithm/equal)
         - 原型
         ```
+        template <class InputIt1, class InputIt2>
+        bool 
+        equal(InputIt1 first1, 
+              InputIt1 last1,
+              InputIt2 first2);
+        
         template <class InputIt1, class InputIt2, class BinaryPredicate>
         bool 
         equal(InputIt1        first1, 
               InputIt1        last1,
               InputIt2        first2, 
               BinaryPredicate p);
+            
+        template <class InputIt1, class InputIt2>
+        bool 
+        equal(InputIt1 first1, 
+              InputIt1 last1,
+              InputIt2 first2, 
+              InputIt2 last2);
             
         template <class InputIt1, class InputIt2, class BinaryPredicate>
         bool 
@@ -1936,11 +1950,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
               InputIt2        last2,
               BinaryPredicate p);
         ```
-        - 返回：如果 *序列1* 中所有元素都与 *序列2* 中对应位置元素满足 *相等条件* ，则返回`true`，反之返回`false`
-            - `equal`：`*iter1 == *iter2`
-            - `equal_if`：`p(*iter1, *iter2) == true` 
+        - 返回：如果 *序列1* 中所有元素都与 *序列2* 中对应位置元素满足`*iter1 == *iter2`或`p(*iter1, *iter2) == true`，则返回`true`，反之返回`false`
 - 写算法 *举例*
-    - `std::fill()`
+    - [`std::fill()`](https://en.cppreference.com/w/cpp/algorithm/fill)
         - 原型
         ```
         template <class ForwardIt, class T>
@@ -1954,7 +1966,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         std::fill(vec.begin(), vec.end(), 0));
         std::fill(vec.begin(), vec.begin() + vec.size() / 2, 0));
         ```
-    - `std::fill_n()`
+    - [`std::fill_n()`](https://en.cppreference.com/w/cpp/algorithm/fill_n)
         - 原型
         ```
         template <class OutputIt, class Size, class T>
@@ -1967,21 +1979,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
             - 在 *空容器* 上调用`std::fill_n()`或其它写算法是**未定义行为**
         - 返回：迭代器`first + count`
-    - `std::back_inserter()`
-        - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
-        - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
-        ```
-        std::vector<int> vec;                                     // empty vector
-        std::vector<int>::iterator it = std::back_inserter(vec);
-        *it = 42;                                                 // equal to: vec.push_back(42);
-        ```
-        - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
-        ```
-        std::vector<int> vec;                                     // empty vector
-        std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
-        ```
 - 并行算法 *举例*
-    - `std::for_each()`
+    - [`std::for_each()`](https://en.cppreference.com/w/cpp/algorithm/for_each)
         - 原型
         ```
         template <class InputIt, class UnaryFunction>
@@ -2011,7 +2010,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                                                                       // sum.sum == 305
         ```
 - 拷贝算法 *举例*
-    - `std::copy()`
+    - [`std::copy()`](https://en.cppreference.com/w/cpp/algorithm/copy)
         - 原型
         ```
         template <class InputIt, class OutputIt>
@@ -2036,7 +2035,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         int a2[sizeof(a1) / sizeof(*a1)]; 
         int * res = std::copy(std::begin(a1), std::end(a1), a2); 
         ```
-    - `std::replace()`
+    - [`std::replace()`](https://en.cppreference.com/w/cpp/algorithm/replace)
         - 原型
         ```
         template <class ForwardIt, class T>
@@ -2060,7 +2059,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
         std::replace(lst.begin(), lst.end(), 0, 42);
         ```
-    - `std::replace_copy()`
+    - [`std::replace_copy()`](https://en.cppreference.com/w/cpp/algorithm/replace_copy)
         - 原型
         ```
         template <class InputIt, class OutputIt, class T>
@@ -2087,7 +2086,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
         std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
         ```
-    - `std::transform()`
+    - [`std::transform()`](https://en.cppreference.com/w/cpp/algorithm/transform)
         - 原型
         ```
         template <class InputIt, class OutputIt, class UnaryOperation>
@@ -2118,7 +2117,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         });
         ```
 - 排序算法 *举例*
-    - `std::sort()`
+    - [`std::sort()`](https://en.cppreference.com/w/cpp/algorithm/sort)
         - 原型
         ```
         template <class RandomIt>
@@ -2138,7 +2137,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - 复杂度
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
-    - `std::unique()`
+    - [`std::unique()`](https://en.cppreference.com/w/cpp/algorithm/unique)
         - 原型
         ```
         template <class ForwardIt>
@@ -2168,7 +2167,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         }
         ```   
    
-#### `lambda`表达式
+#### [`lambda`表达式](https://en.cppreference.com/w/cpp/language/lambda)
 
 - 可以理解为未命名的`inline`函数
     - 向函数传递`lambda`时，`lambda`会 *立即执行*
@@ -2292,6 +2291,19 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
 - 插入迭代器
 - `iostream`迭代器
 - 反向迭代器
+    - [`std::back_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
+        - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
+        - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
+        ```
+        std::vector<int> vec;                                     // empty vector
+        std::vector<int>::iterator it = std::back_inserter(vec);
+        *it = 42;                                                 // equal to: vec.push_back(42);
+        ```
+        - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
+        ```
+        std::vector<int> vec;                                     // empty vector
+        std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
+        ```
 
 #### 泛型算法结构
 
