@@ -837,14 +837,14 @@ useBigger(s1, s2, pf);
         int a4(0);     // 错误！
         ```
     - *默认初始化* 或 *值初始化* 该成员
-        - *默认初始化* 
+        - *默认初始化* （ [cppreference](https://en.cppreference.com/w/cpp/language/default_initialization) ）
             ```
             T object;                             (1)
             new T                                 (2)
             ```
-            1. if `T` is an array type, every element of the array is *default-initialized* ;
+            1. if `T` is an `array type`, every element of the array is *default-initialized* ;
             2. otherwise, nothing is done: the objects with automatic storage duration (and their subobjects) are initialized to *indeterminate values* . 
-        - *值初始化* 
+        - *值初始化* （ [cppreference](https://en.cppreference.com/w/cpp/language/value_initialization) ）
             ```
             T()                                   (1)
             new T ()                              (2)
@@ -854,9 +854,9 @@ useBigger(s1, s2, pf);
             new T {}                              (6)
             Class::Class(...) : member{} { ... }  (7)
             ```
-            1. if `T` is a class type with no default constructor or with a user-provided or deleted default constructor, the object is *default-initialized* ;
-            2. if `T` is a class type with a default constructor that is neither user-provided nor deleted (that is, it may be a class with an implicitly-defined or defaulted default constructor), the object is *zero-initialized* and then it is *default-initialized* if it has a non-trivial default constructor;
-            3. if `T` is an array type, each element of the array is *value-initialized*;
+            1. if `T` is a `class type` with no default constructor or with a user-provided or deleted default constructor, the object is *default-initialized* ;
+            2. if `T` is a `class type` with a default constructor that is neither user-provided nor deleted (that is, it may be a class with an implicitly-defined or defaulted default constructor), the object is *zero-initialized* and then it is *default-initialized* if it has a non-trivial default constructor;
+            3. if `T` is an `array type`, each element of the array is *value-initialized*;
             4. otherwise, the object is *zero-initialized* .
 - 生成条件：
     - 只有类**没有声明任何构造函数**时，编译器才会自动生成默认构造函数
