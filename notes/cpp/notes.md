@@ -2183,11 +2183,32 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - 用`auto`定义一个用`lambda`初始化的变量时，则定义了一个从`lambda`生成的该类型对象实例
         - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
         - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
+        ```
+        // The lambda expression is a prvalue expression of unique unnamed non-union non-aggregate class type, known as closure type, 
+        // which is declared (for the purposes of ADL) in the smallest block scope, class scope, or namespace scope 
+        // that contains the lambda expression. 
+        
+        // the keyword mutable was not used
+        ret ClosureType::operator()(params) const { body }  
+        
+        // the keyword mutable was used
+        ret ClosureType::operator()(params) { body }        
+        
+        // generic lambda (since C++14)
+        template <template-params>
+        ret ClosureType::operator()(params) const { body }  
+        
+        // generic lambda, the keyword mutable was used (since C++14)
+        template< template-params>
+        ret ClosureType::operator()(params) { body }   
+        ```
 - 定义格式
 ```
 auto f1 = [capture_list] (paramater_list) -> return_type { function_body; };
-return_type (*f2)(paramater_list) = [capture_list] (paramater_list) -> return_type { function_body; };
-std::function<return_type (paramater_list)> f3 = [capture_list] (paramater_list) -> return_type { function_body; };
+
+// equivalent type casts
+return_type                               (*f2)(paramater_list) = f1;
+std::function<return_type (paramater_list)> f3                  = f1;
 ```
 - 内容物
     - 捕获列表
