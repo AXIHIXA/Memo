@@ -2200,7 +2200,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ret ClosureType::operator()(params) const { body }  
         
         // generic lambda, the keyword mutable was used (since C++14)
-        template< template-params>
+        template <template-params>
         ret ClosureType::operator()(params) { body }   
         ```
 - 定义格式
@@ -2293,11 +2293,10 @@ std::function<return_type (paramater_list)> f3                  = f1;
         return a.size() < b.size(); 
     });
     ```
-- 参数绑定
-    - [`std::bind()`](https://en.cppreference.com/w/cpp/utility/functional/bind)
+- [参数绑定](https://en.cppreference.com/w/cpp/utility/functional/bind)
+    - 头文件：`<functional>`
+    - 使用方法
         ```
-        #include <functional>
-        
         auto newCallable = std::bind(callable, arg_list);
         ```
         - `arg_list`
@@ -2306,6 +2305,9 @@ std::function<return_type (paramater_list)> f3                  = f1;
             - 包含
                 - *占位符* ：`std::placeholders::_n`（`n`为正整数），代表`newCallable`的第`n`个参数
                 - 普通变量或者字面量
+                - [`std::ref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)，
+                  [`std::cref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)：
+                  绑定对象的 *引用* 或 *常量引用*
         - `newCallable`是一个返回值与`callable`相同、参数个数为`arg_list`中占位符 *最大标号* 数值的可调用对象
         - 调用`newCallable`时，`newCallable`会调用`callable`
             - `callable`接受的参数为`arg_list`中对应位置的变量   
@@ -2317,8 +2319,16 @@ std::function<return_type (paramater_list)> f3                  = f1;
         // signature of f2: void f2(, T2, T2);
         auto f2 = std::bind(f1, std::placeholders::_2, std::placeholders::_2, 6, std::placeholders::_3);
         
-        // equal to: f1(2, 2, 6, 3);
+        // equivalent:
         f2(1, 2, 3);
+        f1(2, 2, 6, 3);
+        
+        // another example
+        auto g = std::bind(f, a, b, std::placeholders::_2, c, std::placeholders::_1);
+        
+        // equivalent:
+        g(X, Y);
+        f(a, b, Y, c, X);
         ```
     - 用途：用函数代替列表为空的`lambda`
         - 对于要多次使用的操作，应当编写函数并复用，而不是编写一堆重复的`lambda`
