@@ -2270,27 +2270,56 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
     });
     ```
 - 参数绑定
-    - 用函数代替`lambda`
-        - 对于要多次使用的操作，应当编写函数并复用，而不是编写一堆重复的`lambda`
-        - 捕获列表为空的`lambda`也可以用函数来代替
-    - 如果要用函数代替捕获了局部变量的`lambda`，可以使用`std::bind()`对函数进行 *参数绑定* 
-        - 头文件`<functional>`。使用方法
+    - [`std::bind()`](https://en.cppreference.com/w/cpp/utility/functional/bind)
         ```
+        #include <functional>
+        
         auto newCallable = std::bind(callable, arg_list);
         ```
-        - 可以看做通用的函数适配器。调用`newCallable`时，`newCallable`会调用`callable`，并向其传递`arg_list`中的参数
-        - `arg_list`：
-            - 逗号分隔的参数列表
-            - 可以包含形如`_n`的 *占位符* （`n`为整数），表示将要传递给`callable`的参数
-                - `_1`表示`newCallable`的第一个参数，`_2`为第二个，以此类推
+        - `arg_list`
+            - 是逗号分隔的参数列表，和`callable`的参数列表一一对应
+                - 自然，长度和`callable`的参数列表相同
+            - 包含
+                - *占位符* ：`std::placeholders::_n`（`n`为正整数），代表`newCallable`的第`n`个参数
+                - 普通变量或者字面量
+        - `newCallable`是一个返回值与`callable`相同、参数个数为`arg_list`中占位符 *最大标号* 数值的可调用对象
+        - 调用`newCallable`时，`newCallable`会调用`callable`
+            - `callable`接受的参数为`arg_list`中对应位置的变量   
+            - `newCallable`接受的参数 *不一定全部* 被传递给`callable`
+                - `n`个占位符标号 *可以不是* `1 ~ n`，可以有空缺
         ```
-        bool checkSize(const std::string & s, const std::string::size_type &sz)
-        {
-            return s.size() >= sz;
-        }
+        void f1(int a1, int a2, int a3, int a4);
         
-        auto check6 = std::bind(checkSize, _1, 6);
+        // signature of f2: void f2(int, int, int);
+        auto f2 = std::bind(f1, std::placeholders::_2, std::placeholders::_2, 6, std::placeholders::_3);
+        
+        // equal to: f1(2, 2, 6, 3);
+        f2(1, 2, 3);
         ```
+    - 用途：用函数代替列表为空的`lambda`
+        - 对于要多次使用的操作，应当编写函数并复用，而不是编写一堆重复的`lambda`
+    ```
+    bool checkSize(const std::string & s, const std::string::size_type &sz)
+    {
+        return s.size() >= sz;
+    }
+    
+    // 此std::bind()调用只有一个占位符，表示`check6`只接受单一参数。
+    // 占位符出现在`arg_list`的第一个位置，表明`check6`的此参数对应`check_size()`的第一个参数，即const std::string & s。
+    auto check6 = std::bind(checkSize, _1, 6);
+    
+    // 相当于bool b1 = checkSize(s, 6);
+    bool b1 = check6(s);
+    
+    // 以下调用等价
+    size_t sz = 6;
+    auto wc = std::find_if(words.begin(), words.end(), [sz] (const std::string & s) 
+    {
+        return s.size >= sz;
+    });
+    
+    auto wc2 = std::find_if(words.begin(), words.end(), std::bind(checkSize, _1, 6));
+    ```  
 
 #### 再探迭代器
 
