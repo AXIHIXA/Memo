@@ -1305,7 +1305,7 @@ Entry e = {0, "Anna"};
 
 - 
 
-### 🌱 [Chap 9] 顺序容器（Sequential Container）
+### 🌱 [Chap 9] [顺序容器](https://en.cppreference.com/w/cpp/container)（Sequential Container）
 
 
 #### 顺序容器
@@ -1816,7 +1816,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     printf("%lf %zu\n", res, idx);               // 3.141590 8
     ```
     
-### 🌱 [Chap 11] 关联容器（Associative Container）
+### 🌱 [Chap 11] [关联容器](https://en.cppreference.com/w/cpp/container)（Associative Container）
 
 - 
 
@@ -2293,9 +2293,8 @@ std::function<return_type (paramater_list)> f3                  = f1;
         return a.size() < b.size(); 
     });
     ```
-- 参数绑定：[`std::bind()`](https://en.cppreference.com/w/cpp/utility/functional/bind)
-    - 头文件：`<functional>`
-    - 使用方法
+- [参数绑定](https://en.cppreference.com/w/cpp/utility/functional/bind)
+    - 头文件`<functional>`中定义了`std::bind()`
         ```
         auto newCallable = std::bind(callable, arg_list);
         ```
