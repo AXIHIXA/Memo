@@ -2186,6 +2186,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 - 定义格式
 ```
 auto f = [capture_list] (paramater_list) -> return_type { function_body; };
+
+std::function<return_type (paramater_list)> f2 = [capture_list] (paramater_list) -> return_type { function_body; };
 ```
 - 内容物
     - 捕获列表
@@ -2288,9 +2290,9 @@ auto f = [capture_list] (paramater_list) -> return_type { function_body; };
             - `newCallable`接受的参数 *不一定全部* 被传递给`callable`
                 - `n`个占位符标号 *可以不是* `1 ~ n`，可以有空缺
         ```
-        void f1(int a1, int a2, int a3, int a4);
+        void f1(T1 a1, T2 a2, T3 a3, T4 a4);
         
-        // signature of f2: void f2(int, int, int);
+        // signature of f2: void f2(, T2, T2);
         auto f2 = std::bind(f1, std::placeholders::_2, std::placeholders::_2, 6, std::placeholders::_3);
         
         // equal to: f1(2, 2, 6, 3);
