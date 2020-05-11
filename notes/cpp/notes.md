@@ -2301,12 +2301,12 @@ std::function<return_type (paramater_list)> f3                  = f1;
         - `arg_list`
             - 是逗号分隔的参数列表，和`callable`的参数列表一一对应
                 - 自然，长度和`callable`的参数列表相同
-            - 包含
-                - *占位符* ：`std::placeholders::_n`（`n`为正整数），`callable`对应位置参数绑定为`newCallable`被调用时接受的第`n`个参数
-                - 普通变量或者字面量，`callable`对应位置参数绑定为 *调用`std::bind()`时* 该变量的值
+            - `arg_list`可以包含以下三类东西，代表`callable`在对应位置参数绑定为
+                - *占位符* `std::placeholders::_n`（`n`为正整数）：`newCallable`被调用时接受的第`n`个参数
+                - 普通变量或者字面量： *调用`std::bind()`时* 该变量的值（即该变量在那时的拷贝）
                 - [`std::ref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)，
                   [`std::cref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)：
-                  绑定对象的 *引用* 或 *常量引用*
+                  该对象的 *引用* 或 *常量引用*
             ```
             #include <functional>
             #include <iostream>
