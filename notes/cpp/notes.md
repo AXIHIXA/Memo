@@ -2311,9 +2311,9 @@ std::function<return_type (paramater_list)> f3                  = f1;
                 #include <functional>
                 #include <iostream>
                 
-                void f(int& n1, int& n2, const int& n3)
+                void f(int & n1, int & n2, const int & n3)
                 {
-                    std::cout << "In function: " << n1 << ' ' << n2 << ' ' << n3 << '\n';
+                    printf("%d %d %d\n", n1, n2, n3);
                     ++n1;     // increments the copy of n1 stored in the function object
                     ++n2;     // increments the main()'s n2
                     // ++n3;  // compile error
@@ -2322,14 +2322,11 @@ std::function<return_type (paramater_list)> f3                  = f1;
                 int main()
                 {
                     int n1 = 1, n2 = 2, n3 = 3;
-                    std::function<void()> bound_f = std::bind(f, n1, std::ref(n2), std::cref(n3));
+                    std::function<void ()> bound_f = std::bind(f, n1, std::ref(n2), std::cref(n3));
                     n1 = 10, n2 = 11, n3 = 12;
-                    // Before function: 10 11 12
-                    std::cout << "Before function: " << n1 << ' ' << n2 << ' ' << n3 << '\n';  
-                    // In function: 1 11 12
-                    bound_f();                                                                 
-                    // After function: 10 12 12
-                    std::cout << "After function: " << n1 << ' ' << n2 << ' ' << n3 << '\n';   
+                    printf("%d %d %d\n", n1, n2, n3);  // 10 11 12
+                    bound_f();                         // 1 11 12                                                     
+                    printf("%d %d %d\n", n1, n2, n3);  // 10 12 12
                 }
                 ```
         - `newCallable`是一个返回值与`callable`相同、参数个数为`arg_list`中占位符 *最大标号* 数值的可调用对象
