@@ -821,10 +821,9 @@ useBigger(s1, s2, pf);
 
 ### 🌱 [Chap 8] `I/O`库
 
-- 这章挺没意思的，全篇在讲`<iostream>`，还是`C`风格`I/O`用着舒服
-- [`C`-style file input/output](https://en.cppreference.com/w/cpp/io/c)
-    - [`printf()` in `C`](https://en.cppreference.com/w/c/io/fprintf)
-    - [`std::printf()` in `C++`](https://en.cppreference.com/w/cpp/io/c/fprintf)
+- 这章挺没意思的，全篇在讲`<iostream>`，还是[`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c)用着舒服
+    - [`printf()`](https://en.cppreference.com/w/c/io/fprintf)
+    - [`std::printf()`](https://en.cppreference.com/w/cpp/io/c/fprintf)
 
 ### 🌱 [Chap 7] 类（基础概念）
 
