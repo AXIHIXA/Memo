@@ -12,6 +12,7 @@
     - `const`常量不论是声明还是定义都添加`extern`修饰符
     - 想要`auto`推导出引用或者常量的话，直接写清楚是坠吼的（`const auto & a = b`），别折腾顶层`const`什么的
     - 认定应为常量表达式的变量应当声明为`constexpr`类型
+    - 凡是不修改类数据成员的成员函数函数一律定义成常成员函数
     - `constexpr`函数、静态`constexpr`成员、`inline`函数（包括类的`inline`成员函数）以及模板的**定义和实现都应**写进头文件
     - `using`声明（`using std::string`、`using namespace std`、`using intptr = int *`等）**不应**写进头文件
     - `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
@@ -1034,6 +1035,7 @@ item.combine(std::cin);                                  // 错误，对应构�
     - `const`是函数类型的一部分，在声明函数和定义函数时都要有`const`关键字，在调用时不必加`const`
     - 一般成员函数可以引用本类中的数据成员，也可以修改非`const`数据成员
     - 常成员函数则只能引用本类中的数据成员，而**不能**修改除 *可变数据成员* 以外任何成员
+    - 凡是不修改类数据成员的函数一律定义成常成员函数
     
 数据成员              | 普通成员函数          | `const`成员函数
 --------------------|---------------------|---------------------
@@ -1491,10 +1493,10 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
     - `*iter`：返回迭代器`iter`所知元素的**左值**引用
         - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**
     - `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
-    - `++iter`：令`iter`指向容器中的下一个元素
-        - 尾后迭代器并不实际指向元素，因此**不能**递增或递减
+    - `++iter`，`iter++`：令`iter`指向容器中的下一个元素
+        - 尾后迭代器并不实际指向元素，**不能**递增或递减
         - 至少`g++`允许自减尾后迭代器`--c.end()`获取尾元素
-    - `--iter`：令`iter`指向容器中的上一个元素
+    - `--iter`，`iter--`：令`iter`指向容器中的上一个元素
     - `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
                                           如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
                                           则相等；反之，不相等。
@@ -2018,7 +2020,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
         - 将区间`[first, first + count)`之内所有元素都赋值为`value` 
             - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
-            - 在 *空容器* 上调用`std::fill_n()`或其它写算法是**未定义行为**
+            - 在 *空容器* 上调用`std::fill_n()`或其它写算法是 *未定义* 行为。对于空容器应当使用`std::back_insert_iterator` => 10.4.1
         - 返回：迭代器`first + count`
 - *并行算法* 举例
     - [`std::for_each()`](https://en.cppreference.com/w/cpp/algorithm/for_each)
@@ -2413,21 +2415,41 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 再探[迭代器](https://en.cppreference.com/w/cpp/iterator)
 
-- [插入迭代器](https://en.cppreference.com/w/cpp/iterator/back_inserter)（insert iterator）
-    - `std::back_inserter()`接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
-    - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
-    ```
-    std::vector<int> vec;                                     // empty vector
-    std::vector<int>::iterator it = std::back_inserter(vec);
-    *it = 42;                                                 // equal to: vec.push_back(42);
-    ```
-    - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
-    ```
-    std::vector<int> vec;                                     // empty vector
-    std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
-    ```
-- [流迭代器](https://en.cppreference.com/w/cpp/iterator/istream_iterator)（stream iterator）
-- 反向迭代器（reverse iterator）
+- *插入迭代器* （insert iterator）
+    - 插入器一样是迭代器适配器，接受容器、生成迭代器，能实现向容器添加元素
+    - 通过插入器进行赋值时，插入器调用容器操作向指定容器的指定位置插入元素
+    - 支持操作
+        - `it = t`：在`it`所指位置 *之前* 插入值元素`t`
+            - 根据具体容器，可能会调用`c.push_back(t)`，`c.push_front(t)`或`c.insert(t, iter)`
+            - 自然，只有在容器支持该操作的情况下，才能使用对应的插入器
+        - `*it`，`++it`，`it++`：这些操作**并不做任何事，一律返回`it`自己！！！**
+    - 插入器有如下三种
+        - [`std::back_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/back_insert_iterator)
+            - 生成：[`std::back_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
+                ```
+                template <class Container>
+                std::back_insert_iterator<Container> back_inserter(Container & c)
+                {
+                    return std::back_insert_iterator<Container>(c);
+                }
+                ```
+            - 通过此迭代器赋值时，赋值运算符调用`c.push_back()`将一个具有给定值的元素添加到容器中
+            ```
+            std::vector<int> vec;                                     // empty vector
+            std::back_insert_iterator<std::vector<int》> it = std::back_inserter(vec);
+            *it = 42;                                                 // actually calls: vec.push_back(42);
+            ```
+            - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
+            ```
+            std::vector<int> vec;                                     // empty vector
+            std::fill_n(vec.end(), 10, 0);                            // warning: fill_n on empty container is undefined
+            std::fill_n(std::back_inserter(vec), 10, 0);              // correct: insert 10 elements to vec
+            ```
+        - [`front_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/front_insert_iterator)
+            - [`std::front_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
+        - [`inserter`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
+- *流迭代器* （stream iterator）
+- *反向迭代器* （reverse iterator）
 
 
 #### 泛型算法结构
