@@ -2036,6 +2036,11 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - 如果`InputIt`不是常迭代器，则`f`可以修改元素。
             - `f`如有返回值，则直接被丢弃
             - **不能**复制序列中的元素
+        - `f`
+            - Function object, to be applied to the result of dereferencing every iterator in the range `[first, last)`
+            - Signature of the function should be equivalent to the following: `void fun(const Type & a);`
+                - The signature does not need to have `const &`
+                - `Type` must be such that an object of type `InputIt` can be dereferenced and then implicitly converted to `Type`
         - 返回：形参`f`的拷贝，经过迭代之后返回之
             - `f`不是引用类型，因此传入的`f`**不会**被修改
             - 想要获得经历过迭代的`f`，则 *只能依靠返回值* 。例如下面代码
@@ -2421,7 +2426,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
     - 支持操作
         - `it = t`：在`it`所指位置 *之前* 插入值元素`t`
             - 根据具体容器，可能会调用`c.push_back(t)`，`c.push_front(t)`或`c.insert(t, iter)`
-            - 自然，只有在容器支持该操作的情况下，才能使用对应的插入器
+            - 自然，只有在 *容器支持该操作* 的情况下，才能使用对应的插入器
         - `*it`，`++it`，`it++`：这些操作**并不做任何事，一律返回`it`自己！！！**
     - 插入器有如下三种
         - [`std::back_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/back_insert_iterator)
@@ -2436,7 +2441,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
             - 通过此迭代器赋值时，赋值运算符调用`c.push_back()`将一个具有给定值的元素添加到容器中
             ```
             std::vector<int> vec;                                     // empty vector
-            std::back_insert_iterator<std::vector<int》> it = std::back_inserter(vec);
+            std::back_insert_iterator<std::vector<int>> it = std::back_inserter(vec);
             *it = 42;                                                 // actually calls: vec.push_back(42);
             ```
             - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
