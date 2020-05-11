@@ -2184,7 +2184,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
         - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
         ```
-        // The lambda expression is a prvalue expression of unique unnamed non-union non-aggregate class type, known as closure type, 
+        // The lambda expression is a prvalue expression of unique unnamed non-union non-aggregate class type, 
+        // known as closure type, 
         // which is declared (for the purposes of ADL) in the smallest block scope, class scope, or namespace scope 
         // that contains the lambda expression. 
         
