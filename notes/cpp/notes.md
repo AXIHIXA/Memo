@@ -1305,7 +1305,7 @@ Entry e = {0, "Anna"};
 
 - 
 
-### 🌱 [Chap 9] [顺序容器](https://en.cppreference.com/w/cpp/container)（Sequential Container）
+### 🌱 [Chap 9] 顺序容器（Sequential Container）
 
 
 #### 顺序容器
@@ -1447,7 +1447,7 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
     int * ptr_end = std::end(arr);
     ```
 
-#### 迭代器（iterator）
+#### [迭代器](https://en.cppreference.com/w/cpp/iterator)（iterator）
 
 - 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符
 - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
@@ -1816,7 +1816,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     printf("%lf %zu\n", res, idx);               // 3.141590 8
     ```
     
-### 🌱 [Chap 11] [关联容器](https://en.cppreference.com/w/cpp/container)（Associative Container）
+### 🌱 [Chap 11] 关联容器（Associative Container）
 
 - 
 
@@ -1850,7 +1850,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 - 公认假设
     - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定第二个序列至少与第一个序列一样长
     - 向目的位置迭代器写数据的算法都假定目的位置足够大，能容纳要写入的元素
-- 只读算法 *举例*
+- *只读算法* 举例
     - [`std::find()`](https://en.cppreference.com/w/cpp/algorithm/find)
         - 原型
         ```
@@ -1957,7 +1957,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
               BinaryPredicate p);
         ```
         - 返回：如果 *序列1* 中所有元素都与 *序列2* 中对应位置元素满足`*iter1 == *iter2`或`p(*iter1, *iter2) == true`，则返回`true`，反之返回`false`
-- 写算法 *举例*
+- *写算法* 举例
     - [`std::fill()`](https://en.cppreference.com/w/cpp/algorithm/fill)
         - 原型
         ```
@@ -1985,7 +1985,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
             - 在 *空容器* 上调用`std::fill_n()`或其它写算法是**未定义行为**
         - 返回：迭代器`first + count`
-- 并行算法 *举例*
+- *并行算法* 举例
     - [`std::for_each()`](https://en.cppreference.com/w/cpp/algorithm/for_each)
         - 原型
         ```
@@ -2015,7 +2015,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum == 0 !!!
                                                                       // sum.sum == 305
         ```
-- 拷贝算法 *举例*
+- *拷贝算法* 举例
     - [`std::copy()`](https://en.cppreference.com/w/cpp/algorithm/copy)
         - 原型
         ```
@@ -2122,7 +2122,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             return i < 0 ? -i : i;
         });
         ```
-- 排序算法 *举例*
+- *排序算法* 举例
     - [`std::sort()`](https://en.cppreference.com/w/cpp/algorithm/sort)
         - 原型
         ```
@@ -2355,10 +2355,10 @@ std::function<return_type (paramater_list)> f3                  = f1;
     auto wc2 = std::find_if(words.begin(), words.end(), std::bind(checkSize, _1, 6));
     ```  
 
-#### 再探迭代器
+#### 再探[迭代器](https://en.cppreference.com/w/cpp/iterator)
 
-- 插入迭代器：[`std::back_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
-    - 接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
+- [插入迭代器](https://en.cppreference.com/w/cpp/iterator/back_inserter)（insert iterator）
+    - `std::back_inserter()`接受一个指向容器的 *引用* ， 返回与该容器绑定的迭代器
     - 通过此迭代器赋值时，赋值运算符调用`push_back()`讲一个具有给定值的元素添加到容器中
     ```
     std::vector<int> vec;                                     // empty vector
@@ -2370,8 +2370,8 @@ std::function<return_type (paramater_list)> f3                  = f1;
     std::vector<int> vec;                                     // empty vector
     std::fill_n(std::back_inserter(vec), 10, 0);              // insert 10 elements to vec
     ```
-- `iostream`迭代器
-- 反向迭代器
+- [流迭代器](https://en.cppreference.com/w/cpp/iterator/istream_iterator)（stream iterator）
+- 反向迭代器（reverse iterator）
 
 
 #### 泛型算法结构
