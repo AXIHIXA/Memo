@@ -1303,18 +1303,24 @@ Entry e = {0, "Anna"};
 
 - 
 
-### 🌱 [Chap 9] 顺序容器（Sequential Container）
+### 🌱 [Chap 9] [顺序容器](https://en.cppreference.com/w/cpp/container)（Sequential Container）
 
 
 #### 类型
 
 - 顺序容器类型
-    - `std::vector`：可变大小数组。支持快速随机访问。在尾部之外的位置插入删除元素可能很慢
-    - `std::string`：与`std::vector`相似，专门用于保存字符。随机访问快。在尾部插入删除速度快
-    - `std::deque`：双端队列。支持快速随机访问。在头尾插入删除元素很快
-    - `std::list`：双向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
-    - `std::foward_list`：单向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
-    - `std::array`： *固定大小* 数组。支持快速随机访问。**不能**添加删除元素。**支持拷贝赋值**（内置数组不行）
+    - [`std::vector`](https://en.cppreference.com/w/cpp/container/vector)：
+      可变大小数组。支持快速随机访问。在尾部之外的位置插入删除元素可能很慢
+    - [`std::string`](https://en.cppreference.com/w/cpp/string/basic_string)：
+      与`std::vector`相似，专门用于保存字符。随机访问快。在尾部插入删除速度快
+    - [`std::deque`](https://en.cppreference.com/w/cpp/container/deque)：
+      双端队列。支持快速随机访问。在头尾插入删除元素很快
+    - [`std::list`](https://en.cppreference.com/w/cpp/container/list)：
+      双向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
+    - [`std::foward_list`](https://en.cppreference.com/w/cpp/container/forward_list)：
+      单向链表。只支持双向**顺序**访问。在任何位置插入删除元素都很快
+    - [`std::array`](https://en.cppreference.com/w/cpp/container/array)：
+      *固定大小* 数组。支持快速随机访问。**不能**添加删除元素。**支持拷贝赋值**（内置数组不行）
     ```
     std::array<int, 10> ia1; // ten default-initialized ints
     std::array<int, 10> ia2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};     // list initialization
@@ -1809,7 +1815,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `a.size()`
     - `std::swap(a, b)`，`a.swap(b)`
     
-### 🌱 [Chap 11] 关联容器（Associative Container）
+### 🌱 [Chap 11] [关联容器](https://en.cppreference.com/w/cpp/container)（Associative Container）
 
 - 
 
