@@ -2302,8 +2302,8 @@ std::function<return_type (paramater_list)> f3                  = f1;
             - 是逗号分隔的参数列表，和`callable`的参数列表一一对应
                 - 自然，长度和`callable`的参数列表相同
             - `arg_list`可以包含以下三类东西，代表`callable`在对应位置参数绑定为
-                - *占位符* `std::placeholders::_n`（`n`为正整数）：`newCallable`被调用时接受的第`n`个参数
-                - 普通变量者字面量：该变量的拷贝（即绑定死为 *调用`std::bind()`时* 该变量的值）
+                - [*占位符*](https://en.cppreference.com/w/cpp/utility/functional/placeholders) `std::placeholders::_n`（`n`为正整数）：`newCallable`被调用时接受的第`n`个参数
+                - 普通变量或字面量：该变量的拷贝（即绑定死为 *调用`std::bind()`时* 该变量的值）
                 - [`std::ref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)，
                   [`std::cref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)：
                   该对象的 *引用* 或 *常量引用*
@@ -2329,7 +2329,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
                 printf("%d %d %d\n", n1, n2, n3);  // 10 12 12
             }
             ```
-        - `newCallable`是一个返回值与`callable`相同、参数个数为`arg_list`中占位符 *最大标号* 数值的可调用对象
+        - `newCallable`是一个返回值与`callable`相同、参数个数为`arg_list`中占位符 *最大标号* 数值的函数对象
         - 调用`newCallable`时，`newCallable`会调用`callable`
             - `callable`接受的参数为`arg_list`中对应位置的变量   
             - `newCallable`接受的参数 *不一定全部* 被传递给`callable`
