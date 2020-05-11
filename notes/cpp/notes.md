@@ -2218,7 +2218,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
         - 捕获方式：与参数传递方式类似，可以是
             - *值捕获* ：捕获被创建时变量的 *拷贝* 
                 - *可变 `lambda`*
-                    - 不加`mutable`参数，则捕获的变量被设置为 *只读常量*
+                    - 不加`mutable`参数，则被捕获的对象设置为`Closure`类的 *常数据成员* 、此`lambda`为 *常成员函数*
                     - 如果使用了`mutable`参数，则**不能**省略参数列表
                 ```
                 size_t v1 = 42;
