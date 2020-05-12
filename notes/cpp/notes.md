@@ -2413,11 +2413,10 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 ##### 泛型算法使用的几类迭代器
 
+<table>
 <tr>
-<th colspan="5">Iterator category
-</th>
-<th>Defined operations
-</th></tr>
+<th colspan="5">Iterator category</th> <th>Defined operations</th>
+</tr>
 <tr>
 <td rowspan="5"><a href="/w/cpp/named_req/ContiguousIterator" title="cpp/named req/ContiguousIterator"><span style="font-family: Georgia, 'DejaVu Serif', serif; font-style:italic">LegacyContiguousIterator</span></a>
 </td>
@@ -2477,6 +2476,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
 </li><li> increment (without multiple passes)
 </li></ul>
 </td></tr>
+</table>
 
 ##### 泛型迭代器操作函数
 
