@@ -2414,68 +2414,65 @@ std::function<return_type (paramater_list)> f3                  = f1;
 ##### 泛型算法使用的几类迭代器
 
 <table>
-<tr>
-<th colspan="5">Iterator category</th> <th>Defined operations</th>
-</tr>
-<tr>
-<td rowspan="5"><a href="/w/cpp/named_req/ContiguousIterator" title="cpp/named req/ContiguousIterator"><span style="font-family: Georgia, 'DejaVu Serif', serif; font-style:italic">LegacyContiguousIterator</span></a>
-</td>
-<td rowspan="4"><a href="/w/cpp/named_req/RandomAccessIterator" title="cpp/named req/RandomAccessIterator"><span style="font-family: Georgia, 'DejaVu Serif', serif; font-style:italic">LegacyRandomAccessIterator</span></a>
-</td>
-<td rowspan="3"><a href="/w/cpp/named_req/BidirectionalIterator" title="cpp/named req/BidirectionalIterator"><span style="font-family: Georgia, 'DejaVu Serif', serif; font-style:italic">LegacyBidirectionalIterator</span></a>
-</td>
-<td rowspan="2"><a href="/w/cpp/named_req/ForwardIterator" title="cpp/named req/ForwardIterator"><span style="font-family: Georgia, 'DejaVu Serif', serif; font-style:italic">LegacyForwardIterator</span></a>
-</td>
-<td><a href="/w/cpp/named_req/InputIterator" title="cpp/named req/InputIterator"><span style="font-family: Georgia, 'DejaVu Serif', serif; font-style:italic">LegacyInputIterator</span></a>
-</td>
-<td>
-<ul><li> read
-</li><li> increment (without multiple passes)
-</li></ul>
-</td></tr>
-<tr>
-<td>
-</td>
-<td>
-<ul><li> increment (with multiple passes)
-</li></ul>
-</td></tr>
-<tr>
-<td colspan="2">
-</td>
-<td>
-<ul><li> decrement
-</li></ul>
-</td></tr>
-<tr>
-<td colspan="3">
-</td>
-<td>
-<ul><li> random access
-</li></ul>
-</td></tr>
-<tr>
-<td colspan="4">
-</td>
-<td>
-<ul><li> contiguous storage
-</li></ul>
-</td></tr>
-<tr>
-<td colspan="6" style="text-align:center;">
-<p>Iterators that fall into one of the above categories and also meet the requirements of <a href="/w/cpp/named_req/OutputIterator" title="cpp/named req/OutputIterator"><span style="font-family: Georgia, 'DejaVu Serif', serif; font-style:italic">LegacyOutputIterator</span></a> are called mutable iterators.
-</p>
-</td></tr>
-<tr>
-<td><a href="/w/cpp/named_req/OutputIterator" title="cpp/named req/OutputIterator"><span style="font-family: Georgia, 'DejaVu Serif', serif; font-style:italic">LegacyOutputIterator</span></a>
-</td>
-<td colspan="4">
-</td>
-<td>
-<ul><li> write
-</li><li> increment (without multiple passes)
-</li></ul>
-</td></tr>
+    <tr>
+        <td colspan="5">Iterator Category</td>
+        <td>Defined Operations</td>
+    </tr>
+    <tr>
+        <td rowspan="6">LegacyContiguousIterator</td>
+        <td rowspan="5">LegacyRandomAccessIterator</td>
+        <td rowspan="4">LegacyBidirectionalIterator</td>
+        <td rowspan="3">LegacyForwardIterator</td>
+        <td rowspan="2">LegacyInputIterator</td>
+        <td>read</td>
+    </tr>
+    <tr>
+        <td>increment (without multiple passes)</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>increment (with multiple passes)</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td></td>
+        <td>decrement</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>random access</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>contiguous storage</td>
+    </tr>
+    <tr>
+        <td>
+            Iterators that fall into one of the above categories 
+            and also meet the requirements of LegacyOutputIterator 
+            are called mutable iterators.
+        </td>
+    </tr>
+    <tr>
+        <td>LegacyOutputIterator</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="xl68">write</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>increment (without multiple passes)</td>
+    </tr>
 </table>
 
 ##### 泛型迭代器操作函数
