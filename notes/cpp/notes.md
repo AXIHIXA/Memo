@@ -2431,13 +2431,13 @@ std::function<return_type (paramater_list)> f3                  = f1;
     - 插入器有如下三种
         - [`std::back_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/back_insert_iterator)
             - 生成：[`std::back_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
-                ```
-                template <class Container>
-                std::back_insert_iterator<Container> back_inserter(Container & c)
-                {
-                    return std::back_insert_iterator<Container>(c);
-                }
-                ```
+            ```
+            template <class Container>
+            std::back_insert_iterator<Container> back_inserter(Container & c)
+            {
+                return std::back_insert_iterator<Container>(c);
+            }
+            ```
             - 通过此迭代器赋值时，赋值运算符调用`c.push_back()`将一个具有给定值的元素添加到容器中
             ```
             std::vector<int> vec;                         // empty vector
@@ -2450,9 +2450,37 @@ std::function<return_type (paramater_list)> f3                  = f1;
             std::fill_n(vec.end(), 10, 0);                // warning: fill_n on empty container is undefined
             std::fill_n(std::back_inserter(vec), 10, 0);  // correct: insert 10 elements to vec
             ```
-        - [`front_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/front_insert_iterator)
-            - [`std::front_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
-        - [`inserter`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
+        - [`std::front_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/front_insert_iterator)
+            - 生成：[`std::front_inserter()`](https://en.cppreference.com/w/cpp/iterator/front_inserter)
+            ```
+            template <class Container>
+            std::front_insert_iterator<Container> front_inserter(Container & c)
+            {
+                return std::front_insert_iterator<Container>(c);
+            }
+            ```
+        - [`std::insert_iterator`](https://en.cppreference.com/w/cpp/iterator/insert_iterator)
+            - 生成：[`std::inserter()`](https://en.cppreference.com/w/cpp/iterator/inserter)
+            ```
+            template <class Container>
+            std::insert_iterator<Container> inserter(Container & c, typename Container::iterator i)
+            {
+                return std::insert_iterator<Container>(c, i);
+            }
+            ```
+            - 使用：经常配合`std::set`使用
+            ```
+            std::multiset<int> s {1, 2, 3};
+            std::fill_n(std::inserter(s, s.end()), 5, 2);                           // 1 2 2 2 2 2 2 3 
+
+            std::vector<int> d {100, 200, 300};
+            std::vector<int> l {1, 2, 3, 4, 5};
+         
+            // when inserting in a sequence container, insertion point advances
+            // because each std::insert_iterator::operator= updates the target iterator
+            std::copy(d.begin(), d.end(), std::inserter(l, std::next(l.begin())));  // 1 100 200 300 2 3 4 5
+            ```
+            
 - *流迭代器* （stream iterator）
 - *反向迭代器* （reverse iterator）
 
