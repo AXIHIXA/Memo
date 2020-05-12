@@ -2440,15 +2440,15 @@ std::function<return_type (paramater_list)> f3                  = f1;
                 ```
             - 通过此迭代器赋值时，赋值运算符调用`c.push_back()`将一个具有给定值的元素添加到容器中
             ```
-            std::vector<int> vec;                                     // empty vector
+            std::vector<int> vec;                         // empty vector
             std::back_insert_iterator<std::vector<int>> it = std::back_inserter(vec);
-            *it = 42;                                                 // actually calls: vec.push_back(42);
+            *it = 42;                                     // actually calls: vec.push_back(42);
             ```
             - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
             ```
-            std::vector<int> vec;                                     // empty vector
-            std::fill_n(vec.end(), 10, 0);                            // warning: fill_n on empty container is undefined
-            std::fill_n(std::back_inserter(vec), 10, 0);              // correct: insert 10 elements to vec
+            std::vector<int> vec;                         // empty vector
+            std::fill_n(vec.end(), 10, 0);                // warning: fill_n on empty container is undefined
+            std::fill_n(std::back_inserter(vec), 10, 0);  // correct: insert 10 elements to vec
             ```
         - [`front_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/front_insert_iterator)
             - [`std::front_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
