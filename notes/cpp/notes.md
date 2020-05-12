@@ -1473,16 +1473,6 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
     - `c.cbegin()`，`c.cend()`：返回`const_iterator`
     - `c.rbegin()`，`c.rend()`：返回指向`c`的尾元素和头哨兵的迭代器。**不支持**`std::foward_list`
     - `c.crbegin()`，`c.crend()`：返回`const_reverse_iterator`。**不支持**`std::foward_list`
-    - `std::begin()`，`std::end()`：不但能用于容器， *还能用于内置数组* 
-    ```
-    std::vector<int> vec{0, 1, 2, 3};
-    std::vector<int>::iterator iter_beg = std::begin(vec);
-    std::vector<int>::iterator iter_end = std::end(vec);
-    
-    int arr[] = {0, 1, 2, 3};
-    int * ptr_beg = std::begin(arr);
-    int * ptr_end = std::end(arr);
-    ```
 
 #### [迭代器](https://en.cppreference.com/w/cpp/iterator)（iterator）
 
@@ -1514,6 +1504,7 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
 - 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
     - 它们或指向同一容器中的元素，或指向同一容器的尾后
     - `begin <= end`，即：`end`不在`begin`之前
+- 泛型迭代器操作函数 => 10.4
 
 #### 容器操作可能导致迭代器、引用和指针失效
 
@@ -2420,8 +2411,31 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 再探[迭代器](https://en.cppreference.com/w/cpp/iterator)
 
+##### 泛型迭代器操作函数
+
+- 获取首元素迭代器和尾后迭代器：[`std::begin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
+                                [`std::cbegin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
+                                [`std::end()`](https://en.cppreference.com/w/cpp/iterator/end)，
+                                [`std::cend()`](https://en.cppreference.com/w/cpp/iterator/end)
+    - 用于 *容器* ，返回 *迭代器*
+    - 用于 *数组* ，返回 *指针*
+```
+std::vector<int> vec{0, 1, 2, 3};
+std::vector<int>::iterator iter_beg = std::cbegin(vec);
+std::vector<int>::iterator iter_end = std::cend(vec);
+std::for_each(iter_beg, iter_end, [] (const int & n) { printf("%d ", i); });
+
+int arr[] = {0, 1, 2, 3};
+int * ptr_beg = std::cbegin(arr);
+int * ptr_end = std::cend(arr);
+std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
+```
+- `std::next()`
+
+##### 几种特殊的泛型迭代器
+
 - *插入迭代器* （insert iterator）
-    - 插入器一样是迭代器适配器，接受容器、生成迭代器，能实现向容器添加元素
+    - 插入器一样是 *迭代器适配器* ，接受容器、生成迭代器，能实现向容器添加元素
     - 通过插入器进行赋值时，插入器调用容器操作向指定容器的指定位置插入元素
     - 支持操作
         - `it = t`：在`it`所指位置 *之前* 插入值元素`t`
@@ -2468,6 +2482,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
                 return std::insert_iterator<Container>(c, i);
             }
             ```
+            - 插入位置为
             - 使用：经常配合`std::set`使用
             ```
             std::multiset<int> s {1, 2, 3};
