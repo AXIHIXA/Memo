@@ -2411,69 +2411,26 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 再探[迭代器](https://en.cppreference.com/w/cpp/iterator)
 
-##### 泛型算法使用的几类迭代器
+##### 泛型算法约定的几类迭代器
 
-<table>
-    <tr>
-        <td colspan="5" size="6">Iterator Category</td>
-        <td size="6">Defined Operations</td>
-    </tr>
-    <tr>
-        <td rowspan="6" size="6">LegacyContiguousIterator</td>
-        <td rowspan="5" size="6">LegacyRandomAccessIterator</td>
-        <td rowspan="4" size="6">LegacyBidirectionalIterator</td>
-        <td rowspan="3" size="6">LegacyForwardIterator</td>
-        <td rowspan="2" size="6">LegacyInputIterator</td>
-        <td size="6">read</td>
-    </tr>
-    <tr>
-        <td size="6">increment (without multiple passes)</td>
-    </tr>
-    <tr>
-        <td size="6"></td>
-        <td size="6">increment (with multiple passes)</td>
-    </tr>
-    <tr>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6">decrement</td>
-    </tr>
-    <tr>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6">random access</td>
-    </tr>
-    <tr>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6">contiguous storage</td>
-    </tr>
-    <tr>
-        <td size="6">
-            Iterators that fall into one of the above categories 
-            and also meet the requirements of LegacyOutputIterator 
-            are called mutable iterators.
-        </td>
-    </tr>
-    <tr>
-        <td size="6">LegacyOutputIterator</td>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6">write</td>
-    </tr>
-    <tr>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6"></td>
-        <td size="6">increment (without multiple passes)</td>
-    </tr>
-</table>
+- There are six (since `C++17`) kinds of iterators: 
+    1. [`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
+    2. [`LegacyForwardIterator`](https://en.cppreference.com/w/cpp/named_req/ForwardIterator)
+    3. [`LegacyBidirectionalIterator`](https://en.cppreference.com/w/cpp/named_req/BidirectionalIterator)
+    4. [`LegacyRandomAccessIterator`](https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator)
+    5. [`LegacyContiguousIterator`](https://en.cppreference.com/w/cpp/named_req/ContiguousIterator)
+    6. [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)
+- For `#n` input iterator, it has to support up to `#(n + 1)` of the following operations:
+    1. read
+    2. single-pass increment 
+    3. multiple-pass increment
+    4. decrement
+    5. random access
+    6. contiguous storage
+- Iterators that fall into one of the above categories and also meet the requirements of [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator) are called *mutable iterators* .
+- [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator) has to support the following two operations: 
+    1. write
+    2. single-pass increment 
 
 ##### 泛型迭代器操作函数
 
