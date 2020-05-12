@@ -2415,63 +2415,63 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 <table>
     <tr>
-        <td colspan="5">Iterator Category</td>
-        <td>Defined Operations</td>
+        <td colspan="5" size="12">Iterator Category</td>
+        <td size="12">Defined Operations</td>
     </tr>
     <tr>
-        <td rowspan="6">LegacyContiguousIterator</td>
-        <td rowspan="5">LegacyRandomAccessIterator</td>
-        <td rowspan="4">LegacyBidirectionalIterator</td>
-        <td rowspan="3">LegacyForwardIterator</td>
-        <td rowspan="2">LegacyInputIterator</td>
-        <td>read</td>
+        <td rowspan="6" size="12">LegacyContiguousIterator</td>
+        <td rowspan="5" size="12">LegacyRandomAccessIterator</td>
+        <td rowspan="4" size="12">LegacyBidirectionalIterator</td>
+        <td rowspan="3" size="12">LegacyForwardIterator</td>
+        <td rowspan="2" size="12">LegacyInputIterator</td>
+        <td size="12">read</td>
     </tr>
     <tr>
-        <td>increment (without multiple passes)</td>
+        <td size="12">increment (without multiple passes)</td>
     </tr>
     <tr>
-        <td></td>
-        <td>increment (with multiple passes)</td>
+        <td size="12"></td>
+        <td size="12">increment (with multiple passes)</td>
     </tr>
     <tr>
-        <td></td>
-        <td></td>
-        <td>decrement</td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12">decrement</td>
     </tr>
     <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td>random access</td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12">random access</td>
     </tr>
     <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td>contiguous storage</td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12">contiguous storage</td>
     </tr>
     <tr>
-        <td>
+        <td size="12">
             Iterators that fall into one of the above categories 
             and also meet the requirements of LegacyOutputIterator 
             are called mutable iterators.
         </td>
     </tr>
     <tr>
-        <td>LegacyOutputIterator</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td class="xl68">write</td>
+        <td size="12">LegacyOutputIterator</td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12">write</td>
     </tr>
     <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td>increment (without multiple passes)</td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12"></td>
+        <td size="12">increment (without multiple passes)</td>
     </tr>
 </table>
 
