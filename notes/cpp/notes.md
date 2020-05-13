@@ -2557,26 +2557,27 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         return std::reverse_iterator<Iter>(i);
     }
     ```
-    - 用这玩意的感觉都是骚操作
+    - 用这玩意儿的感觉都是骚操作
     ```
-    // make_reverse_iterator() 用法示例
+    // std::make_reverse_iterator() 用法示例
+    // 顺便骚一下流迭代器，你说非得写成这德行是何苦呢
     std::vector<int> v {1, 3, 10, 8, 22};
     std::sort(v.begin(), v.end());
     std::copy(v.begin(), v.end(), std::ostream_iterator<int>(std::cout, ", "));
-    std::cout << std::endl;                            // 1, 3, 8, 10, 22, 
+    std::cout << std::endl;                                       // 1, 3, 8, 10, 22, 
  
     std::copy(
         std::make_reverse_iterator(v.end()), 
         std::make_reverse_iterator(v.begin()),
-        std::ostream_iterator<int>(std::cout, ", "));  // 22, 10, 8, 3, 1,
+        std::ostream_iterator<int>(std::cout, ", "));             // 22, 10, 8, 3, 1,
     
-    // 当然还能直接调用容器方法，最直观
+    // 当然还能直接调用容器方法获得反向迭代器，最直观
     std::string s = "Hello, world";
     std::reverse_iterator<std::string::iterator> r = s.rbegin();
-    r[7] = 'O';                     // replaces 'o' with 'O' 
-    r += 7;                         // iterator now points at 'O'
+    r[7] = 'O';                                                   // replaces 'o' with 'O' 
+    r += 7;                                                       // iterator now points at 'O'
     std::string rev(r, s.rend());
-    std::cout << rev << std::endl;  // OlleH
+    std::cout << rev << std::endl;                                // OlleH
     ```
 - [*移动迭代器*](https://en.cppreference.com/w/cpp/iterator/move_iterator)（move iterator）
     - 生成：[`std::make_move_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_move_iterator)
