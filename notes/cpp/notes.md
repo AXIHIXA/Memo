@@ -2549,11 +2549,13 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             ```
 - *流迭代器* （stream iterator）
     - 没意思，不看了
-- [*反向迭代器*`std::reverse_iterator`](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)（reverse iterator）
+- [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)（reverse iterator）
     - 从容器尾元素向首元素移动的迭代器，递增递减语义颠倒
         - `++rit`会移动至前一个元素，`--rit`会移动至后一个
-        - 可以用于“无缝透明”用泛型算法处理容器
-        - 这东西和容器的
+        - 容器的反向迭代器类型实际上是这个模板类型的特化，例如`std::vector<int>`
+        ```
+        typedef std::reverse_iterator<std::vector<int>> std::vector<int>::iterator 
+        ```
     ```
     std::vector<int> v {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::sort(v.rbegin(), v.rend());                    // 逆序排序
@@ -2599,9 +2601,10 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     
     // 当然还能直接调用容器方法获得反向迭代器，最直观
     std::string s = "Hello, world";
-    std::string::reverse_iterator r = s.rbegin();
-    r[7] = 'O';                                                   // replaces 'o' with 'O' 
-    r += 7;                                                       // iterator now points at 'O'
+    std::string::reverse_iterator      r  = s.rbegin();           // 两个等价
+    std::reverse_iterator<std::string> r2 = s.rbegin();           
+    r[7] = 'O';
+    r += 7;                                                       // r现在指向'O'
     std::string rev(r, s.rend());
     std::cout << rev << std::endl;                                // OlleH
     ```
