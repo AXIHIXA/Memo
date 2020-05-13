@@ -2413,24 +2413,28 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 ##### 泛型算法约定的几类迭代器
 
-- There are six (since `C++17`) kinds of iterators: 
-    1. [`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
-    2. [`LegacyForwardIterator`](https://en.cppreference.com/w/cpp/named_req/ForwardIterator)
-    3. [`LegacyBidirectionalIterator`](https://en.cppreference.com/w/cpp/named_req/BidirectionalIterator)
-    4. [`LegacyRandomAccessIterator`](https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator)
-    5. [`LegacyContiguousIterator`](https://en.cppreference.com/w/cpp/named_req/ContiguousIterator)
-    6. [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)
-- For `#n` input iterator, it has to support up to `#(n + 1)` of the following operations:
-    1. read
-    2. single-pass increment 
-    3. multiple-pass increment
-    4. decrement
-    5. random access
-    6. contiguous storage
-- Iterators that fall into one of the above categories and also meet the requirements of [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator) are called *mutable iterators* .
-- [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator) has to support the following two operations: 
-    1. write
-    2. single-pass increment 
+- 输入迭代器
+    - 标准库算法共约定使用以下五类迭代器 
+        1. [`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
+        2. [`LegacyForwardIterator`](https://en.cppreference.com/w/cpp/named_req/ForwardIterator)
+        3. [`LegacyBidirectionalIterator`](https://en.cppreference.com/w/cpp/named_req/BidirectionalIterator)
+        4. [`LegacyRandomAccessIterator`](https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator)
+        5. [`LegacyContiguousIterator`](https://en.cppreference.com/w/cpp/named_req/ContiguousIterator)
+    - `n`号输入迭代器需支持下列到`n`号为止（含）的全部操作
+        0. 读（read）
+        1. 单步递增（increment (without multiple passes)） 
+        2. 多步递增（increment (with multiple passes)）
+        3. 递减（decrement）
+        4. 随机访问（random access）
+        5. 连续存储（contiguous storage）
+- 输出迭代器
+    - [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)需支持如下操作
+        1. 写（write）
+        2. 单步递增（increment (without multiple passes)） 
+- 同时满足`LegacyInputIterator`(https://en.cppreference.com/w/cpp/named_req/InputIterator)
+  和`LegacyOutputIterator`(https://en.cppreference.com/w/cpp/named_req/OutputIterator)
+  的要求的迭代器称作 *可变迭代器* （mutable iterators）
+
 
 ##### 泛型迭代器操作函数
 
