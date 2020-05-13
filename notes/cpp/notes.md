@@ -52,6 +52,7 @@
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
     - 泛型算法**不能（直接）添加或删除**元素。具体来说，调用`std::unique()`之前要有`std::sort()`，之后还要调用`c.erase()`来实际释放空间
+    - 如果要人工转换 *反向迭代器* ，一定记得**反向的`begin`要喂正向的`end`**！！！
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向
       括号内分析完就跳出括号，还是按先右后左的顺序，如此循环，直到整个声明分析完
@@ -2548,15 +2549,40 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             ```
 - *流迭代器* （stream iterator）
     - 没意思，不看了
-- [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)（reverse iterator）
-    - 生成：[`std::make_reverse_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_reverse_iterator)
+- [*反向迭代器*`std::reverse_iterator`](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)（reverse iterator）
+    - 从容器尾元素向首元素移动的迭代器，递增递减语义颠倒
+        - `++rit`会移动至前一个元素，`--rit`会移动至后一个
+        - 可以用于“无缝透明”用泛型算法处理容器
+        - 这东西和容器的
     ```
-    template <class Iter>
-    std::reverse_iterator<Iter> make_reverse_iterator(Iter i)
-    {
-        return std::reverse_iterator<Iter>(i);
-    }
+    std::vector<int> v {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::sort(v.rbegin(), v.rend());                    // 逆序排序
+    
+    std::string line("a, b, c and d");
+    std::string::iterator rcomma = std::find(line.rbegin(), line.rend(), ',');
     ```
+    - 只能在支持 *双向迭代的容器* 或 *双向迭代器* 定义反向迭代器
+        - 除`std::forward_list`以外的顺序容器都支持反向迭代器
+    - 生成
+        - 用容器自带的`c.rbegin()`或者`std::rbegin(c)`等等
+            - 比如容器自带的`c.rbegin()`的内部实现如下
+        ```
+        template <class Container>
+        std::reverse_iterator<typename Container::iterator>
+        Container::rbegin()
+        { 
+            return std::reverse_iterator<Container::iterator>(end()); 
+        }
+        ```
+        - [`std::make_reverse_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_reverse_iterator)（`C++17`新标准）
+            - 如果要人工转换反向迭代器，一定记得**反向的`begin`要喂正向的`end`**！！！
+        ```
+        template <class Iter>
+        std::reverse_iterator<Iter> make_reverse_iterator(Iter i)
+        {
+            return std::reverse_iterator<Iter>(i);
+        }
+        ```
     - 用这玩意儿的感觉都是骚操作
     ```
     // std::make_reverse_iterator() 用法示例
@@ -2567,13 +2593,13 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     std::cout << std::endl;                                       // 1, 3, 8, 10, 22, 
  
     std::copy(
-        std::make_reverse_iterator(v.end()), 
+        std::make_reverse_iterator(v.end()),                      // 人工转换反向迭代器，反向的begin要喂正向的end
         std::make_reverse_iterator(v.begin()),
         std::ostream_iterator<int>(std::cout, ", "));             // 22, 10, 8, 3, 1,
     
     // 当然还能直接调用容器方法获得反向迭代器，最直观
     std::string s = "Hello, world";
-    std::reverse_iterator<std::string::iterator> r = s.rbegin();
+    std::string::reverse_iterator r = s.rbegin();
     r[7] = 'O';                                                   // replaces 'o' with 'O' 
     r += 7;                                                       // iterator now points at 'O'
     std::string rev(r, s.rend());
