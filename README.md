@@ -4,7 +4,7 @@
 
 - `C/C++`
 
-    - [C++ Primer 5th Edition Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
+    - [`C++ Primer 5th Edition` Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
 
 - `ubuntu` Management
 

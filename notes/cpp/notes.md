@@ -1,4 +1,4 @@
-# 《C++ Primer 5th Edition》笔记
+# `C++ Primer 5th Edition` Notes
 
 记录一些对C++理解得不到位的地方。
 
@@ -52,6 +52,7 @@
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
     - 泛型算法**不能（直接）添加或删除**元素。具体来说，调用`std::unique()`之前要有`std::sort()`，之后还要调用`c.erase()`来实际释放空间
+    - 只有迭代器指向的容器支持 *随机访问* 时，才能调用迭代器算术运算（Iterator Arithmetic）
     - 如果要人工转换 *反向迭代器* ，一定记得**反向的`begin`要喂正向的`end`**，且模板参数是 *容器的迭代器类型* ，**不是容器自身类型**
     - 普通迭代器指向的元素和用它转换成的反向迭代器指向的**不是**相同元素，而是相邻元素；反之亦然
 - 读代码标准操作
@@ -2411,15 +2412,16 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 迭代器算术运算（Iterator Arithmetic）
 
-- `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
-- `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
-- `iter += n`
+- `iter + n`： *多步递进* ，结果仍为迭代器，或指向容器中元素，或指向尾后
+- `iter - n`： *多步递进* ，结果仍为迭代器，或指向容器中元素，或指向尾后
+- `iter += n`： *多步递进* ，结果仍为迭代器，或指向容器中元素，或指向尾后
+- `iter[n]`，`*(iter + n)`： *下标* 运算
 - `iter1 - iter2`：两个迭代器之间的距离（`difference_type`），
                    即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
 - `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
                         如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者
-- 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
-    - 比如：`std::list`、`std::forward_list`的内存都不是 *连续的* ，因此**不支持**迭代器算术运算
+- 只有迭代器指向的容器支持 *随机访问* 时，才能调用上述操作
+    - 比如：`std::list`、`std::forward_list`的内存都不连续，不能随机访问，因此**不支持**迭代器算术运算
 
 #### 范围访问（Range Access）
 
@@ -2479,7 +2481,8 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 
 #### 泛型算法约定的几类迭代器
 
-这块Primer和`cppreferece`不一样，直接从`cppreferece`上摘抄了。
+这块《`C++ Primer 5th Edition`》和[`cppreferece`](https://en.cppreference.com/w/cpp/iterator)不一样，
+就直接从[`cppreferece`](https://en.cppreference.com/w/cpp/iterator)上摘抄了。
 
 - 输入迭代器
     - 标准库算法共约定使用以下五类迭代器 
@@ -2506,9 +2509,69 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 泛型迭代器操作函数
 
 - [`std::advance()`](https://en.cppreference.com/w/cpp/iterator/advance)
+    - 原型
+    ```
+    template <class InputIt, class Distance>
+    void 
+    advance(InputIt & it, 
+            Distance n);
+    ```
+    - 将`it`后移`n`步。如果`n < 0`，则进行前移（如果迭代器不支持双向移动，则行为 *未定义* ）
+    ```
+    std::vector<int> v {3, 1, 4};
+    std::vector<int>::iterator vi = v.begin();
+    std::advance(vi, 2);
+    std::cout << *vi << std::endl;              // 4
+    ```
+    - 复杂度：`O(n)`，如支持 *随机访问* ，则`O(1)`
 - [`std::distance()`](https://en.cppreference.com/w/cpp/iterator/distance)
+    - 原型
+    ```
+    template <class InputIt>
+    typename std::iterator_traits<InputIt>::difference_type
+    distance(InputIt first, 
+             InputIt last);
+    ```
+    - 返回`first`到`last`的步数（`ptrdiff_t aka long int`）
+        - 如果迭代器 *不支持双向访问* ，则如果`first`不能自增到`last`， *行为未定义* 
+        - 如果迭代器 *支持双向访问* ，则如果`first`不能自增到`last`、且`last`不能自增到`first`， *行为未定义* 
+    ```
+    std::vector<int> v {3, 1, 4};
+    std::cout << std::distance(v.begin(), v.end()) << std::endl;  // 3
+    std::cout << std::distance(v.end(), v.begin()) << std::endl;  // -3
+    ```
+    - 复杂度：`O(n)`，如支持 *随机访问* ，则`O(1)`
 - [`std::next()`](https://en.cppreference.com/w/cpp/iterator/next)
+    - 原型
+    ```
+    template <class ForwardIt>
+    ForwardIt 
+    next(ForwardIt it,
+         typename std::iterator_traits<ForwardIt>::difference_type n = 1)
+    {
+        return std::advance(it, n);
+    }
+    ```
+    - 返回：`it`的第`n`个后继
+    ```
+    int a[] {0, 1, 2, 3};
+    int * p = std::next(a);
+    printf("%d\n", *p);
+    ```
+    - 复杂度：`O(n)`，如支持 *随机访问* ，则`O(1)`
 - [`std::prev()`](https://en.cppreference.com/w/cpp/iterator/prev)
+    - 原型
+    ```
+    template <class ForwardIt>
+    ForwardIt 
+    prev(ForwardIt it,
+         typename std::iterator_traits<ForwardIt>::difference_type n = 1)
+    {
+        return std::advance(it, -n);
+    }
+    ```
+    - 返回：`it`的第`n`个前驱
+    - 复杂度：`O(n)`，如支持 *随机访问* ，则`O(1)`
 
 #### 迭代器适配器（Iterator Adaptors）
 
@@ -2639,11 +2702,31 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 生成：[`std::make_move_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_move_iterator)
     ```
     template <class Iter>
-    std::reverse_iterator<Iter> make_reverse_iterator(Iter i)
+    constexpr std::move_iterator<Iter> make_move_iterator( Iter i )
     {
-        return std::reverse_iterator<Iter>(i);
+        return std::move_iterator<Iter>(std::move(i));
     }
     ```
+    - 使用
+    ```
+    std::list<std::string> s {"one", "two", "three"};
+ 
+    std::vector<std::string> v1(s.begin(), s.end()); // copy
+ 
+    std::vector<std::string> v2(std::make_move_iterator(s.begin()), std::make_move_iterator(s.end())); // move
+ 
+    std::cout << "v1 now holds: ";
+    for (const std::string & str : v1)
+        std::cout << "\"" << str << "\" ";       // v1 now holds: "one" "two" "three"
+    std::cout << "\nv2 now holds: ";
+    for (const std::string & str : v2)
+        std::cout << "\"" << str << "\" ";       // v2 now holds: "one" "two" "three"
+    std::cout << "\noriginal list now holds: ";
+    for (const std::string & str : s)
+        std::cout << "\"" << str << "\" ";       // original list now holds: "" "" ""
+    std::cout << '\n';
+    ```
+
 ### 🌱 [Appendix A] 标准库算法概览（番外篇×2，这次是从附录里单拎出来的）
 
 #### 顺序查找
