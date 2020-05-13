@@ -1474,38 +1474,6 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
     - `c.rbegin()`，`c.rend()`：返回指向`c`的尾元素和头哨兵的迭代器。**不支持**`std::foward_list`
     - `c.crbegin()`，`c.crend()`：返回`const_reverse_iterator`。**不支持**`std::foward_list`
 
-#### [迭代器](https://en.cppreference.com/w/cpp/iterator)（iterator）
-
-- 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符
-- 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
-- `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
-- 迭代器运算符
-    - `*iter`：返回迭代器`iter`所知元素的**左值**引用
-        - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**
-    - `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
-    - `++iter`，`iter++`：令`iter`指向容器中的下一个元素
-        - 尾后迭代器并不实际指向元素，**不能**递增或递减
-        - 至少`g++`允许自减尾后迭代器`--c.end()`获取尾元素
-    - `--iter`，`iter--`：令`iter`指向容器中的上一个元素
-    - `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
-                                          如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
-                                          则相等；反之，不相等。
-- 迭代器算术运算（iterator arithmetic）
-    - `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
-    - `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
-    - `iter += n`
-    - `iter1 - iter2`：两个迭代器之间的距离（`difference_type`），
-                       即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
-    - `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
-                            如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者
-    - 注意事项
-        - **不**支持`std::list`、`std::forward_list`
-        - 因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
-- 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
-    - 它们或指向同一容器中的元素，或指向同一容器的尾后
-    - `begin <= end`，即：`end`不在`begin`之前
-- 泛型迭代器操作函数 => 10.4
-
 #### 容器操作可能导致迭代器、引用和指针失效
 
 - 总则
@@ -2409,7 +2377,40 @@ std::function<return_type (paramater_list)> f3                  = f1;
     auto wc2 = std::find_if(words.begin(), words.end(), std::bind(checkSize, _1, 6));
     ```  
 
-#### 再探[迭代器](https://en.cppreference.com/w/cpp/iterator)
+#### [迭代器](https://en.cppreference.com/w/cpp/iterator)（iterator）
+
+- 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符
+- 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
+- `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
+
+##### 迭代器运算符
+
+- 所有迭代器
+    - `*iter`：返回迭代器`iter`所知元素的**左值**引用
+        - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**
+    - `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
+    - `++iter`，`iter++`：令`iter`指向容器中的下一个元素
+        - 尾后迭代器并不实际指向元素，**不能**递增或递减
+        - 至少`g++`允许自减尾后迭代器`--c.end()`获取尾元素
+    - `--iter`，`iter--`：令`iter`指向容器中的上一个元素
+    - `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
+                                          如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
+                                          则相等；反之，不相等。
+- 迭代器算术运算（iterator arithmetic）
+    - `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
+    - `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
+    - `iter += n`
+    - `iter1 - iter2`：两个迭代器之间的距离（`difference_type`），
+                       即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
+    - `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
+                            如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者
+    - 
+        - 特别地，**不**支持`std::list`、`std::forward_list`，
+          因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
+- 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
+    - 它们或指向同一容器中的元素，或指向同一容器的尾后
+    - `begin <= end`，即：`end`不在`begin`之前
+- 泛型迭代器操作函数 => 10.4
 
 ##### 泛型算法约定的几类迭代器
 
@@ -2420,7 +2421,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
         3. [`LegacyBidirectionalIterator`](https://en.cppreference.com/w/cpp/named_req/BidirectionalIterator)
         4. [`LegacyRandomAccessIterator`](https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator)
         5. [`LegacyContiguousIterator`](https://en.cppreference.com/w/cpp/named_req/ContiguousIterator)
-    - `n`号输入迭代器需支持下列到`n + 1`号为止（含）的全部操作
+    - `n`类输入迭代器需支持下列到`n + 1`级为止（含）的全部操作
         1. 读（read）
         2. 单步递增（increment (without multiple passes)） 
         3. 多步递增（increment (with multiple passes)）
@@ -2429,8 +2430,8 @@ std::function<return_type (paramater_list)> f3                  = f1;
         6. 连续存储（contiguous storage）
 - 输出迭代器
     - [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)需支持如下操作
-        1. 写（write）
-        2. 单步递增（increment (without multiple passes)） 
+        7. 写（write）
+        8. 单步递增（increment (without multiple passes)） 
 - 同时满足[`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
   和[`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)
   的要求的迭代器称作 *可变迭代器* （mutable iterators）
