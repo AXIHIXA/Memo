@@ -2397,7 +2397,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
                                       则相等；反之，不相等。
 - 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
 
-##### 迭代器算术运算（iterator arithmetic）
+##### 迭代器算术运算（Iterator Arithmetic）
 
 - `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
 - `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
@@ -2409,11 +2409,39 @@ std::function<return_type (paramater_list)> f3                  = f1;
 - 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
     - 比如：`std::list`、`std::forward_list`的内存都不是 *连续的* ，因此**不支持**迭代器算术运算
 
-##### 范围迭代器
+##### 范围访问（Range Access）
 
-- 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
-    - 它们或指向同一容器中的元素，或指向同一容器的尾后
-    - `begin <= end`，即：`end`不在`begin`之前
+- 这些全局函数支持 *容器* 、 *内置数组* 和`std::initializer_list`
+- [`std::begin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
+  [`std::cbegin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
+  [`std::end()`](https://en.cppreference.com/w/cpp/iterator/end)，
+  [`std::cend()`](https://en.cppreference.com/w/cpp/iterator/end),
+  [`std::rbegin()`](https://en.cppreference.com/w/cpp/iterator/rbegin)，
+  [`std::crbegin()`](https://en.cppreference.com/w/cpp/iterator/rbegin)，
+  [`std::rend()`](https://en.cppreference.com/w/cpp/iterator/rend)，
+  [`std::crend()`](https://en.cppreference.com/w/cpp/iterator/rend)
+    - 用于 *容器* ，返回 *迭代器* ；用于 *数组* ，返回 *指针*
+    - 带`c`的返回 *常迭代器* 或 *常指针* ，带`r`的返回 *反向迭代器* 
+    - 如果容器为空，则`std::begin`和`std::end`返回的是**同一个**迭代器，都是 *尾后迭代器* 
+    - 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
+        - 它们或指向同一容器中的元素，或指向同一容器的尾后
+        - `begin <= end`，即：`end`不在`begin`之前
+```
+std::vector<int> vec{0, 1, 2, 3};
+std::vector<int>::iterator iter_beg = std::cbegin(vec);
+std::vector<int>::iterator iter_end = std::cend(vec);
+std::for_each(iter_beg, iter_end, [] (const int & n) { printf("%d ", i); });
+
+int arr[] = {0, 1, 2, 3};
+int * ptr_beg = std::cbegin(arr);
+int * ptr_end = std::cend(arr);
+std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
+```
+- [`std::size()`](https://en.cppreference.com/w/cpp/iterator/size)，
+  [`std::ssize()`](https://en.cppreference.com/w/cpp/iterator/size)
+- [`std::empty()`](https://en.cppreference.com/w/cpp/iterator/empty)
+- [`std::data()`](https://en.cppreference.com/w/cpp/iterator/data)
+
 
 ##### 泛型算法约定的几类迭代器
 
@@ -2441,30 +2469,14 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 ##### 泛型迭代器操作函数
 
-- 获取首尾后迭代器：[`std::begin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
-                    [`std::cbegin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
-                    [`std::end()`](https://en.cppreference.com/w/cpp/iterator/end)，
-                    [`std::cend()`](https://en.cppreference.com/w/cpp/iterator/end)
-    - 用于 *容器* ，返回 *迭代器*
-    - 用于 *数组* ，返回 *指针*
-    - 如果容器为空，则`std::begin`和`std::end`返回的是**同一个**迭代器，都是 *尾后迭代器* 
-```
-std::vector<int> vec{0, 1, 2, 3};
-std::vector<int>::iterator iter_beg = std::cbegin(vec);
-std::vector<int>::iterator iter_end = std::cend(vec);
-std::for_each(iter_beg, iter_end, [] (const int & n) { printf("%d ", i); });
+- [`std::advance()`](https://en.cppreference.com/w/cpp/iterator/advance)
+- [`std::distance()`](https://en.cppreference.com/w/cpp/iterator/distance)
+- [`std::next()`](https://en.cppreference.com/w/cpp/iterator/next)
+- [`std::prev()`](https://en.cppreference.com/w/cpp/iterator/prev)
 
-int arr[] = {0, 1, 2, 3};
-int * ptr_beg = std::cbegin(arr);
-int * ptr_end = std::cend(arr);
-std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
-```
-- `std::next()`
-
-##### 几种特殊的泛型迭代器
+##### 迭代器适配器（）
 
 - *插入迭代器* （insert iterator）
-    - 插入器一样是 *迭代器适配器* ，接受容器、生成迭代器，能实现向容器添加元素
     - 通过插入器进行赋值时，插入器调用容器操作向指定容器的指定位置插入元素
     - 支持操作
         - `it = t`：在`it`所指位置 *之前* 插入值元素`t`
@@ -2526,7 +2538,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             std::copy(d.begin(), d.end(), std::inserter(l, std::next(l.begin())));  // 1 100 200 300 2 3 4 5
             ```
 - *流迭代器* （stream iterator）
-    - 没意思不看了233
+    - 没意思不看了
 - *反向迭代器* （reverse iterator）
     - 
 
