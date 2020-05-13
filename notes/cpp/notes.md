@@ -2420,13 +2420,13 @@ std::function<return_type (paramater_list)> f3                  = f1;
         3. [`LegacyBidirectionalIterator`](https://en.cppreference.com/w/cpp/named_req/BidirectionalIterator)
         4. [`LegacyRandomAccessIterator`](https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator)
         5. [`LegacyContiguousIterator`](https://en.cppreference.com/w/cpp/named_req/ContiguousIterator)
-    - `n`号输入迭代器需支持下列到`n`号为止（含）的全部操作
+    - `n`号输入迭代器需支持下列到`n + 1`号为止（含）的全部操作
         1. 读（read）
-        1. 单步递增（increment (without multiple passes)） 
-        2. 多步递增（increment (with multiple passes)）
-        3. 递减（decrement）
-        4. 随机访问（random access）
-        5. 连续存储（contiguous storage）
+        2. 单步递增（increment (without multiple passes)） 
+        3. 多步递增（increment (with multiple passes)）
+        4. 递减（decrement）
+        5. 随机访问（random access）
+        6. 连续存储（contiguous storage）
 - 输出迭代器
     - [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)需支持如下操作
         1. 写（write）
