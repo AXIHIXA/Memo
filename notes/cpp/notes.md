@@ -2462,7 +2462,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 - [`std::size()`](https://en.cppreference.com/w/cpp/iterator/size)，
   [`std::ssize()`](https://en.cppreference.com/w/cpp/iterator/size)，
   [`std::empty()`](https://en.cppreference.com/w/cpp/iterator/empty)
-    - 顾名思义
+    - 顾名思义，`ssize`是`signed size`，返回的是`ptrdiff_t aka long int`而不是`size_t aka unsigned long`
 - [`std::data()`](https://en.cppreference.com/w/cpp/iterator/data)
     - 原型
     ```
