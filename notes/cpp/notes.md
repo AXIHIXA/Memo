@@ -2421,7 +2421,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
         4. [`LegacyRandomAccessIterator`](https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator)
         5. [`LegacyContiguousIterator`](https://en.cppreference.com/w/cpp/named_req/ContiguousIterator)
     - `n`号输入迭代器需支持下列到`n`号为止（含）的全部操作
-        0. 读（read）
+        1. 读（read）
         1. 单步递增（increment (without multiple passes)） 
         2. 多步递增（increment (with multiple passes)）
         3. 递减（decrement）
