@@ -2431,8 +2431,8 @@ std::function<return_type (paramater_list)> f3                  = f1;
     - [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)需支持如下操作
         1. 写（write）
         2. 单步递增（increment (without multiple passes)） 
-- 同时满足`LegacyInputIterator`(https://en.cppreference.com/w/cpp/named_req/InputIterator)
-  和`LegacyOutputIterator`(https://en.cppreference.com/w/cpp/named_req/OutputIterator)
+- 同时满足[`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
+  和[`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)
   的要求的迭代器称作 *可变迭代器* （mutable iterators）
 
 
