@@ -2643,7 +2643,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - `++rit`会移动至前一个元素，`--rit`会移动至后一个
         - *容器的反向迭代器类型* 实际上是这个模板类型的特化，例如`std::vector<int>`
         ```
-        typedef std::reverse_iterator<std::vector<int>> std::vector<int>::iterator 
+        typedef std::reverse_iterator<std::vector<int>> std::vector<int>::reverse_iterator 
         ```
         - 只能在支持 *双向迭代的容器* 或 *双向迭代器* 定义反向迭代器
             - 除`std::forward_list`以外的顺序容器都支持反向迭代器
