@@ -2471,7 +2471,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     constexpr const E * data(std::initializer_list<E> il) noexcept;
     ```
     - 返回：指向数据块的指针
-        - 具体：`return``c.data()`或`array`或`il.begin()`
+        - 具体：`return c.data()`或`return array`或`return il.begin()`
     ```
     std::string s("Hello");
     char buf[20] {0};
