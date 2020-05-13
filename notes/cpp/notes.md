@@ -2447,8 +2447,9 @@ int * ptr_end = std::cend(arr);
 std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 ```
 - [`std::size()`](https://en.cppreference.com/w/cpp/iterator/size)，
-  [`std::ssize()`](https://en.cppreference.com/w/cpp/iterator/size)
-- [`std::empty()`](https://en.cppreference.com/w/cpp/iterator/empty)
+  [`std::ssize()`](https://en.cppreference.com/w/cpp/iterator/size)，
+  [`std::empty()`](https://en.cppreference.com/w/cpp/iterator/empty)
+    - 顾名思义
 - [`std::data()`](https://en.cppreference.com/w/cpp/iterator/data)
 
 #### 泛型算法约定的几类迭代器
@@ -2547,21 +2548,67 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             ```
 - *流迭代器* （stream iterator）
     - 没意思，不看了
-- *反向迭代器* （reverse iterator）
-    - 111
-
+- [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)（reverse iterator）
+    - 生成：[`std::make_reverse_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_reverse_iterator)
+    ```
+    template <class Iter>
+    std::reverse_iterator<Iter> make_reverse_iterator(Iter i)
+    {
+        return std::reverse_iterator<Iter>(i);
+    }
+    ```
+    - 用这玩意的感觉都是骚操作
+    ```
+    // make_reverse_iterator() 用法示例
+    std::vector<int> v {1, 3, 10, 8, 22};
+    std::sort(v.begin(), v.end());
+    std::copy(v.begin(), v.end(), std::ostream_iterator<int>(std::cout, ", "));
+    std::cout << std::endl;                            // 1, 3, 8, 10, 22, 
+ 
+    std::copy(
+        std::make_reverse_iterator(v.end()), 
+        std::make_reverse_iterator(v.begin()),
+        std::ostream_iterator<int>(std::cout, ", "));  // 22, 10, 8, 3, 1,
+    
+    // 当然还能直接调用容器方法，最直观
+    std::string s = "Hello, world";
+    std::reverse_iterator<std::string::iterator> r = s.rbegin();
+    r[7] = 'O';                     // replaces 'o' with 'O' 
+    r += 7;                         // iterator now points at 'O'
+    std::string rev(r, s.rend());
+    std::cout << rev << std::endl;  // OlleH
+    ```
+- [*移动迭代器*](https://en.cppreference.com/w/cpp/iterator/move_iterator)（move iterator）
+    - 生成：[`std::make_move_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_move_iterator)
+    ```
+    template <class Iter>
+    std::reverse_iterator<Iter> make_reverse_iterator(Iter i)
+    {
+        return std::reverse_iterator<Iter>(i);
+    }
+    ```
 ### 🌱 [Appendix A] 标准库算法概览（番外篇×2，这次是从附录里单拎出来的）
 
 #### 顺序查找
+
 #### 其他只读算法
+
 #### 二分查找
+
 #### 写容器元素
+
 #### 划分与排序
+
 #### 通用重排操作
+
 #### 排列算法
+
 #### 有序序列的集合算法
+
 #### 数值算法
+
 #### 随机数算法
+
     - 随机数分布
     - 随机数引擎
 
