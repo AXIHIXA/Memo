@@ -1816,169 +1816,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 - 
 
 
-### 🌱 [Chap 10.5] [迭代器](https://en.cppreference.com/w/cpp/iterator)（iterator，从Chap 10和其他几章里单拎出来的）
-
-- 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符
-- 再次强调：`for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
-
-#### 迭代器运算符
-
-- `*iter`：返回迭代器`iter`所知元素的**左值**引用
-    - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**
-- `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
-- `++iter`，`iter++`：令`iter`指向容器中的下一个元素
-    - 尾后迭代器并不实际指向元素，**不能**递增或递减
-    - 至少`g++`允许自减尾后迭代器`--c.end()`获取尾元素
-- `--iter`，`iter--`：令`iter`指向容器中的上一个元素
-- `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
-                                      如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
-                                      则相等；反之，不相等。
-- 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
-
-#### 迭代器算术运算（Iterator Arithmetic）
-
-- `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
-- `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
-- `iter += n`
-- `iter1 - iter2`：两个迭代器之间的距离（`difference_type`），
-                   即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
-- `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
-                        如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者
-- 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
-    - 比如：`std::list`、`std::forward_list`的内存都不是 *连续的* ，因此**不支持**迭代器算术运算
-
-#### 范围访问（Range Access）
-
-- 这些全局函数支持 *容器* 、 *内置数组* 和`std::initializer_list`
-- [`std::begin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
-  [`std::cbegin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
-  [`std::end()`](https://en.cppreference.com/w/cpp/iterator/end)，
-  [`std::cend()`](https://en.cppreference.com/w/cpp/iterator/end),
-  [`std::rbegin()`](https://en.cppreference.com/w/cpp/iterator/rbegin)，
-  [`std::crbegin()`](https://en.cppreference.com/w/cpp/iterator/rbegin)，
-  [`std::rend()`](https://en.cppreference.com/w/cpp/iterator/rend)，
-  [`std::crend()`](https://en.cppreference.com/w/cpp/iterator/rend)
-    - 用于 *容器* ，返回 *迭代器* ；用于 *数组* ，返回 *指针*
-    - 带`c`的返回 *常迭代器* 或 *常指针* ，带`r`的返回 *反向迭代器* 
-    - 如果容器为空，则`std::begin`和`std::end`返回的是**同一个**迭代器，都是 *尾后迭代器* 
-    - 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
-        - 它们或指向同一容器中的元素，或指向同一容器的尾后
-        - `begin <= end`，即：`end`不在`begin`之前
-```
-std::vector<int> vec{0, 1, 2, 3};
-std::vector<int>::iterator iter_beg = std::cbegin(vec);
-std::vector<int>::iterator iter_end = std::cend(vec);
-std::for_each(iter_beg, iter_end, [] (const int & n) { printf("%d ", i); });
-
-int arr[] = {0, 1, 2, 3};
-int * ptr_beg = std::cbegin(arr);
-int * ptr_end = std::cend(arr);
-std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
-```
-- [`std::size()`](https://en.cppreference.com/w/cpp/iterator/size)，
-  [`std::ssize()`](https://en.cppreference.com/w/cpp/iterator/size)
-- [`std::empty()`](https://en.cppreference.com/w/cpp/iterator/empty)
-- [`std::data()`](https://en.cppreference.com/w/cpp/iterator/data)
-
-#### 泛型算法约定的几类迭代器
-
-- 输入迭代器
-    - 标准库算法共约定使用以下五类迭代器 
-        1. [`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
-        2. [`LegacyForwardIterator`](https://en.cppreference.com/w/cpp/named_req/ForwardIterator)
-        3. [`LegacyBidirectionalIterator`](https://en.cppreference.com/w/cpp/named_req/BidirectionalIterator)
-        4. [`LegacyRandomAccessIterator`](https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator)
-        5. [`LegacyContiguousIterator`](https://en.cppreference.com/w/cpp/named_req/ContiguousIterator)
-    - `n`类输入迭代器需支持下列到`n + 1`级为止（含）的全部操作
-        1. 读（read）
-        2. 单步递增（increment (without multiple passes)） 
-        3. 多步递增（increment (with multiple passes)）
-        4. 递减（decrement）
-        5. 随机访问（random access）
-        6. 连续存储（contiguous storage）
-- 输出迭代器
-    - [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)需支持如下操作
-        1. 写（write）
-        2. 单步递增（increment (without multiple passes)） 
-- 同时满足[`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
-  和[`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)
-  的要求的迭代器称作 *可变迭代器* （mutable iterators）
-
-#### 泛型迭代器操作函数
-
-- [`std::advance()`](https://en.cppreference.com/w/cpp/iterator/advance)
-- [`std::distance()`](https://en.cppreference.com/w/cpp/iterator/distance)
-- [`std::next()`](https://en.cppreference.com/w/cpp/iterator/next)
-- [`std::prev()`](https://en.cppreference.com/w/cpp/iterator/prev)
-
-#### 迭代器适配器（Iterator Adaptors）
-
-- *插入迭代器* （insert iterator）
-    - 通过插入器进行赋值时，插入器调用容器操作向指定容器的指定位置插入元素
-    - 支持操作
-        - `it = t`：在`it`所指位置 *之前* 插入值元素`t`
-            - 根据具体容器，可能会调用`c.push_back(t)`，`c.push_front(t)`或`c.insert(t, iter)`
-            - 自然，只有在 *容器支持该操作* 的情况下，才能使用对应的插入器
-        - `*it`，`++it`，`it++`：这些操作**并不做任何事，一律返回`it`自己！！！**
-    - 插入器有如下三种
-        - [`std::back_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/back_insert_iterator)
-            - 生成：[`std::back_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
-            ```
-            template <class Container>
-            std::back_insert_iterator<Container> back_inserter(Container & c)
-            {
-                return std::back_insert_iterator<Container>(c);
-            }
-            ```
-            - 通过此迭代器赋值时，赋值运算符调用`c.push_back()`将一个具有给定值的元素添加到容器中
-            ```
-            std::vector<int> vec;                         // empty vector
-            std::back_insert_iterator<std::vector<int>> it = std::back_inserter(vec);
-            *it = 42;                                     // actually calls: vec.push_back(42);
-            ```
-            - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
-            ```
-            std::vector<int> vec;                         // empty vector
-            std::fill_n(vec.end(), 10, 0);                // warning: fill_n on empty container is undefined
-            std::fill_n(std::back_inserter(vec), 10, 0);  // correct: insert 10 elements to vec
-            ```
-        - [`std::front_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/front_insert_iterator)
-            - 生成：[`std::front_inserter()`](https://en.cppreference.com/w/cpp/iterator/front_inserter)
-            ```
-            template <class Container>
-            std::front_insert_iterator<Container> front_inserter(Container & c)
-            {
-                return std::front_insert_iterator<Container>(c);
-            }
-            ```
-            - 插入位置 *固定* 是容器第一个位置。即：`std::front_insert_iterator`指向元素会 *随着赋值操作移动*
-        - [`std::insert_iterator`](https://en.cppreference.com/w/cpp/iterator/insert_iterator)
-            - 生成：[`std::inserter()`](https://en.cppreference.com/w/cpp/iterator/inserter)
-            ```
-            template <class Container>
-            std::insert_iterator<Container> inserter(Container & c, typename Container::iterator i)
-            {
-                return std::insert_iterator<Container>(c, i);
-            }
-            ```
-            - 插入位置为指向位置 *之前* ，`*insert_iter = t`相当于`c.insert(t, iter)`
-            - 使用：经常配合`std::set`使用
-            ```
-            std::multiset<int> s {1, 2, 3};
-            std::fill_n(std::inserter(s, s.end()), 5, 2);                           // 1 2 2 2 2 2 2 3 
-
-            std::vector<int> d {100, 200, 300};
-            std::vector<int> l {1, 2, 3, 4, 5};
-         
-            // when inserting in a sequence container, insertion point advances
-            // because each std::insert_iterator::operator= updates the target iterator
-            std::copy(d.begin(), d.end(), std::inserter(l, std::next(l.begin())));  // 1 100 200 300 2 3 4 5
-            ```
-- *流迭代器* （stream iterator）
-    - 没意思不看了
-- *反向迭代器* （reverse iterator）
-    - 
-
 ### 🌱 [Chap 10] [泛型算法](https://en.cppreference.com/w/cpp/algorithm)（Generic Algorithms）
 
 #### 初识
@@ -2550,22 +2387,183 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 特定容器算法
 
-#### 标准库算法概览
+### 🌱 [Chap 10.5] [迭代器](https://en.cppreference.com/w/cpp/iterator)（iterator，番外篇，从Chap 10和其他几章里单拎出来的）
 
-- 顺序查找
-- 其他只读算法
-- 二分查找
-- 写容器元素
-- 划分与排序
-- 通用重排操作
-- 排列算法
-- 有序序列的集合算法
-- 数值算法
+- 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符
+- 再次强调：`for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
 
-#### 随机数
+#### 迭代器运算符
 
-- 随机数分布
-- 随机数引擎
+- `*iter`：返回迭代器`iter`所知元素的**左值**引用
+    - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**
+- `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
+- `++iter`，`iter++`：令`iter`指向容器中的下一个元素
+    - 尾后迭代器并不实际指向元素，**不能**递增或递减
+    - 至少`g++`允许自减尾后迭代器`--c.end()`获取尾元素
+- `--iter`，`iter--`：令`iter`指向容器中的上一个元素
+- `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
+                                      如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
+                                      则相等；反之，不相等。
+- 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
+
+#### 迭代器算术运算（Iterator Arithmetic）
+
+- `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
+- `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
+- `iter += n`
+- `iter1 - iter2`：两个迭代器之间的距离（`difference_type`），
+                   即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
+- `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
+                        如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者
+- 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
+    - 比如：`std::list`、`std::forward_list`的内存都不是 *连续的* ，因此**不支持**迭代器算术运算
+
+#### 范围访问（Range Access）
+
+- 这些全局函数支持 *容器* 、 *内置数组* 和`std::initializer_list`
+- [`std::begin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
+  [`std::cbegin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
+  [`std::end()`](https://en.cppreference.com/w/cpp/iterator/end)，
+  [`std::cend()`](https://en.cppreference.com/w/cpp/iterator/end),
+  [`std::rbegin()`](https://en.cppreference.com/w/cpp/iterator/rbegin)，
+  [`std::crbegin()`](https://en.cppreference.com/w/cpp/iterator/rbegin)，
+  [`std::rend()`](https://en.cppreference.com/w/cpp/iterator/rend)，
+  [`std::crend()`](https://en.cppreference.com/w/cpp/iterator/rend)
+    - 用于 *容器* ，返回 *迭代器* ；用于 *数组* ，返回 *指针*
+    - 带`c`的返回 *常迭代器* 或 *常指针* ，带`r`的返回 *反向迭代器* 
+    - 如果容器为空，则`std::begin`和`std::end`返回的是**同一个**迭代器，都是 *尾后迭代器* 
+    - 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
+        - 它们或指向同一容器中的元素，或指向同一容器的尾后
+        - `begin <= end`，即：`end`不在`begin`之前
+```
+std::vector<int> vec{0, 1, 2, 3};
+std::vector<int>::iterator iter_beg = std::cbegin(vec);
+std::vector<int>::iterator iter_end = std::cend(vec);
+std::for_each(iter_beg, iter_end, [] (const int & n) { printf("%d ", i); });
+
+int arr[] = {0, 1, 2, 3};
+int * ptr_beg = std::cbegin(arr);
+int * ptr_end = std::cend(arr);
+std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
+```
+- [`std::size()`](https://en.cppreference.com/w/cpp/iterator/size)，
+  [`std::ssize()`](https://en.cppreference.com/w/cpp/iterator/size)
+- [`std::empty()`](https://en.cppreference.com/w/cpp/iterator/empty)
+- [`std::data()`](https://en.cppreference.com/w/cpp/iterator/data)
+
+#### 泛型算法约定的几类迭代器
+
+- 输入迭代器
+    - 标准库算法共约定使用以下五类迭代器 
+        1. [`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
+        2. [`LegacyForwardIterator`](https://en.cppreference.com/w/cpp/named_req/ForwardIterator)
+        3. [`LegacyBidirectionalIterator`](https://en.cppreference.com/w/cpp/named_req/BidirectionalIterator)
+        4. [`LegacyRandomAccessIterator`](https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator)
+        5. [`LegacyContiguousIterator`](https://en.cppreference.com/w/cpp/named_req/ContiguousIterator)
+    - `n`类输入迭代器需支持下列到`n + 1`级为止（含）的全部操作
+        1. 读（read）
+        2. 单步递增（increment (without multiple passes)） 
+        3. 多步递增（increment (with multiple passes)）
+        4. 递减（decrement）
+        5. 随机访问（random access）
+        6. 连续存储（contiguous storage）
+- 输出迭代器
+    - [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)需支持如下操作
+        1. 写（write）
+        2. 单步递增（increment (without multiple passes)） 
+- 同时满足[`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
+  和[`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)
+  的要求的迭代器称作 *可变迭代器* （mutable iterators）
+
+#### 泛型迭代器操作函数
+
+- [`std::advance()`](https://en.cppreference.com/w/cpp/iterator/advance)
+- [`std::distance()`](https://en.cppreference.com/w/cpp/iterator/distance)
+- [`std::next()`](https://en.cppreference.com/w/cpp/iterator/next)
+- [`std::prev()`](https://en.cppreference.com/w/cpp/iterator/prev)
+
+#### 迭代器适配器（Iterator Adaptors）
+
+- *插入迭代器* （insert iterator）
+    - 通过插入器进行赋值时，插入器调用容器操作向指定容器的指定位置插入元素
+    - 支持操作
+        - `it = t`：在`it`所指位置 *之前* 插入值元素`t`
+            - 根据具体容器，可能会调用`c.push_back(t)`，`c.push_front(t)`或`c.insert(t, iter)`
+            - 自然，只有在 *容器支持该操作* 的情况下，才能使用对应的插入器
+        - `*it`，`++it`，`it++`：这些操作**并不做任何事，一律返回`it`自己！！！**
+    - 插入器有如下三种
+        - [`std::back_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/back_insert_iterator)
+            - 生成：[`std::back_inserter()`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
+            ```
+            template <class Container>
+            std::back_insert_iterator<Container> back_inserter(Container & c)
+            {
+                return std::back_insert_iterator<Container>(c);
+            }
+            ```
+            - 通过此迭代器赋值时，赋值运算符调用`c.push_back()`将一个具有给定值的元素添加到容器中
+            ```
+            std::vector<int> vec;                         // empty vector
+            std::back_insert_iterator<std::vector<int>> it = std::back_inserter(vec);
+            *it = 42;                                     // actually calls: vec.push_back(42);
+            ```
+            - 常常使用`std::back_inserter()`创建迭代器，作为算法的 *目的位置* 使用
+            ```
+            std::vector<int> vec;                         // empty vector
+            std::fill_n(vec.end(), 10, 0);                // warning: fill_n on empty container is undefined
+            std::fill_n(std::back_inserter(vec), 10, 0);  // correct: insert 10 elements to vec
+            ```
+        - [`std::front_insert_iterator`](https://en.cppreference.com/w/cpp/iterator/front_insert_iterator)
+            - 生成：[`std::front_inserter()`](https://en.cppreference.com/w/cpp/iterator/front_inserter)
+            ```
+            template <class Container>
+            std::front_insert_iterator<Container> front_inserter(Container & c)
+            {
+                return std::front_insert_iterator<Container>(c);
+            }
+            ```
+            - 插入位置 *固定* 是容器第一个位置。即：`std::front_insert_iterator`指向元素会 *随着赋值操作移动*
+        - [`std::insert_iterator`](https://en.cppreference.com/w/cpp/iterator/insert_iterator)
+            - 生成：[`std::inserter()`](https://en.cppreference.com/w/cpp/iterator/inserter)
+            ```
+            template <class Container>
+            std::insert_iterator<Container> inserter(Container & c, typename Container::iterator i)
+            {
+                return std::insert_iterator<Container>(c, i);
+            }
+            ```
+            - 插入位置为指向位置 *之前* ，`*insert_iter = t`相当于`c.insert(t, iter)`
+            - 使用：经常配合`std::set`使用
+            ```
+            std::multiset<int> s {1, 2, 3};
+            std::fill_n(std::inserter(s, s.end()), 5, 2);                           // 1 2 2 2 2 2 2 3 
+
+            std::vector<int> d {100, 200, 300};
+            std::vector<int> l {1, 2, 3, 4, 5};
+         
+            // when inserting in a sequence container, insertion point advances
+            // because each std::insert_iterator::operator= updates the target iterator
+            std::copy(d.begin(), d.end(), std::inserter(l, std::next(l.begin())));  // 1 100 200 300 2 3 4 5
+            ```
+- *流迭代器* （stream iterator）
+    - 没意思，不看了
+- *反向迭代器* （reverse iterator）
+    - 111
+
+### 🌱 [Chap 10.6] 标准库算法概览（番外篇×2，这次是从附录单拎出来的）
+
+#### 顺序查找
+#### 其他只读算法
+#### 二分查找
+#### 写容器元素
+#### 划分与排序
+#### 通用重排操作
+#### 排列算法
+#### 有序序列的集合算法
+#### 数值算法
+#### 随机数算法
+    - 随机数分布
+    - 随机数引擎
 
 ### 🌱 [Chap 12] 动态内存
 
