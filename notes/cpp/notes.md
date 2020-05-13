@@ -2395,7 +2395,9 @@ std::function<return_type (paramater_list)> f3                  = f1;
     auto wc2 = std::find_if(words.begin(), words.end(), std::bind(checkSize, _1, 6));
     ```  
 
-#### 特定容器算法
+#### 用于`std::list`和`std::forward_list`的特定算法
+
+- 与其他容器不同，
 
 ### 🌱 [Chap 10.4] [迭代器](https://en.cppreference.com/w/cpp/iterator)（Iterator，番外篇，从Chap 10和更前面几章里单拎出来的）
 
