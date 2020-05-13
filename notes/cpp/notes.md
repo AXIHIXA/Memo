@@ -52,7 +52,8 @@
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
     - 泛型算法**不能（直接）添加或删除**元素。具体来说，调用`std::unique()`之前要有`std::sort()`，之后还要调用`c.erase()`来实际释放空间
-    - 如果要人工转换 *反向迭代器* ，一定记得**反向的`begin`要喂正向的`end`**！！！
+    - 如果要人工转换 *反向迭代器* ，一定记得**反向的`begin`要喂正向的`end`**，且模板参数是 *容器的迭代器类型* ，**不是容器自身类型**
+    - 普通迭代器指向的元素和用它转换成的反向迭代器指向的**不是**相同元素，而是相邻元素；反之亦然
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向
       括号内分析完就跳出括号，还是按先右后左的顺序，如此循环，直到整个声明分析完
@@ -166,7 +167,8 @@
         - 具有文件作用域（**不**跨文件）
             - 如果程序包含多个文件，则仅作用于定义它的文件，不能作用于其它文件
             - 这样即使两个不同的源文件都定义了相同名字的静态全局变量，它们也是 *不同* 的变量
-                - 这一点和没有加`extern`的全局常量一样        
+                - 这一点和没有加`extern`的全局常量一样    
+                - 注意`static`和`extern`修饰符是 *相互矛盾* 的，同时只能有一个               
     - *局部非静态变量* 
         - 具有局部作用域，包括
             - 函数体内定义的非静态变量
@@ -2142,6 +2144,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序
             - **不是**稳定排序
             - 重排两个元素的条件：`*(it + n) < *it`或`comp(*(it + n), *it) == true`（`n > 0`）
+                - 也就是说喂两个 *反向迭代器* 就可以在不传谓词的情况下达成非增序排序 => 10.4
         - 复杂度
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
@@ -2382,7 +2385,6 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 泛型算法结构
 
-- 类迭代器
 - 算法形参模式
 - 算法命名规范
 
@@ -2452,8 +2454,32 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
   [`std::empty()`](https://en.cppreference.com/w/cpp/iterator/empty)
     - 顾名思义
 - [`std::data()`](https://en.cppreference.com/w/cpp/iterator/data)
+    - 原型
+    ```
+    template <class C>
+    constexpr auto data(C & c) -> decltype(c.data());
+
+    template <class C>
+    constexpr auto data(const C & c) -> decltype(c.data());
+
+    template <class T, std::size_t N>
+    constexpr T * data(T (&array)[N]) noexcept;
+
+    template <class E>
+    constexpr const E * data(std::initializer_list<E> il) noexcept;
+    ```
+    - 返回：指向数据块的指针
+        - 具体：`return``c.data()`或`array`或`il.begin()`
+    ```
+    std::string s("Hello");
+    char buf[20] {0};
+    strcpy(buf, std::data(s));
+    printf("%s\n", buf);        // Hello
+    ```
 
 #### 泛型算法约定的几类迭代器
+
+这块Primer和`cppreferece`不一样，直接从`cppreferece`上摘抄了。
 
 - 输入迭代器
     - 标准库算法共约定使用以下五类迭代器 
@@ -2552,19 +2578,14 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 - [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)（reverse iterator）
     - 从容器尾元素向首元素移动的迭代器，递增递减语义颠倒
         - `++rit`会移动至前一个元素，`--rit`会移动至后一个
-        - 容器的反向迭代器类型实际上是这个模板类型的特化，例如`std::vector<int>`
+        - *容器的反向迭代器类型* 实际上是这个模板类型的特化，例如`std::vector<int>`
         ```
         typedef std::reverse_iterator<std::vector<int>> std::vector<int>::iterator 
         ```
-    ```
-    std::vector<int> v {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    std::sort(v.rbegin(), v.rend());                    // 逆序排序
-    
-    std::string line("a, b, c and d");
-    std::string::iterator rcomma = std::find(line.rbegin(), line.rend(), ',');
-    ```
-    - 只能在支持 *双向迭代的容器* 或 *双向迭代器* 定义反向迭代器
-        - 除`std::forward_list`以外的顺序容器都支持反向迭代器
+        - 只能在支持 *双向迭代的容器* 或 *双向迭代器* 定义反向迭代器
+            - 除`std::forward_list`以外的顺序容器都支持反向迭代器
+        - 反向迭代器的目的是表示 *元素范围* 的左开右闭区间，而这是 *不对称* 的
+            - 普通迭代器指向的元素和用它转换成的反向迭代器指向的**不是**相同元素，而是相邻元素；反之亦然
     - 生成
         - 用容器自带的`c.rbegin()`或者`std::rbegin(c)`等等
             - 比如容器自带的`c.rbegin()`的内部实现如下
@@ -2576,37 +2597,43 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             return std::reverse_iterator<Container::iterator>(end()); 
         }
         ```
-        - [`std::make_reverse_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_reverse_iterator)（`C++17`新标准）
-            - 如果要人工转换反向迭代器，一定记得**反向的`begin`要喂正向的`end`**！！！
-        ```
-        template <class Iter>
-        std::reverse_iterator<Iter> make_reverse_iterator(Iter i)
-        {
-            return std::reverse_iterator<Iter>(i);
-        }
-        ```
-    - 用这玩意儿的感觉都是骚操作
+        - 正反转化
+            - 正转反：[`std::make_reverse_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_reverse_iterator)（`C++17`新标准）
+                - 如果要人工转换反向迭代器，一定记得**反向的`begin`要喂正向的`end`**！！！
+                - 注意模板参数是容器的迭代器类型，**不是容器**！！！
+            ```
+            template <class Iter>
+            std::reverse_iterator<Iter> make_reverse_iterator(Iter i)
+            {
+                return std::reverse_iterator<Iter>(i);
+            }
+            ```
+            - 反转正：`r.base()`
+            ```
+            std::string s1("FIRST,MIDDLE,LAST");
+            std::string::reverse_iterator rc = std::find(s1.rbegin(), s1.rend(), ',');
+            std::string s2(rc.base(), s1.end());
+            std::cout << s2 << std::endl;  // LAST
+            ```
+    - 反向迭代器主要还是用于让泛型算法无缝衔接反向处理容器
+        - 比如不传谓词的情况下用`std::sort()`进行非增序排序
     ```
+    std::vector<int> v {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    
     // std::make_reverse_iterator() 用法示例
+    // 人工转换反向迭代器，记得反向的begin要喂正向的end
     // 顺便骚一下流迭代器，你说非得写成这德行是何苦呢
-    std::vector<int> v {1, 3, 10, 8, 22};
-    std::sort(v.begin(), v.end());
-    std::copy(v.begin(), v.end(), std::ostream_iterator<int>(std::cout, ", "));
-    std::cout << std::endl;                                       // 1, 3, 8, 10, 22, 
- 
-    std::copy(
-        std::make_reverse_iterator(v.end()),                      // 人工转换反向迭代器，反向的begin要喂正向的end
-        std::make_reverse_iterator(v.begin()),
-        std::ostream_iterator<int>(std::cout, ", "));             // 22, 10, 8, 3, 1,
+    std::reverse_iterator<std::vector<int>::iterator> rbeg = std::make_reverse_iterator(v.end());
+    std::reverse_iterator<std::vector<int>::iterator> rend = std::make_reverse_iterator(v.begin());
+    std::copy(rbeg, rend, std::ostream_iterator<int>(std::cout, ", "));          // 9, 8, 7, 6, 5, 4, 3, 2, 1
     
     // 当然还能直接调用容器方法获得反向迭代器，最直观
-    std::string s = "Hello, world";
-    std::string::reverse_iterator      r  = s.rbegin();           // 两个等价
-    std::reverse_iterator<std::string> r2 = s.rbegin();           
-    r[7] = 'O';
-    r += 7;                                                       // r现在指向'O'
-    std::string rev(r, s.rend());
-    std::cout << rev << std::endl;                                // OlleH
+    // 反向迭代器主要还是用于让泛型算法无缝衔接反向处理容器
+    // 比如不传谓词的情况下进行逆向排序
+    std::vector<int>::reverse_iterator rbeg2 = v.rbegin();
+    std::vector<int>::reverse_iterator rend2 = v.rend();
+    std::sort(rbeg, rend);
+    std::copy(v.begin(), v.end(), std::ostream_iterator<int>(std::cout, ", "));  // 9, 8, 7, 6, 5, 4, 3, 2, 1    
     ```
 - [*移动迭代器*](https://en.cppreference.com/w/cpp/iterator/move_iterator)（move iterator）
     - 生成：[`std::make_move_iterator()`](https://en.cppreference.com/w/cpp/iterator/make_move_iterator)
