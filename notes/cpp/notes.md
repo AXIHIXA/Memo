@@ -50,7 +50,6 @@
     - 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则
     - 非`constexpr`静态成员只能在**类外**初始化；在类外部定义静态成员时，**不能**重复`static`关键字
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
-    - 迭代器算术运算（iterator arithmatic）**不**支持`std::list`、`std::forward_list`，因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
     - 泛型算法**不能（直接）添加或删除**元素。具体来说，调用`std::unique()`之前要有`std::sort()`，之后还要调用`c.erase()`来实际释放空间
 - 读代码标准操作
@@ -2161,6 +2160,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - 对区间`[first, last)`中每一组 *连续的* *相等* 元素，只保留第一个， *清除* 其余元素
             - *清除* ：用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
             - *相等* ：`*iter1 == *iter2`或`p(*iter1, *iter2) == true`
+            - 这也就是为什么这其实是一个排序算法
         - 返回：清除完成后的逻辑区间的尾后迭代器（past-the-end iterator for the new logical end of the range）
             - 此迭代器后面的元素仍可被解引用访问，但值 *未定义*
         - 使用前应该**先调用**`std::sort()`，之后**再调用**容器的`erase()`方法
@@ -2303,7 +2303,8 @@ std::function<return_type (paramater_list)> f3                  = f1;
             - 是逗号分隔的参数列表，和`callable`的参数列表一一对应
                 - 自然，长度和`callable`的参数列表相同
             - `arg_list`可以包含以下三类东西，代表`callable`在对应位置参数绑定为
-                - [*占位符*](https://en.cppreference.com/w/cpp/utility/functional/placeholders) `std::placeholders::_n`（`n`为正整数）：`newCallable`被调用时接受的第`n`个参数
+                - [*占位符*](https://en.cppreference.com/w/cpp/utility/functional/placeholders) `std::placeholders::_n`（`n`为正整数）：
+                  `newCallable`被调用时接受的第`n`个参数
                 - 普通变量或字面量：该变量的拷贝（即绑定死为 *调用`std::bind()`时* 该变量的值）
                 - [`std::ref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)，
                   [`std::cref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)：
@@ -2380,37 +2381,39 @@ std::function<return_type (paramater_list)> f3                  = f1;
 #### [迭代器](https://en.cppreference.com/w/cpp/iterator)（iterator）
 
 - 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符
-- 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
-- `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
+- 再次强调：`for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
 
 ##### 迭代器运算符
 
-- 所有迭代器
-    - `*iter`：返回迭代器`iter`所知元素的**左值**引用
-        - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**
-    - `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
-    - `++iter`，`iter++`：令`iter`指向容器中的下一个元素
-        - 尾后迭代器并不实际指向元素，**不能**递增或递减
-        - 至少`g++`允许自减尾后迭代器`--c.end()`获取尾元素
-    - `--iter`，`iter--`：令`iter`指向容器中的上一个元素
-    - `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
-                                          如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
-                                          则相等；反之，不相等。
-- 迭代器算术运算（iterator arithmetic）
-    - `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
-    - `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
-    - `iter += n`
-    - `iter1 - iter2`：两个迭代器之间的距离（`difference_type`），
-                       即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
-    - `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
-                            如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者
-    - 
-        - 特别地，**不**支持`std::list`、`std::forward_list`，
-          因为双向链表和单向链表存储元素都 *不在一块连续的内存上* ，所以无法通过加减法按距离查找元素
+- `*iter`：返回迭代器`iter`所知元素的**左值**引用
+    - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**
+- `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
+- `++iter`，`iter++`：令`iter`指向容器中的下一个元素
+    - 尾后迭代器并不实际指向元素，**不能**递增或递减
+    - 至少`g++`允许自减尾后迭代器`--c.end()`获取尾元素
+- `--iter`，`iter--`：令`iter`指向容器中的上一个元素
+- `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
+                                      如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
+                                      则相等；反之，不相等。
+- 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
+
+##### 迭代器算术运算（iterator arithmetic）
+
+- `iter + n`：结果仍为迭代器，或指向容器中元素，或指向尾后
+- `iter - n`：结果仍为迭代器，或指向容器中元素，或指向尾后
+- `iter += n`
+- `iter1 - iter2`：两个迭代器之间的距离（`difference_type`），
+                   即：将`iter2`向前移动`iter1 - iter2`个元素，将得到`iter1`；
+- `<`，`<=`，`>`，`>=`：关系运算符。参与运算的两个迭代器必须是合法的（或指向容器中元素，或指向尾后）。
+                        如果前者指向的容器位置在后者指向的容器位置之前，则前者小于后者
+- 自然，只有迭代器指向的容器支持相应操作时，才能调用上述操作
+    - 比如：`std::list`、`std::forward_list`的内存都不是 *连续的* ，因此**不支持**迭代器算术运算
+
+##### 范围迭代器
+
 - 自定义 *构成范围* 的迭代器`begin`和`end`**必须满足**的要求
     - 它们或指向同一容器中的元素，或指向同一容器的尾后
     - `begin <= end`，即：`end`不在`begin`之前
-- 泛型迭代器操作函数 => 10.4
 
 ##### 泛型算法约定的几类迭代器
 
@@ -2430,21 +2433,21 @@ std::function<return_type (paramater_list)> f3                  = f1;
         6. 连续存储（contiguous storage）
 - 输出迭代器
     - [`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)需支持如下操作
-        7. 写（write）
-        8. 单步递增（increment (without multiple passes)） 
+        1. 写（write）
+        2. 单步递增（increment (without multiple passes)） 
 - 同时满足[`LegacyInputIterator`](https://en.cppreference.com/w/cpp/named_req/InputIterator)
   和[`LegacyOutputIterator`](https://en.cppreference.com/w/cpp/named_req/OutputIterator)
   的要求的迭代器称作 *可变迭代器* （mutable iterators）
 
-
 ##### 泛型迭代器操作函数
 
-- 获取首元素迭代器和尾后迭代器：[`std::begin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
-                                [`std::cbegin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
-                                [`std::end()`](https://en.cppreference.com/w/cpp/iterator/end)，
-                                [`std::cend()`](https://en.cppreference.com/w/cpp/iterator/end)
+- 获取首尾后迭代器：[`std::begin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
+                    [`std::cbegin()`](https://en.cppreference.com/w/cpp/iterator/begin)，
+                    [`std::end()`](https://en.cppreference.com/w/cpp/iterator/end)，
+                    [`std::cend()`](https://en.cppreference.com/w/cpp/iterator/end)
     - 用于 *容器* ，返回 *迭代器*
     - 用于 *数组* ，返回 *指针*
+    - 如果容器为空，则`std::begin`和`std::end`返回的是**同一个**迭代器，都是 *尾后迭代器* 
 ```
 std::vector<int> vec{0, 1, 2, 3};
 std::vector<int>::iterator iter_beg = std::cbegin(vec);
@@ -2499,6 +2502,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
                 return std::front_insert_iterator<Container>(c);
             }
             ```
+            - 插入位置 *固定* 是容器第一个位置。即：`std::front_insert_iterator`指向元素会 *随着赋值操作移动*
         - [`std::insert_iterator`](https://en.cppreference.com/w/cpp/iterator/insert_iterator)
             - 生成：[`std::inserter()`](https://en.cppreference.com/w/cpp/iterator/inserter)
             ```
@@ -2508,7 +2512,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
                 return std::insert_iterator<Container>(c, i);
             }
             ```
-            - 插入位置为
+            - 插入位置为指向位置 *之前* ，`*insert_iter = t`相当于`c.insert(t, iter)`
             - 使用：经常配合`std::set`使用
             ```
             std::multiset<int> s {1, 2, 3};
@@ -2521,10 +2525,10 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             // because each std::insert_iterator::operator= updates the target iterator
             std::copy(d.begin(), d.end(), std::inserter(l, std::next(l.begin())));  // 1 100 200 300 2 3 4 5
             ```
-            
 - *流迭代器* （stream iterator）
+    - 没意思不看了233
 - *反向迭代器* （reverse iterator）
-
+    - 
 
 #### 泛型算法结构
 
