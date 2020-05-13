@@ -2387,7 +2387,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 特定容器算法
 
-### 🌱 [Chap 10.5] [迭代器](https://en.cppreference.com/w/cpp/iterator)（iterator，番外篇，从Chap 10和其他几章里单拎出来的）
+### 🌱 [Chap 10.4] [迭代器](https://en.cppreference.com/w/cpp/iterator)（Iterator，番外篇，从Chap 10和更前面几章里单拎出来的）
 
 - 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符
 - 再次强调：`for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
@@ -2550,7 +2550,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 - *反向迭代器* （reverse iterator）
     - 111
 
-### 🌱 [Chap 10.6] 标准库算法概览（番外篇×2，这次是从附录单拎出来的）
+### 🌱 [Appendix A] 标准库算法概览（番外篇×2，这次是从附录里单拎出来的）
 
 #### 顺序查找
 #### 其他只读算法
