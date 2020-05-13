@@ -2481,8 +2481,8 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 
 #### 泛型算法约定的几类迭代器
 
-这块《`C++ Primer 5th Edition`》和[`cppreferece`](https://en.cppreference.com/w/cpp/iterator)不一样，
-就直接从[`cppreferece`](https://en.cppreference.com/w/cpp/iterator)上摘抄了。
+这块《`C++ Primer 5th Edition`》和[`cppreference`](https://en.cppreference.com/w/cpp/iterator)不一样，
+就直接从[`cppreference`](https://en.cppreference.com/w/cpp/iterator)上摘抄了。
 
 - 输入迭代器
     - 标准库算法共约定使用以下五类迭代器 
