@@ -2655,7 +2655,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - [`bit_xor`](https://en.cppreference.com/w/cpp/utility/functional/bit_xor)：`x ^ y`
         - [`bit_not`](https://en.cppreference.com/w/cpp/utility/functional/bit_not)：`~x`
 
-### 🌱 [Appendix A] [标准库](https://en.cppreference.com/w/cpp/algorithm)（番外篇×2，这次是从附录里单拎出来的）
+### 🌱 [Appendix A] [标准库](https://en.cppreference.com/w/cpp/algorithm)
 
 #### 只读算法（Non-modifying sequence operations）
     
