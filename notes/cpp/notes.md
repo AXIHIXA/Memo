@@ -2595,6 +2595,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 谓词（Predicate）
 
 - 大多数算法提供接口，允许我们用 *谓词* 代替默认的运算符
+    - 比如排序算法中如何定义 *非增序* ，或是查找算法中如何定义 *相等* ，等等
 - 谓词是可调用的表达式。具体传参可以用
     - *函数头*
     - *函数指针*
@@ -2624,7 +2625,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             1. 自反性（reflexivity）：`equiv(a, a) == true`
             2. 对称性（symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
             3. 传递性（transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
-- 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional)（模板类，用时给一个Type并创建对象即可）
+- 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional)（模板类，用时给一个`Type`并创建对象即可）
     - 算术操作（Arithmetic operations）
         - [`plus`](https://en.cppreference.com/w/cpp/utility/functional/plus)：`x + y`
         - [`minus`](https://en.cppreference.com/w/cpp/utility/functional/minus)：`x - y`
@@ -2639,6 +2640,11 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - [`less`](https://en.cppreference.com/w/cpp/utility/functional/less)：`x < y`
         - [`greater_equal`](https://en.cppreference.com/w/cpp/utility/functional/greater_equal)：`x >= y`
         - [`less_equal`](https://en.cppreference.com/w/cpp/utility/functional/less_equal)：`x <= y`
+        ```
+        std::vector<int> v {0, 1, 1, 2};
+        std::sort(v.begin(), v.end(), std::greater_equal<int>());
+        std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+        ```
     - 逻辑操作（Logical operations）
         - [`logical_and`](https://en.cppreference.com/w/cpp/utility/functional/logical_and)：`x && y`
         - [`logical_or`](https://en.cppreference.com/w/cpp/utility/functional/logical_or)：`x || y`
