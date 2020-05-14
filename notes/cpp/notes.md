@@ -2202,15 +2202,15 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                     2. 两个元素被交换顺序的条件是，它们满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`
                     3. 因此，想要 *非增序排序* ，直接喂一个`std::greater_equal`模板对象即可
                     ```
-                    int a[] {0, 1, 1, 2};
-                    std::sort(std::begin(a), std::end(a), std::greater_equal<int>());
-                    std::for_each(std::begin(a), std::end(a), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+                    std::vector<int> v {0, 1, 1, 2};
+                    std::sort(v.begin(), v.end(), std::greater_equal<int>());
+                    std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                     ```
                     4. 喂两个 *反向迭代器* 就连谓词都省了 => 10.4
                     ```
-                    int a[] {0, 1, 1, 2};
-                    std::sort(std::rbegin(a), std::rend(a));
-                    std::for_each(std::begin(a), std::end(a), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+                    std::vector<int> v {0, 1, 1, 2};
+                    std::sort(v.rbegin(), v.rend());
+                    std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                     ```
         - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件：
             - 签名：`bool comp(const T & a, const T & b);`
