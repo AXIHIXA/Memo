@@ -2460,21 +2460,26 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 #### 用于`std::list`和`std::forward_list`的特定算法（容器成员函数）
 
-- 出于性能考虑，`std::list`和`std::forward_list`应当优先使用 *成员函数版本* 的算法，而**不是**通用算法
+- 出于性能考虑，[`std::list`](https://en.cppreference.com/w/cpp/container/list)和[`std::forward_list`](https://en.cppreference.com/w/cpp/container/forward_list)应当优先使用 *成员函数版本* 的算法，而**不是**通用算法
+    - 这些算法并**不真正拷贝或移动**元素，只会 *更改指针*
 - 列表整合算法，以下算法均返回`void`
-    - `lst.merge(lst2)`：将来自 *有序列表* `lst2`的元素归并入 *有序列表* `lst`。归并之后`lst2` *变为空* 。排序后满足`*it <= *(it + n) == true`
-    - `lst.merge(lst2, comp)`：将来自 *有序列表* `lst2`的元素归并入 *有序列表* `lst`。归并之后`lst2` *变为空* 。排序后满足`comp(*it, *(it + n)) == true`
-    - `lst.remove(val)`：调用`erase`删除掉值为`val`的元素
-    - `lst.remove_if(pred)`：调用`erase`删除掉满足`pred(*it) == true`的元素
-    - `lst.reverse()`：反转列表
-    - `lst.sort()`：排序，排序后满足`*it <= *(it + n) == true`
-    - `lst.sort(comp)`：排序，排序后满足`comp(*it, *(it + n)) == true`
-    - `lst.unique()`：调用`erase`删除同一个值的 *连续* 拷贝，判定标准：`*it1 == *it2`
-    - `lst.unique(pred)`：调用`erase`删除同一个值的 *连续* 拷贝，判定标准：`pred(*it1, *it2) == true`
-- `splice`成员
-    - `lst.splice(p, lst2)`，`flst.splice_after(p, lst2)`：
-    - `lst.splice(p, lst2, p2)`，`flst.splice_after(p, lst2, p2)`：
-    - `lst.splice(p, lst2, b, e)`，`flst.splice_after(p, lst2, b, e)`：
+    - [`lst.merge(lst2)`](https://en.cppreference.com/w/cpp/container/list/merge)：将来自 *有序列表* `lst2`的元素归并入 *有序列表* `lst`。归并之后`lst2` *变为空* 。排序后满足`*it <= *(it + n) == true`
+    - [`lst.merge(lst2, comp)`](https://en.cppreference.com/w/cpp/container/list/merge)：将来自 *有序列表* `lst2`的元素归并入 *有序列表* `lst`。归并之后`lst2` *变为空* 。排序后满足`comp(*it, *(it + n)) == true`
+    - [`lst.remove(val)`](https://en.cppreference.com/w/cpp/container/list/remove)：调用`erase`删除掉值为`val`的元素
+    - [`lst.remove_if(pred)`](https://en.cppreference.com/w/cpp/container/list/remove)：调用`erase`删除掉满足`pred(*it) == true`的元素
+    - [`lst.reverse()`](https://en.cppreference.com/w/cpp/container/list/reverse)：反转列表
+    - [`lst.sort()`](https://en.cppreference.com/w/cpp/container/list/sort)：排序，排序后满足`*it <= *(it + n) == true`
+    - [`lst.sort(comp)`](https://en.cppreference.com/w/cpp/container/list/sort)：排序，排序后满足`comp(*it, *(it + n)) == true`
+    - [`lst.unique()`](https://en.cppreference.com/w/cpp/container/list/unique)：调用`erase`删除同一个值的 *连续* 拷贝，判定标准：`*it1 == *it2`
+    - [`lst.unique(pred)`](https://en.cppreference.com/w/cpp/container/list/unique)：调用`erase`删除同一个值的 *连续* 拷贝，判定标准：`pred(*it1, *it2) == true`
+- [`std::list<>::splice`](https://en.cppreference.com/w/cpp/container/list/splice)
+    - `lst.splice(p, lst2)`：把整个`lst2`中元素 *移动至* `lst`中`p` *之前* 的位置。`O(1)`
+    - `lst.splice(p, lst2, p2)`：把`lst2`中`p2`指向的元素 *移动至* `lst`中`p` *之前* 的位置。`O(1)`
+    - `lst.splice(p, lst2, b, e)`：把`lst2`中`[b, e)`之间的元素 *移动至* `lst`中`p` *之前* 的位置。如果`lst2`和`lst`是同一列表，`O(1)`；否则，`O(n)`
+- [`std::forward_list<>::splice_after`](https://en.cppreference.com/w/cpp/container/forward_list/splice_after)
+    - `flst.splice_after(p, lst2)`：把整个`lst2`中元素 *移动至* `flst`中`p` *之后* 的位置。`O(n)`
+    - `flst.splice_after(p, lst2, p2)`：把`lst2`中`p2`指向的元素 *移动至* `flst`中`p` *之后* 的位置。`O(1)`
+    - `flst.splice_after(p, lst2, b, e)`：把`lst2`中`[b, e)`之间的元素 *移动至* `flst`中`p` *之后* 的位置。如果`lst2`和`flst`是同一列表，`O(1)`；否则，`O(n)`
 - 与其他非成员版本的泛型算法不同，列表这些成员函数版本的算法会 *改变底层容器* 
     - 比如`lst.unique`就会真正地 *删除* 连续的重复元素，而`std::unique()`相当于只是个排序算法
     - 比如`lst.merge`会将源列表的元素 *移动* 至目标，也就是说源列表已经空了
@@ -2487,7 +2492,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
 #### 迭代器运算符
 
 - `*iter`：返回迭代器`iter`所知元素的**左值**引用
-    - 解引用 *非法* 迭代器或者 *尾后* 迭代器是**未定义行为**
+    - 解引用 *非法* 迭代器或者 *尾后* 迭代器是 *未定义行为*
 - `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
 - `++iter`，`iter++`：令`iter`指向容器中的下一个元素
     - 尾后迭代器并不实际指向元素，**不能**递增或递减
