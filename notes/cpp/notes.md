@@ -2685,7 +2685,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - `all_of`：一直成立。如果区间为 *空* ，返回`true`
         - `any_of`：至少有一个实例成立。如果区间为 *空* ，返回`false`
         - `none_of`：一直**不**成立。如果区间为 *空* ，返回`true`
-    - 复杂度：`O(N)`次谓词调用，`N = std::distance(first, last)`
+    - 复杂度：`O(last - first)`次谓词调用
 - [`std::for_each`](https://en.cppreference.com/w/cpp/algorithm/for_each)
     - 可能的实现
     ```
@@ -2713,6 +2713,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             - `Type` must be such that an object of type `InputIt` can be dereferenced and then implicitly converted to `Type`
     - 返回：传入的`f`经过迭代之后的 *右值引用* 
         - 想要获得经历过迭代的`f`，则 *只能依靠返回值* ，传入的`f`在`for_each`结束后 *未定义* 
+    - 复杂度：`Omega(last - first)`次`f`调用
     ```
     struct Sum
     {
@@ -2726,7 +2727,6 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum UNDEFINED!!!
                                                                   // sum.sum == 305
     ```
-    - 复杂度：`Omega(N)`次`f`调用，`N = last - first`
 - [`std::for_each_n`](https://en.cppreference.com/w/cpp/algorithm/for_each_n)
     - 可能的实现
     ```
@@ -2762,7 +2762,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
              UnaryPredicate p);
     ```
     - 返回：`ptrdiff_t` aka `long int`，区间`[first, last)`之内等于`value`或者满足`p(*iter) == true`的值的个数
-    - 复杂度：`Omega(N)`次谓词调用，`N = std::distance(first, last)`
+    - 复杂度：`Omega(last - first)`次谓词调用
 - [`std::mismatch`](https://en.cppreference.com/w/cpp/algorithm/mismatch)
     - 原型
     ```
@@ -2798,6 +2798,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - *不匹配* 定义为：`*iter1 != *iter2`或`p(*iter1, *iter2) == false`
         - 如果没有不匹配发生，则返回`last1`和其在 *序列2* 中对应的迭代器
         - 如果 *序列1* 比 *序列2* 长，行为 *未定义*
+    - 复杂度：`O(min(last1 - first1, last2 - first2))`次比较或谓词调用
 - [`std::find`, `std::find_if`, `std::find_if_not`](https://en.cppreference.com/w/cpp/algorithm/find)
     - 签名
     ```
@@ -2829,7 +2830,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     std::vector<int>::const_iterator res = std::find(vec.cbegin(), vec.cend(), val);
     std::cout << "The value " << val << (res == vec.cend()) ? " is NOT present" ： “ is present” << std::endl;
     ```
-    - 复杂度：`O(N)`次谓词调用，`N = std::distance(first, last)`
+    - 复杂度：`O(last - first)`次谓词调用
     - 指针就是一种迭代器，因此`std::find()`可用于内置数组
     ```
     int arr[]{0, 1, 2, 3, 4, 5, 6...};
@@ -2877,7 +2878,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
                   ForwardIt       s_last, 
                   BinaryPredicate p);
     ```
-    - 返回：`[first, last)`内、指向被搜索序列`[s_first, s_last)`中的 *任一元素第一次* 出现位置的迭代器
+    - 返回：`[first, last)`内、指向被搜索序列`[s_first, s_last)`中的 *任一元素* *第一次* 出现位置的迭代器
         - 相等元素定义为`v1 == v2`或`p(v1, v2) == true`
         - 如果 *没有出现* ，返回`last`
     - 复杂度：`O(S * N)`次比较或谓词调用，`S = std::distance(s_first, s_last)`，`N = std::distance(first, last)`
@@ -2930,6 +2931,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
              Size      count, 
              const T & value);
 
+
     template <class ForwardIt, class Size, class T, class BinaryPredicate >
     ForwardIt 
     search_n(ForwardIt       first, 
@@ -2942,30 +2944,52 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - 相等元素定义为`v1 == v2`或`p(v1, v2) == true`
         - 如果 *没有出现* ，返回`last`
         - 如果`count <= 0`，返回`first`
-    - 复杂度：`O(N)`次比较或谓词调用，`N = std::distance(first, last)`
+    - 复杂度：`O(last - first)`次比较或谓词调用
 
 #### 写算法（Modifying sequence operations）
 
 - [`std::copy`, `std::copy_if`](https://en.cppreference.com/w/cpp/algorithm/copy)
-    - 签名
+    - 可能的实现
     ```
     template <class InputIt, class OutputIt>
     OutputIt 
     copy(InputIt  first, 
          InputIt  last, 
-         OutputIt d_first);
+         OutputIt d_first)
+    {    
+        while (first != last) 
+        {
+            *d_first++ = *first++;
+        }
+        
+        return d_first;
+    }
          
     template <class InputIt, class OutputIt, class UnaryPredicate>
     OutputIt 
     copy_if(InputIt first, 
             InputIt last,
             OutputIt d_first,
-            UnaryPredicate pred);
+            UnaryPredicate pred)
+    {    
+        while (first != last) 
+        {
+            if (pred(*first))
+            {
+                *d_first++ = *first;
+            }
+                
+            first++;
+        }
+        
+        return d_first;
+    }
     ```
     - 将区间`[first, last)`之内所有元素拷贝至以`d_first`开始的一片内存中，
         - `copy_if`：只拷贝满足`pred(*iter) == true`的元素
         - 需保证写`d_first`开始的这一片内存是合法行为
     - 返回：拷贝生成的序列的尾后迭代器
+    - 复杂度：`Omega(last - first)`次赋值
     ```
     int a1[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}; 
     int a2[sizeof(a1) / sizeof(*a1)]; 
@@ -2994,8 +3018,9 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     }
     ```
     - 将区间`[first, first + count)`之内的`count`个值复制到区间`[result, result + count)`
-    - 返回：迭代器`result + count`，如`count <= 0`，则返回`result`
-    - 不同于`std::copy`，本算法 *容许重叠* 
+        - 需保证写`[result, result + count)`开始的这一片内存是合法行为
+    - 返回：拷贝生成的序列的尾后迭代器`result + count`，如`count <= 0`，则返回`result`
+    - 复杂度：如果`count > 0`，`Omega(count)`次赋值；否则`O(1)`
 - [`std::copy_backward`](https://en.cppreference.com/w/cpp/algorithm/copy_backward)
 - [`std::move`](https://en.cppreference.com/w/cpp/algorithm/move)
 - [`std::move_backward`](https://en.cppreference.com/w/cpp/algorithm/move_backward)

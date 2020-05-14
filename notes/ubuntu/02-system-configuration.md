@@ -104,8 +104,7 @@ StartupWMClass=jetbrains-pycharm
 
 For people getting the white screen error, go to Library > History > Show All History, right click on ex******, and Forget About This Site
 
-## 🌱 Some Alienware Key Shortcut
+## 🌱 Some Alienware Stuff
 
-```
-Fn + F6 : disables / enables WIN key
-```
+1. `Fn + F6`: disables / enables WIN key
+2. When the touchpad fails to respond: reinstall BIOS `Alienware_15_R3_17_R4_1.9.0.EXE`
