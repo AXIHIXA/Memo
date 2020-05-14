@@ -3176,6 +3176,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             std::sort(v.rbegin(), v.rend());
             std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
             ```
+            3. 重载`<`运算符：那可真是没事儿闲的了，堪比`#define true false`或者`#define < >`
     - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件 => 10.3
         - 签名：`bool comp(const T & a, const T & b);`
         - 参数类型：常引用不是强制的，但**不能更改传入的对象**
