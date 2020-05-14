@@ -3163,7 +3163,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             - 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *互换*  
         - 想要 *非增序排序*  可以
             1. 直接喂一个`std::greater`模板对象作为谓词
-                - 注意**不能**喂`std::greater_equal`，必须是 *严格偏序* （`<`或者`>`，不能带等号）
+                - 注意**不能**喂`std::greater_equal`，必须是 *严格偏序* （也就是说相等元素要返回`false`，不然死循环了）
             ```
             std::vector<int> v {0, 1, 1, 2};
             std::sort(v.begin(), v.end(), std::greater<int>());
