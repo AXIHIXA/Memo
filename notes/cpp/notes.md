@@ -2200,13 +2200,13 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                 - 也就是说
                     1. *排序后* 序列满足`*it <= *(it + n)`或`comp(*it, *(it + n)) == true`
                     2. 两个元素被交换顺序的条件是，它们满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`
-                    3. *非增序排序* 可以直接喂一个`std::greater_equal`模板对象即可
+                    3. 因此，想要 *非增序排序* 直接喂一个`std::greater_equal`模板对象即可
                     ```
                     int a[] {0, 1, 1, 2};
                     std::sort(a, a + 4, std::greater_equal<int>());
                     std::for_each(a, a + 4, [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                     ```
-                    4. 喂两个 *反向迭代器* 就可以在不传谓词的情况下达成 *非增序排序* => 10.4
+                    4. 喂两个 *反向迭代器* 就连谓词都省了 => 10.4
                     ```
                     int a[] {0, 1, 1, 2};
                     std::sort(std::rbegin(a), std::rend(a));
