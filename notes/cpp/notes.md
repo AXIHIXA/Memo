@@ -2612,16 +2612,16 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
 - 典型二元谓词举例：[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)
     - `bool comp(const T & a, const T & b);`
-        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
-        - 要求：
-            1. *非自反性* （irreflexivity）：`comp(a, a) == false`
+        - 参数类型：常引用不是强制的，但**不能更改传入的对象**
+        - 返回值：`bool`亦不是强制的，但要求可以 *隐式转化* 为`bool`
+        - 要求：满足 *严格偏序* （Strict partial order）关系
+            1. *反自反性* （irreflexivity）：`comp(a, a) == false`
             2. *非对称性* （asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
             3. *传递性* （transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
     - `bool equiv(const T & a, const T & b);`
-        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
-        - 要求：
+        - 参数类型：常引用不是强制的，但**不能更改传入的对象**
+        - 返回值：`bool`亦不是强制的，但要求可以 *隐式转化* 为`bool`
+        - 要求：满足 *严格偏序* （Strict partial order）关系
             1. *自反性* （reflexivity）：`equiv(a, a) == true`
             2. *对称性* （symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
             3. *传递性* （transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
@@ -3158,14 +3158,12 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     ```
     - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序
         - **不是**稳定排序，即不保证排序前后相等元素的相对顺序保持不变
-        - *非降序* 的定义
-            - 如果`v1`、`v2`满足`v1 <= v2`或`comp(v1, v2) == true`，则`v1`应在`v2` *前面* 
-                - `gcc`实现：对任何迭代器`it`，和任何自然数`n`
-                    1. 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *互换*  
-                    2. 也就是说排序后应有：`*it <= *(it + n)`或`comp(*it, *(it + n)) == true`
+        - *非降序* ：如果`v1`、`v2`满足`v1 <= v2`或`comp(v1, v2) == true`，则`v1`应在`v2` *前面* 
+            - `gcc`实现：对任何迭代器`it`，和任何自然数`n`，按照 *严格偏序* *互换* 元素，即
+                - 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *互换*  
             - 想要 *非增序排序*  可以
                 1. 直接喂一个`std::greater`模板对象作为谓词
-                    - 注意 **不能** 喂`std::greater_equal`，这玩意儿不满足 *非自反性* 
+                    - 注意**不能**喂`std::greater_equal`，必须是 *严格偏序* （`<`或者`>`，不能带等号）
                 ```
                 std::vector<int> v {0, 1, 1, 2};
                 std::sort(v.begin(), v.end(), std::greater<int>());
@@ -3179,10 +3177,10 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
                 ```
     - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件 => 10.3
         - 签名：`bool comp(const T & a, const T & b);`
-        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
-        - 要求：
-            1. *非自反性* （irreflexivity）：`comp(a, a) == false`
+        - 参数类型：常引用不是强制的，但**不能更改传入的对象**
+        - 返回值：`bool`亦不是强制的，但要求可以 *隐式转化* 为`bool`
+        - 要求：满足 *严格偏序* （Strict partial order）关系
+            1. *反自反性* （irreflexivity）：`comp(a, a) == false`
             2. *非对称性* （asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
             3. *传递性* （transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
     - 复杂度
