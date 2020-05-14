@@ -1855,16 +1855,16 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                         - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
                         - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
                         - 要求：
-                            1. 非自反性：`comp(a, a) == false`
-                            2. 非对称性：`comp(a, b) == true -> comp(b, a) == false`
-                            3. 传递性：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
+                            1. 非自反性（irreflexivity）：`comp(a, a) == false`
+                            2. 非对称性（asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
+                            3. 传递性（transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
                     - `bool equiv(const T & a, const T & b);`
                         - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
                         - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
                         - 要求：
-                            1. 自反性：`equiv(a, a) == true`
-                            2. 对称性：`equiv(a, b) == true -> equiv(b, a) == false`
-                            3. 传递性：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
+                            1. 自反性（reflexivity）：`equiv(a, a) == true`
+                            2. 对称性（symmetry）：`equiv(a, b) == true -> equiv(b, a) == false`
+                            3. 传递性（transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
 - 公认假设
     - 大部分标准库算法的形参满足以下格式
         - `alg(beg, end, [predicate])`
