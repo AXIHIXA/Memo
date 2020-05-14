@@ -3165,6 +3165,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
                     2. 也就是说排序后应有：`*it <= *(it + n)`或`comp(*it, *(it + n)) == true`
             - 想要 *非增序排序*  可以
                 1. 直接喂一个`std::greater`模板对象作为谓词
+                    - 注意 **不能** 喂`std::greater_equal`，这玩意儿不满足 *非自反性* 
                 ```
                 std::vector<int> v {0, 1, 1, 2};
                 std::sort(v.begin(), v.end(), std::greater<int>());
