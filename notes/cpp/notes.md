@@ -2572,79 +2572,82 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 
 ### 🌱 [Chap 10] [泛型算法](https://en.cppreference.com/w/cpp/algorithm)（Generic Algorithms）
 
-#### 初识
+#### 概述
 
-- 位置
-    - 大部分泛型算法定义于头文件`<algorithm>`中
-    - 标准库还在头文件`<numeric>`中定义了一组数值泛型算法
-- 原则
-    - 泛型算法永远**不会**直接操作容器，但仍旧依赖于元素类型的操作
-        - 泛型算法只会运行于 *迭代器* 之上，不会执行特定容器的操作，甚至不需在意自己遍历的是不是容器
-            - 因此，**泛型算法不能（直接）添加或删除元素**
-        - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
-    - 大多数算法提供接口，允许我们用 *谓词* （predicate）代替默认的运算符
-        - 谓词是可调用的表达式。具体传参可以用
-            - *函数头*
-            - *函数指针*
-            - [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional) => 14.8
-            - [*`lambda`表达式*](https://en.cppreference.com/w/cpp/language/lambda) => 10.3.2
-        - 标准库算法使用以下两类谓词
-            - *一元谓词* （unary predicate）
-                - 接受单一参数
-                - 一般为迭代器指向元素类型的常引用
-                    - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
-            - *二元谓词* （binary predicate）
-                - 接受两个参数
-                - 一般均为迭代器指向元素类型的常引用
-                    - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
-        - 典型二元谓词举例：[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)
-            - `bool comp(const T & a, const T & b);`
-                - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-                - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
-                - 要求：
-                    1. 非自反性（irreflexivity）：`comp(a, a) == false`
-                    2. 非对称性（asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
-                    3. 传递性（transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
-            - `bool equiv(const T & a, const T & b);`
-                - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-                - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
-                - 要求：
-                    1. 自反性（reflexivity）：`equiv(a, a) == true`
-                    2. 对称性（symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
-                    3. 传递性（transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
-        - 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional)（模板类，用时给一个Type并创建对象即可）
-            - 算术操作（Arithmetic operations）
-                - [`plus`](https://en.cppreference.com/w/cpp/utility/functional/plus)：`x + y`
-                - [`minus`](https://en.cppreference.com/w/cpp/utility/functional/minus)：`x - y`
-                - [`multiplies`](https://en.cppreference.com/w/cpp/utility/functional/multiplies)：`x * y`
-                - [`divides`](https://en.cppreference.com/w/cpp/utility/functional/divides)：`x / y`
-                - [`modulus`](https://en.cppreference.com/w/cpp/utility/functional/modulus)：`x % y`
-                - [`negate`](https://en.cppreference.com/w/cpp/utility/functional/negate)：`-x`
-            - 比较（Comparisons）
-                - [`equal_to`](https://en.cppreference.com/w/cpp/utility/functional/equal_to)：`x == y`
-                - [`not_equal_to`](https://en.cppreference.com/w/cpp/utility/functional/not_equal_to)：`x != y`
-                - [`greater`](https://en.cppreference.com/w/cpp/utility/functional/greater)：`x > y`
-                - [`less`](https://en.cppreference.com/w/cpp/utility/functional/less)：`x < y`
-                - [`greater_equal`](https://en.cppreference.com/w/cpp/utility/functional/greater_equal)：`x >= y`
-                - [`less_equal`](https://en.cppreference.com/w/cpp/utility/functional/less_equal)：`x <= y`
-            - 逻辑操作（Logical operations）
-                - [`logical_and`](https://en.cppreference.com/w/cpp/utility/functional/logical_and)：`x && y`
-                - [`logical_or`](https://en.cppreference.com/w/cpp/utility/functional/logical_or)：`x || y`
-                - [`logical_not`](https://en.cppreference.com/w/cpp/utility/functional/logical_not)：`!x`
-            - 位操作（Bitwise operations）
-                - [`bit_and`](https://en.cppreference.com/w/cpp/utility/functional/bit_and)：`x & y`
-                - [`bit_or`](https://en.cppreference.com/w/cpp/utility/functional/bit_or)：`x | y`
-                - [`bit_xor`](https://en.cppreference.com/w/cpp/utility/functional/bit_xor)：`x ^ y`
-                - [`bit_not`](https://en.cppreference.com/w/cpp/utility/functional/bit_not)：`~x`
-- 公认假设
-    - 大部分标准库算法的形参满足以下格式
-        - `alg(beg, end, [predicate])`
-        - `alg(beg, end, dest, [predicate])`
-        - `alg(beg, end, beg2, [predicate])`
-        - `alg(beg, end, beg2, end2, [predicate])`  
-    - 且约定
-        - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定 *第二个序列至少与第一个序列一样长*
-        - 向目的位置迭代器写数据的算法都假定 *目的位置足够大* ，能容纳要写入的元素
+- 大部分泛型算法定义于头文件`<algorithm>`中
+- 标准库还在头文件`<numeric>`中定义了一组数值泛型算法
+- 大部分标准库算法的形参满足以下格式
+    - `alg(beg, end, [predicate])`
+    - `alg(beg, end, dest, [predicate])`
+    - `alg(beg, end, beg2, [predicate])`
+    - `alg(beg, end, beg2, end2, [predicate])`  
+- 且约定
+    - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定 *第二个序列至少与第一个序列一样长*
+    - 向目的位置迭代器写数据的算法都假定 *目的位置足够大* ，能容纳要写入的元素
+    
+#### 使用原则和注意事项
+
+- 泛型算法永远**不会**直接操作容器，但仍旧依赖于元素类型的操作
+    - 泛型算法只会运行于 *迭代器* 之上，不会执行特定容器的操作，甚至不需在意自己遍历的是不是容器
+        - 因此，**泛型算法不能（直接）添加或删除元素**
+    - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
+    
+#### 谓词（Predicate）
+
+- 大多数算法提供接口，允许我们用 *谓词* 代替默认的运算符
+- 谓词是可调用的表达式。具体传参可以用
+    - *函数头*
+    - *函数指针*
+    - [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional) => 14.8
+    - [*`lambda`表达式*](https://en.cppreference.com/w/cpp/language/lambda) => 10.3.2
+- 标准库算法使用以下两类谓词
+    - *一元谓词* （unary predicate）
+        - 接受单一参数
+        - 一般为迭代器指向元素类型的常引用
+            - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
+    - *二元谓词* （binary predicate）
+        - 接受两个参数
+        - 一般均为迭代器指向元素类型的常引用
+            - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
+- 典型二元谓词举例：[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)
+    - `bool comp(const T & a, const T & b);`
+        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
+        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
+        - 要求：
+            1. 非自反性（irreflexivity）：`comp(a, a) == false`
+            2. 非对称性（asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
+            3. 传递性（transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
+    - `bool equiv(const T & a, const T & b);`
+        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
+        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
+        - 要求：
+            1. 自反性（reflexivity）：`equiv(a, a) == true`
+            2. 对称性（symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
+            3. 传递性（transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
+- 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional)（模板类，用时给一个Type并创建对象即可）
+    - 算术操作（Arithmetic operations）
+        - [`plus`](https://en.cppreference.com/w/cpp/utility/functional/plus)：`x + y`
+        - [`minus`](https://en.cppreference.com/w/cpp/utility/functional/minus)：`x - y`
+        - [`multiplies`](https://en.cppreference.com/w/cpp/utility/functional/multiplies)：`x * y`
+        - [`divides`](https://en.cppreference.com/w/cpp/utility/functional/divides)：`x / y`
+        - [`modulus`](https://en.cppreference.com/w/cpp/utility/functional/modulus)：`x % y`
+        - [`negate`](https://en.cppreference.com/w/cpp/utility/functional/negate)：`-x`
+    - 比较（Comparisons）
+        - [`equal_to`](https://en.cppreference.com/w/cpp/utility/functional/equal_to)：`x == y`
+        - [`not_equal_to`](https://en.cppreference.com/w/cpp/utility/functional/not_equal_to)：`x != y`
+        - [`greater`](https://en.cppreference.com/w/cpp/utility/functional/greater)：`x > y`
+        - [`less`](https://en.cppreference.com/w/cpp/utility/functional/less)：`x < y`
+        - [`greater_equal`](https://en.cppreference.com/w/cpp/utility/functional/greater_equal)：`x >= y`
+        - [`less_equal`](https://en.cppreference.com/w/cpp/utility/functional/less_equal)：`x <= y`
+    - 逻辑操作（Logical operations）
+        - [`logical_and`](https://en.cppreference.com/w/cpp/utility/functional/logical_and)：`x && y`
+        - [`logical_or`](https://en.cppreference.com/w/cpp/utility/functional/logical_or)：`x || y`
+        - [`logical_not`](https://en.cppreference.com/w/cpp/utility/functional/logical_not)：`!x`
+    - 位操作（Bitwise operations）
+        - [`bit_and`](https://en.cppreference.com/w/cpp/utility/functional/bit_and)：`x & y`
+        - [`bit_or`](https://en.cppreference.com/w/cpp/utility/functional/bit_or)：`x | y`
+        - [`bit_xor`](https://en.cppreference.com/w/cpp/utility/functional/bit_xor)：`x ^ y`
+        - [`bit_not`](https://en.cppreference.com/w/cpp/utility/functional/bit_not)：`~x`
 
 ### 🌱 [Appendix A] [标准库](https://en.cppreference.com/w/cpp/algorithm)（番外篇×2，这次是从附录里单拎出来的）
 
