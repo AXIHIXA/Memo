@@ -1379,7 +1379,7 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
     - 除`std::array`外，其他容器均提供高效灵活的内存管理
     - 除`std::foward_list`没有`size()`操作（为了达到与手写的单向链表一样的效率）外，其余容器均为常数复杂度
     - 顺序容器构造函数的一个版本接受容器大小参数，它使用了元素类型的**默认**构造函数
-      对于没有默认构造函数的类型的容器，构造时还需传递 [*元素初始化器*](https://en.cppreference.com/w/cpp/named_req/Allocator)（`Allocator`）
+      对于没有默认构造函数的类型的容器，构造时还需传递 [*元素初始化器*](https://en.cppreference.com/w/cpp/named_req/Allocator)（Allocator）
     ```
     std::vector<noDefault> v1(10, init);  // 正确：提供了元素初始化器
     std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始化器
@@ -1441,7 +1441,7 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
     - `iterator`：此类型容器的迭代器类型
         - 对于容器常量，只能获取常量迭代器
     - `const_iterator`：可以读取元素，但不能修改元素的迭代器类型
-    - `reverse_iterator`：按逆序寻址元素的迭代器，**不支持**`std::foward_list`
+    - [`reverse_iterator`](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)：按逆序寻址（颠倒了`++`和`--`）的迭代器，**不支持**`std::foward_list`。具体实现为`std::reverse_iterator<Container::iterator>`
     - `const_reverse_iterator`：不能修改的逆序迭代器，**不支持**`std::foward_list`
     - `size_type`：`size_t` aka `unsigned long`，足够保存此种容器类型最大可能容器的大小
     - `difference_type`：`ptrdiff_t` aka `long int`，足够保存两个该容器类型的 *迭代器之间* 的距离
