@@ -1863,7 +1863,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                 - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
                 - 要求：
                     1. 自反性（reflexivity）：`equiv(a, a) == true`
-                    2. 对称性（symmetry）：`equiv(a, b) == true -> equiv(b, a) == false`
+                    2. 对称性（symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
                     3. 传递性（transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
         - 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional) 
             - 算术操作（Arithmetic operations）
