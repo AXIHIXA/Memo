@@ -3159,23 +3159,22 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序
         - **不是**稳定排序，即不保证排序前后相等元素的相对顺序保持不变
         - *非降序* ：如果`v1`、`v2`满足`v1 <= v2`或`comp(v1, v2) == true`，则`v1`应在`v2` *前面* 
-            - 注意一点，`comp(v3, v4) == false`不代表`v3`必须在`v4`后面，如果`v3 == v4`，`comp(v3, v4) == false`一样是`false`
-            - `gcc`实现：对任何迭代器`it`，和任何自然数`n`
-                - 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *互换*  
-            - 想要 *非增序排序*  可以
-                1. 直接喂一个`std::greater`模板对象作为谓词
-                    - 注意**不能**喂`std::greater_equal`，必须是 *严格偏序* （`<`或者`>`，不能带等号）
-                ```
-                std::vector<int> v {0, 1, 1, 2};
-                std::sort(v.begin(), v.end(), std::greater<int>());
-                std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
-                ```
-                2. 如果喂两个 [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator) ，就连谓词也给省了 => 10.4
-                ```
-                std::vector<int> v {0, 1, 1, 2};
-                std::sort(v.rbegin(), v.rend());
-                std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
-                ```
+        - `gcc`实现：对任何迭代器`it`，和任何自然数`n`
+            - 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *互换*  
+        - 想要 *非增序排序*  可以
+            1. 直接喂一个`std::greater`模板对象作为谓词
+                - 注意**不能**喂`std::greater_equal`，必须是 *严格偏序* （`<`或者`>`，不能带等号）
+            ```
+            std::vector<int> v {0, 1, 1, 2};
+            std::sort(v.begin(), v.end(), std::greater<int>());
+            std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+            ```
+            2. 如果喂两个 [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator) ，就连谓词也给省了 => 10.4
+            ```
+            std::vector<int> v {0, 1, 1, 2};
+            std::sort(v.rbegin(), v.rend());
+            std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+            ```
     - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件 => 10.3
         - 签名：`bool comp(const T & a, const T & b);`
         - 参数类型：常引用不是强制的，但**不能更改传入的对象**
