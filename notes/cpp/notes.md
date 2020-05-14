@@ -2200,7 +2200,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                 - 也就是说
                     1. *排序后* 序列满足`*it <= *(it + n)`或`comp(*it, *(it + n)) == true`
                     2. 两个元素被交换顺序的条件是，它们满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`
-                    3. 因此，想要 *非增序排序* 直接喂一个`std::greater_equal`模板对象即可
+                    3. 因此，想要 *非增序排序* ，直接喂一个`std::greater_equal`模板对象即可
                     ```
                     int a[] {0, 1, 1, 2};
                     std::sort(a, a + 4, std::greater_equal<int>());
