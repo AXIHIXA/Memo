@@ -1837,10 +1837,10 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
     - 大多数算法提供接口，允许我们用 *谓词* （predicate）代替默认的运算符
         - 谓词是可调用的表达式。具体传参可以用
-            - 函数头
-            - 函数指针
+            - *函数头*
+            - *函数指针*
             - [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional) （重载了调用运算符的类的实例） => 14.8
-            - [`lambda`*表达式*](https://en.cppreference.com/w/cpp/language/lambda) => 10.3.2
+            - [*`lambda`表达式*](https://en.cppreference.com/w/cpp/language/lambda) => 10.3.2
         - 标准库算法使用以下两类谓词
             - *一元谓词* （unary predicate）
                 - 接受单一参数
