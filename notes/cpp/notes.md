@@ -1457,6 +1457,52 @@ Entry e = {0, "Anna"};
 
 
 
+### 🌱 [Chap 17] 标准库特殊设施
+
+- 
+
+
+
+
+
+
+### 🌱 [Chap 18] 用于大型工程的工具
+
+#### 异常处理
+
+- `C++`标准异常
+    - `exception`：最通用的异常类`exception`，只报告异常的发生，不提供任何额外信息
+    - `stdexcept`：几种常用的异常类
+        - `excpetion`：最常见的问题
+        - `runtime_error`：所有RE
+            - `range_error`：RE，生成的结果超出了有意义的值域范围
+            - `overflow_error`：RE，计算溢出
+            - `underflow_error`：RE，计算溢出
+        - `logic_error`：所有逻辑错误
+            - `domain_error`：逻辑错误，参数对应的结果值不存在
+            - `invalid_argument`：逻辑错误，无效参数
+            - `length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
+            - `out_of_range`：逻辑错误，使用了一个超出有效范围的值
+    - `new`：`bad_alloc`异常类 => 12.1.2
+    - `type_info`：`bad_cast`异常类 => 19.2
+- `excpetion`，`bad_alloc`和`bad_cast`只能默认初始化，不能传参；其余异常必须传参（`C`风格字符串）
+- 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
+  如果此异常传入了初始参数，则返回之；否则返回值由编译器决定。
+
+
+
+
+
+
+### 🌱 [Chap 19] 特殊工具与技术
+
+- 
+
+
+
+
+
+
 ### 🌱 [Chap 9] [顺序容器](https://en.cppreference.com/w/cpp/container)（Sequential Container）
 
 #### 顺序容器
@@ -1966,8 +2012,224 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 
 
+### 🌱 [Chap 10.3.2] [`lambda`表达式](https://en.cppreference.com/w/cpp/language/lambda)
 
-### 🌱 [Chap 10.4] [迭代器](https://en.cppreference.com/w/cpp/iterator)（Iterator，番外篇，从Chap 10和更前面几章里单拎出来的）
+#### 概述
+
+- 可以理解为未命名的`inline`函数
+- 向函数传递`lambda`时，`lambda`会 *立即执行*
+- 编译器实现：当定义`lambda`时
+    - 编译器生成一个与此`lambda`对应的新的未命名类类型，与一个该类型的未命名实例（函数对象） => 14.8.1
+    - 匿名`lambda`用于传参时，传递的就是现生成的该类的一个临时实例（的拷贝）
+    - 用`auto`定义一个用`lambda`初始化的变量时，则定义了一个从`lambda`生成的该类型对象实例
+    - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
+    - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
+    ```
+    // The lambda expression is a prvalue expression of unique unnamed non-union non-aggregate class type, 
+    // known as closure type, 
+    // which is declared (for the purposes of ADL) in the smallest block scope, class scope, or namespace scope 
+    // that contains the lambda expression. 
+    
+    // the keyword mutable was not used
+    ret ClosureType::operator()(params) const { body }  
+    
+    // the keyword mutable was used
+    ret ClosureType::operator()(params) { body }        
+    
+    // generic lambda (since C++14)
+    template <template-params>
+    ret ClosureType::operator()(params) const { body }  
+    
+    // generic lambda, the keyword mutable was used (since C++14)
+    template <template-params>
+    ret ClosureType::operator()(params) { body }   
+    ```
+
+#### 定义格式
+
+```
+auto f1 = [capture_list] (paramater_list) -> return_type { function_body; };
+
+// equivalent type casts
+return_type                               (*f2)(paramater_list) = f1;
+std::function<return_type (paramater_list)> f3                  = f1;
+```
+
+#### 内容物
+
+- 捕获列表
+    - 把`lambda`表达式 *所在的函数中的局部非静态变量* 声明在捕获列表里，就可以在`lambda`表达式函数体使用该变量
+    - 对于局部静态变量或者全局变量，则**不需捕获**即可使用
+    - 捕获方式：与参数传递方式类似，可以是
+        - *值捕获* ：捕获被创建时变量的 *拷贝* 
+            - *可变 `lambda`*
+                - 不加`mutable`参数，则此`lambda`被设置为`Closure`类的 *常成员函数* ，**不能修改**被捕获的变量
+                - 如果使用了`mutable`参数，则**不能省略**参数列表
+            ```
+            size_t v1 = 42;
+            auto f1 = [v1]            { return ++v1; };  // error: increment of read-only variable ‘v1’
+            auto f2 = [v1] mutable    { return ++v1; };  // error: lambda requires '()' before 'mutable'
+            auto f3 = [v1] () mutable { return ++v1; };  // ok
+            ```
+            - **不能**拷贝`std::ostream`对象，因此捕获它们只能靠引用
+        - *引用捕获* ：捕获被创建时变量的 *引用* 
+            - 自然，`lambda`中使用的就是被捕获的对象本身，地址是一样的
+            - 被引用捕获的变量能否 *修改* 取决于那个变量原先 *是不是常量* 
+                - 如果是**常量**，那么捕获的引用就是常引用，自然**不能改**
+            - 引用捕获与返回捕获有相同的限制，即：必须确保`lambda`被调用时被引用的对象依然 *存在* 
+                - 如果`lambda`在函数结束后被调用，则它引用捕获的变量自然已经不存在了，行为 *未定义*
+                - 如果可能，尽量**避免**捕获指针或引用 
+        ```
+        size_t v1 = 42;
+        printf("v1 = %zu @ %p\n", v1, &v1);                                       // v1 = 42 @ 0x7ffcc11095e0
+
+        auto f1 = [v1]  { printf("f1 v1 = %zu @ %p\n", v1, &v1); return v1;   };  
+        auto f2 = [&v1] { printf("f2 v1 = %zu @ %p\n", v1, &v1); return ++v1; };  
+
+        v1 = 0;
+        size_t j1 = f1();                                                         // f1 v1 = 42 @ 0x7ffcc11095e8
+        printf("after f1: v1 = %zu, j1 = %zu\n", v1, j1);                         // after f1: v1 = 0, j1 = 42
+
+        v1 = 0;
+        size_t j2 = f2();                                                         // f2 v1 = 0 @ 0x7ffcc11095e0
+        printf("after f2: v1 = %zu, j2 = %zu\n", v1, j2);                         // after f2: v1 = 1, j2 = 1
+        ```
+    - 捕获的声明
+        - `[]`：空捕获列表。`lambda`不能使用所在函数中的变量
+        - `[identifier_list]`：`identifier_list`是一个逗号分隔的名字列表。默认情况下，捕获列表中的变量都采用值捕获，即被拷贝。名字前如使用`&`，则显示指明该变量采用引用捕获
+        - `[&]`： 隐式引用捕获列表。编译器自动引用捕获`lambda`函数体中使用的局部变量
+        - `[=]`： 隐式值捕获列表。编译器自动值捕获`lambda`函数体中使用的局部变量
+        - `[&, identifier_list]`：混合式引用捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，变量名前**不能**有`&`。这些变量采用值捕获方式，而其他被隐式捕获的变量则一律采用引用捕获
+        - `[=, identifier_list]`：混合式值捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，**不能**包含`this`，变量名前 *必须* 有`&`。这些变量采用引用捕获方式，而其他被隐式捕获的变量则一律采用值捕获
+- 参数列表
+    - 对于非可变`lambda`，可以连同括号一起忽略。如忽略，则等价于指定 *空的* 参数列表
+    - **不能**有 *默认参数*
+- 返回值类型
+    - 可以忽略，此时返回值类型由返回的表达式的类型推断而来
+        - 如果`lambda`的函数体包含任何单一`return`语句之外的内容，且未指定返回值类型，则返回`void`
+    - 如不忽略，则必须使用 *尾置返回* 
+    ```
+    // ok. refers returning int
+    std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
+    {
+        return i < 0 ? -i : i;  
+    });
+    
+    // error. refers returning void but returns int -- from C++ Primer 5th Edition
+    // note: at least on g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0 this one runs correctly with -std=c++11
+    std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
+    {
+        if (i < 0) return -i; else return i;
+    });
+    
+    // ok. returns int
+    std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  -> int
+    {
+        if (i < 0) return -i; else return i;
+    });
+        ```
+- 函数体：必要组成部分
+```
+auto f = [] { return 42; };
+std::cout << f() << std::endl;  // 42
+
+std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) 
+{ 
+    return a.size() < b.size(); 
+});
+```
+
+#### [参数绑定](https://en.cppreference.com/w/cpp/utility/functional/bind)
+
+- 头文件`<functional>`中定义了[`std::bind`](https://en.cppreference.com/w/cpp/utility/functional/bind)
+```
+auto newCallable = std::bind(callable, arg_list);
+```
+- `arg_list`
+    - 是逗号分隔的参数列表，和`callable`的参数列表一一对应
+        - 自然，长度和`callable`的参数列表相同
+    - `arg_list`可以包含以下三类东西，代表`callable`在对应位置参数绑定为
+        - [*占位符*](https://en.cppreference.com/w/cpp/utility/functional/placeholders) `std::placeholders::_n`（`n`为正整数）：
+          `newCallable`被调用时接受的第`n`个参数
+        - 普通变量或字面量：该变量的拷贝（即绑定死为 *调用`std::bind()`时* 该变量的值）
+        - [`std::ref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)，
+          [`std::cref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)：
+          该对象的 *引用* 或 *常量引用*
+    ```
+    #include <functional>
+    #include <iostream>
+    
+    void f(int & n1, int & n2, const int & n3)
+    {
+        printf("%d %d %d\n", n1, n2, n3);
+        ++n1;     // increments the copy of n1 stored in the function object
+        ++n2;     // increments the main()'s n2
+        // ++n3;  // compile error
+    }
+    
+    int main()
+    {
+        int n1 = 1, n2 = 2, n3 = 3;
+        std::function<void ()> bound_f = std::bind(f, n1, std::ref(n2), std::cref(n3));
+        n1 = 10, n2 = 11, n3 = 12;
+        printf("%d %d %d\n", n1, n2, n3);  // 10 11 12
+        bound_f();                         // 1 11 12                                                     
+        printf("%d %d %d\n", n1, n2, n3);  // 10 12 12
+    }
+    ```
+- `newCallable`是一个返回值与`callable`相同、参数个数为`arg_list`中占位符 *最大标号* 数值的函数对象
+- 调用`newCallable`时，`newCallable`会调用`callable`
+    - `callable`接受的参数为`arg_list`中对应位置的变量   
+    - `newCallable`接受的参数 *不一定全部* 被传递给`callable`
+        - `n`个占位符标号 *可以不是* `1 ~ n`，可以有空缺
+```
+void f1(T1 a1, T2 a2, T3 a3, T4 a4);
+
+// signature of f2: void f2(, T2, T2);
+auto f2 = std::bind(f1, std::placeholders::_2, std::placeholders::_2, 6, std::placeholders::_3);
+
+// equivalent:
+f2(1, 2, 3);
+f1(2, 2, 6, 3);
+
+// another example
+auto g = std::bind(f, a, b, std::placeholders::_2, c, std::placeholders::_1);
+
+// equivalent:
+g(X, Y);
+f(a, b, Y, c, X);
+```
+- 用途：用函数代替列表为空的`lambda`
+    - 对于要多次使用的操作，应当编写函数并复用，而不是编写一堆重复的`lambda`
+```
+bool checkSize(const std::string & s, const std::string::size_type &sz)
+{
+    return s.size() >= sz;
+}
+
+// 此std::bind()调用只有一个占位符，表示`check6`只接受单一参数。
+// 占位符出现在`arg_list`的第一个位置，表明`check6`的此参数对应`check_size()`的第一个参数，即const std::string & s。
+auto check6 = std::bind(checkSize, _1, 6);
+
+// 相当于bool b1 = checkSize(s, 6);
+bool b1 = check6(s);
+
+// 以下调用等价
+size_t sz = 6;
+auto wc = std::find_if(words.begin(), words.end(), [sz] (const std::string & s) 
+{
+    return s.size >= sz;
+});
+
+auto wc2 = std::find_if(words.begin(), words.end(), std::bind(checkSize, _1, 6));
+```  
+
+
+
+
+
+
+### 🌱 [Chap 10.4] [迭代器](https://en.cppreference.com/w/cpp/iterator)（Iterator）
 
 - 所有标准库容器都支持迭代器，但只有少数几种才同时支持下标运算符
 - 再次强调：`for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
@@ -2032,7 +2294,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
   [`std::empty()`](https://en.cppreference.com/w/cpp/iterator/empty)
     - 顾名思义，`ssize`是`signed size`，返回的是`ptrdiff_t aka long int`而不是`size_t aka unsigned long`
 - [`std::data()`](https://en.cppreference.com/w/cpp/iterator/data)
-    - 原型
+    - 签名
     ```
     template <class C>
     constexpr auto data(C & c) -> decltype(c.data());
@@ -2085,7 +2347,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 泛型迭代器操作函数
 
 - [`std::advance()`](https://en.cppreference.com/w/cpp/iterator/advance)
-    - 原型
+    - 签名
     ```
     template <class InputIt, class Distance>
     void 
@@ -2101,7 +2363,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     ```
     - 复杂度：`O(n)`，如支持 *随机访问* ，则`O(1)`
 - [`std::distance()`](https://en.cppreference.com/w/cpp/iterator/distance)
-    - 原型
+    - 签名
     ```
     template <class InputIt>
     typename std::iterator_traits<InputIt>::difference_type
@@ -2118,7 +2380,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     ```
     - 复杂度：`O(n)`，如支持 *随机访问* ，则`O(1)`
 - [`std::next()`](https://en.cppreference.com/w/cpp/iterator/next)
-    - 原型
+    - 签名
     ```
     template <class ForwardIt>
     ForwardIt 
@@ -2136,7 +2398,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     ```
     - 复杂度：`O(n)`，如支持 *随机访问* ，则`O(1)`
 - [`std::prev()`](https://en.cppreference.com/w/cpp/iterator/prev)
-    - 原型
+    - 签名
     ```
     template <class ForwardIt>
     ForwardIt 
@@ -2383,217 +2645,151 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 且约定
         - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定 *第二个序列至少与第一个序列一样长*
         - 向目的位置迭代器写数据的算法都假定 *目的位置足够大* ，能容纳要写入的元素
-   
-#### [`lambda`表达式](https://en.cppreference.com/w/cpp/language/lambda)
-
-- 可以理解为未命名的`inline`函数
-    - 向函数传递`lambda`时，`lambda`会 *立即执行*
-    - 编译器实现：当定义`lambda`时
-        - 编译器生成一个与此`lambda`对应的新的未命名类类型，与一个该类型的未命名实例（函数对象） => 14.8.1
-        - 匿名`lambda`用于传参时，传递的就是现生成的该类的一个临时实例（的拷贝）
-        - 用`auto`定义一个用`lambda`初始化的变量时，则定义了一个从`lambda`生成的该类型对象实例
-        - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
-        - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
-        ```
-        // The lambda expression is a prvalue expression of unique unnamed non-union non-aggregate class type, 
-        // known as closure type, 
-        // which is declared (for the purposes of ADL) in the smallest block scope, class scope, or namespace scope 
-        // that contains the lambda expression. 
-        
-        // the keyword mutable was not used
-        ret ClosureType::operator()(params) const { body }  
-        
-        // the keyword mutable was used
-        ret ClosureType::operator()(params) { body }        
-        
-        // generic lambda (since C++14)
-        template <template-params>
-        ret ClosureType::operator()(params) const { body }  
-        
-        // generic lambda, the keyword mutable was used (since C++14)
-        template <template-params>
-        ret ClosureType::operator()(params) { body }   
-        ```
-- 定义格式
-```
-auto f1 = [capture_list] (paramater_list) -> return_type { function_body; };
-
-// equivalent type casts
-return_type                               (*f2)(paramater_list) = f1;
-std::function<return_type (paramater_list)> f3                  = f1;
-```
-- 内容物
-    - 捕获列表
-        - 把`lambda`表达式 *所在的函数中的局部非静态变量* 声明在捕获列表里，就可以在`lambda`表达式函数体使用该变量
-        - 对于局部静态变量或者全局变量，则**不需捕获**即可使用
-        - 捕获方式：与参数传递方式类似，可以是
-            - *值捕获* ：捕获被创建时变量的 *拷贝* 
-                - *可变 `lambda`*
-                    - 不加`mutable`参数，则此`lambda`被设置为`Closure`类的 *常成员函数* ，**不能修改**被捕获的变量
-                    - 如果使用了`mutable`参数，则**不能省略**参数列表
-                ```
-                size_t v1 = 42;
-                auto f1 = [v1]            { return ++v1; };  // error: increment of read-only variable ‘v1’
-                auto f2 = [v1] mutable    { return ++v1; };  // error: lambda requires '()' before 'mutable'
-                auto f3 = [v1] () mutable { return ++v1; };  // ok
-                ```
-                - **不能**拷贝`std::ostream`对象，因此捕获它们只能靠引用
-            - *引用捕获* ：捕获被创建时变量的 *引用* 
-                - 自然，`lambda`中使用的就是被捕获的对象本身，地址是一样的
-                - 被引用捕获的变量能否 *修改* 取决于那个变量原先 *是不是常量* 
-                    - 如果是**常量**，那么捕获的引用就是常引用，自然**不能改**
-                - 引用捕获与返回捕获有相同的限制，即：必须确保`lambda`被调用时被引用的对象依然 *存在* 
-                    - 如果`lambda`在函数结束后被调用，则它引用捕获的变量自然已经不存在了，行为 *未定义*
-                    - 如果可能，尽量**避免**捕获指针或引用 
-            ```
-            size_t v1 = 42;
-            printf("v1 = %zu @ %p\n", v1, &v1);                                       // v1 = 42 @ 0x7ffcc11095e0
-
-            auto f1 = [v1]  { printf("f1 v1 = %zu @ %p\n", v1, &v1); return v1;   };  
-            auto f2 = [&v1] { printf("f2 v1 = %zu @ %p\n", v1, &v1); return ++v1; };  
-
-            v1 = 0;
-            size_t j1 = f1();                                                         // f1 v1 = 42 @ 0x7ffcc11095e8
-            printf("after f1: v1 = %zu, j1 = %zu\n", v1, j1);                         // after f1: v1 = 0, j1 = 42
-
-            v1 = 0;
-            size_t j2 = f2();                                                         // f2 v1 = 0 @ 0x7ffcc11095e0
-            printf("after f2: v1 = %zu, j2 = %zu\n", v1, j2);                         // after f2: v1 = 1, j2 = 1
-            ```
-        - 捕获的声明
-            - `[]`：空捕获列表。`lambda`不能使用所在函数中的变量
-            - `[identifier_list]`：`identifier_list`是一个逗号分隔的名字列表。默认情况下，捕获列表中的变量都采用值捕获，即被拷贝。名字前如使用`&`，则显示指明该变量采用引用捕获
-            - `[&]`： 隐式引用捕获列表。编译器自动引用捕获`lambda`函数体中使用的局部变量
-            - `[=]`： 隐式值捕获列表。编译器自动值捕获`lambda`函数体中使用的局部变量
-            - `[&, identifier_list]`：混合式引用捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，变量名前**不能**有`&`。这些变量采用值捕获方式，而其他被隐式捕获的变量则一律采用引用捕获
-            - `[=, identifier_list]`：混合式值捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，**不能**包含`this`，变量名前 *必须* 有`&`。这些变量采用引用捕获方式，而其他被隐式捕获的变量则一律采用值捕获
-    - 参数列表
-        - 对于非可变`lambda`，可以连同括号一起忽略。如忽略，则等价于指定 *空的* 参数列表
-        - **不能**有 *默认参数*
-    - 返回值类型
-        - 可以忽略，此时返回值类型由返回的表达式的类型推断而来
-            - 如果`lambda`的函数体包含任何单一`return`语句之外的内容，且未指定返回值类型，则返回`void`
-        - 如不忽略，则必须使用 *尾置返回* 
-        ```
-        // ok. refers returning int
-        std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
-        {
-            return i < 0 ? -i : i;  
-        });
-        
-        // error. refers returning void but returns int -- from C++ Primer 5th Edition
-        // note: at least on g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0 this one runs correctly with -std=c++11
-        std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
-        {
-            if (i < 0) return -i; else return i;
-        });
-        
-        // ok. returns int
-        std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  -> int
-        {
-            if (i < 0) return -i; else return i;
-        });
-            ```
-    - 函数体：必要组成部分
-    ```
-    auto f = [] { return 42; };
-    std::cout << f() << std::endl;  // 42
-
-    std::stable_sort(vec.begin(), vec.end(), [] (const string & a, const string & b) 
-    { 
-        return a.size() < b.size(); 
-    });
-    ```
-- [参数绑定](https://en.cppreference.com/w/cpp/utility/functional/bind)
-    - 头文件`<functional>`中定义了`std::bind()`
-        ```
-        auto newCallable = std::bind(callable, arg_list);
-        ```
-        - `arg_list`
-            - 是逗号分隔的参数列表，和`callable`的参数列表一一对应
-                - 自然，长度和`callable`的参数列表相同
-            - `arg_list`可以包含以下三类东西，代表`callable`在对应位置参数绑定为
-                - [*占位符*](https://en.cppreference.com/w/cpp/utility/functional/placeholders) `std::placeholders::_n`（`n`为正整数）：
-                  `newCallable`被调用时接受的第`n`个参数
-                - 普通变量或字面量：该变量的拷贝（即绑定死为 *调用`std::bind()`时* 该变量的值）
-                - [`std::ref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)，
-                  [`std::cref(obj)`](https://en.cppreference.com/w/cpp/utility/functional/ref)：
-                  该对象的 *引用* 或 *常量引用*
-            ```
-            #include <functional>
-            #include <iostream>
-            
-            void f(int & n1, int & n2, const int & n3)
-            {
-                printf("%d %d %d\n", n1, n2, n3);
-                ++n1;     // increments the copy of n1 stored in the function object
-                ++n2;     // increments the main()'s n2
-                // ++n3;  // compile error
-            }
-            
-            int main()
-            {
-                int n1 = 1, n2 = 2, n3 = 3;
-                std::function<void ()> bound_f = std::bind(f, n1, std::ref(n2), std::cref(n3));
-                n1 = 10, n2 = 11, n3 = 12;
-                printf("%d %d %d\n", n1, n2, n3);  // 10 11 12
-                bound_f();                         // 1 11 12                                                     
-                printf("%d %d %d\n", n1, n2, n3);  // 10 12 12
-            }
-            ```
-        - `newCallable`是一个返回值与`callable`相同、参数个数为`arg_list`中占位符 *最大标号* 数值的函数对象
-        - 调用`newCallable`时，`newCallable`会调用`callable`
-            - `callable`接受的参数为`arg_list`中对应位置的变量   
-            - `newCallable`接受的参数 *不一定全部* 被传递给`callable`
-                - `n`个占位符标号 *可以不是* `1 ~ n`，可以有空缺
-        ```
-        void f1(T1 a1, T2 a2, T3 a3, T4 a4);
-        
-        // signature of f2: void f2(, T2, T2);
-        auto f2 = std::bind(f1, std::placeholders::_2, std::placeholders::_2, 6, std::placeholders::_3);
-        
-        // equivalent:
-        f2(1, 2, 3);
-        f1(2, 2, 6, 3);
-        
-        // another example
-        auto g = std::bind(f, a, b, std::placeholders::_2, c, std::placeholders::_1);
-        
-        // equivalent:
-        g(X, Y);
-        f(a, b, Y, c, X);
-        ```
-    - 用途：用函数代替列表为空的`lambda`
-        - 对于要多次使用的操作，应当编写函数并复用，而不是编写一堆重复的`lambda`
-    ```
-    bool checkSize(const std::string & s, const std::string::size_type &sz)
-    {
-        return s.size() >= sz;
-    }
-    
-    // 此std::bind()调用只有一个占位符，表示`check6`只接受单一参数。
-    // 占位符出现在`arg_list`的第一个位置，表明`check6`的此参数对应`check_size()`的第一个参数，即const std::string & s。
-    auto check6 = std::bind(checkSize, _1, 6);
-    
-    // 相当于bool b1 = checkSize(s, 6);
-    bool b1 = check6(s);
-    
-    // 以下调用等价
-    size_t sz = 6;
-    auto wc = std::find_if(words.begin(), words.end(), [sz] (const std::string & s) 
-    {
-        return s.size >= sz;
-    });
-    
-    auto wc2 = std::find_if(words.begin(), words.end(), std::bind(checkSize, _1, 6));
-    ```  
 
 ### 🌱 [Appendix A] [标准库](https://en.cppreference.com/w/cpp/algorithm)（番外篇×2，这次是从附录里单拎出来的）
 
-#### 顺序查找
+#### 只读算法（Non-modifying sequence operations）
     
-- [`std::find`, `std::find_if`, `std::find_if_not`](https://en.cppreference.com/w/cpp/algorithm/find)
+- [`std::all_of`, `std::any_of`, `std::none_of`](https://en.cppreference.com/w/cpp/algorithm/all_any_none_of)
+    - 签名
+    ```
+    template <class InputIt, class UnaryPredicate>
+    bool 
+    all_of(InputIt        first, 
+           InputIt        last, 
+           UnaryPredicate p);
+                
+    template <class InputIt, class UnaryPredicate>
+    bool 
+    any_of(InputIt        first, 
+           InputIt        last, 
+           UnaryPredicate p);     
+
+    template <class InputIt, class UnaryPredicate>
+    bool 
+    none_of(InputIt        first, 
+            InputIt        last, 
+            UnaryPredicate p);
+    ```
+    - 检查`p(*it) == true`是否在` [first, last)`上
+        - `all_of`：一直成立。如果区间为 *空* ，返回`true`
+        - `any_of`：至少有一个实例成立。如果区间为 *空* ，返回`false`
+        - `none_of`：一直**不**成立。如果区间为 *空* ，返回`true`
+    - 复杂度：`O(N)`次谓词调用，`N = std::distance(first, last)`
+- [`std::for_each`](https://en.cppreference.com/w/cpp/algorithm/for_each)
+    - 可能的实现
+    ```
+    template <class InputIt, class UnaryFunction>
+    UnaryFunction 
+    for_each(InputIt       first, 
+             InputIt       last, 
+             UnaryFunction f)
+    {
+        for (; first != last; ++first) 
+        {
+            f(*first);
+        }
+        return f;  // implicit move since C++11
+    }
+    ```
+    - 依次对区间`[first, last)`内每个元素调用`f(*iter)`
+        - 如果`InputIt`不是常迭代器，则`f`可以修改元素。
+        - `f`如有返回值，则直接被丢弃
+        - **不能**复制序列中的元素
+    - `f`
+        - Function object, to be applied to the result of dereferencing every iterator in the range `[first, last)`
+        - Signature of the function should be equivalent to the following: `void fun(const Type & a);`
+            - The signature does not need to have `const &`
+            - `Type` must be such that an object of type `InputIt` can be dereferenced and then implicitly converted to `Type`
+    - 返回：传入的`f`经过迭代之后的 *右值引用* 
+        - 想要获得经历过迭代的`f`，则 *只能依靠返回值* ，传入的`f`在`for_each`结束后 *未定义* 
+    ```
+    struct Sum
+    {
+        void operator()(int n) { sum += n; }
+        int sum{0};
+    };
+     
+    std::vector<int> nums{3, 4, 2, 8, 15, 267};
+    std::for_each(nums.begin(), nums.end(), [](int &n){ n++; });  // nums chamges to: 4 5 3 9 16 268
+    Sum tmp;
+    Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum UNDEFINED!!!
+                                                                  // sum.sum == 305
+    ```
+    - 复杂度：`Omega(N)`次`f`调用，`N = last - first`
+- [`std::for_each_n`](https://en.cppreference.com/w/cpp/algorithm/for_each_n)
+    - 可能的实现
+    ```
+    template <class InputIt, class Size, class UnaryFunction>
+    InputIt 
+    for_each_n(InputIt       first, 
+               Size          n, 
+               UnaryFunction f);
+    {
+        for (Size i = 0; i < n; ++first, (void) ++i) 
+        {
+            f(*first);
+        }
+        return first;
+    }
+    ```    
+    - 依次对区间`[first, first + n)`内每个元素调用`f(*iter)`
+    - 返回：`first + n`
+    - 复杂度：`Omega(n)`次`f`调用
+- [`std::count`, `std::count_if`](https://en.cppreference.com/w/cpp/algorithm/count)
+    - 签名
+    ```
+    template <class InputIt, class T>
+    typename iterator_traits<InputIt>::difference_type
+    count(InputIt   first, 
+          InputIt   last, 
+          const T & value);
+          
+    template <class InputIt, class UnaryPredicate>
+    typename iterator_traits<InputIt>::difference_type
+    count_if(InputIt        first, 
+             InputIt        last, 
+             UnaryPredicate p);
+    ```
+    - 返回：`ptrdiff_t` aka `long int`，区间`[first, last)`之内等于`value`或者满足`p(*iter) == true`的值的个数
+    - 复杂度：`Omega(N)`次谓词调用，`N = std::distance(first, last)`
+- [`std::mismatch`](https://en.cppreference.com/w/cpp/algorithm/mismatch)
     - 原型
+    ```
+    template <class InputIt1, class InputIt2>
+    std::pair<InputIt1, InputIt2>
+    mismatch(InputIt1 first1, 
+             InputIt1 last1,
+             InputIt2 first2);
+              
+    template <class InputIt1, class InputIt2, class BinaryPredicate>
+    std::pair<InputIt1, InputIt2>
+    mismatch(InputIt1        first1, 
+             InputIt1        last1,
+             InputIt2        first2,
+             BinaryPredicate p);
+              
+    template <class InputIt1, class InputIt2>
+    std::pair<InputIt1, InputIt2>
+    mismatch(InputIt1 first1, 
+             InputIt1 last1,
+             InputIt2 first2, 
+             InputIt2 last2);
+              
+    template <class InputIt1, class InputIt2, class BinaryPredicate>
+    std::pair<InputIt1, InputIt2>
+    mismatch(InputIt1        first1, 
+             InputIt1        last1,
+             InputIt2        first2, 
+             InputIt2        last2,
+             BinaryPredicate p);
+    ```
+    - 返回：指向 *序列1* 与 *序列2* 中第一对在相对应位置 *不匹配* 元素的迭代器
+        - *不匹配* 定义为：`*iter1 != *iter2`或`p(*iter1, *iter2) == false`
+        - 如果没有不匹配发生，则返回`last1`和其在 *序列2* 中对应的迭代器
+        - 如果 *序列1* 比 *序列2* 长，行为 *未定义*
+- [`std::find`, `std::find_if`, `std::find_if_not`](https://en.cppreference.com/w/cpp/algorithm/find)
+    - 签名
     ```
     template <class InputIt, class T>
     InputIt 
@@ -2623,7 +2819,7 @@ std::function<return_type (paramater_list)> f3                  = f1;
     std::vector<int>::const_iterator res = std::find(vec.cbegin(), vec.cend(), val);
     std::cout << "The value " << val << (res == vec.cend()) ? " is NOT present" ： “ is present” << std::endl;
     ```
-    - 复杂度：`O(last - first)`次谓词调用
+    - 复杂度：`O(N)`次谓词调用，`N = std::distance(first, last)`
     - 指针就是一种迭代器，因此`std::find()`可用于内置数组
     ```
     int arr[]{0, 1, 2, 3, 4, 5, 6...};
@@ -2631,51 +2827,52 @@ std::function<return_type (paramater_list)> f3                  = f1;
     int * res_1 = std::find(std::begin(arr), std::end(arr), val);
     int * res_2 = std::find(arr + 1, arr + 4, val);
     ```
-- [`std::count`, `std::count_if`](https://en.cppreference.com/w/cpp/algorithm/count)
-    - 原型
+- [`std::find_end`](https://en.cppreference.com/w/cpp/algorithm/find_end)
+    - 签名
     ```
-    template <class InputIt, class T>
-    typename iterator_traits<InputIt>::difference_type
-    count(InputIt   first, 
-          InputIt   last, 
-          const T & value);
-          
-    template <class InputIt, class UnaryPredicate>
-    typename iterator_traits<InputIt>::difference_type
-    count_if(InputIt        first, 
-             InputIt        last, 
-             UnaryPredicate p);
+    template <class ForwardIt1, class ForwardIt2>
+    ForwardIt1 
+    find_end(ForwardIt1 first, 
+             ForwardIt1 last,
+             ForwardIt2 s_first, 
+             ForwardIt2 s_last);
+                     
+    template <class ForwardIt1, class ForwardIt2, class BinaryPredicate>
+    ForwardIt1 
+    find_end(ForwardIt1      first, 
+             ForwardIt1      last,
+             ForwardIt2      s_first,
+             ForwardIt2      s_last,
+             BinaryPredicate p);
     ```
-    - 返回：`ptrdiff_t` aka `long int`，区间`[first, last)`之内等于`value`或者满足`p(*iter) == true`的值的个数
-    - 复杂度：`Omega(last - first)`次比较或谓词调用
-- [`std::all_of`, `std::any_of`, `std::none_of`](https://en.cppreference.com/w/cpp/algorithm/all_any_none_of)
-    - 原型
+    - 返回：`[first, last)`内、指向被搜索序列`[s_first, s_last)` *最后一次* 出现位置的迭代器
+        - 相等元素定义为`v1 == v2`或`p(v1, v2) == true`
+        - 如果 *没有出现* 或者`[s_first, s_last)`为 *空* ，返回`last`
+    - 复杂度：`O(S * (N - S + 1))`次比较或谓词调用，`S = std::distance(s_first, s_last)`，`N = std::distance(first, last)`
+- [`std::find_first_of`](https://en.cppreference.com/w/cpp/algorithm/find_first_of)
+    - 签名
     ```
-    template <class InputIt, class UnaryPredicate>
-    bool 
-    all_of(InputIt        first, 
-           InputIt        last, 
-           UnaryPredicate p);
-                
-    template <class InputIt, class UnaryPredicate>
-    bool 
-    any_of(InputIt        first, 
-           InputIt        last, 
-           UnaryPredicate p);     
-
-    template <class InputIt, class UnaryPredicate>
-    bool 
-    none_of(InputIt        first, 
-            InputIt        last, 
-            UnaryPredicate p);
+    template <class InputIt, class ForwardIt>
+    InputIt 
+    find_first_of(InputIt   first, 
+                  InputIt   last,
+                  ForwardIt s_first, 
+                  ForwardIt s_last);
+                  
+    template <class InputIt, class ForwardIt, class BinaryPredicate>
+    InputIt 
+    find_first_of(InputIt         first, 
+                  InputIt         last,
+                  ForwardIt       s_first, 
+                  ForwardIt       s_last, 
+                  BinaryPredicate p);
     ```
-    - 检查`p(*it) == true`是否在` [first, last)`上
-        - `all_of`：一直成立。如果区间为 *空* ，返回`true`
-        - `any_of`：至少有一个实例成立。如果区间为 *空* ，返回`false`
-        - `none_of`：一直**不**成立。如果区间为 *空* ，返回`true`
-    - 复杂度：`O(last - first)`次谓词调用
+    - 返回：`[first, last)`内、指向被搜索序列`[s_first, s_last)`中的 *任一元素第一次* 出现位置的迭代器
+        - 相等元素定义为`v1 == v2`或`p(v1, v2) == true`
+        - 如果 *没有出现* ，返回`last`
+    - 复杂度：`O(S * N)`次比较或谓词调用，`S = std::distance(s_first, s_last)`，`N = std::distance(first, last)`
 - [`std::adjacent_find`](https://en.cppreference.com/w/cpp/algorithm/adjacent_find)
-    - 原型
+    - 签名
     ```
     template <class ForwardIt>
     ForwardIt 
@@ -2686,32 +2883,307 @@ std::function<return_type (paramater_list)> f3                  = f1;
     ForwardIt 
     adjacent_find(ForwardIt       first, 
                   ForwardIt       last, 
-                  BinaryPredicate p );
+                  BinaryPredicate p);
     ```
     - 返回：在`[first, last)`内 *第一个* 满足`*it == *(it + 1)`或`p(*it, *(it + 1)) == true`的迭代器`it`
     - 复杂度：`Omega(min((result - first) + 1, (last - first) - 1)`次谓词调用，`result`为返回值
-- [`std::accumulate`](https://en.cppreference.com/w/cpp/algorithm/accumulate)
-    - 原型
+- [`std::search`](https://en.cppreference.com/w/cpp/algorithm/search)
+    - 签名
     ```
-    template <class InputIt, class T, class BinaryOperation>
-    T 
-    accumulate(InputIt         first, 
-               InputIt         last, 
-               T               init,
-               BinaryOperation op);
+    template <class ForwardIt1, class ForwardIt2>
+    ForwardIt1 
+    search(ForwardIt1 first, 
+           ForwardIt1 last,
+           ForwardIt2 s_first, 
+           ForwardIt2 s_last);
+                   
+    template <class ForwardIt1, class ForwardIt2, class BinaryPredicate>
+    ForwardIt1 
+    search(ForwardIt1      first,
+           ForwardIt1      last,
+           ForwardIt2      s_first, 
+           ForwardIt2      s_last, 
+           BinaryPredicate p);
     ```
-    - 返回：区间`[first, last)`之内所有元素以及`init`的 *基于* `op` 的 *总和* 
-        - 实际操作 *示例* 
-        ```
-        for (; first != last; ++first)
-        {
-            init = binary_op(init, *first);
-        }
-        
-        return init;
-        ```
-- [`std::equal()`](https://en.cppreference.com/w/cpp/algorithm/equal)
-    - 原型
+    - 返回：`[first, last)`内、指向被搜索序列`[s_first, s_last)` *第一次* 出现位置的迭代器
+        - 相等元素定义为`v1 == v2`或`p(v1, v2) == true`
+        - 如果 *没有出现* ，返回`last`
+        - 如果`[s_first, s_last)`为 *空* ，返回`first`
+    - 复杂度：`O(S * N)`次比较或谓词调用，`S = std::distance(s_first, s_last)`，`N = std::distance(first, last)`
+- [`std::search_n`](https://en.cppreference.com/w/cpp/algorithm/search_n)
+    - 签名
+    ```
+    template <class ForwardIt, class Size, class T>
+    ForwardIt 
+    search_n(ForwardIt first, 
+             ForwardIt last, 
+             Size      count, 
+             const T & value);
+
+    template <class ForwardIt, class Size, class T, class BinaryPredicate >
+    ForwardIt 
+    search_n(ForwardIt       first, 
+             ForwardIt       last, 
+             Size            count, 
+             const T &       value,
+             BinaryPredicate p);
+    ```
+    - 返回：`[first, last)`内、指向连续`count`个`value`组成的序列 *第一次* 出现位置的迭代器
+        - 相等元素定义为`v1 == v2`或`p(v1, v2) == true`
+        - 如果 *没有出现* ，返回`last`
+        - 如果`count <= 0`，返回`first`
+    - 复杂度：`O(N)`次比较或谓词调用，`N = std::distance(first, last)`
+
+#### 写算法（Modifying sequence operations）
+
+- [`std::copy`, `std::copy_if`](https://en.cppreference.com/w/cpp/algorithm/copy)
+    - 签名
+    ```
+    template <class InputIt, class OutputIt>
+    OutputIt 
+    copy(InputIt  first, 
+         InputIt  last, 
+         OutputIt d_first);
+         
+    template <class InputIt, class OutputIt, class UnaryPredicate>
+    OutputIt 
+    copy_if(InputIt first, 
+            InputIt last,
+            OutputIt d_first,
+            UnaryPredicate pred);
+    ```
+    - 将区间`[first, last)`之内所有元素拷贝至以`d_first`开始的一片内存中，
+        - `copy_if`：只拷贝满足`pred(*iter) == true`的元素
+        - 需保证写`d_first`开始的这一片内存是合法行为
+    - 返回：拷贝生成的序列的尾后迭代器
+    ```
+    int a1[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}; 
+    int a2[sizeof(a1) / sizeof(*a1)]; 
+    int * res = std::copy(std::begin(a1), std::end(a1), a2); 
+    ```
+- [`std::copy_n`](https://en.cppreference.com/w/cpp/algorithm/copy_n)
+- [`std::copy_backward`](https://en.cppreference.com/w/cpp/algorithm/copy_backward)
+- [`std::move`](https://en.cppreference.com/w/cpp/algorithm/move)
+- [`std::move_backward`](https://en.cppreference.com/w/cpp/algorithm/move_backward)
+- [`std::fill`](https://en.cppreference.com/w/cpp/algorithm/fill)
+    - 签名
+    ```
+    template <class ForwardIt, class T>
+    void 
+    fill(ForwardIt first, 
+         ForwardIt last, 
+         const T & value);
+    ```
+    - 将区间`[first, last)`之内所有元素都赋值为`value` 
+    ```
+    std::fill(vec.begin(), vec.end(), 0));
+    std::fill(vec.begin(), vec.begin() + vec.size() / 2, 0));
+    ```
+- [`std::fill_n`](https://en.cppreference.com/w/cpp/algorithm/fill_n)
+    - 签名
+    ```
+    template <class OutputIt, class Size, class T>
+    OutputIt 
+    fill_n(OutputIt  first, 
+           Size      count, 
+           const T & value);
+    ```
+    - 将区间`[first, first + count)`之内所有元素都赋值为`value` 
+        - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
+        - 在 *空容器* 上调用`std::fill_n()`或其它写算法是 *未定义* 行为。对于空容器应当使用`std::back_insert_iterator` => 10.4.1
+    - 返回：迭代器`first + count`
+- [`std::transform`](https://en.cppreference.com/w/cpp/algorithm/transform)
+    - 签名
+    ```
+    template <class InputIt, class OutputIt, class UnaryOperation>
+    OutputIt 
+    transform(InputIt first1, 
+              InputIt last1, 
+              OutputIt d_first,
+              UnaryOperation unary_op);
+    
+    template <class InputIt1, class InputIt2, class OutputIt, class BinaryOperation>
+    OutputIt 
+    transform(InputIt1 first1, 
+              InputIt1 last1, 
+              InputIt2 first2,
+              OutputIt d_first, 
+              BinaryOperation binary_op);
+    ```
+    - 将 *对应函数* 应用于 *一片区间* 内，并将结果存储于`d_first`开始的一片区域中
+        1. 将`unary_op`应用于`[first, last)`上的每个元素，取其返回值
+        2. 将`binary_op`应用如下定义的一对元素上：一个定义在`[first, last)`上，另一个取自从`first2`开始的对应位置，取其返回值
+    - 输出对象可以是 *自己* 
+    - 返回：拷贝生成的序列的尾后迭代器
+    ```
+    // turn all elements of a int vector into their absolute values
+    std::transform(vec.begin(), vec.end(), vec.begin(), [] (const int & i)
+    {
+        return i < 0 ? -i : i;
+    });
+    ```
+- [`std::generate`](https://en.cppreference.com/w/cpp/algorithm/generate)
+- [`std::generate_n`](https://en.cppreference.com/w/cpp/algorithm/generate_n)
+- [`std::remove`, `std::remove_if`](https://en.cppreference.com/w/cpp/algorithm/remove)
+- [`std::remove_copy`, `std::remove_copy_if`](https://en.cppreference.com/w/cpp/algorithm/remove_copy)
+- [`std::replace`, `std::replace_if`](https://en.cppreference.com/w/cpp/algorithm/replace)
+    - 签名
+    ```
+    template <class ForwardIt, class T>
+    void 
+    replace(ForwardIt first, 
+            ForwardIt last,
+            const T & old_value, 
+            const T & new_value);
+          
+    template <class ForwardIt, class UnaryPredicate, class T>
+    void 
+    replace_if(ForwardIt      first, 
+               ForwardIt      last,
+               UnaryPredicate p, 
+               const T &      new_value);
+    ```
+    - 将区间`[first, last)`之内所有满足条件的元素修改为`new_value`
+        - `replace`：值为`old_value`的元素
+        - `replace_if`：满足`p(*iter) == true`的元素
+    - 返回：拷贝生成的序列的尾后迭代器
+    ```
+    std::replace(lst.begin(), lst.end(), 0, 42);
+    ```
+- [`std::replace_copy`, `std::replace_copy_if`](https://en.cppreference.com/w/cpp/algorithm/replace_copy)
+    - 签名
+    ```
+    template <class InputIt, class OutputIt, class T>
+    OutputIt 
+    replace_copy(InputIt   first, 
+                 InputIt   last, 
+                 OutputIt  d_first,
+                 const T & old_value, 
+                 const T & new_value);
+                   
+    template <class InputIt, class OutputIt, class UnaryPredicate, class T>
+    OutputIt 
+    replace_copy_if(InputIt        first, 
+                    InputIt        last, 
+                    OutputIt       d_first,
+                    UnaryPredicate p, 
+                    const T &      new_value);
+    ```
+    - 将对应 *替换规则* 应用于区间`[first, last)`内，并将结果存储于`d_first`开始的一片区域中
+        - `replace_copy`：其中所有值为`old_value`元素都被修改为`new_value`
+        - `replace_copy_if`：只替换满足`p(*iter) == true`的元素
+    - 返回：拷贝生成的序列的尾后迭代器
+    ```
+    // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
+    std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
+    ```
+- [`std::swap`](https://en.cppreference.com/w/cpp/algorithm/swap)
+- [`std::swap_ranges`](https://en.cppreference.com/w/cpp/algorithm/swap_ranges)
+- [`std::iter_swap`](https://en.cppreference.com/w/cpp/algorithm/iter_swap)
+- [`std::reverse`](https://en.cppreference.com/w/cpp/algorithm/reverse)
+- [`std::reverse_copy`](https://en.cppreference.com/w/cpp/algorithm/reverse_copy)
+- [`std::rotate`](https://en.cppreference.com/w/cpp/algorithm/rotate)
+- [`std::rotate_copy`](https://en.cppreference.com/w/cpp/algorithm/rotate_copy)
+- [`std::shift_left`, `std::shift_right`](https://en.cppreference.com/w/cpp/algorithm/shift)
+- [`std::random_shuffle`, `std::shuffle`](https://en.cppreference.com/w/cpp/algorithm/random_shuffle)
+- [`std::sample`](https://en.cppreference.com/w/cpp/algorithm/sample)
+- [`std::unique`](https://en.cppreference.com/w/cpp/algorithm/unique)
+    - 签名
+    ```
+    template <class ForwardIt>
+    ForwardIt 
+    unique(ForwardIt first, 
+           ForwardIt last);
+
+    template <class ForwardIt, class BinaryPredicate>
+    ForwardIt
+    unique(ForwardIt       first, 
+           ForwardIt       last, 
+           BinaryPredicate p);
+    ```
+    - 对区间`[first, last)`中每一组 *连续的* *相等* 元素，只保留第一个， *清除* 其余元素
+        - *清除* ：用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
+        - *相等* ：`*iter1 == *iter2`或`p(*iter1, *iter2) == true`
+        - 这也就是为什么这其实是一个排序算法
+    - 返回：清除完成后的逻辑区间的尾后迭代器（past-the-end iterator for the new logical end of the range）
+        - 此迭代器后面的元素仍可被解引用访问，但值 *未定义*
+    - 使用前应该**先调用**`std::sort()`，之后**再调用**容器的`erase()`方法
+        - *标准库算法* 操作的 *均是* 迭代器而不是容器，因此，**标准库算法不能（直接）添加或删除元素**
+    ```
+    void eliminateDuplicates(std::vector<int> & vec)
+    {
+        std::sort(vec.begin(), vec.end());
+        std::vector<int>::iterator dup_begin = std::unique(vec.begin(), vec.end());
+        vec.erase(dup_begin, vec.end());
+    }
+    ```  
+- [`std::unique_copy`](https://en.cppreference.com/w/cpp/algorithm/unique_copy)    
+
+#### 划分算法（Partitioning operations）
+
+
+
+#### 排序算法（Sorting operations）    
+    
+- [`std::sort`](https://en.cppreference.com/w/cpp/algorithm/sort)
+    - 签名
+    ```
+    template <class RandomIt>
+    void 
+    sort(RandomIt first, 
+         RandomIt last);
+    
+    template <class RandomIt, class Compare>
+    void 
+    sort(RandomIt first, 
+         RandomIt last, 
+         Compare  comp);
+    ```
+    - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序
+        - **不是**稳定排序，即不保证排序前后相等元素的相对顺序保持不变
+        - *非降序* 的定义
+            - 对任何（指向容器内部位置的合法）迭代器`it`，和任何（满足`it + n`仍是指向容器内部的合法迭代器的）自然数`n`，`*(it + n) < *it == false`或`comp(*(it + n), *it) == false`
+            - 也就是说
+                1. *排序后* 序列满足`*it <= *(it + n)`或`comp(*it, *(it + n)) == true`
+                2. 两个元素被交换顺序的条件是，它们满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`
+                3. 因此，想要 *非增序排序* ，直接喂一个`std::greater_equal`模板对象即可
+                ```
+                std::vector<int> v {0, 1, 1, 2};
+                std::sort(v.begin(), v.end(), std::greater_equal<int>());
+                std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+                ```
+                4. 喂两个 *反向迭代器* 就连谓词都省了 => 10.4
+                ```
+                std::vector<int> v {0, 1, 1, 2};
+                std::sort(v.rbegin(), v.rend());
+                std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+                ```
+    - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件：
+        - 签名：`bool comp(const T & a, const T & b);`
+            - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
+            - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
+        - 要求：
+            1. `comp(a, a) == false`
+            2. `comp(a, b) == true -> comp(b, a) == false`
+            3. `comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
+    - 复杂度
+        - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
+        - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
+    
+#### 有序序列二分查找（Binary search operations (on sorted ranges)）
+
+#### 其他有序序列算法（Other operations on sorted ranges）
+
+#### 有序序列集合操作（Set operations (on sorted ranges)）
+
+#### 堆操作（Heap operations）
+
+#### 最值算法（Minimum/maximum operations）
+
+#### 比较算法（Comparison operations）
+
+- [`std::equal`](https://en.cppreference.com/w/cpp/algorithm/equal)
+    - 签名
     ```
     template <class InputIt1, class InputIt2>
     bool 
@@ -2742,330 +3214,45 @@ std::function<return_type (paramater_list)> f3                  = f1;
           BinaryPredicate p);
     ```
     - 返回：如果 *序列1* 中所有元素都与 *序列2* 中对应位置元素满足`*iter1 == *iter2`或`p(*iter1, *iter2) == true`，则返回`true`，反之返回`false`
+- [`std::lexicographical_compare`](https://en.cppreference.com/w/cpp/algorithm/lexicographical_compare)
+- [`std::lexicographical_compare_three_way`](https://en.cppreference.com/w/cpp/algorithm/lexicographical_compare_three_way)（`C++20`）
 
-#### 其他只读算法
+#### 排列算法（Permutation operations）
 
-#### 二分查找
+#### 数值操作（Numeric operations）
 
-#### 写容器元素
-
-- *写算法* 举例
-    - [`std::fill()`](https://en.cppreference.com/w/cpp/algorithm/fill)
-        - 原型
+- [`std::accumulate`](https://en.cppreference.com/w/cpp/algorithm/accumulate)
+    - 签名
+    ```
+    template <class InputIt, class T, class BinaryOperation>
+    T 
+    accumulate(InputIt         first, 
+               InputIt         last, 
+               T               init,
+               BinaryOperation op);
+    ```
+    - 返回：区间`[first, last)`之内所有元素以及`init`的 *基于* `op` 的 *总和* 
+        - 实际操作 *示例* 
         ```
-        template <class ForwardIt, class T>
-        void 
-        fill(ForwardIt first, 
-             ForwardIt last, 
-             const T & value);
-        ```
-        - 将区间`[first, last)`之内所有元素都赋值为`value` 
-        ```
-        std::fill(vec.begin(), vec.end(), 0));
-        std::fill(vec.begin(), vec.begin() + vec.size() / 2, 0));
-        ```
-    - [`std::fill_n()`](https://en.cppreference.com/w/cpp/algorithm/fill_n)
-        - 原型
-        ```
-        template <class OutputIt, class Size, class T>
-        OutputIt 
-        fill_n(OutputIt  first, 
-               Size      count, 
-               const T & value);
-        ```
-        - 将区间`[first, first + count)`之内所有元素都赋值为`value` 
-            - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
-            - 在 *空容器* 上调用`std::fill_n()`或其它写算法是 *未定义* 行为。对于空容器应当使用`std::back_insert_iterator` => 10.4.1
-        - 返回：迭代器`first + count`
-- *并行算法* 举例
-    - [`std::for_each()`](https://en.cppreference.com/w/cpp/algorithm/for_each)
-        - 原型
-        ```
-        template <class InputIt, class UnaryFunction>
-        UnaryFunction 
-        for_each(InputIt first, 
-                 InputIt last, 
-                 UnaryFunction f);
-        ```
-        - 依次对区间`[first, last)`内每个元素调用`f(*iter)`
-            - 如果`InputIt`不是常迭代器，则`f`可以修改元素。
-            - `f`如有返回值，则直接被丢弃
-            - **不能**复制序列中的元素
-        - `f`
-            - Function object, to be applied to the result of dereferencing every iterator in the range `[first, last)`
-            - Signature of the function should be equivalent to the following: `void fun(const Type & a);`
-                - The signature does not need to have `const &`
-                - `Type` must be such that an object of type `InputIt` can be dereferenced and then implicitly converted to `Type`
-        - 返回：形参`f`的拷贝，经过迭代之后返回之
-            - `f`不是引用类型，因此传入的`f`**不会**被修改
-            - 想要获得经历过迭代的`f`，则 *只能依靠返回值* 。例如下面代码
-        ```
-        struct Sum
+        for (; first != last; ++first)
         {
-            void operator()(int n) { sum += n; }
-            int sum{0};
-        };
-         
-        std::vector<int> nums{3, 4, 2, 8, 15, 267};
-        std::for_each(nums.begin(), nums.end(), [](int &n){ n++; });  // nums chamges to: 4 5 3 9 16 268
-        Sum tmp;
-        Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum == 0 !!!
-                                                                      // sum.sum == 305
-        ```
-- *拷贝算法* 举例
-    - [`std::copy()`](https://en.cppreference.com/w/cpp/algorithm/copy)
-        - 原型
-        ```
-        template <class InputIt, class OutputIt>
-        OutputIt 
-        copy(InputIt  first, 
-             InputIt  last, 
-             OutputIt d_first);
-             
-        template <class InputIt, class OutputIt, class UnaryPredicate>
-        OutputIt 
-        copy_if(InputIt first, 
-                InputIt last,
-                OutputIt d_first,
-                UnaryPredicate pred);
-        ```
-        - 将区间`[first, last)`之内所有元素拷贝至以`d_first`开始的一片内存中，
-            - `copy_if`：只拷贝满足`pred(*iter) == true`的元素
-            - 需保证写`d_first`开始的这一片内存是合法行为
-        - 返回：拷贝生成的序列的尾后迭代器
-        ```
-        int a1[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}; 
-        int a2[sizeof(a1) / sizeof(*a1)]; 
-        int * res = std::copy(std::begin(a1), std::end(a1), a2); 
-        ```
-    - [`std::replace()`](https://en.cppreference.com/w/cpp/algorithm/replace)
-        - 原型
-        ```
-        template <class ForwardIt, class T>
-        void 
-        replace(ForwardIt first, 
-                ForwardIt last,
-                const T & old_value, 
-                const T & new_value);
-              
-        template <class ForwardIt, class UnaryPredicate, class T>
-        void 
-        replace_if(ForwardIt      first, 
-                   ForwardIt      last,
-                   UnaryPredicate p, 
-                   const T &      new_value);
-        ```
-        - 将区间`[first, last)`之内所有满足条件的元素修改为`new_value`
-            - `replace`：值为`old_value`的元素
-            - `replace_if`：满足`p(*iter) == true`的元素
-        - 返回：拷贝生成的序列的尾后迭代器
-        ```
-        std::replace(lst.begin(), lst.end(), 0, 42);
-        ```
-    - [`std::replace_copy()`](https://en.cppreference.com/w/cpp/algorithm/replace_copy)
-        - 原型
-        ```
-        template <class InputIt, class OutputIt, class T>
-        OutputIt 
-        replace_copy(InputIt   first, 
-                     InputIt   last, 
-                     OutputIt  d_first,
-                     const T & old_value, 
-                     const T & new_value);
-                       
-        template <class InputIt, class OutputIt, class UnaryPredicate, class T>
-        OutputIt 
-        replace_copy_if(InputIt        first, 
-                        InputIt        last, 
-                        OutputIt       d_first,
-                        UnaryPredicate p, 
-                        const T &      new_value);
-        ```
-        - 将对应 *替换规则* 应用于区间`[first, last)`内，并将结果存储于`d_first`开始的一片区域中
-            - `replace_copy`：其中所有值为`old_value`元素都被修改为`new_value`
-            - `replace_copy_if`：只替换满足`p(*iter) == true`的元素
-        - 返回：拷贝生成的序列的尾后迭代器
-        ```
-        // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
-        std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
-        ```
-    - [`std::transform()`](https://en.cppreference.com/w/cpp/algorithm/transform)
-        - 原型
-        ```
-        template <class InputIt, class OutputIt, class UnaryOperation>
-        OutputIt 
-        transform(InputIt first1, 
-                  InputIt last1, 
-                  OutputIt d_first,
-                  UnaryOperation unary_op);
-        
-        template <class InputIt1, class InputIt2, class OutputIt, class BinaryOperation>
-        OutputIt 
-        transform(InputIt1 first1, 
-                  InputIt1 last1, 
-                  InputIt2 first2,
-                  OutputIt d_first, 
-                  BinaryOperation binary_op);
-        ```
-        - 将 *对应函数* 应用于 *一片区间* 内，并将结果存储于`d_first`开始的一片区域中
-            1. 将`unary_op`应用于`[first, last)`上的每个元素，取其返回值
-            2. 将`binary_op`应用如下定义的一对元素上：一个定义在`[first, last)`上，另一个取自从`first2`开始的对应位置，取其返回值
-        - 输出对象可以是 *自己* 
-        - 返回：拷贝生成的序列的尾后迭代器
-        ```
-        // turn all elements of a int vector into their absolute values
-        std::transform(vec.begin(), vec.end(), vec.begin(), [] (const int & i)
-        {
-            return i < 0 ? -i : i;
-        });
-        ```
-
-#### 划分与排序
-
-- *排序算法* 举例
-    - [`std::sort()`](https://en.cppreference.com/w/cpp/algorithm/sort)
-        - 原型
-        ```
-        template <class RandomIt>
-        void 
-        sort(RandomIt first, 
-             RandomIt last);
-        
-        template <class RandomIt, class Compare>
-        void 
-        sort(RandomIt first, 
-             RandomIt last, 
-             Compare  comp);
-        ```
-        - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序
-            - **不是**稳定排序，即不保证排序前后相等元素的相对顺序保持不变
-            - *非降序* 的定义
-                - 对任何（指向容器内部位置的合法）迭代器`it`，和任何（满足`it + n`仍是指向容器内部的合法迭代器的）自然数`n`，`*(it + n) < *it == false`或`comp(*(it + n), *it) == false`
-                - 也就是说
-                    1. *排序后* 序列满足`*it <= *(it + n)`或`comp(*it, *(it + n)) == true`
-                    2. 两个元素被交换顺序的条件是，它们满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`
-                    3. 因此，想要 *非增序排序* ，直接喂一个`std::greater_equal`模板对象即可
-                    ```
-                    std::vector<int> v {0, 1, 1, 2};
-                    std::sort(v.begin(), v.end(), std::greater_equal<int>());
-                    std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
-                    ```
-                    4. 喂两个 *反向迭代器* 就连谓词都省了 => 10.4
-                    ```
-                    std::vector<int> v {0, 1, 1, 2};
-                    std::sort(v.rbegin(), v.rend());
-                    std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
-                    ```
-        - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件：
-            - 签名：`bool comp(const T & a, const T & b);`
-                - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-                - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
-            - 要求：
-                1. `comp(a, a) == false`
-                2. `comp(a, b) == true -> comp(b, a) == false`
-                3. `comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
-        - 复杂度
-            - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
-            - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
-    - [`std::unique()`](https://en.cppreference.com/w/cpp/algorithm/unique)
-        - 原型
-        ```
-        template <class ForwardIt>
-        ForwardIt 
-        unique(ForwardIt first, 
-               ForwardIt last);
-
-        template <class ForwardIt, class BinaryPredicate>
-        ForwardIt
-        unique(ForwardIt       first, 
-               ForwardIt       last, 
-               BinaryPredicate p);
-        ```
-        - 对区间`[first, last)`中每一组 *连续的* *相等* 元素，只保留第一个， *清除* 其余元素
-            - *清除* ：用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
-            - *相等* ：`*iter1 == *iter2`或`p(*iter1, *iter2) == true`
-            - 这也就是为什么这其实是一个排序算法
-        - 返回：清除完成后的逻辑区间的尾后迭代器（past-the-end iterator for the new logical end of the range）
-            - 此迭代器后面的元素仍可被解引用访问，但值 *未定义*
-        - 使用前应该**先调用**`std::sort()`，之后**再调用**容器的`erase()`方法
-            - *标准库算法* 操作的 *均是* 迭代器而不是容器，因此，**标准库算法不能（直接）添加或删除元素**
-        ```
-        void eliminateDuplicates(std::vector<int> & vec)
-        {
-            std::sort(vec.begin(), vec.end());
-            std::vector<int>::iterator dup_begin = std::unique(vec.begin(), vec.end());
-            vec.erase(dup_begin, vec.end());
+            init = binary_op(init, *first);
         }
-        ```   
         
-#### 通用重排操作
+        return init;
+        ```
 
-#### 排列算法
+#### 操作未初始化内存（Operations on uninitialized memory）
 
-#### 有序序列的集合算法
+#### `C`标准库（C library）（`<cstdlib>`）
 
-#### 数值算法
+- [`std::qsort`](https://en.cppreference.com/w/cpp/algorithm/qsort)
+- [`std::bsearch`](https://en.cppreference.com/w/cpp/algorithm/bsearch)
 
 #### 随机数算法
 
 - 随机数分布
 - 随机数引擎
-
-
-
-
-
-
-### 🌱 [Chap 17] 标准库特殊设施
-
-- 
-
-
-
-
-
-
-### 🌱 [Chap 18] 用于大型工程的工具
-
-#### 异常处理
-
-- `C++`标准异常
-    - `exception`：最通用的异常类`exception`，只报告异常的发生，不提供任何额外信息
-    - `stdexcept`：几种常用的异常类
-        - `excpetion`：最常见的问题
-        - `runtime_error`：所有RE
-            - `range_error`：RE，生成的结果超出了有意义的值域范围
-            - `overflow_error`：RE，计算溢出
-            - `underflow_error`：RE，计算溢出
-        - `logic_error`：所有逻辑错误
-            - `domain_error`：逻辑错误，参数对应的结果值不存在
-            - `invalid_argument`：逻辑错误，无效参数
-            - `length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
-            - `out_of_range`：逻辑错误，使用了一个超出有效范围的值
-    - `new`：`bad_alloc`异常类 => 12.1.2
-    - `type_info`：`bad_cast`异常类 => 19.2
-- `excpetion`，`bad_alloc`和`bad_cast`只能默认初始化，不能传参；其余异常必须传参（`C`风格字符串）
-- 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
-  如果此异常传入了初始参数，则返回之；否则返回值由编译器决定。
-
-
-
-
-
-
-### 🌱 [Chap 19] 特殊工具与技术
-
-- 
-
-
-
-
-
-
-
-
-
-
 
 
 
