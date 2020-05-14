@@ -2168,8 +2168,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                 - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
             - 要求：
                 1. `comp(a, a) == false`
-                2. `comp(a, b) == true  comp(b, a) == false`
-                3. `comp(a, b) == true ∧ comp(b, c) == true → comp(a, c) == true`
+                2. `comp(a, b) == true -> comp(b, a) == false`
+                3. `comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
         - 复杂度
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
             - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
