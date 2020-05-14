@@ -1850,21 +1850,45 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                 - 接受两个参数
                 - 一般均为迭代器指向元素类型的常引用
                     - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
-                - 典型二元谓词举例：[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)
-                    - `bool comp(const T & a, const T & b);`
-                        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-                        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
-                        - 要求：
-                            1. 非自反性（irreflexivity）：`comp(a, a) == false`
-                            2. 非对称性（asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
-                            3. 传递性（transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
-                    - `bool equiv(const T & a, const T & b);`
-                        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-                        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
-                        - 要求：
-                            1. 自反性：`equiv(a, a) == true`
-                            2. 对称性：`equiv(a, b) == true -> equiv(b, a) == false`
-                            3. 传递性：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
+        - 典型二元谓词举例：[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)
+            - `bool comp(const T & a, const T & b);`
+                - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
+                - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
+                - 要求：
+                    1. 非自反性（irreflexivity）：`comp(a, a) == false`
+                    2. 非对称性（asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
+                    3. 传递性（transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
+            - `bool equiv(const T & a, const T & b);`
+                - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
+                - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
+                - 要求：
+                    1. 自反性（reflexivity）：`equiv(a, a) == true`
+                    2. 对称性（symmetry）：`equiv(a, b) == true -> equiv(b, a) == false`
+                    3. 传递性（transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
+        - 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional) 
+            - 算术操作（Arithmetic operations）
+                - [`plus`](https://en.cppreference.com/w/cpp/utility/functional/plus)：`x + y`
+                - [`minus`](https://en.cppreference.com/w/cpp/utility/functional/minus)：`x - y`
+                - [`multiplies`](https://en.cppreference.com/w/cpp/utility/functional/multiplies)：`x * y`
+                - [`divides`](https://en.cppreference.com/w/cpp/utility/functional/divides)：`x / y`
+                - [`modulus`](https://en.cppreference.com/w/cpp/utility/functional/modulus)：`x % y`
+                - [`negate`](https://en.cppreference.com/w/cpp/utility/functional/negate)：`-x`
+            - 比较（Comparisons）
+                - [`equal_to`](https://en.cppreference.com/w/cpp/utility/functional/equal_to)：`x == y`
+                - [`not_equal_to`](https://en.cppreference.com/w/cpp/utility/functional/not_equal_to)：`x != y`
+                - [`greater`](https://en.cppreference.com/w/cpp/utility/functional/greater)：`x > y`
+                - [`less`](https://en.cppreference.com/w/cpp/utility/functional/less)：`x < y`
+                - [`greater_equal`](https://en.cppreference.com/w/cpp/utility/functional/greater_equal)：`x >= y`
+                - [`less_equal`](https://en.cppreference.com/w/cpp/utility/functional/less_equal)：`x <= y`
+            - 逻辑操作（Logical operations）
+                - [`logical_and`](https://en.cppreference.com/w/cpp/utility/functional/logical_and)：`x && y`
+                - [`logical_or`](https://en.cppreference.com/w/cpp/utility/functional/logical_or)：`x || y`
+                - [`logical_not`](https://en.cppreference.com/w/cpp/utility/functional/logical_not)：`!x`
+            - 位操作（Bitwise operations）
+                - [`bit_and`](https://en.cppreference.com/w/cpp/utility/functional/bit_and)：`x & y`
+                - [`bit_or`](https://en.cppreference.com/w/cpp/utility/functional/bit_or)：`x | y`
+                - [`bit_xor`](https://en.cppreference.com/w/cpp/utility/functional/bit_xor)：`x ^ y`
+                - [`bit_not`](https://en.cppreference.com/w/cpp/utility/functional/bit_not)：`~x`
 - 公认假设
     - 大部分标准库算法的形参满足以下格式
         - `alg(beg, end, [predicate])`
