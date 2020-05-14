@@ -1850,6 +1850,21 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                 - 接受两个参数
                 - 一般均为迭代器指向元素类型的常引用
                     - 不是强制要求，但泛型算法都要求谓词**不能**改变传入元素的值
+                - 典型二元谓词举例：[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)
+                    - `bool comp(const T & a, const T & b);`
+                        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
+                        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
+                        - 要求：
+                            1. 非自反性：`comp(a, a) == false`
+                            2. 非对称性：`comp(a, b) == true -> comp(b, a) == false`
+                            3. 传递性：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
+                    - `bool equiv(const T & a, const T & b);`
+                        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
+                        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
+                        - 要求：
+                            1. 自反性：`equiv(a, a) == true`
+                            2. 对称性：`equiv(a, b) == true -> equiv(b, a) == false`
+                            3. 传递性：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
 - 公认假设
     - 大部分标准库算法的形参满足以下格式
         - `alg(beg, end, [predicate])`
@@ -2412,15 +2427,15 @@ std::function<return_type (paramater_list)> f3                  = f1;
 
 - 出于性能考虑，`std::list`和`std::forward_list`应当优先使用 *成员函数版本* 的算法，而**不是**通用算法
 - 列表整合算法，以下算法均返回`void`
-    - `lst.merge(lst2)`：将来自 *有序列表* `lst2`的元素归并入 *有序列表* `lst`。归并之后`lst2` *变为空* 。排序使用`<`运算符
-    - `lst.merge(lst2, comp)`：将来自 *有序列表* `lst2`的元素归并入 *有序列表* `lst`。归并之后`lst2` *变为空* 。`comp(*it1, *it2) == true`则认为`*it1 < *it2`
-    - `lst.remove(val)`：
-    - `lst.remove_if(pred)`：
-    - `lst.reverse()`：
-    - `lst.sort()`：
-    - `lst.sort(comp)`：
-    - `lst.unique()`：
-    - `lst.unique(pred)`：
+    - `lst.merge(lst2)`：将来自 *有序列表* `lst2`的元素归并入 *有序列表* `lst`。归并之后`lst2` *变为空* 。排序后满足`*it <= *(it + n) == true`
+    - `lst.merge(lst2, comp)`：将来自 *有序列表* `lst2`的元素归并入 *有序列表* `lst`。归并之后`lst2` *变为空* 。排序后满足`comp(*it, *(it + n)) == true`
+    - `lst.remove(val)`：调用`erase`删除掉值为`val`的元素
+    - `lst.remove_if(pred)`：调用`erase`删除掉满足`pred(*it) == true`的元素
+    - `lst.reverse()`：反转列表
+    - `lst.sort()`：排序，排序后满足`*it <= *(it + n) == true`
+    - `lst.sort(comp)`：排序，排序后满足`comp(*it, *(it + n)) == true`
+    - `lst.unique()`：调用`erase`删除同一个值的 *连续* 拷贝，判定标准：`*it1 == *it2`
+    - `lst.unique(pred)`：调用`erase`删除同一个值的 *连续* 拷贝，判定标准：`pred(*it1, *it2) == true`
 - `splice`成员
     - `lst.splice(p, lst2)`，`flst.splice_after(p, lst2)`：
     - `lst.splice(p, lst2, p2)`，`flst.splice_after(p, lst2, p2)`：
