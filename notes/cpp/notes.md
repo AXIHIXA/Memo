@@ -3022,58 +3022,160 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 返回：拷贝生成的序列的尾后迭代器`result + count`，如`count <= 0`，则返回`result`
     - 复杂度：如果`count > 0`，`Omega(count)`次赋值；否则`O(1)`
 - [`std::copy_backward`](https://en.cppreference.com/w/cpp/algorithm/copy_backward)
+    - 可能的实现
+    ```
+    template <class BidirIt1, class BidirIt2>
+    BidirIt2 
+    copy_backward(BidirIt1 first, 
+                  BidirIt1 last, 
+                  BidirIt2 d_last)
+    {
+        while (first != last) 
+        {
+            *(--d_last) = *(--last);
+        }
+        
+        return d_last;
+    }
+    ```
+    - 将`[first, last)`内的元素拷贝至到`d_last` *为止* 的一片内存内
+        - 拷贝顺序为 *逆序* ，后面的元素先拷贝，但元素的相对顺序不变
+    - 返回：迭代器`d_last - (last - first)`
+    - 复杂度：`Omega(last - first)`次赋值
+    ```
+    std::vector<int> vec {1, 2, 3, 4, 5};
+    int buf[10] {0};
+    int * ret = std::copy_backward(vec.cbegin(), vec.cend(), std::end(buf));
+    printf("%d\n", ret == std::end(buf) - (vec.cend() - vec.cbegin()));  // 1
+    ```
 - [`std::move`](https://en.cppreference.com/w/cpp/algorithm/move)
+    - 可能的实现
+    ```
+    template <class InputIt, class OutputIt>
+    OutputIt 
+    move(InputIt  first, 
+         InputIt  last, 
+         OutputIt d_first)
+    {
+        while (first != last) 
+        {
+            *d_first++ = std::move(*first++);
+        }
+        
+        return d_first;
+    }
+    ```
+    - 将`[first, last)`内的元素 *移动* 至以`d_first`开始的一片内存内
+        - 移动完成后`[first, last)`内元素 *仍是合法的该类型元素* ，但 *具体数值不一等和移动前相同*
+    - 返回：移动生成的序列的尾后迭代器
+    - 复杂度：`Omega(last - first)`次 *移动赋值* 
+        - 注意别的泛型算法都是 *拷贝赋值* 
 - [`std::move_backward`](https://en.cppreference.com/w/cpp/algorithm/move_backward)
+    - 可能的实现
+    ```
+    template <class BidirIt1, class BidirIt2>
+    BidirIt2 
+    move_backward(BidirIt1 first,
+                  BidirIt1 last,
+                  BidirIt2 d_last)
+    {
+        while (first != last) 
+        {
+            *(--d_last) = std::move(*(--last));
+        }
+        
+        return d_last;
+    }
+    ```
+    - 将`[first, last)`内的元素 *移动* 至到`d_last` *为止* 的一片内存内
+        - 移动顺序为 *逆序* ，后面的元素先移动，但元素的相对顺序不变
+    - 返回：迭代器`d_last - (last - first)`
+    - 复杂度：`Omega(last - first)`次 *移动赋值* 
+        - 注意别的泛型算法都是 *拷贝赋值* 
 - [`std::fill`](https://en.cppreference.com/w/cpp/algorithm/fill)
-    - 签名
+    - 可能的实现
     ```
     template <class ForwardIt, class T>
     void 
     fill(ForwardIt first, 
          ForwardIt last, 
-         const T & value);
+         const T & value)
+    {
+        for (; first != last; ++first) 
+        {
+            *first = value;
+        }
+    }
     ```
     - 将区间`[first, last)`之内所有元素都赋值为`value` 
+    - 返回：`void`
+    - 复杂度：`Omega(last - first)`次赋值
     ```
     std::fill(vec.begin(), vec.end(), 0));
     std::fill(vec.begin(), vec.begin() + vec.size() / 2, 0));
     ```
 - [`std::fill_n`](https://en.cppreference.com/w/cpp/algorithm/fill_n)
-    - 签名
+    - 可能的实现
     ```
     template <class OutputIt, class Size, class T>
     OutputIt 
     fill_n(OutputIt  first, 
            Size      count, 
-           const T & value);
+           const T & value)
+    {
+        for (Size i = 0; i < count; i++) 
+        {
+            *first++ = value;
+        }
+        
+        return first;
+    }
     ```
     - 将区间`[first, first + count)`之内所有元素都赋值为`value` 
         - `std::fill_n()`**不**检查写区间`[first, first + count)`是否合法，这是程序员的责任
         - 在 *空容器* 上调用`std::fill_n()`或其它写算法是 *未定义* 行为。对于空容器应当使用`std::back_insert_iterator` => 10.4.1
     - 返回：迭代器`first + count`
+    - 复杂度：如果`count > 0`，`Omega(count)`次赋值；否则`O(1)`
 - [`std::transform`](https://en.cppreference.com/w/cpp/algorithm/transform)
-    - 签名
+    - 可能的实现
     ```
     template <class InputIt, class OutputIt, class UnaryOperation>
     OutputIt 
-    transform(InputIt first1, 
-              InputIt last1, 
-              OutputIt d_first,
-              UnaryOperation unary_op);
+    transform(InputIt        first1, 
+              InputIt        last1, 
+              OutputIt       d_first,
+              UnaryOperation unary_op)
+        {
+            while (first1 != last1) 
+            {
+                *d_first++ = unary_op(*first1++);
+            }
+            retu
+            rn d_first;
+        }
     
     template <class InputIt1, class InputIt2, class OutputIt, class BinaryOperation>
     OutputIt 
-    transform(InputIt1 first1, 
-              InputIt1 last1, 
-              InputIt2 first2,
-              OutputIt d_first, 
-              BinaryOperation binary_op);
+    transform(InputIt1        first1, 
+              InputIt1        last1, 
+              InputIt2        first2,
+              OutputIt        d_first, 
+              BinaryOperation binary_op)
+        {
+            while (first1 != last1) 
+            {
+                *d_first++ = binary_op(*first1++, *first2++);
+            }
+            
+            return d_first;
+        }
     ```
     - 将 *对应函数* 应用于 *一片区间* 内，并将结果存储于`d_first`开始的一片区域中
         1. 将`unary_op`应用于`[first, last)`上的每个元素，取其返回值
         2. 将`binary_op`应用如下定义的一对元素上：一个定义在`[first, last)`上，另一个取自从`first2`开始的对应位置，取其返回值
     - 输出对象可以是 *自己* 
     - 返回：拷贝生成的序列的尾后迭代器
+    - 复杂度：`Omega(last1 - first1)`次谓词调用
     ```
     // turn all elements of a int vector into their absolute values
     std::transform(vec.begin(), vec.end(), vec.begin(), [] (const int & i)
@@ -3082,6 +3184,34 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     });
     ```
 - [`std::generate`](https://en.cppreference.com/w/cpp/algorithm/generate)
+    - 可能的实现
+    ```
+    template<class ForwardIt, class Generator>
+    void 
+    generate(ForwardIt first, 
+             ForwardIt last, 
+             Generator g)
+    {
+        while (first != last) 
+        {
+            *first++ = g();
+        }
+    }
+    ```
+    - 将`[first, last)`内元素 *依次* 赋值为`g()`
+    - `g`签名：`ret g();`
+    - 复杂度：`Omega(last - first)`次`g`调用
+    ```
+    int g()
+    {
+        static int i = 0;
+        return i++;
+    }
+    
+    std::vector<int> vec(5);
+    std::generate(vec.begin(), vec.end(), g);
+    std::for_each(vec.cbegin(), vec.cend(), [] (const int & i) { printf("%d ", i); });  // 0 1 2 3 4
+    ```
 - [`std::generate_n`](https://en.cppreference.com/w/cpp/algorithm/generate_n)
 - [`std::remove`, `std::remove_if`](https://en.cppreference.com/w/cpp/algorithm/remove)
 - [`std::remove_copy`, `std::remove_copy_if`](https://en.cppreference.com/w/cpp/algorithm/remove_copy)
