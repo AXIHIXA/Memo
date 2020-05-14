@@ -2202,9 +2202,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                     2. 两个元素被交换顺序的条件是，它们满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`
                     3. *非增序排序* 可以直接喂一个`std::greater_equal`模板对象即可
                     ```
-                    int a[] {0, 1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9};
+                    int a[] {0, 1, 1, 2};
                     std::sort(std::begin(a), std::end(a), std::greater_equal<int>());
-                    std::for_each(std::begin(a), std::end(a), [] (const int & i) { printf("%d ", i); });  // 9 8 7 6 6 6 5 4 3 2 1
+                    std::for_each(std::begin(a), std::end(a), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                     ```
                     4. 喂两个 *反向迭代器* 就可以在不传谓词的情况下达成 *非增序排序* => 10.4
         - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件：
