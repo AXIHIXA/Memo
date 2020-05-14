@@ -63,7 +63,7 @@
     - 只有迭代器指向的容器支持 *随机访问* 时，才能调用迭代器算术运算（Iterator Arithmetic）
     - 如果要人工转换 *反向迭代器* ，一定记得**反向的`begin`要喂正向的`end`**，且模板参数是 *容器的迭代器类型* ，**不是容器自身类型**
     - 普通迭代器指向的元素和用它转换成的反向迭代器指向的**不是**相同元素，而是相邻元素；反之亦然
-    - `std::sort`传谓词一句话：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
+    - `std::sort`如何使用谓词：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向
       括号内分析完就跳出括号，还是按先右后左的顺序，如此循环，直到整个声明分析完
@@ -2643,7 +2643,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - [`less_equal`](https://en.cppreference.com/w/cpp/utility/functional/less_equal)：`x <= y`
         ```
         std::vector<int> v {0, 1, 1, 2};
-        std::sort(v.begin(), v.end(), std::greater_equal<int>());
+        std::sort(v.begin(), v.end(), std::greater<int>());
         std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
         ```
     - 逻辑操作（Logical operations）
@@ -2972,14 +2972,30 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     int * res = std::copy(std::begin(a1), std::end(a1), a2); 
     ```
 - [`std::copy_n`](https://en.cppreference.com/w/cpp/algorithm/copy_n)
-    - 签名
+    - 可能的实现
     ```
     template <class InputIt, class Size, class OutputIt>
     OutputIt 
-    copy_n(InputIt first, 
-           Size count, 
-           OutputIt result);
+    copy_n(InputIt  first, 
+           Size     count, 
+           OutputIt result)
+    {
+        if (count > 0) 
+        {
+            *result++ = *first;
+            
+            for (Size i = 1; i < count; ++i) 
+            {
+                *result++ = *++first;
+            }
+        }
+        
+        return result;
+    }
     ```
+    - 将区间`[first, first + count)`之内的`count`个值复制到区间`[result, result + count)`
+    - 返回：迭代器`result + count`，如`count <= 0`，则返回`result`
+    - 不同于`std::copy`，本算法 *容许重叠* 
 - [`std::copy_backward`](https://en.cppreference.com/w/cpp/algorithm/copy_backward)
 - [`std::move`](https://en.cppreference.com/w/cpp/algorithm/move)
 - [`std::move_backward`](https://en.cppreference.com/w/cpp/algorithm/move_backward)
@@ -3160,10 +3176,11 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序
         - **不是**稳定排序，即不保证排序前后相等元素的相对顺序保持不变
         - *非降序* ：如果`v1`、`v2`满足`v1 < v2`或`comp(v1, v2) == true`，则`v1`应在`v2` *前面* 
-            - 注意，两元素相等，则谁前谁后无所谓，都不违反上面的定义
+            - 粗略理解为`comp(前, 后) ≈ true`，例外在相等元素`comp(a, a) == false`
+            - 两元素相等，则谁前谁后无所谓，都不违反上面的定义
         - `gcc`实现：对任何迭代器`it`，和任何自然数`n`
             - 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *对换* 
-            - 一句话：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
+            - `gcc`实现如何使用谓词一句话：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
         - 想要 *非增序排序*  可以
             1. 直接喂一个`std::greater`模板对象作为谓词
                 - 注意**不能**喂`std::greater_equal`，必须是 *严格偏序* （也就是说相等元素要返回`false`，不然死循环了）
