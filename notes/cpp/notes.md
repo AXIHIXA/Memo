@@ -3181,7 +3181,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - `gcc`实现：对任何迭代器`it`，和任何自然数`n`
             - 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *对换* 
             - `gcc`实现如何使用谓词一句话：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
-        - 想要 *非增序排序*  可以
+        - 想要 *非增序* （non-ascending order）排序，可以
             1. 直接喂一个`std::greater`模板对象作为谓词
                 - 注意**不能**喂`std::greater_equal`，必须是 *严格偏序* （也就是说相等元素要返回`false`，不然死循环了）
             ```
