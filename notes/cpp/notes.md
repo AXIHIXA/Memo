@@ -2203,8 +2203,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                     3. *非增序排序* 可以直接喂一个`std::greater_equal`模板对象即可
                     ```
                     int a[] {0, 1, 1, 2};
-                    std::sort(std::begin(a), std::end(a), std::greater_equal<int>());
-                    std::for_each(std::begin(a), std::end(a), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+                    std::sort(a, a + 4, std::greater_equal<int>());
+                    std::for_each(a, a + 4, [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                     ```
                     4. 喂两个 *反向迭代器* 就可以在不传谓词的情况下达成 *非增序排序* => 10.4
         - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件：
