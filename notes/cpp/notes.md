@@ -2207,6 +2207,11 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
                     std::for_each(a, a + 4, [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                     ```
                     4. 喂两个 *反向迭代器* 就可以在不传谓词的情况下达成 *非增序排序* => 10.4
+                    ```
+                    int a[] {0, 1, 1, 2};
+                    std::sort(std::rbegin(a), std::rend(a));
+                    std::for_each(a, a + 4, [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+                    ```
         - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件：
             - 签名：`bool comp(const T & a, const T & b);`
                 - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
