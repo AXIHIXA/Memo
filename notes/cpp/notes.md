@@ -3160,17 +3160,17 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - **不是**稳定排序，即不保证排序前后相等元素的相对顺序保持不变
         - *非降序* 的定义
             - 如果`v1`、`v2`满足`v1 <= v2`或`comp(v1, v2) == true`，则`v1`应在`v2` *前面* 
-                - 严格数学定义为：对任何（指向容器内部位置的合法）迭代器`it`，和任何（满足`it + n`仍是指向容器内部的合法迭代器的）自然数`n`
-                    1. 如果两个元素满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`，则它们会被 *互换*         
-                    2. 也就是说排序后应有：`*(it + n) < *it == false`或`comp(*(it + n), *it) == false`
+                - `gcc`实现：对任何迭代器`it`，和任何自然数`n`
+                    1. 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *互换*  
+                    2. 也就是说排序后应有：`*it <= *(it + n)`或`comp(*it, *(it + n)) == true`
             - 想要 *非增序排序*  可以
-                1. 直接喂一个`std::greater_equal`模板对象作为谓词
+                1. 直接喂一个`std::greater`模板对象作为谓词
                 ```
                 std::vector<int> v {0, 1, 1, 2};
-                std::sort(v.begin(), v.end(), std::greater_equal<int>());
+                std::sort(v.begin(), v.end(), std::greater<int>());
                 std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                 ```
-                2. 如果喂两个 *反向迭代器* ，就连谓词也能省了 => 10.4
+                2. 如果喂两个 [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator) ，就连谓词也给省了 => 10.4
                 ```
                 std::vector<int> v {0, 1, 1, 2};
                 std::sort(v.rbegin(), v.rend());
