@@ -1379,7 +1379,7 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
     - 除`std::array`外，其他容器均提供高效灵活的内存管理
     - 除`std::foward_list`没有`size()`操作（为了达到与手写的单向链表一样的效率）外，其余容器均为常数复杂度
     - 顺序容器构造函数的一个版本接受容器大小参数，它使用了元素类型的**默认**构造函数
-      对于没有默认构造函数的类型的容器，构造时还需传递元素初始化器
+      对于没有默认构造函数的类型的容器，构造时还需传递 [*元素初始化器*](https://en.cppreference.com/w/cpp/named_req/Allocator)（`Allocator`）
     ```
     std::vector<noDefault> v1(10, init);  // 正确：提供了元素初始化器
     std::vector<noDefault> v2(10);        // 错误：必须提供一个元素初始化器
