@@ -2615,16 +2615,16 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
         - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
         - 要求：
-            1. 非自反性（irreflexivity）：`comp(a, a) == false`
-            2. 非对称性（asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
-            3. 传递性（transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
+            1. *非自反性* （irreflexivity）：`comp(a, a) == false`
+            2. *非对称性* （asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
+            3. *传递性* （transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
     - `bool equiv(const T & a, const T & b);`
         - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
         - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
         - 要求：
-            1. 自反性（reflexivity）：`equiv(a, a) == true`
-            2. 对称性（symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
-            3. 传递性（transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
+            1. *自反性* （reflexivity）：`equiv(a, a) == true`
+            2. *对称性* （symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
+            3. *传递性* （transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
 - 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional)（模板类，用时给一个`Type`并创建对象即可）
     - 算术操作（Arithmetic operations）
         - [`plus`](https://en.cppreference.com/w/cpp/utility/functional/plus)：`x + y`
@@ -2971,6 +2971,14 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     int * res = std::copy(std::begin(a1), std::end(a1), a2); 
     ```
 - [`std::copy_n`](https://en.cppreference.com/w/cpp/algorithm/copy_n)
+    - 签名
+    ```
+    template <class InputIt, class Size, class OutputIt>
+    OutputIt 
+    copy_n(InputIt first, 
+           Size count, 
+           OutputIt result);
+    ```
 - [`std::copy_backward`](https://en.cppreference.com/w/cpp/algorithm/copy_backward)
 - [`std::move`](https://en.cppreference.com/w/cpp/algorithm/move)
 - [`std::move_backward`](https://en.cppreference.com/w/cpp/algorithm/move_backward)
@@ -3151,30 +3159,31 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 把区间`[first, last)`内元素按照 *非降序* （non-descending order）排序
         - **不是**稳定排序，即不保证排序前后相等元素的相对顺序保持不变
         - *非降序* 的定义
-            - 对任何（指向容器内部位置的合法）迭代器`it`，和任何（满足`it + n`仍是指向容器内部的合法迭代器的）自然数`n`，`*(it + n) < *it == false`或`comp(*(it + n), *it) == false`
-            - 也就是说
-                1. *排序后* 序列满足`*it <= *(it + n)`或`comp(*it, *(it + n)) == true`
-                2. 两个元素被交换顺序的条件是，它们满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`
-                3. 因此，想要 *非增序排序* ，直接喂一个`std::greater_equal`模板对象即可
+            - 如果`v1`、`v2`满足`v1 <= v2`或`comp(v1, v2) == true`，则`v1`应在`v2` *前面* 
+                - 严格数学定义为：对任何（指向容器内部位置的合法）迭代器`it`，和任何（满足`it + n`仍是指向容器内部的合法迭代器的）自然数`n`
+                    1. 如果两个元素满足`*(it + n) < *it == true`或`comp(*(it + n), *it) == true`，则它们会被 *互换*         
+                    2. 也就是说排序后应有：`*(it + n) < *it == false`或`comp(*(it + n), *it) == false`
+            - 想要 *非增序排序*  可以
+                1. 直接喂一个`std::greater_equal`模板对象作为谓词
                 ```
                 std::vector<int> v {0, 1, 1, 2};
                 std::sort(v.begin(), v.end(), std::greater_equal<int>());
                 std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                 ```
-                4. 喂两个 *反向迭代器* 就连谓词都省了 => 10.4
+                2. 如果喂两个 *反向迭代器* ，就连谓词也能省了 => 10.4
                 ```
                 std::vector<int> v {0, 1, 1, 2};
                 std::sort(v.rbegin(), v.rend());
                 std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
                 ```
-    - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件：
+    - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件 => 10.3
         - 签名：`bool comp(const T & a, const T & b);`
-            - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
-            - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
+        - 参数类型：常引用**不是强制**的，但**不能更改传入的对象**
+        - 返回值：`bool`亦**不是强制**的，但要求可以 *隐式转化* 为`bool`
         - 要求：
-            1. `comp(a, a) == false`
-            2. `comp(a, b) == true -> comp(b, a) == false`
-            3. `comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
+            1. *非自反性* （irreflexivity）：`comp(a, a) == false`
+            2. *非对称性* （asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
+            3. *传递性* （transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
     - 复杂度
         - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
         - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
