@@ -2007,8 +2007,68 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     
 ### 🌱 [Chap 11] [关联容器](https://en.cppreference.com/w/cpp/container)（Associative Container）
 
-- 
+#### 概述
 
+- 关联容器类型
+    - 按 *关键字* *有序* 保存元素
+        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)：关联数组（associative array），保存`<key, value>`键
+        - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存`key`
+        - [`std::multimap`](https://en.cppreference.com/w/cpp/container/multimap)：关键字可重复出现的`std::map`
+        - [`std::multiset`](https://en.cppreference.com/w/cpp/container/multiset)：关键字可重复出现的`std::set`
+    - *无序* 集合
+        - [`std::unordered_map`](https://en.cppreference.com/w/cpp/container/unordered_map)：散列组织的`std::map`
+        - [`std::unordered_set`](https://en.cppreference.com/w/cpp/container/unordered_set)：散列组织的`std::set`
+        - [`std::unordered_multimap`](https://en.cppreference.com/w/cpp/container/unordered_multimap)：散列组织的`std::map`，关键字可重复出现
+        - [`std::unordered_multiset`](https://en.cppreference.com/w/cpp/container/unordered_multiset)：散列组织的`std::set`，关键字可重复出现
+- 使用举例
+    - 使用`std::map`
+    ```
+    std::map<std::string, size_t> word_count;
+    std::string word;
+    
+    while (std::cin >> word)
+    {
+        ++word_count[word]; 
+    }
+        
+    for (const std::pair<std::string, size_t> & w : word_count)
+    {
+        printf("\"%s\" occurs %zu time(s)\n", w.first.c_str(), w.second);
+    }
+    ```
+    - 使用`std::set`
+    ```
+    std::map<std::string, size_t> word_count;
+    std::set<std::string> exclude = {"The", "But", "And", "Or", "An", "A", "the", "but", "and", "or", "an", "a"};
+    std::string word;
+    
+    while (std::cin >> word)
+    {
+        if (exclude.find(word) == exclude.end())
+        {
+            ++word_count[word];
+        }    
+    }
+    ```
+- 定义关联容器
+    - 每个关联容器都定义了默认构造函数，用于创建指定类型的空容器
+    - 也可以将关联容器创建为其他关联容器的拷贝
+    - 或者从一个值范围来初始化关联容器
+    ```
+    // empty
+    map<string, size_t> word_count; 
+    
+    // list initialization
+    set<string> exclude = {"the", "but", "and", "or", "an", "a", "The", "But", "And", "Or", "An", "A"};
+    
+    // three elements; authors maps last name to first
+    map<string, string> authors = {{"Joyce", "James"}, {"Austen", "Jane"}, {"Dickens", "Charles"}};
+    ```
+
+#### 操作
+
+
+#### 无序容器        
 
 
 
