@@ -4932,7 +4932,37 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 复杂度：`O(N^2)`次谓词调用。若两序列相等，`O(N)`，`N = std::distance(first1, last1)`
         - 如果迭代器支持 *随机访问* ，且`std::distance(first1, last1) != std::distance(first2, last2)`，则没有谓词调用 
 - [`std::next_permutation`](https://en.cppreference.com/w/cpp/algorithm/next_permutation)
+    - 签名
+    ```
+    template <class BidirIt>
+    bool 
+    next_permutation(BidirIt first, 
+                     BidirIt last);
+
+    template <class BidirIt, class Compare>
+    bool 
+    next_permutation(BidirIt first, 
+                     BidirIt last, 
+                     Compare comp);
+    ```
+    - 将序列重排为下一个全排列，如果存在返回`true`，否则将其重排为第一个全排列`std::sort(first, last)`并返回`false`
+    - 复杂度：`O(N / 2)`次对换，`N = std::distance(first, last)`
 - [`std::prev_permutation`](https://en.cppreference.com/w/cpp/algorithm/prev_permutation)
+    - 签名
+    ```
+    template <class BidirIt>
+    bool 
+    prev_permutation(BidirIt first, 
+                     BidirIt last);
+
+    template <class BidirIt, class Compare>
+    bool 
+    prev_permutation(BidirIt first, 
+                     BidirIt last, 
+                     Compare comp);
+    ```
+    - 将序列重排为上一个全排列，如果存在返回`true`，否则将其重排为最后一个全排列`std::sort(first, last); std::sort(first, last); std::reverse(first, last);`并返回`false`
+    - 复杂度：`O(N / 2)`次对换，`N = std::distance(first, last)`
 
 #### 数值操作（Numeric operations）
 
