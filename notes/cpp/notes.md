@@ -3575,20 +3575,76 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     std::shuffle(v.begin(), v.end(), g);
     std::for_each(v.cbegin(), v.cend(), [] (const int & i) { printf("%d ", i); });  // 这可真是只有鬼知道是啥了
     ```
-- [`std::sample`](https://en.cppreference.com/w/cpp/algorithm/sample)
-- [`std::unique`](https://en.cppreference.com/w/cpp/algorithm/unique)
+- [`std::sample`](https://en.cppreference.com/w/cpp/algorithm/sample)（`C++17`）
     - 签名
+    ```
+    template <class PopulationIterator, class SampleIterator, class Distance, class URBG>
+    SampleIterator 
+    sample(PopulationIterator first, 
+           PopulationIterator last,
+           SampleIterator     out, 
+           Distance           n,
+           URBG &&            g);
+    ```
+    - 随机采样`std::min(n, last - first)`个，每个元素相同概率被采样
+    - `out`：采样结果写入输出迭代器`out`之中。`out`所指范围**不能**在`[first, last)`之内
+    - `g`：`UniformRandomBitGenerator` whose result type is convertible to `std::iterator_traits<RandomIt>::difference_type`
+    - 返回值：a copy of out after the last sample that was output, that is, end of the sample range
+    - 复杂度：`O(last - first)`
+    ```
+    std::string in = "hgfedcba", out;
+    std::sample(in.begin(), in.end(), std::back_inserter(out), 5, std::mt19937{std::random_device{}()});
+    std::cout << "five random letters out of " << in << " : " << out << std::endl;  // five random letters out of hgfedcba : gfcba
+    ```
+- [`std::unique`](https://en.cppreference.com/w/cpp/algorithm/unique)
+    - 可能的实现
     ```
     template <class ForwardIt>
     ForwardIt 
     unique(ForwardIt first, 
-           ForwardIt last);
+           ForwardIt last)
+    {
+        if (first == last)
+        {
+            return last;
+        }
+        
+        ForwardIt result = first;
+        
+        while (++first != last) 
+        {
+            if (!(*result == *first) && ++result != first) 
+            {
+                *result = std::move(*first);
+            }
+        }
+        
+        return ++result;
+    }
 
     template <class ForwardIt, class BinaryPredicate>
-    ForwardIt
+    ForwardIt 
     unique(ForwardIt       first, 
            ForwardIt       last, 
-           BinaryPredicate p);
+           BinaryPredicate p)
+    {
+        if (first == last)
+        {
+            return last;
+        }
+            
+        ForwardIt result = first;
+        
+        while (++first != last) 
+        {
+            if (!p(*result, *first) && ++result != first) 
+            {
+                *result = std::move(*first);
+            }
+        }
+        
+        return ++result;
+    }
     ```
     - 对区间`[first, last)`中每一组 *连续的* *相等* 元素，只保留第一个， *移除* 其余元素
         - *移除* ：用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
@@ -3599,14 +3655,36 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 使用前应该**先调用**`std::sort()`，之后**再调用**容器的`erase()`方法
         - *标准库算法* 操作的 *均是* 迭代器而不是容器，因此，**标准库算法不能（直接）添加或删除元素**
     ```
-    void eliminateDuplicates(std::vector<int> & vec)
-    {
-        std::sort(vec.begin(), vec.end());
-        std::vector<int>::iterator dup_begin = std::unique(vec.begin(), vec.end());
-        vec.erase(dup_begin, vec.end());
-    }
+    std::vector<int> v {1, 2, 1, 1, 3, 3, 3, 4, 5, 4};
+ 
+    auto last = std::unique(v.begin(), v.end());  // remove consecutive (adjacent) duplicates
+    v.erase(last, v.end());  // v now holds {1 2 1 3 4 5 4 x x x}, where 'x' is indeterminate
+ 
+    // sort followed by unique, to remove all duplicates
+    std::sort(v.begin(), v.end());  // {1 1 2 3 4 4 5}
+    last = std::unique(v.begin(), v.end());  // v now holds {1 2 3 4 5 x x}, where 'x' is indeterminate
+    v.erase(last, v.end());  // v now holds {1, 2, 3, 4, 5}
     ```  
 - [`std::unique_copy`](https://en.cppreference.com/w/cpp/algorithm/unique_copy)    
+    - 签名
+    ```
+    template <class InputIt, class OutputIt>
+    OutputIt 
+    unique_copy(InputIt  first, 
+                InputIt  last,
+                OutputIt d_first);
+                      
+    template <class InputIt, class OutputIt, class BinaryPredicate>
+    OutputIt 
+    unique_copy(InputIt         first, 
+                InputIt         last,
+                OutputIt        d_first, 
+                BinaryPredicate p);
+    ```
+    - 将区间`[first, last)`内的元素拷贝到以`d_first`开始的一片内存中，且 *不保留连续的重复元素* 。
+        - 即：对每组连续的重复元素，只有第一个被拷贝
+    - 返回：拷贝生成的序列的尾后迭代器
+    - 复杂度：`Omega(last - first + 1)`次谓词调用
 
 #### 划分（Partitioning operations）
 
