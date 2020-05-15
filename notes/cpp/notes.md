@@ -4578,11 +4578,107 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 堆操作（Heap operations）
 
 - [`std::is_heap`](https://en.cppreference.com/w/cpp/algorithm/is_heap)
+    - 签名
+    ```
+    template <class RandomIt>
+    bool 
+    is_heap(RandomIt first, 
+            RandomIt last);
+
+    template <class RandomIt, class Compare>
+    bool 
+    is_heap(RandomIt first, 
+            RandomIt last, 
+            Compare  comp);
+    ```
+    - 判断序列`[first, last)`是否是一个 *大顶堆*
+        - *大顶堆* 是满足如下性质的区间`[f, l)`
+            1. 记`N = l - f`，则对任意`0 < i < N`，`f[floor((i - 1) / 2)] >= f[i]`
+            2. 可用[`std::push_heap`](https://en.cppreference.com/w/cpp/algorithm/push_heap)插入元素
+            3. 可用[`std::pop_heap`](https://en.cppreference.com/w/cpp/algorithm/pop_heap)弹出堆顶元素
+    - 复杂度：`O(2 * log(last - first))`
 - [`std::is_heap_until`](https://en.cppreference.com/w/cpp/algorithm/is_heap_until)
+    - 签名
+    ```
+    template <class RandomIt>
+    RandomIt 
+    is_heap_until(RandomIt first, 
+                  RandomIt last);
+
+    template <class RandomIt, class Compare>
+    RandomIt 
+    is_heap_until(RandomIt first,
+                  RandomIt last, 
+                  Compare  comp);
+    ```
+    - 返回：满足`[first, it)`是 *大顶堆* 的 *最靠后* 的迭代器`it`
+    - 复杂度：`O(last - first)`
 - [`std::make_heap`](https://en.cppreference.com/w/cpp/algorithm/make_heap)
+    - 签名
+    ```
+    template <class RandomIt>
+    void 
+    make_heap(RandomIt first, 
+              RandomIt last);
+
+    template <class RandomIt, class Compare>
+    void 
+    make_heap(RandomIt first, 
+              RandomIt last,
+              Compare  comp);
+    ```
+    - 在`[first, last)`内建 *大顶堆*
+    - 复杂度：`O(3 * std::distance(first, last))`次比较
 - [`std::push_heap`](https://en.cppreference.com/w/cpp/algorithm/push_heap)
+    - 签名
+    ```
+    template <class RandomIt>
+    void 
+    push_heap(RandomIt first, 
+              RandomIt last);
+
+    template<class RandomIt, class Compare>
+    void 
+    push_heap(RandomIt first, 
+              RandomIt last,
+              Compare  comp);
+    ```
+    - 将`last - 1`所指元素插入 *大顶堆* `[first, last - 1)`
+    - 复杂度：`O(log(std::distance(first, last)))`次比较
 - [`std::pop_heap`](https://en.cppreference.com/w/cpp/algorithm/pop_heap)
+    - 签名
+    ```
+    template <class RandomIt>
+    void 
+    pop_heap(RandomIt first, 
+             RandomIt last);
+
+    template <class RandomIt, class Compare>
+    void 
+    pop_heap(RandomIt first, 
+             RandomIt last, 
+             Compare  comp);
+    ```
+    - 将`first`弹出 *大顶堆* `[first, last)`
+        - *对换* `first`和`last - 1`，然后使区间`[first, last - 1)`重新成为堆（下沉`last - 1`即可）
+    - 复杂度：`O(2 * log(last - first))`次比较
 - [`std::sort_heap`](https://en.cppreference.com/w/cpp/algorithm/sort_heap)
+    - 签名
+    ```
+    template <class RandomIt>
+    void 
+    sort_heap(RandomIt first, 
+              RandomIt last);
+    
+    template <class RandomIt, class Compare>
+    void 
+    sort_heap(RandomIt first, 
+              RandomIt last, 
+              Compare  comp);
+    ```
+    - 将 *大顶堆* `[first, last)`转换成 *非降序* 序列
+        - 新序列自然不再是 *大顶堆* 了
+    - 复杂度：`O(2 * N * log(N))`次比较，`N = std::distance(first, last)`
 
 #### 最值（Minimum/maximum operations）
 
