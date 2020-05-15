@@ -3493,7 +3493,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         return d_first;
     }
     ```
-    - 反转区间`[first, last)`。首尾齐发往中间对换，结果存储于以`d_first`开始的一片内存之中
+    - 反转区间`[first, last)`。 *就地* 首尾齐发往中间对换，结果存储于以`d_first`开始的一片内存之中
     - 复杂度：`O(last - first)`
 - [`std::rotate`](https://en.cppreference.com/w/cpp/algorithm/rotate)
     - 可能的实现
@@ -3509,7 +3509,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 
         ForwardIt read      = n_first;
         ForwardIt write     = first;
-        ForwardIt next_read = first;  // read position for when "read" hits "last"
+        ForwardIt next_read = first;                   // read position for when "read" hits "last"
 
         while (read != last) 
         {
@@ -3522,7 +3522,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         return write;
     }
     ```
-    - 将`[first, n_first - 1] [n_first, last - 1]`旋转为`[n_first, last - 1] [first, n_first - 1]`
+    - 将`[first, n_first - 1] [n_first, last - 1]` *就地* 旋转为`[n_first, last - 1] [first, n_first - 1]`
     - 返回：指向原先`first`指向元素在旋转之后所在位置的迭代器，`first + (last - n_first)`
     - 复杂度：`O(last - first)`
 - [`std::rotate_copy`](https://en.cppreference.com/w/cpp/algorithm/rotate_copy)
@@ -3539,52 +3539,13 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         return std::copy(first, n_first, d_first);
     }
     ```
-- [`std::shift_left`, `std::shift_right`](https://en.cppreference.com/w/cpp/algorithm/shift)
-    - 签名
-    ```
-    template <class ForwardIt>
-    constexpr ForwardIt 
-    shift_left(ForwardIt                                                 first, 
-               ForwardIt                                                 last,
-               typename std::iterator_traits<ForwardIt>::difference_type n);
-    ```
-- [`std::random_shuffle`, `std::shuffle`](https://en.cppreference.com/w/cpp/algorithm/random_shuffle)
+    - 将`[first, n_first - 1] [n_first, last - 1]`旋转为`[n_first, last - 1] [first, n_first - 1]`，结果存储于`d_first`开始的一片内存中
+    - 返回：指向原先`first`指向元素在旋转、拷贝之后所在位置的迭代器，`d_first + (last - n_first)`
+    - 复杂度：`O(last - first)`
+- [`std::shuffle`](https://en.cppreference.com/w/cpp/algorithm/random_shuffle)
+    - `std::random_shuffle`已于`C++14`被废弃，`C++17`被移除。略去
     - 可能的实现
     ```
-    template <class RandomIt>
-    void 
-    random_shuffle(RandomIt first, 
-                   RandomIt last)
-    {
-        typename std::iterator_traits<RandomIt>::difference_type i, n;
-        n = last - first;
-        
-        for (i = n - 1; i > 0; --i)
-        {
-            std::swap(first[i], first[std::rand() % (i + 1)]);
-            // rand() % (i+1) isn't actually correct, because the generated number
-            // is not uniformly distributed for most values of i. A correct implementation
-            // will need to essentially reimplement C++11 std::uniform_int_distribution,
-            // which is beyond the scope of this example.
-        }
-    }
-
-    template <class RandomIt, class RandomFunc>
-    void 
-    random_shuffle(RandomIt      first, 
-                   RandomIt      last, 
-                   RandomFunc && r)
-    {
-        typename std::iterator_traits<RandomIt>::difference_type i, n;
-        n = last - first;
-        
-        for (i = n - 1; i > 0; --i)
-        {
-            using std::swap;
-            swap(first[i], first[r(i + 1)]);
-        }
-    }
-
     template <class RandomIt, class URBG>
     void 
     shuffle(RandomIt first, 
@@ -3594,15 +3555,25 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         typedef typename std::iterator_traits<RandomIt>::difference_type diff_t;
         typedef std::uniform_int_distribution<diff_t> distr_t;
         typedef typename distr_t::param_type param_t;
-
+     
         distr_t D;
         diff_t n = last - first;
         
-        for (diff_t i = n - 1; i > 0; --i)
+        for (diff_t i = n - 1; i > 0; --i) 
         {
             std::swap(first[i], first[D(g, param_t(0, i))]);
         }
     }
+    ```
+    - 随机打乱，每种排列都相同概率出现
+    - `g`：`UniformRandomBitGenerator` whose result type is convertible to `std::iterator_traits<RandomIt>::difference_type`
+    - 复杂度：`O(last - first)`
+    ```
+    std::vector<int> v {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(v.begin(), v.end(), g);
+    std::for_each(v.cbegin(), v.cend(), [] (const int & i) { printf("%d ", i); });  // 这可真是只有鬼知道是啥了
     ```
 - [`std::sample`](https://en.cppreference.com/w/cpp/algorithm/sample)
 - [`std::unique`](https://en.cppreference.com/w/cpp/algorithm/unique)
