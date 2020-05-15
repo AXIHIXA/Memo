@@ -3186,7 +3186,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 - [`std::generate`](https://en.cppreference.com/w/cpp/algorithm/generate)
     - 可能的实现
     ```
-    template<class ForwardIt, class Generator>
+    template <class ForwardIt, class Generator>
     void 
     generate(ForwardIt first, 
              ForwardIt last, 
@@ -3210,58 +3210,202 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     
     std::vector<int> vec(5);
     std::generate(vec.begin(), vec.end(), g);
-    std::for_each(vec.cbegin(), vec.cend(), [] (const int & i) { printf("%d ", i); });  // 0 1 2 3 4
+    std::for_each(vec.cbegin(), vec.cend(), [] (const int & i) -> void { printf("%d ", i); });  // 0 1 2 3 4
     ```
 - [`std::generate_n`](https://en.cppreference.com/w/cpp/algorithm/generate_n)
+    - 可能的实现
+    ```
+    template <class OutputIt, class Size, class Generator>
+    OutputIt 
+    generate_n(OutputIt  first, 
+               Size      count, 
+               Generator g)
+    {
+        for (Size i = 0; i < count; ++i) 
+        {
+            *first++ = g();
+        }
+        
+        return first;
+    }
+    ```
+    - 将`[first, first + cpunt)`内元素 *依次* 赋值为`g()`
+    - `g`签名：`ret g();`
+    - 复杂度：`Omega(count)`次`g`调用（`count > 0`）
 - [`std::remove`, `std::remove_if`](https://en.cppreference.com/w/cpp/algorithm/remove)
+    - 可能的实现
+    ```
+    template <class ForwardIt, class T>
+    ForwardIt 
+    remove(ForwardIt first, 
+           ForwardIt last, 
+           const T & value)
+    {
+        first = std::find(first, last, value);
+        
+        if (first != last)
+        {
+            for (ForwardIt i = first; ++i != last;)
+            {
+                if (!(*i == value))
+                {
+                    *first++ = std::move(*i);
+                }
+            }
+        }
+        
+        return first;
+    }
+
+    template <class ForwardIt, class UnaryPredicate>
+    ForwardIt 
+    remove_if(ForwardIt      first, 
+              ForwardIt      last, 
+              UnaryPredicate p)
+    {
+        first = std::find_if(first, last, p);
+        
+        if (first != last)
+        {
+            for (ForwardIt i = first; ++i != last;)
+            {
+                if (!p(*i))
+                {
+                    *first++ = std::move(*i);
+                }
+            }
+        }
+        
+        return first;
+    }
+    ```
+    - *移除* `[first, last)`中全部满足`*it == val`或`p(*it) == true`的元素
+        - *移除* ：用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
+        - 这也就是为什么这其实是一个排序算法
+    - 返回：移除完成后的逻辑区间的尾后迭代器（past-the-end iterator for the new logical end of the range）
+        - 此迭代器后面的元素仍可被解引用访问，但值 *未定义*    
+    - 复杂度：`Omega(last - first)`次谓词调用
 - [`std::remove_copy`, `std::remove_copy_if`](https://en.cppreference.com/w/cpp/algorithm/remove_copy)
+    - 可能的实现
+    ```
+    template <class InputIt, class OutputIt, class T>
+    OutputIt 
+    remove_copy(InputIt   first, 
+                InputIt   last,
+                OutputIt  d_first, 
+                const T & value)
+    {
+        for (; first != last; ++first)
+        {
+            if (!(*first == value))
+            {
+                *d_first++ = *first;
+            }
+        }
+        
+        return d_first;
+    }
+
+    template <class InputIt, class OutputIt, class UnaryPredicate>
+    OutputIt
+    remove_copy_if(InputIt        first,
+                   InputIt        last,
+                   OutputIt       d_first,
+                   UnaryPredicate p)
+    {
+        for (; first != last; ++first)
+        {
+            if (!p(*first))
+            {
+                *d_first++ = *first;
+            }
+        }
+        
+        return d_first;
+    }
+    ```
+    - 将`[first, last)`中全部满足`*it != val`或`p(*it) != true`的元素拷贝至以`d_first`开始的一片内存中
+    - 返回：拷贝完成后区间的尾后迭代器
+    - 复杂度：`Omega(last - first)`次谓词调用
 - [`std::replace`, `std::replace_if`](https://en.cppreference.com/w/cpp/algorithm/replace)
     - 签名
     ```
     template <class ForwardIt, class T>
-    void 
-    replace(ForwardIt first, 
+    void
+    replace(ForwardIt first,
             ForwardIt last,
-            const T & old_value, 
-            const T & new_value);
-          
+            const T & old_value,
+            const T & new_value)
+    {
+        for (; first != last; ++first)
+        {
+            if (*first == old_value)
+            {
+                *first = new_value;
+            }
+        }
+    }
+
     template <class ForwardIt, class UnaryPredicate, class T>
-    void 
-    replace_if(ForwardIt      first, 
+    void
+    replace_if(ForwardIt      first,
                ForwardIt      last,
-               UnaryPredicate p, 
-               const T &      new_value);
+               UnaryPredicate p,
+               const T &      new_value)
+    {
+        for (; first != last; ++first)
+        {
+            if (p(*first))
+            {
+                *first = new_value;
+            }
+        }
+    }
     ```
     - 将区间`[first, last)`之内所有满足条件的元素修改为`new_value`
         - `replace`：值为`old_value`的元素
         - `replace_if`：满足`p(*iter) == true`的元素
-    - 返回：拷贝生成的序列的尾后迭代器
-    ```
-    std::replace(lst.begin(), lst.end(), 0, 42);
-    ```
+    - 返回：`void`
+    - 复杂度：`Omega(last - first)`次谓词调用
 - [`std::replace_copy`, `std::replace_copy_if`](https://en.cppreference.com/w/cpp/algorithm/replace_copy)
     - 签名
     ```
     template <class InputIt, class OutputIt, class T>
-    OutputIt 
-    replace_copy(InputIt   first, 
-                 InputIt   last, 
-                 OutputIt  d_first,
-                 const T & old_value, 
-                 const T & new_value);
-                   
+    OutputIt replace_copy(InputIt   first,
+                          InputIt   last,
+                          OutputIt  d_first,
+                          const T & old_value,
+                          const T & new_value)
+    {
+        for (; first != last; ++first)
+        {
+            *d_first++ = (*first == old_value) ? new_value : *first;
+        }
+        
+        return d_first;
+    }
+
     template <class InputIt, class OutputIt, class UnaryPredicate, class T>
-    OutputIt 
-    replace_copy_if(InputIt        first, 
-                    InputIt        last, 
+    OutputIt
+    replace_copy_if(InputIt        first,
+                    InputIt        last,
                     OutputIt       d_first,
-                    UnaryPredicate p, 
-                    const T &      new_value);
+                    UnaryPredicate p,
+                    const T &      new_value)
+    {
+        for (; first != last; ++first)
+        {
+            *d_first++ = p(*first) ? new_value : *first;
+        }
+        
+        return d_first;
+    }    
     ```
     - 将对应 *替换规则* 应用于区间`[first, last)`内，并将结果存储于`d_first`开始的一片区域中
         - `replace_copy`：其中所有值为`old_value`元素都被修改为`new_value`
         - `replace_copy_if`：只替换满足`p(*iter) == true`的元素
     - 返回：拷贝生成的序列的尾后迭代器
+    - 复杂度：`Omega(last - first)`次谓词调用
     ```
     // 此调用后，ilst不变，ivec包含ilst的一份拷贝，且原来的0全部被替换为42
     std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
@@ -3290,11 +3434,11 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
            ForwardIt       last, 
            BinaryPredicate p);
     ```
-    - 对区间`[first, last)`中每一组 *连续的* *相等* 元素，只保留第一个， *清除* 其余元素
-        - *清除* ：用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
+    - 对区间`[first, last)`中每一组 *连续的* *相等* 元素，只保留第一个， *移除* 其余元素
+        - *移除* ：用被清除元素后面的元素覆盖被清除元素，**并不**改变容器大小
         - *相等* ：`*iter1 == *iter2`或`p(*iter1, *iter2) == true`
         - 这也就是为什么这其实是一个排序算法
-    - 返回：清除完成后的逻辑区间的尾后迭代器（past-the-end iterator for the new logical end of the range）
+    - 返回：移除完成后的逻辑区间的尾后迭代器（past-the-end iterator for the new logical end of the range）
         - 此迭代器后面的元素仍可被解引用访问，但值 *未定义*
     - 使用前应该**先调用**`std::sort()`，之后**再调用**容器的`erase()`方法
         - *标准库算法* 操作的 *均是* 迭代器而不是容器，因此，**标准库算法不能（直接）添加或删除元素**
