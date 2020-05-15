@@ -3689,10 +3689,116 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 划分（Partitioning operations）
 
 - [`std::is_partitioned`](https://en.cppreference.com/w/cpp/algorithm/is_partitioned)
+    - 可能的实现
+    ```
+    template <class InputIt, class UnaryPredicate>
+    bool 
+    is_partitioned(InputIt        first, 
+                   InputIt        last, 
+                   UnaryPredicate p)
+    {
+        for (; first != last; ++first)
+            if (!p(*first))
+                break;
+        for (; first != last; ++first)
+            if (p(*first))
+                return false;
+        return true;
+    }
+    ```
+    - 返回：如果`[first, last)`是 *划分好的* ，或区间为 *空* ，则返回`true`
+        - 区间中所有满足谓词`p`的元素 *都在* 不满足`p`的元素 *之前* 
+    - 复杂度：`O(last - first)`次谓词调用
 - [`std::partition`](https://en.cppreference.com/w/cpp/algorithm/partition)
+    - 可能的实现
+    ```
+    template <class ForwardIt, class UnaryPredicate>
+    ForwardIt 
+    partition(ForwardIt      first, 
+              ForwardIt      last, 
+              UnaryPredicate p)
+    {
+        first = std::find_if_not(first, last, p);
+        if (first == last) return first;
+     
+        for (ForwardIt i = std::next(first); i != last; ++i) 
+        {
+            if (p(*i)) 
+            {
+                std::iter_swap(i, first);
+                ++first;
+            }
+        }
+        
+        return first;
+    }
+    ```
+    - *划分* 区间`[first, last)`
+        - 区间中所有满足谓词`p`的元素 *都在* 不满足`p`的元素 *之前* 
+        - **非稳定**划分，即元素之前的相对位置**不被保护**
+    - 返回：指向第二组第一个元素的迭代器
+    - 复杂度：`O(last - first)`次谓词调用。如果`ForwardIt`支持递减，则还有`O((last - first) / 2)`次对换；否则，`O(last - first)`次
 - [`std::partition_copy`](https://en.cppreference.com/w/cpp/algorithm/partition_copy)
+    - 可能的实现
+    ```
+    template <class InputIt, class OutputIt1, class OutputIt2, class UnaryPredicate>
+    std::pair<OutputIt1, OutputIt2>
+    partition_copy(InputIt        first, 
+                   InputIt        last,
+                   OutputIt1      d_first_true, 
+                   OutputIt2      d_first_false,
+                   UnaryPredicate p)
+    {
+        while (first != last) 
+        {
+            if (p(*first)) 
+            {
+                *d_first_true = *first;
+                ++d_first_true;
+            } 
+            else 
+            {
+                *d_first_false = *first;
+                ++d_first_false;
+            }
+            
+            ++first;
+        }
+        
+        return std::pair<OutputIt1, OutputIt2>(d_first_true, d_first_false);
+    }
+    ```
+    - *划分* 区间`[first, last)`，两部分分别存入`d_first_true`和`d_first_false`
+        - 区间中所有满足谓词`p`的元素 *都在* 不满足`p`的元素 *之前* 
+        - 如果输入输出区间 *重叠* ， *行为未定义* 
+    - 返回：拷贝生成的`true`、`false`两个序列的尾后迭代器
+    - 复杂度：`Omega(last - first)`次谓词调用
 - [`std::stable_partition`](https://en.cppreference.com/w/cpp/algorithm/stable_partition)
+    - 签名
+    ```
+    template <class BidirIt, class UnaryPredicate>
+    BidirIt 
+    stable_partition(BidirIt        first, 
+                     BidirIt        last, 
+                     UnaryPredicate p);
+    ```
+    - *稳定划分* 区间`[first, last)`
+        - 区间中所有满足谓词`p`的元素 *都在* 不满足`p`的元素 *之前* 
+        - 元素之前的相对位置 *被保护*
+    - 返回：指向第二组第一个元素的迭代器
+    - 复杂度：`O(last - first)`次谓词调用。如果内存足够，则还有`O(last - first)`次对换；否则，`O(N log N)`次
 - [`std::partition_point`](https://en.cppreference.com/w/cpp/algorithm/partition_point)
+    - 签名
+    ```
+    template <class ForwardIt, class UnaryPredicate>
+    ForwardIt 
+    partition_point(ForwardIt      first, 
+                    ForwardIt      last, 
+                    UnaryPredicate p);
+    ```
+    - 返回： *已划分好* 区间`[first, last)`的分界点
+        - 第一个不满足谓词的元素
+        - 如果区间为 *空* ，返回`last`
 
 #### 排序（Sorting operations）    
 
