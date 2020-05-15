@@ -2643,7 +2643,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - [`less_equal`](https://en.cppreference.com/w/cpp/utility/functional/less_equal)：`x <= y`
         ```
         std::vector<int> v {0, 1, 1, 2};
-        std::sort(v.begin(), v.end(), std::greater<int>());
+        std::sort(v.begin(), v.end(), std::greater<>());
         std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
         ```
     - 逻辑操作（Logical operations）
@@ -3803,7 +3803,66 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 排序（Sorting operations）    
 
 - [`std::is_sorted`](https://en.cppreference.com/w/cpp/algorithm/is_sorted)
+    - 可能的实现
+    ```
+    template <class ForwardIt>
+    bool 
+    is_sorted(ForwardIt first, 
+              ForwardIt last)
+    {
+        return std::is_sorted_until(first, last) == last;
+    }
+
+    template <class ForwardIt, class Compare>
+    bool 
+    is_sorted(ForwardIt first, 
+              ForwardIt last, 
+              Compare comp)
+    {
+        return std::is_sorted_until(first, last, comp) == last;
+    }
+    ```
+    - 返回：序列是否按照 *非降序* 排列好了
+        - *逆序* 的定义：`*(it + n) < *it`或`comp(*(it + n), *it) == true`
+    - 复杂度：`O(last - first)`
 - [`std::is_sorted_until`](https://en.cppreference.com/w/cpp/algorithm/is_sorted_until)
+    - 可能的实现
+    ```
+    template <class ForwardIt>
+    ForwardIt 
+    is_sorted_until(ForwardIt first, 
+                    ForwardIt last)
+    {
+        return is_sorted_until(first, last, std::less<>());
+    }
+
+    template <class ForwardIt, class Compare>
+    ForwardIt 
+    is_sorted_until(ForwardIt first, 
+                    ForwardIt last, 
+                    Compare   comp) 
+    {
+        if (first != last) 
+        {
+            ForwardIt next = first;
+            
+            while (++next != last) 
+            {
+                if (comp(*next, *first))
+                {
+                    return next;
+                }
+                    
+                first = next;
+            }
+        }
+        
+        return last;
+    }
+    ```
+    - 返回：指向第一个与其前驱构成 *逆序* 的元素的迭代器，如序列为 *非降序* 则返回`last`
+        - *逆序* 的定义：`*(it + n) < *it`或`comp(*(it + n), *it) == true`
+    - 复杂度：`O(last - first)`
 - [`std::sort`](https://en.cppreference.com/w/cpp/algorithm/sort)
     - 签名
     ```
@@ -3823,6 +3882,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - *非降序* ：如果`v1`、`v2`满足`v1 < v2`或`comp(v1, v2) == true`，则`v1`应在`v2` *前面* 
             - 粗略理解为`comp(前, 后) ≈ true`，例外在相等元素`comp(a, a) == false`
             - 两元素相等，则谁前谁后无所谓，都不违反上面的定义
+            - 一句话，你想按前面比后面大就传`>`，不然就传`<`
         - `gcc`实现：对任何迭代器`it`，和任何自然数`n`
             - 如果两个元素满足`*(it + n) < *it`或`comp(*(it + n), *it) == true`，则它们会被 *对换* 
             - `gcc`实现如何使用谓词一句话：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
@@ -3831,16 +3891,22 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
                 - 注意**不能**喂`std::greater_equal`，必须是 *严格偏序* （也就是说相等元素要返回`false`，不然死循环了）
             ```
             std::vector<int> v {0, 1, 1, 2};
-            std::sort(v.begin(), v.end(), std::greater<int>());
+            std::sort(v.begin(), v.end(), std::greater<>());
             std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
             ```
-            2. 如果喂两个 [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator) ，就连谓词也给省了 => 10.4
+            2. 喂其他的自定义谓词
+            ```
+            std::vector<int> v {0, 1, 1, 2};
+            std::sort(v.begin(), v.end(), [] (const int & v1, const int & v2) { return v1 > v2; });
+            std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
+            ```
+            3. 如果喂两个 [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator) ，就连谓词也给省了 => 10.4
             ```
             std::vector<int> v {0, 1, 1, 2};
             std::sort(v.rbegin(), v.rend());
             std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
             ```
-            3. 颠倒重载`<`运算符：那可真是没事儿闲的了，堪比`#define true false`或者`#define < >`
+            4. 颠倒重载`<`运算符：那可真是没事儿闲的了，堪比`#define true false`或者`#define < >`
     - 谓词`comp`需满足[`Compare`](https://en.cppreference.com/w/cpp/named_req/Compare)标准规定的条件 => 10.3
         - 签名：`bool comp(const T & a, const T & b);`
         - 参数类型：常引用不是强制的，但**不能更改传入的对象**
@@ -3853,10 +3919,85 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
         - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
 - [`std::partial_sort`](https://en.cppreference.com/w/cpp/algorithm/partial_sort)
+    - 签名
+    ```
+    template <class RandomIt>
+    void 
+    partial_sort(RandomIt first, 
+                 RandomIt middle, 
+                 RandomIt last);
+
+    template <class RandomIt, class Compare>
+    void 
+    partial_sort(RandomIt first, 
+                 RandomIt middle, 
+                 RandomIt last,
+                 Compare  comp);
+    ```
+    - 重排序列，使得完工后`[first, middle)`包含原序列中 *最小的* `middle - first` 个元素
+        - **非稳定**排序
+        - 完工后`[middle, last)`内元素顺序 *未定义* 
+    - 复杂度：`O((last-first) log (middle-first))`次谓词调用
 - [`std::partial_sort_copy`](https://en.cppreference.com/w/cpp/algorithm/partial_sort_copy)
+    - 签名
+    ```
+    template <class InputIt, class RandomIt>
+    RandomIt 
+    partial_sort_copy(InputIt  first, 
+                      InputIt  last,
+                      RandomIt d_first, 
+                      RandomIt d_last);
+                            
+    template <class InputIt, class RandomIt, class Compare>
+    RandomIt 
+    partial_sort_copy(InputIt  first, 
+                      InputIt  last,
+                      RandomIt d_first, 
+                      RandomIt d_last,
+                      Compare  comp);
+    ```
+    - 按照 *非降序* 排序序列`[first, last)`并将结果存储于`[d_first, d_last)`之中
+        - 实际拷贝的元素个数为两个序列长度的最小值
+        - **非稳定**排序
+    - 返回：完工后`d_first`序列的尾后迭代器，即`d_first + std::min(last - first, d_last - d_first)`
+    - 复杂度：`O(N log(min(D, N))`，`N = last - first`, `D = d_last - d_first`次谓词调用
 - [`std::stable_sort`](https://en.cppreference.com/w/cpp/algorithm/stable_sort)
+    - 签名
+    ```
+    template <class RandomIt>
+    void 
+    stable_sort(RandomIt first, 
+                RandomIt last);
+
+    template <class RandomIt, class Compare>
+    void 
+    stable_sort(RandomIt first, 
+                RandomIt last, 
+                Compare  comp);
+    ```
+    - *稳定非降序排序* 
+    - 复杂度：`O(N log(N)^2)`，`N = last -  first`。如果有额外空间，则`O(N log(N))`
 - [`std::nth_element`](https://en.cppreference.com/w/cpp/algorithm/nth_element)
-   
+    - 签名
+    ```
+    template <class RandomIt>
+    void 
+    nth_element(RandomIt first, 
+                RandomIt nth, 
+                RandomIt last);
+
+    template <class RandomIt, class Compare>
+    void 
+    nth_element(RandomIt first, 
+                RandomIt nth, 
+                RandomIt last,
+                Compare  comp);
+    ```
+    - 重排序列使得完工后
+        1. `*nth`为原序列中第`n`大的元素（即已排好序的原序列中应该在这儿的元素）
+        2. `[first, nth)`之内的元素一律不比`*nth`大
+    - 复杂度：`O(last - first)`
+
 #### 有序序列二分查找（Binary search operations (on sorted ranges)）
 
 - [`std::lower_bound`](https://en.cppreference.com/w/cpp/algorithm/lower_bound)
@@ -3976,11 +4117,6 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 
 - [`std::qsort`](https://en.cppreference.com/w/cpp/algorithm/qsort)
 - [`std::bsearch`](https://en.cppreference.com/w/cpp/algorithm/bsearch)
-
-#### 随机数算法
-
-- 随机数分布
-- 随机数引擎
 
 
 
