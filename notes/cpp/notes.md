@@ -2010,18 +2010,18 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### 概述
 
 - 关联容器类型
-    - 按 *关键字* *有序* 保存元素
-        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)：关联数组（associative array），保存`<key, value>`键
-        - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存`key`
-        - [`std::multimap`](https://en.cppreference.com/w/cpp/container/multimap)：关键字可重复出现的`std::map`
-        - [`std::multiset`](https://en.cppreference.com/w/cpp/container/multiset)：关键字可重复出现的`std::set`
+    - 按 *键*（`key`，关键字） *有序* 保存元素
+        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)：关联数组（associative array），保存键-值词条`<key, value>`
+        - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存键`key`
+        - [`std::multimap`](https://en.cppreference.com/w/cpp/container/multimap)：键可重复出现的`std::map`
+        - [`std::multiset`](https://en.cppreference.com/w/cpp/container/multiset)：键可重复出现的`std::set`
     - *无序* 集合
         - [`std::unordered_map`](https://en.cppreference.com/w/cpp/container/unordered_map)：散列组织的`std::map`
         - [`std::unordered_set`](https://en.cppreference.com/w/cpp/container/unordered_set)：散列组织的`std::set`
-        - [`std::unordered_multimap`](https://en.cppreference.com/w/cpp/container/unordered_multimap)：散列组织的`std::map`，关键字可重复出现
-        - [`std::unordered_multiset`](https://en.cppreference.com/w/cpp/container/unordered_multiset)：散列组织的`std::set`，关键字可重复出现
+        - [`std::unordered_multimap`](https://en.cppreference.com/w/cpp/container/unordered_multimap)：散列组织的`std::map`，键可重复出现
+        - [`std::unordered_multiset`](https://en.cppreference.com/w/cpp/container/unordered_multiset)：散列组织的`std::set`，键可重复出现
 - 使用举例
-    - 使用`std::map`
+    - 使用`std::map`（计数）
     ```
     std::map<std::string, size_t> word_count;
     std::string word;
@@ -2036,7 +2036,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         printf("\"%s\" occurs %zu time(s)\n", w.first.c_str(), w.second);
     }
     ```
-    - 使用`std::set`
+    - 使用`std::set`（去重）
     ```
     std::map<std::string, size_t> word_count;
     std::set<std::string> exclude = {"The", "But", "And", "Or", "An", "A", "the", "but", "and", "or", "an", "a"};
@@ -2050,10 +2050,11 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         }    
     }
     ```
-- 定义关联容器
+- 定义（初始化）`std::map`和`std::set`
     - 每个关联容器都定义了默认构造函数，用于创建指定类型的空容器
     - 也可以将关联容器创建为其他关联容器的拷贝
     - 或者从一个值范围来初始化关联容器
+        - 对于`std::map`，必须提供键值对`{key, value}`
     ```
     // empty
     map<string, size_t> word_count; 
@@ -2064,6 +2065,8 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     // three elements; authors maps last name to first
     map<string, string> authors = {{"Joyce", "James"}, {"Austen", "Jane"}, {"Dickens", "Charles"}};
     ```
+- 定义（初始化）`std::multi_map`和`std::multi_set`
+    - `std::map`和`std::set`的键必须是唯一的
 
 #### 操作
 
