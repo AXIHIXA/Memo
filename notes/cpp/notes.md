@@ -4591,9 +4591,9 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             RandomIt last, 
             Compare  comp);
     ```
-    - 判断序列`[first, last)`是否是一个 *大顶堆*
+    - 判断序列`[first, last)`是否是一个 *大顶堆* （max heap）
         - *大顶堆* 是满足如下性质的区间`[f, l)`
-            1. 记`N = l - f`，则对任意`0 < i < N`，`f[floor((i - 1) / 2)] >= f[i]`
+            1. 记`N = l - f`，则对任意`0 < i < N`，`f[floor((i - 1) / 2)] >= f[i]`（即，逻辑二叉树结构中的爹大于等于儿子）
             2. 可用[`std::push_heap`](https://en.cppreference.com/w/cpp/algorithm/push_heap)插入元素
             3. 可用[`std::pop_heap`](https://en.cppreference.com/w/cpp/algorithm/pop_heap)弹出堆顶元素
     - 复杂度：`O(2 * log(last - first))`
@@ -4683,12 +4683,118 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 最值（Minimum/maximum operations）
 
 - [`std::max`](https://en.cppreference.com/w/cpp/algorithm/max)
+    - 可能的实现
+    ```
+    template <class T> 
+    const T & 
+    max(const T & a, 
+        const T & b)
+    {
+        return (a < b) ? b : a;
+    }
+
+    template <class T, class Compare> 
+    const T & 
+    max(const T & a, 
+        const T & b, 
+        Compare   comp)
+    {
+        return (comp(a, b)) ? b : a;
+    }
+
+    template <class T>
+    T 
+    max(std::initializer_list<T> ilist)
+    {
+        return *std::max_element(ilist.begin(), ilist.end());
+    }
+
+    template <class T, class Compare>
+    T 
+    max(std::initializer_list<T> ilist, 
+        Compare                  comp)
+    {
+        return *std::max_element(ilist.begin(), ilist.end(), comp);
+    }
+    ```
+    - 返回：2个元素的最大值或整个初始化列表中的最大值
+    - 复杂度：两元素版`O(1)`，初始化列表版`Omega(ilist.size() - 1)`
 - [`std::max_element`](https://en.cppreference.com/w/cpp/algorithm/max_element)
+    - 可能的实现
+    ```
+    template <class ForwardIt>
+    ForwardIt 
+    max_element(ForwardIt first, 
+                ForwardIt last)
+    {
+        if (first == last) return last;
+     
+        ForwardIt largest = first;
+        ++first;
+        for (; first != last; ++first) 
+        {
+            if (*largest < *first) 
+            {
+                largest = first;
+            }
+        }
+        return largest;
+    }
+
+    template <class ForwardIt, class Compare>
+    ForwardIt 
+    max_element(ForwardIt first, 
+                ForwardIt last, 
+                Compare   comp)
+    {
+        if (first == last) return last;
+     
+        ForwardIt largest = first;
+        ++first;
+        for (; first != last; ++first) 
+        {
+            if (comp(*largest, *first)) 
+            {
+                largest = first;
+            }
+        }
+        return largest;
+    }
+    ```
+    - 返回：`[first, last)`中 *最大* 的元素的迭代器
+    - 复杂度：`Omega(max(N - 1,0))`次比较，`N = std::distance(first, last)` 
 - [`std::min`](https://en.cppreference.com/w/cpp/algorithm/min)
 - [`std::min_element`](https://en.cppreference.com/w/cpp/algorithm/min_element)
 - [`std::minmax`](https://en.cppreference.com/w/cpp/algorithm/minmax)
+    - 返回最大值和最小值组成的`std::pair`
 - [`std::minmax_element`](https://en.cppreference.com/w/cpp/algorithm/minmax_element)
+    - 返回最大值和最小值的迭代器组成的`std::pair`
 - [`std::clamp`](https://en.cppreference.com/w/cpp/algorithm/clamp)
+    - 可能的实现
+    ```
+    template <class T>
+    constexpr const T & 
+    clamp(const T & v,
+          const T & lo, 
+          const T & hi)
+    {
+        assert(!(hi < lo));
+        return (v < lo) ? lo : (hi < v) ? hi : v;
+    }
+    
+    template <class T, class Compare>
+    constexpr const T & 
+    clamp(const T & v, 
+          const T & lo, 
+          const T & hi, 
+          Compare   comp)
+    {
+        assert(!comp(hi, lo));
+        return comp(v, lo) ? lo : comp(hi, v) ? hi : v;
+    }
+    ```
+    - 返回：如果`lo < v < hi`，返回`v`；否则`lo`和`hi`中返回和`v`同侧的那个， *掐头去尾*
+    - 复杂度：`O(1)`
 
 #### 比较（Comparison operations）
 
