@@ -2010,9 +2010,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### 概述
 
 - 关联容器类型
-    - 按 *键*（`key`，关键字） *有序* 保存元素
-        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)：关联数组（associative array），保存键-值词条`<key, value>`
-        - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存键`key`
+    - 按 *键*（key，关键字） *有序* 保存元素
+        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)：关联数组（associative array），保存键-值词条（entry，`<key, value>`）
+        - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存键
         - [`std::multimap`](https://en.cppreference.com/w/cpp/container/multimap)：键可重复出现的`std::map`
         - [`std::multiset`](https://en.cppreference.com/w/cpp/container/multiset)：键可重复出现的`std::set`
     - *无序* 集合
@@ -2067,6 +2067,66 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     ```
 - 定义（初始化）`std::multi_map`和`std::multi_set`
     - `std::map`和`std::set`的键必须是唯一的
+        - 插入重复的键或词条会被 *忽略*
+    - `std::multi_map`和`std::multi_set`允许键重复
+        - 插入重复的键或词条会被保留
+    ```
+    // define a vector with 20 elements, holding two copies of each number from 0 to 9
+    std::vector<int> ivec;
+    
+    for (int i = 0; i != 10; ++i) 
+    {
+        ivec.push_back(i);
+        ivec.push_back(i);        // duplicate copies of each number
+    }
+    
+    cout << ivec.size() << endl;  // prints 20
+    
+    // iset holds unique elements from ivec; 
+    std::set<int> iset(ivec.cbegin(), ivec.cend());
+    cout << iset.size() << endl;  // prints 10
+    
+    // miset holds all 20 elements
+    std::multiset<int> miset(ivec.cbegin(), ivec.cend());
+    cout << miset.size() << endl; // prints 20
+    ```
+- 键类型要求
+    - 必须定义了 *严格弱序* （stirct weak ordering，例：`<=`运算符）
+        1. `a <= b`和`b <= a`有且仅能有一个成立
+        2. `a <= b`且`b <= c`，则`a <= c`
+        3. `!(a <= b) && !(b <= a)`意味着`a == b`
+    - 在实际编程中重要的是，如果类型定义了 *行为正常* 的`<`运算符，则可以用它做键
+    - 对于没有重载运算符的自定义类型，`std::multiset`允许传入 *谓词* 
+    ```
+    inline bool compareIsbn(const Sales_data & lhs, const Sales_data & rhs)
+    {
+        return lhs.isbn() < rhs.isbn();
+    }
+
+    // bookstore can have several transactions with the same ISBN
+    // elements in bookstore will be in ISBN order
+    // 3 equivalent declarations
+    std::multiset<Sales_data, decltype(compareIsbn) *>                                      bookstore1(compareIsbn);
+    std::multiset<Sales_data, bool (*)(const Sales_data &, const Sales_data &)>             bookstore2(compareIsbn);
+    std::multiset<Sales_data, std::function<bool (const Sales_data &, const Sales_data &)>> bookstore3(compareIsbn);
+    ```
+- [`std::pair`](https://en.cppreference.com/w/cpp/utility/pair)
+    - 定义于`<utility>`中
+    - 默认构造函数对成员进行 *值初始化*
+        - `std::string`，`std::vector`被初始化成空容器，`size_t`被初始化为`0`
+    - 可以提供 *初始化器*
+    - 数据成员`first`、`second`为 *公有*
+    ```
+    std::pair<std::string, std::string>      anon;        // holds two strings
+    std::pair<std::string, size_t>           word_count;  // holds a string and an size_t
+    std::pair<std::string, std::vector<int>> line;        // holds string and vector<int>
+    
+    std::pair<std::string, std::string>      author{"James", "Joyce"};
+    
+    // print the results
+    std::cout << w.first << " occurs " << w.second << ((w.second > 1) ? " times" : " time") << std::endl;
+    ```
+
 
 #### 操作
 
