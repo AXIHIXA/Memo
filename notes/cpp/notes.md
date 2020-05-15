@@ -2729,7 +2729,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     Sum sum = std::for_each(nums.begin(), nums.end(), tmp);       // tmp.sum UNDEFINED!!!
                                                                   // sum.sum == 305
     ```
-- [`std::for_each_n`](https://en.cppreference.com/w/cpp/algorithm/for_each_n)
+- [`std::for_each_n`](https://en.cppreference.com/w/cpp/algorithm/for_each_n)（`C++17`）
     - 可能的实现
     ```
     template <class InputIt, class Size, class UnaryFunction>
@@ -4769,7 +4769,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 返回最大值和最小值组成的`std::pair`
 - [`std::minmax_element`](https://en.cppreference.com/w/cpp/algorithm/minmax_element)
     - 返回最大值和最小值的迭代器组成的`std::pair`
-- [`std::clamp`](https://en.cppreference.com/w/cpp/algorithm/clamp)
+- [`std::clamp`](https://en.cppreference.com/w/cpp/algorithm/clamp)（`C++17`）
     - 可能的实现
     ```
     template <class T>
@@ -4967,40 +4967,206 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 数值操作（Numeric operations）
 
 - [`std::iota`](https://en.cppreference.com/w/cpp/algorithm/iota)
-- [`std::accumulate`](https://en.cppreference.com/w/cpp/algorithm/accumulate)
-    - 签名
+    - 可能的实现
     ```
-    template <class InputIt, class T, class BinaryOperation>
-    T 
-    accumulate(InputIt         first, 
-               InputIt         last, 
-               T               init,
-               BinaryOperation op);
-    ```
-    - 返回：区间`[first, last)`之内所有元素以及`init`的 *基于* `op` 的 *总和* 
-        - 实际操作 *示例* 
-        ```
-        for (; first != last; ++first)
+    template <class ForwardIt, class T>
+    void 
+    iota(ForwardIt first, 
+         ForwardIt last, 
+         T         value)
+    {
+        while (first != last) 
         {
-            init = binary_op(init, *first);
+            *first++ = value;
+            ++value;
+        }
+    }
+    ```
+    - 以始于`value`并重复地求值`++value`的顺序递增值填充范围`[first, last)`
+    - `O(last - first)`
+- [`std::accumulate`](https://en.cppreference.com/w/cpp/algorithm/accumulate)
+    - 可能的实现
+    ```
+    template <class InputIt, class T>
+    constexpr T 
+    accumulate(InputIt first, 
+               InputIt last, 
+               T       init)
+    {
+        for (; first != last; ++first) 
+        {
+            init = std::move(init) + *first;     // std::move since C++20
         }
         
         return init;
-        ```
+    }
+
+    template <class InputIt, class T, class BinaryOperation>
+    constexpr T 
+    accumulate(InputIt         first, 
+               InputIt         last, 
+               T               init, 
+               BinaryOperation op)
+    {
+        for (; first != last; ++first) 
+        {
+            init = op(std::move(init), *first);  // std::move since C++20
+        }
+        
+        return init;
+    }
+    ```
+    - 返回：区间`[first, last)`之内所有元素以及`init`的 *基于* `op` 的 *总和* 
+    - 复杂度：`O(last - first)`次谓词调用
 - [`std::inner_product`](https://en.cppreference.com/w/cpp/algorithm/inner_product)
+    - 可能的实现
+    ```
+    template <class InputIt1, class InputIt2, class T>
+    constexpr T 
+    inner_product(InputIt1 first1, 
+                  InputIt1 last1,
+                  InputIt2 first2, 
+                  T        init)
+    {
+        while (first1 != last1) 
+        {
+             init = std::move(init) + *first1 * *first2;          // std::move since C++20
+             ++first1;
+             ++first2;
+        }
+        
+        return init;
+    }
+
+    template <class InputIt1, class InputIt2, class T, class BinaryOperation1, class BinaryOperation2>
+    constexpr T 
+    inner_product(InputIt1         first1, 
+                  InputIt1         last1,
+                  InputIt2         first2, 
+                  T                init,
+                  BinaryOperation1 op1
+                  BinaryOperation2 op2)
+    {
+        while (first1 != last1) 
+        {
+             init = op1(std::move(init), op2(*first1, *first2));  // std::move since C++20
+             ++first1;
+             ++first2;
+        }
+        
+        return init;
+    }
+    ```
+    - 顾名思义
 - [`std::adjacent_difference`](https://en.cppreference.com/w/cpp/algorithm/adjacent_difference)
+    - 
+    ```
+    template <class InputIt, class OutputIt>
+    constexpr OutputIt 
+    adjacent_difference(InputIt  first, 
+                        InputIt  last, 
+                        OutputIt d_first)
+    {
+        if (first == last) return d_first;
+     
+        typedef typename std::iterator_traits<InputIt>::value_type value_t;
+        value_t acc = *first;
+        *d_first = acc;
+        
+        while (++first != last) 
+        {
+            value_t val = *first;
+            *++d_first = val - std::move(acc); // std::move since C++20
+            acc = std::move(val);
+        }
+        return ++d_first;
+    }
+
+    template <class InputIt, class OutputIt, class BinaryOperation>
+    constexpr OutputIt 
+    adjacent_difference(InputIt         first, 
+                        InputIt         last, 
+                        OutputIt        d_first, 
+                        BinaryOperation op)
+    {
+        if (first == last) return d_first;
+     
+        typedef typename std::iterator_traits<InputIt>::value_type value_t;
+        value_t acc = *first;
+        *d_first = acc;
+        while (++first != last) {
+            value_t val = *first;
+            *++d_first = op(val, std::move(acc)); // std::move since C++20
+            acc = std::move(val);
+        }
+        return ++d_first;
+    }
+    ```
+    - 等价于
+    ```
+    *(d_first)   = *first;
+    *(d_first+1) = *(first+1) - *(first);
+    *(d_first+2) = *(first+2) - *(first+1);
+    *(d_first+3) = *(first+3) - *(first+2);
+    ...
+    ```
+    - 返回：生成序列的尾后迭代器
+    - 复杂度：`O((last - first) - 1)`
 - [`std::partial_sum`](https://en.cppreference.com/w/cpp/algorithm/partial_sum)
-- [`std::reduce`](https://en.cppreference.com/w/cpp/algorithm/reduce)
-- [`std::exclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/exclusive_scan)
-- [`std::inclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/inclusive_scan)
-- [`std::transform_reduce`](https://en.cppreference.com/w/cpp/algorithm/transform_reduce)
-- [`std::transform_exclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/transform_exclusive_scan)
-- [`std::transform_inclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/transform_inclusive_scan)
+    - 可能的实现
+    ```
+    template <class InputIt, class OutputIt>
+    constexpr OutputIt 
+    partial_sum(InputIt  first, 
+                InputIt  last, 
+                OutputIt d_first)
+    {
+        if (first == last) return d_first;
+     
+        typename std::iterator_traits<InputIt>::value_type sum = *first;
+        *d_first = sum;
+     
+        while (++first != last) 
+        {
+           sum = std::move(sum) + *first;    // std::move since C++20
+           *++d_first = sum;
+        }
+        return ++d_first;
+     
+        // or, since C++14:
+        // return std::partial_sum(first, last, d_first, std::plus<>());
+    }
 
-#### `C`标准库（C library）（`<cstdlib>`）
-
-- [`std::qsort`](https://en.cppreference.com/w/cpp/algorithm/qsort)
-- [`std::bsearch`](https://en.cppreference.com/w/cpp/algorithm/bsearch)
+    template<class InputIt, class OutputIt, class BinaryOperation>
+    constexpr OutputIt 
+    partial_sum(InputIt         first, 
+                InputIt         last, 
+                OutputIt        d_first, 
+                BinaryOperation op)
+    {
+        if (first == last) return d_first;
+     
+        typename std::iterator_traits<InputIt>::value_type sum = *first;
+        *d_first = sum;
+     
+        while (++first != last) 
+        {
+           sum = op(std::move(sum), *first); // std::move since C++20
+           *++d_first = sum;
+        }
+        return ++d_first;
+    }
+    ```
+    - 等价于
+    ```
+    *(d_first)   = *first;
+    *(d_first+1) = *first + *(first+1);
+    *(d_first+2) = *first + *(first+1) + *(first+2);
+    *(d_first+3) = *first + *(first+1) + *(first+2) + *(first+3);
+    ...
+    ```
+    - 返回：生成序列的尾后迭代器
+    - 复杂度：`O((last - first) - 1)`
 
 
 
