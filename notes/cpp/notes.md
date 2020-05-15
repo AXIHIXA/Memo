@@ -5059,7 +5059,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     ```
     - 顾名思义
 - [`std::adjacent_difference`](https://en.cppreference.com/w/cpp/algorithm/adjacent_difference)
-    - 
+    - 可能的实现
     ```
     template <class InputIt, class OutputIt>
     constexpr OutputIt 
