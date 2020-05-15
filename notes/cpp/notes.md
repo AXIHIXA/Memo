@@ -2126,7 +2126,16 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     // print the results
     std::cout << w.first << " occurs " << w.second << ((w.second > 1) ? " times" : " time") << std::endl;
     ```
-
+    - `std::pair`上的操作
+        - `std::pair<T1, T2> p;`：创建`std::pair`，成员进行值初始化
+        - `std::pair<T1, T2> p(v1, v2);`：创建`std::pair`，成员初始化为给定值
+        - `std::pair<T1, T2> p = {v1, v2};`：创建`std::pair`，成员初始化为给定值
+        - `std::make_pair(v1, v2);`：创建`std::pair`，元素类型由`v1`和`v2`自动推断。成员初始化为给定值
+        - `p.first`
+        - `p.second`
+        - `p1 rel_op p2`： *关系运算符* `<`，`>`，`<=`，`>=`，按 *字典序* 定义
+        - `p1 == p2`
+        - `p1 != p2`
 
 #### 操作
 
