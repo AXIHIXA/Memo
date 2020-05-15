@@ -3411,14 +3411,199 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     std::replace_copy(ilst.begin(), ilst.end(), std::back_inserter(ivec), 0, 42);
     ```
 - [`std::swap`](https://en.cppreference.com/w/cpp/algorithm/swap)
+    - 签名
+    ```
+    template <class T>
+    void 
+    swap(T & a, 
+         T & b);
+
+    template <class T2, std::size_t N>
+    void 
+    swap(T2 (&a)[N], 
+         T2 (&b)[N]);
+    ```
+    - *互换* 类或数组的内容。数组版实际调用`std::swap_ranges(a, a + N, b);`
+    - 返回：`void`
+    - 复杂度：类版`O(1)`，数组版`O(N)`
 - [`std::swap_ranges`](https://en.cppreference.com/w/cpp/algorithm/swap_ranges)
+    - 可能的实现
+    ```
+    template <class ForwardIt1, class ForwardIt2>
+    ForwardIt2 
+    swap_ranges(ForwardIt1 first1, 
+                ForwardIt1 last1, 
+                ForwardIt2 first2)
+    {
+        while (first1 != last1) 
+        {
+            std::iter_swap(first1++, first2++);
+        }
+        
+        return first2;
+    }
+    ```
+    - *互换* `[first, last)`和`[first2, first2 + last1 - first1)`的内容
+    - 返回：尾后迭代器`first2 + last1 - first1`
+    - 复杂度：`O(last - first)`
 - [`std::iter_swap`](https://en.cppreference.com/w/cpp/algorithm/iter_swap)
+    - 可能的实现
+    ```
+    template <class ForwardIt1, class ForwardIt2>
+    void 
+    iter_swap(ForwardIt1 a, 
+              ForwardIt2 b)
+    {
+        std::swap(*a, *b);
+    }
+    ```
+    - 互换两个迭代器指向元素的值
+    - 返回：`void`
+    - 复杂度：`O(1)`
 - [`std::reverse`](https://en.cppreference.com/w/cpp/algorithm/reverse)
+    - 可能的实现
+    ```
+    template <class BidirIt>
+    void 
+    reverse(BidirIt first, 
+            BidirIt last)
+    {
+        while ((first != last) && (first != --last)) 
+        {
+            std::iter_swap(first++, last);
+        }
+    }
+    ```
+    - 反转区间`[first, last)`。首尾齐发往中间对换
+    - 复杂度：`Omega((last - first) / 2)`次对换
 - [`std::reverse_copy`](https://en.cppreference.com/w/cpp/algorithm/reverse_copy)
+    - 可能的实现
+    ```
+    template <class BidirIt, class OutputIt>
+    OutputIt 
+    reverse_copy(BidirIt  first, 
+                 BidirIt  last, 
+                 OutputIt d_first)
+    {
+        while (first != last) 
+        {
+            *(d_first++) = *(--last);
+        }
+        
+        return d_first;
+    }
+    ```
+    - 反转区间`[first, last)`。首尾齐发往中间对换，结果存储于以`d_first`开始的一片内存之中
+    - 复杂度：`O(last - first)`
 - [`std::rotate`](https://en.cppreference.com/w/cpp/algorithm/rotate)
+    - 可能的实现
+    ```
+    template <class ForwardIt>
+    ForwardIt 
+    rotate(ForwardIt first, 
+           ForwardIt n_first, 
+           ForwardIt last)
+    {
+        if (first == n_first)  return last;
+        if (n_first == last)  return first;
+
+        ForwardIt read      = n_first;
+        ForwardIt write     = first;
+        ForwardIt next_read = first;  // read position for when "read" hits "last"
+
+        while (read != last) 
+        {
+            if (write == next_read) next_read = read;  // track where "first" went
+            std::iter_swap(write++, read++);
+        }
+
+        // rotate the remaining sequence into place
+        (rotate)(write, next_read, last);
+        return write;
+    }
+    ```
+    - 将`[first, n_first - 1] [n_first, last - 1]`旋转为`[n_first, last - 1] [first, n_first - 1]`
+    - 返回：指向原先`first`指向元素在旋转之后所在位置的迭代器，`first + (last - n_first)`
+    - 复杂度：`O(last - first)`
 - [`std::rotate_copy`](https://en.cppreference.com/w/cpp/algorithm/rotate_copy)
+    - 可能的实现
+    ```
+    template <class ForwardIt, class OutputIt>
+    OutputIt 
+    rotate_copy(ForwardIt first, 
+                ForwardIt n_first,
+                ForwardIt last, 
+                OutputIt  d_first)
+    {
+        d_first = std::copy(n_first, last, d_first);
+        return std::copy(first, n_first, d_first);
+    }
+    ```
 - [`std::shift_left`, `std::shift_right`](https://en.cppreference.com/w/cpp/algorithm/shift)
+    - 签名
+    ```
+    template <class ForwardIt>
+    constexpr ForwardIt 
+    shift_left(ForwardIt                                                 first, 
+               ForwardIt                                                 last,
+               typename std::iterator_traits<ForwardIt>::difference_type n);
+    ```
 - [`std::random_shuffle`, `std::shuffle`](https://en.cppreference.com/w/cpp/algorithm/random_shuffle)
+    - 可能的实现
+    ```
+    template <class RandomIt>
+    void 
+    random_shuffle(RandomIt first, 
+                   RandomIt last)
+    {
+        typename std::iterator_traits<RandomIt>::difference_type i, n;
+        n = last - first;
+        
+        for (i = n - 1; i > 0; --i)
+        {
+            std::swap(first[i], first[std::rand() % (i + 1)]);
+            // rand() % (i+1) isn't actually correct, because the generated number
+            // is not uniformly distributed for most values of i. A correct implementation
+            // will need to essentially reimplement C++11 std::uniform_int_distribution,
+            // which is beyond the scope of this example.
+        }
+    }
+
+    template <class RandomIt, class RandomFunc>
+    void 
+    random_shuffle(RandomIt      first, 
+                   RandomIt      last, 
+                   RandomFunc && r)
+    {
+        typename std::iterator_traits<RandomIt>::difference_type i, n;
+        n = last - first;
+        
+        for (i = n - 1; i > 0; --i)
+        {
+            using std::swap;
+            swap(first[i], first[r(i + 1)]);
+        }
+    }
+
+    template <class RandomIt, class URBG>
+    void 
+    shuffle(RandomIt first, 
+            RandomIt last, 
+            URBG &&  g)
+    {
+        typedef typename std::iterator_traits<RandomIt>::difference_type diff_t;
+        typedef std::uniform_int_distribution<diff_t> distr_t;
+        typedef typename distr_t::param_type param_t;
+
+        distr_t D;
+        diff_t n = last - first;
+        
+        for (diff_t i = n - 1; i > 0; --i)
+        {
+            std::swap(first[i], first[D(g, param_t(0, i))]);
+        }
+    }
+    ```
 - [`std::sample`](https://en.cppreference.com/w/cpp/algorithm/sample)
 - [`std::unique`](https://en.cppreference.com/w/cpp/algorithm/unique)
     - 签名
@@ -3452,12 +3637,18 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     ```  
 - [`std::unique_copy`](https://en.cppreference.com/w/cpp/algorithm/unique_copy)    
 
-#### 划分算法（Partitioning operations）
+#### 划分（Partitioning operations）
 
+- [`std::is_partitioned`](https://en.cppreference.com/w/cpp/algorithm/is_partitioned)
+- [`std::partition`](https://en.cppreference.com/w/cpp/algorithm/partition)
+- [`std::partition_copy`](https://en.cppreference.com/w/cpp/algorithm/partition_copy)
+- [`std::stable_partition`](https://en.cppreference.com/w/cpp/algorithm/stable_partition)
+- [`std::partition_point`](https://en.cppreference.com/w/cpp/algorithm/partition_point)
 
+#### 排序（Sorting operations）    
 
-#### 排序算法（Sorting operations）    
-    
+- [`std::is_sorted`](https://en.cppreference.com/w/cpp/algorithm/is_sorted)
+- [`std::is_sorted_until`](https://en.cppreference.com/w/cpp/algorithm/is_sorted_until)
 - [`std::sort`](https://en.cppreference.com/w/cpp/algorithm/sort)
     - 签名
     ```
@@ -3506,18 +3697,51 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 复杂度
         - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons *on average* `(until C++11)`
         - `O(N·log(N))`, where `N = std::distance(first, last)` comparisons `(since C++11)`
-    
+- [`std::partial_sort`](https://en.cppreference.com/w/cpp/algorithm/partial_sort)
+- [`std::partial_sort_copy`](https://en.cppreference.com/w/cpp/algorithm/partial_sort_copy)
+- [`std::stable_sort`](https://en.cppreference.com/w/cpp/algorithm/stable_sort)
+- [`std::nth_element`](https://en.cppreference.com/w/cpp/algorithm/nth_element)
+   
 #### 有序序列二分查找（Binary search operations (on sorted ranges)）
 
-#### 其他有序序列算法（Other operations on sorted ranges）
+- [`std::lower_bound`](https://en.cppreference.com/w/cpp/algorithm/lower_bound)
+- [`std::upper_bound`](https://en.cppreference.com/w/cpp/algorithm/upper_bound)
+- [`std::binary_search`](https://en.cppreference.com/w/cpp/algorithm/binary_search)
+- [`std::equal_range`](https://en.cppreference.com/w/cpp/algorithm/equal_range)
+
+#### 其他有序序列操作（Other operations on sorted ranges）
+
+- [`std::merge`](https://en.cppreference.com/w/cpp/algorithm/merge)
+- [`std::inplace_merge`](https://en.cppreference.com/w/cpp/algorithm/inplace_merge)
 
 #### 有序序列集合操作（Set operations (on sorted ranges)）
 
+- [`std::includes`](https://en.cppreference.com/w/cpp/algorithm/includes)
+- [`std::set_difference`](https://en.cppreference.com/w/cpp/algorithm/set_difference)
+- [`std::set_intersection`](https://en.cppreference.com/w/cpp/algorithm/set_intersection)
+- [`std::set_symmetric_difference`](https://en.cppreference.com/w/cpp/algorithm/set_symmetric_difference)
+- [`std::set_union`](https://en.cppreference.com/w/cpp/algorithm/set_union)
+
 #### 堆操作（Heap operations）
 
-#### 最值算法（Minimum/maximum operations）
+- [`std::is_heap`](https://en.cppreference.com/w/cpp/algorithm/is_heap)
+- [`std::is_heap_until`](https://en.cppreference.com/w/cpp/algorithm/is_heap_until)
+- [`std::make_heap`](https://en.cppreference.com/w/cpp/algorithm/make_heap)
+- [`std::push_heap`](https://en.cppreference.com/w/cpp/algorithm/push_heap)
+- [`std::pop_heap`](https://en.cppreference.com/w/cpp/algorithm/pop_heap)
+- [`std::sort_heap`](https://en.cppreference.com/w/cpp/algorithm/sort_heap)
 
-#### 比较算法（Comparison operations）
+#### 最值（Minimum/maximum operations）
+
+- [`std::max`](https://en.cppreference.com/w/cpp/algorithm/max)
+- [`std::max_element`](https://en.cppreference.com/w/cpp/algorithm/max_element)
+- [`std::min`](https://en.cppreference.com/w/cpp/algorithm/min)
+- [`std::min_element`](https://en.cppreference.com/w/cpp/algorithm/min_element)
+- [`std::minmax`](https://en.cppreference.com/w/cpp/algorithm/minmax)
+- [`std::minmax_element`](https://en.cppreference.com/w/cpp/algorithm/minmax_element)
+- [`std::clamp`](https://en.cppreference.com/w/cpp/algorithm/clamp)
+
+#### 比较（Comparison operations）
 
 - [`std::equal`](https://en.cppreference.com/w/cpp/algorithm/equal)
     - 签名
@@ -3556,8 +3780,13 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 
 #### 排列算法（Permutation operations）
 
+- [`std::is_permutation`](https://en.cppreference.com/w/cpp/algorithm/is_permutation)
+- [`std::next_permutation`](https://en.cppreference.com/w/cpp/algorithm/next_permutation)
+- [`std::prev_permutation`](https://en.cppreference.com/w/cpp/algorithm/prev_permutation)
+
 #### 数值操作（Numeric operations）
 
+- [`std::iota`](https://en.cppreference.com/w/cpp/algorithm/iota)
 - [`std::accumulate`](https://en.cppreference.com/w/cpp/algorithm/accumulate)
     - 签名
     ```
@@ -3578,8 +3807,15 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         
         return init;
         ```
-
-#### 操作未初始化内存（Operations on uninitialized memory）
+- [`std::inner_product`](https://en.cppreference.com/w/cpp/algorithm/inner_product)
+- [`std::adjacent_difference`](https://en.cppreference.com/w/cpp/algorithm/adjacent_difference)
+- [`std::partial_sum`](https://en.cppreference.com/w/cpp/algorithm/partial_sum)
+- [`std::reduce`](https://en.cppreference.com/w/cpp/algorithm/reduce)
+- [`std::exclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/exclusive_scan)
+- [`std::inclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/inclusive_scan)
+- [`std::transform_reduce`](https://en.cppreference.com/w/cpp/algorithm/transform_reduce)
+- [`std::transform_exclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/transform_exclusive_scan)
+- [`std::transform_inclusive_scan`](https://en.cppreference.com/w/cpp/algorithm/transform_inclusive_scan)
 
 #### `C`标准库（C library）（`<cstdlib>`）
 
