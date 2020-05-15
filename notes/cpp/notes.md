@@ -63,6 +63,7 @@
     - 只有迭代器指向的容器支持 *随机访问* 时，才能调用迭代器算术运算（Iterator Arithmetic）
     - 如果要人工转换 *反向迭代器* ，一定记得**反向的`begin`要喂正向的`end`**，且模板参数是 *容器的迭代器类型* ，**不是容器自身类型**
     - 普通迭代器指向的元素和用它转换成的反向迭代器指向的**不是**相同元素，而是相邻元素；反之亦然
+    - 标准库中使用的顺序一般默认是 *非降序* ，二元比较谓词一般等价于`<`
     - `std::sort`如何使用谓词：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
 - 读代码标准操作
     - 对复杂的声明符，从变量名看起，先往右，再往左，碰到一个圆括号就调转阅读的方向
@@ -2585,6 +2586,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 - 且约定
     - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定 *第二个序列至少与第一个序列一样长*
     - 向目的位置迭代器写数据的算法都假定 *目的位置足够大* ，能容纳要写入的元素
+    - 标准库中使用的顺序一般默认是 *非降序* ，二元比较谓词一般等价于`<`
     
 #### 使用原则和注意事项
 
@@ -3706,7 +3708,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         return true;
     }
     ```
-    - 返回：如果`[first, last)`是 *划分好的* ，或区间为 *空* ，则返回`true`
+    - 返回：如果`[first, last)`是 *按`p`划分好的* ，或区间为 *空* ，则返回`true`
         - 区间中所有满足谓词`p`的元素 *都在* 不满足`p`的元素 *之前* 
     - 复杂度：`O(last - first)`次谓词调用
 - [`std::partition`](https://en.cppreference.com/w/cpp/algorithm/partition)
@@ -3733,7 +3735,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         return first;
     }
     ```
-    - *划分* 区间`[first, last)`
+    - *按`p`划分* 区间`[first, last)`
         - 区间中所有满足谓词`p`的元素 *都在* 不满足`p`的元素 *之前* 
         - **非稳定**划分，即元素之前的相对位置**不被保护**
     - 返回：指向第二组第一个元素的迭代器
@@ -3768,7 +3770,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         return std::pair<OutputIt1, OutputIt2>(d_first_true, d_first_false);
     }
     ```
-    - *划分* 区间`[first, last)`，两部分分别存入`d_first_true`和`d_first_false`
+    - *按`p`划分* 区间`[first, last)`，两部分分别存入`d_first_true`和`d_first_false`
         - 区间中所有满足谓词`p`的元素 *都在* 不满足`p`的元素 *之前* 
         - 如果输入输出区间 *重叠* ， *行为未定义* 
     - 返回：拷贝生成的`true`、`false`两个序列的尾后迭代器
@@ -3782,7 +3784,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
                      BidirIt        last, 
                      UnaryPredicate p);
     ```
-    - *稳定划分* 区间`[first, last)`
+    - *按`p`稳定划分* 区间`[first, last)`
         - 区间中所有满足谓词`p`的元素 *都在* 不满足`p`的元素 *之前* 
         - 元素之前的相对位置 *被保护*
     - 返回：指向第二组第一个元素的迭代器
@@ -3796,8 +3798,8 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
                     ForwardIt      last, 
                     UnaryPredicate p);
     ```
-    - 返回： *已划分好* 区间`[first, last)`的分界点
-        - 第一个不满足谓词的元素
+    - 返回： *已按`p`划分好的* 区间`[first, last)`的分界点，即
+        - 第一个不满足谓词`p`的元素
         - 如果区间为 *空* ，返回`last`
 
 #### 排序（Sorting operations）    
@@ -4001,9 +4003,187 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 有序序列二分查找（Binary search operations (on sorted ranges)）
 
 - [`std::lower_bound`](https://en.cppreference.com/w/cpp/algorithm/lower_bound)
+    - 可能的实现
+    ```
+    template <class ForwardIt, class T>
+    ForwardIt 
+    lower_bound(ForwardIt first, 
+                ForwardIt last, 
+                const T & value)
+    {
+        ForwardIt it;
+        typename std::iterator_traits<ForwardIt>::difference_type count, step;
+        count = std::distance(first, last);
+     
+        while (count > 0) 
+        {
+            it = first; 
+            step = count / 2; 
+            std::advance(it, step);
+            if (*it < value) 
+            {
+                first = ++it; 
+                count -= step + 1; 
+            }
+            else
+                count = step;
+        }
+        return first;
+    }
+
+    template <class ForwardIt, class T, class Compare>
+    ForwardIt 
+    lower_bound(ForwardIt first, 
+                ForwardIt last, 
+                const T & value, 
+                Compare   comp)
+    {
+        ForwardIt it;
+        typename std::iterator_traits<ForwardIt>::difference_type count, step;
+        count = std::distance(first, last);
+     
+        while (count > 0) 
+        {
+            it = first;
+            step = count / 2;
+            std::advance(it, step);
+            if (comp(*it, value)) 
+            {
+                first = ++it;
+                count -= step + 1;
+            }
+            else
+                count = step;
+        }
+        return first;
+    }
+    ```
+    - 返回：指向 *按`element < value`划分好的* 序列`[first, last)`中 *第一个* *大于等于* `val`的元素的迭代器，如没有则返回`last`
+        - 区间中所有满足`element < value`，或`comp(element, value) == true`的元素 *都在* 不满足的元素 *之前* 
+        - 按照非降序排序过的序列自然是划分好的
+    - 复杂度：`O(log(last - first))`次比较或谓词调用；如果不是随机访问迭代器，则是`O(last - first)`
 - [`std::upper_bound`](https://en.cppreference.com/w/cpp/algorithm/upper_bound)
+    - 可能的实现
+    ```
+    template <class ForwardIt, class T>
+    ForwardIt 
+    upper_bound(ForwardIt first, 
+                ForwardIt last, 
+                const T & value)
+    {
+        ForwardIt it;
+        typename std::iterator_traits<ForwardIt>::difference_type count, step;
+        count = std::distance(first, last);
+     
+        while (count > 0) 
+        {
+            it = first; 
+            step = count / 2; 
+            std::advance(it, step);
+            if (!(value < *it)) 
+            {
+                first = ++it;
+                count -= step + 1;
+            } 
+            else
+                count = step;
+        }
+        return first;
+    }
+    
+    template <class ForwardIt, class T, class Compare>
+    ForwardIt 
+    upper_bound(ForwardIt first, 
+                ForwardIt last, 
+                const T & value, 
+                Compare   comp)
+    {
+        ForwardIt it;
+        typename std::iterator_traits<ForwardIt>::difference_type count, step;
+        count = std::distance(first, last);
+     
+        while (count > 0) 
+        {
+            it = first; 
+            step = count / 2;
+            std::advance(it, step);
+            if (!comp(value, *it)) 
+            {
+                first = ++it;
+                count -= step + 1;
+            } 
+            else
+                count = step;
+        }
+        return first;
+    }
+    ```
+    - 返回：指向 *按`element <= value`划分好的* 序列`[first, last)`中 *第一个* *大于* `val`的元素的迭代器，如没有则返回`last`
+        - 区间中所有满足`!(value < element)`（即`element <= value`），或`!comp(value, element) == true`的元素 *都在* 不满足的元素 *之前* 
+        - 按照非降序排序过的序列自然是划分好的
+    - 复杂度：`O(log(last - first))`次比较或谓词调用，如果不是随机访问迭代器，则是`O(last - first)`
 - [`std::binary_search`](https://en.cppreference.com/w/cpp/algorithm/binary_search)
+    - 可能的实现
+    ```
+    template <class ForwardIt, class T>
+    bool 
+    binary_search(ForwardIt first, 
+                  ForwardIt last, 
+                  const T & value)
+    {
+        first = std::lower_bound(first, last, value);
+        return (!(first == last) && !(value < *first));
+    }
+
+    template <class ForwardIt, class T, class Compare>
+    bool 
+    binary_search(ForwardIt first, 
+                  ForwardIt last, 
+                  const T & value, 
+                  Compare   comp)
+    {
+        first = std::lower_bound(first, last, value, comp);
+        return (!(first == last) && !(comp(value, *first)));
+    }
+    ```
+    - 二分查找`value`是否在 *按如下条件划分好的* 序列中出现
+    - 序列必须 *同时满足* 如下三条性质
+        1. 已按`element < value`或`comp(element, value)`划分好，即：满足条件的元素全部位于不满足条件的元素之前
+        2. 已按`!(value < element)`（即`element <= value`）或`!comp(value, element)`划分好，即：满足条件的元素全部位于不满足条件的元素之前
+        3. 对序列中任意元素，如果`element < value`或`comp(element, value)`成立，则`!(value < element)`或`!comp(value, element)`亦成立
+    - 一个按照非降序完全排序过得序列自然满足上述条件
+    - 复杂度：`O(log(last - first))`次比较或谓词调用；如果不是随机访问迭代器，则是`O(last - first)`
 - [`std::equal_range`](https://en.cppreference.com/w/cpp/algorithm/equal_range)
+    - 可能的实现
+    ```
+    template <class ForwardIt, class T>
+    std::pair<ForwardIt, ForwardIt> 
+    equal_range(ForwardIt first, 
+                ForwardIt last,
+                const T & value)
+    {
+        return std::make_pair(std::lower_bound(first, last, value),
+                              std::upper_bound(first, last, value));
+    }
+
+    template <class ForwardIt, class T, class Compare>
+    std::pair<ForwardIt, ForwardIt> 
+    equal_range(ForwardIt first, 
+                ForwardIt last,
+                const T & value, 
+                Compare   comp)
+    {
+        return std::make_pair(std::lower_bound(first, last, value, comp),
+                              std::upper_bound(first, last, value, comp));
+    }
+    ```
+    - 返回：值为`value`的区间
+    - 序列必须 *同时满足* 如下三条性质
+        1. 已按`element < value`或`comp(element, value)`划分好，即：满足条件的元素全部位于不满足条件的元素之前
+        2. 已按`!(value < element)`（即`element <= value`）或`!comp(value, element)`划分好，即：满足条件的元素全部位于不满足条件的元素之前
+        3. 对序列中任意元素，如果`element < value`或`comp(element, value)`成立，则`!(value < element)`或`!comp(value, element)`亦成立
+    - 一个按照非降序完全排序过得序列自然满足上述条件
+    - 复杂度：`O(2 * log(last - first))`次比较或谓词调用；如果不是随机访问迭代器，则是`O(last - first)`
 
 #### 其他有序序列操作（Other operations on sorted ranges）
 
