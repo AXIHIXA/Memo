@@ -4185,18 +4185,395 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 一个按照非降序完全排序过得序列自然满足上述条件
     - 复杂度：`O(2 * log(last - first))`次比较或谓词调用；如果不是随机访问迭代器，则是`O(last - first)`
 
-#### 其他有序序列操作（Other operations on sorted ranges）
+#### 有序序列二路归并（Merge operations on sorted ranges）
 
 - [`std::merge`](https://en.cppreference.com/w/cpp/algorithm/merge)
+    - 可能的实现
+    ```
+    template <class InputIt1, class InputIt2, class OutputIt>
+    OutputIt 
+    merge(InputIt1 first1, 
+          InputIt1 last1,
+          InputIt2 first2, 
+          InputIt2 last2,
+          OutputIt d_first)
+    {
+        for (; first1 != last1; ++d_first) 
+        {
+            if (first2 == last2) 
+            {
+                return std::copy(first1, last1, d_first);
+            }
+            if (*first2 < *first1) 
+            {
+                *d_first = *first2;
+                ++first2;
+            } 
+            else 
+            {
+                *d_first = *first1;
+                ++first1;
+            }
+        }
+        return std::copy(first2, last2, d_first);
+    }
+    
+    template <class InputIt1, class InputIt2, class OutputIt, class Compare>
+    OutputIt 
+    merge(InputIt1 first1, 
+          InputIt1 last1,
+          InputIt2 first2, 
+          InputIt2 last2,
+          OutputIt d_first, 
+          Compare  comp)
+    {
+        for (; first1 != last1; ++d_first) 
+        {
+            if (first2 == last2) 
+            {
+                return std::copy(first1, last1, d_first);
+            }
+            if (comp(*first2, *first1)) 
+            {
+                *d_first = *first2;
+                ++first2;
+            } 
+            else 
+            {
+                *d_first = *first1;
+                ++first1;
+            }
+        }
+        return std::copy(first2, last2, d_first);
+    }
+    ```
+    - 归并两个 *非降序列* `[first1, last1)`和`[first2, last2)`至以`d_first`开始的一片内存中
+    - 复杂度：`O(std::distance(first1, last1) + std::distance(first2, last2))`
 - [`std::inplace_merge`](https://en.cppreference.com/w/cpp/algorithm/inplace_merge)
+    - 签名
+    ```
+    template <class BidirIt>
+    void 
+    inplace_merge(BidirIt first, 
+                  BidirIt middle, 
+                  BidirIt last);
+
+    template <class BidirIt, class Compare>
+    void 
+    inplace_merge(BidirIt first, 
+                  BidirIt middle, 
+                  BidirIt last, 
+                  Compare comp);
+    ```
+    - 就地归并两个 *连续的* *非降序列* `[first, middle)`和`[middle, last)`成为`[first, last)`
+    - 复杂度：`Omega(N - 1)`次比较（内存足够）否则，`O(N log N)`次比较，`N = std::distance(first, last)`
 
 #### 有序序列集合操作（Set operations (on sorted ranges)）
 
 - [`std::includes`](https://en.cppreference.com/w/cpp/algorithm/includes)
+    - 可能的实现
+    ```
+    template <class InputIt1, class InputIt2>
+    bool 
+    includes(InputIt1 first1, 
+             InputIt1 last1,
+             InputIt2 first2, 
+             InputIt2 last2)
+    {
+        for (; first2 != last2; ++first1)
+        {
+            if (first1 == last1 || *first2 < *first1)
+                return false;
+            if (!(*first1 < *first2))
+                ++first2;
+        }
+        return true;
+    }
+
+    template <class InputIt1, class InputIt2, class Compare>
+    bool 
+    includes(InputIt1 first1, 
+             InputIt1 last1,
+             InputIt2 first2, 
+             InputIt2 last2, 
+             Compare  comp)
+    {
+        for (; first2 != last2; ++first1)
+        {
+            if (first1 == last1 || comp(*first2, *first1))
+                return false;
+            if (!comp(*first1, *first2))
+                ++first2;
+        }
+        return true;
+    }
+    ```
+    - 检查 *有序序列* `[first2, last2)`是否是 *有序序列* `[first1, last1)`的 *子列*
+        - *子列* *不一定连续*
+    - 复杂度：`O(2 * (N1 + N2 - 1))`次比较，`N1 = std::distance(first1, last1)`，`N2 = std::distance(first2, last2)`     
 - [`std::set_difference`](https://en.cppreference.com/w/cpp/algorithm/set_difference)
+    - 可能的实现
+    ```
+    template <class InputIt1, class InputIt2, class OutputIt>
+    OutputIt 
+    set_difference(InputIt1 first1, 
+                   InputIt1 last1,
+                   InputIt2 first2, 
+                   InputIt2 last2,
+                   OutputIt d_first)
+    {
+        while (first1 != last1) 
+        {
+            if (first2 == last2) return std::copy(first1, last1, d_first);
+     
+            if (*first1 < *first2) 
+            {
+                *d_first++ = *first1++;
+            } 
+            else 
+            {
+                if (!(*first2 < *first1)) 
+                {
+                    ++first1;
+                }
+                ++first2;
+            }
+        }
+        return d_first;
+    }
+
+    template <class InputIt1, class InputIt2, class OutputIt, class Compare>
+    OutputIt 
+    set_difference(InputIt1 first1, 
+                   InputIt1 last1,
+                   InputIt2 first2, 
+                   InputIt2 last2,
+                   OutputIt d_first, 
+                   Compare  comp)
+    {
+        while (first1 != last1) 
+        {
+            if (first2 == last2) return std::copy(first1, last1, d_first);
+     
+            if (comp(*first1, *first2)) 
+            {
+                *d_first++ = *first1++;
+            } 
+            else 
+            {
+                if (!comp(*first2, *first1)) 
+                {
+                    ++first1;
+                }
+                ++first2;
+            }
+        }
+        return d_first;
+    }
+    ```
+    - 将 *有序序列* `[first1, last1)`中 *没有出现* 在 *有序序列* `[first2, last2)`中的元素拷贝至以`d_first`开始的一片内存中
+        - 结果也是 *有序序列* 
+        - 相等元素被平等看待，即如果`v`出现在序列1中`m`次、2中`n`次，则结果中会含有`std::max(0, m - n)`个`v`
+    - 返回：构造序列的尾后迭代器
+    - 复杂度：`O(2 * (N1 + N2 - 1))`次比较，`N1 = std::distance(first1, last1)`，`N2 = std::distance(first2, last2)`     
 - [`std::set_intersection`](https://en.cppreference.com/w/cpp/algorithm/set_intersection)
+    - 可能的实现
+    ```
+    template <class InputIt1, class InputIt2, class OutputIt>
+    OutputIt 
+    set_intersection(InputIt1 first1, 
+                     InputIt1 last1,
+                     InputIt2 first2, 
+                     InputIt2 last2,
+                     OutputIt d_first)
+    {
+        while (first1 != last1 && first2 != last2) 
+        {
+            if (*first1 < *first2) 
+            {
+                ++first1;
+            } 
+            else  
+            {
+                if (!(*first2 < *first1)) 
+                {
+                    *d_first++ = *first1++;
+                }
+                ++first2;
+            }
+        }
+        return d_first;
+    }
+    
+    template <class InputIt1, class InputIt2, class OutputIt, class Compare>
+    OutputIt 
+    set_intersection(InputIt1 first1, 
+                     InputIt1 last1,
+                     InputIt2 first2, 
+                     InputIt2 last2,
+                     OutputIt d_first, 
+                     Compare  comp)
+    {
+        while (first1 != last1 && first2 != last2) 
+        {
+            if (comp(*first1, *first2)) 
+            {
+                ++first1;
+            } 
+            else 
+            {
+                if (!comp(*first2, *first1)) 
+                {
+                    *d_first++ = *first1++;
+                }
+                ++first2;
+            }
+        }
+        return d_first;
+    }
+    ```
+    - 将 *同时出现* 在 *有序序列* `[first1, last1)`中和 *有序序列* `[first2, last2)`中的元素拷贝至以`d_first`开始的一片内存中
+        - 结果也是 *有序序列* 
+        - 相等元素被平等看待，即如果`v`出现在序列1中`m`次、2中`n`次，则结果中会含有`std::min(m, n)`个`v`
+    - 返回：构造序列的尾后迭代器
+    - 复杂度：`O(2 * (N1 + N2 - 1))`次比较，`N1 = std::distance(first1, last1)`，`N2 = std::distance(first2, last2)`    
 - [`std::set_symmetric_difference`](https://en.cppreference.com/w/cpp/algorithm/set_symmetric_difference)
+    - 可能的实现
+    ```
+    template <class InputIt1, class InputIt2, class OutputIt>
+    OutputIt 
+    set_symmetric_difference(InputIt1 first1, 
+                             InputIt1 last1,
+                             InputIt2 first2, 
+                             InputIt2 last2,
+                             OutputIt d_first)
+    {
+        while (first1 != last1) 
+        {
+            if (first2 == last2) return std::copy(first1, last1, d_first);
+     
+            if (*first1 < *first2) 
+            {
+                *d_first++ = *first1++;
+            } 
+            else 
+            {
+                if (*first2 < *first1) 
+                {
+                    *d_first++ = *first2;
+                } 
+                else 
+                {
+                    ++first1;
+                }
+                ++first2;
+            }
+        }
+        return std::copy(first2, last2, d_first);
+    }
+
+    template <class InputIt1, class InputIt2, class OutputIt, class Compare>
+    OutputIt 
+    set_symmetric_difference(InputIt1 first1, 
+                             InputIt1 last1,
+                             InputIt2 first2, 
+                             InputIt2 last2,
+                             OutputIt d_first, 
+                             Compare  comp)
+    {
+        while (first1 != last1) 
+        {
+            if (first2 == last2) return std::copy(first1, last1, d_first);
+     
+            if (comp(*first1, *first2)) 
+            {
+                *d_first++ = *first1++;
+            } 
+            else 
+            {
+                if (comp(*first2, *first1)) 
+                {
+                    *d_first++ = *first2;
+                } 
+                else 
+                {
+                    ++first1;
+                }
+                ++first2;
+            }
+        }
+        return std::copy(first2, last2, d_first);
+    }
+    ```
+    - 将 *只在* *有序序列* `[first1, last1)`中出现或 *只在* *有序序列* `[first2, last2)`中出现的元素拷贝至以`d_first`开始的一片内存中
+        - 结果也是 *有序序列* 
+        - 相等元素被平等看待，即如果`v`出现在序列1中`m`次、2中`n`次，则结果中会含有`std::abs(m - n)`个`v`
+    - 返回：构造序列的尾后迭代器
+    - 复杂度：`O(2 * (N1 + N2 - 1))`次比较，`N1 = std::distance(first1, last1)`，`N2 = std::distance(first2, last2)`  
 - [`std::set_union`](https://en.cppreference.com/w/cpp/algorithm/set_union)
+    - 可能的实现
+    ```
+    template <class InputIt1, class InputIt2, class OutputIt>
+    OutputIt 
+    set_union(InputIt1 first1, 
+              InputIt1 last1,
+              InputIt2 first2, 
+              InputIt2 last2,
+              OutputIt d_first)
+    {
+        for (; first1 != last1; ++d_first) 
+        {
+            if (first2 == last2)
+                return std::copy(first1, last1, d_first);
+            if (*first2 < *first1) 
+            {
+                *d_first = *first2++;
+            } 
+            else 
+            {
+                *d_first = *first1;
+                if (!(*first1 < *first2))
+                    ++first2;
+                ++first1;
+            }
+        }
+        return std::copy(first2, last2, d_first);
+    }
+
+    template <class InputIt1, class InputIt2, class OutputIt, class Compare>
+    OutputIt 
+    set_union(InputIt1 first1, 
+              InputIt1 last1,
+              InputIt2 first2, 
+              InputIt2 last2,
+              OutputIt d_first, 
+              Compare  comp)
+    {
+        for (; first1 != last1; ++d_first) 
+        {
+            if (first2 == last2)
+                return std::copy(first1, last1, d_first);
+            if (comp(*first2, *first1)) 
+            {
+                *d_first = *first2++;
+            } 
+            else 
+            {
+                *d_first = *first1;
+                if (!comp(*first1, *first2))
+                    ++first2;
+                ++first1;
+            }
+        }
+        return std::copy(first2, last2, d_first);
+    }
+    ```
+    - 将在 *有序序列* `[first1, last1)`中出现 *或* 在 *有序序列* `[first2, last2)`中出现的元素拷贝至以`d_first`开始的一片内存中
+        - 结果也是 *有序序列* 
+        - 相等元素被平等看待，即如果`v`出现在序列1中`m`次、2中`n`次，则结果中会含有`std::max(m, n)`个`v`
+            - 先把序列1中的`m`个全部 *依次* 拷贝过去，之后 *依次* 拷贝序列2中的前`std::max(n - m, 0)`个
+    - 返回：构造序列的尾后迭代器
+    - 复杂度：`O(2 * (N1 + N2 - 1))`次比较，`N1 = std::distance(first1, last1)`，`N2 = std::distance(first2, last2)`  
 
 #### 堆操作（Heap operations）
 
