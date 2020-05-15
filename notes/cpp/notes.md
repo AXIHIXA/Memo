@@ -4799,43 +4799,138 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 #### 比较（Comparison operations）
 
 - [`std::equal`](https://en.cppreference.com/w/cpp/algorithm/equal)
-    - 签名
+    - 可能的实现
     ```
     template <class InputIt1, class InputIt2>
     bool 
     equal(InputIt1 first1, 
-          InputIt1 last1,
-          InputIt2 first2);
+          InputIt1 last1, 
+          InputIt2 first2)
+    {
+        for (; first1 != last1; ++first1, ++first2)
+        {
+            if (!(*first1 == *first2)) 
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    template <class InputIt1, class InputIt2>
+    bool 
+    equal(InputIt1 first1, 
+          InputIt1 last1, 
+          InputIt2 first2, 
+          InputIt2 last2);
+
+    template <class InputIt1, class InputIt2, class BinaryPredicate>
+    bool 
+    equal(InputIt1        first1, 
+          InputIt1        last1, 
+          InputIt2        first2,
+          BinaryPredicate p)
+    {
+        for (; first1 != last1; ++first1, ++first2) 
+        {
+            if (!p(*first1, *first2)) 
+            {
+                return false;
+            }
+        }
+        return true;
+    }
     
     template <class InputIt1, class InputIt2, class BinaryPredicate>
     bool 
     equal(InputIt1        first1, 
-          InputIt1        last1,
-          InputIt2        first2, 
-          BinaryPredicate p);
-        
-    template <class InputIt1, class InputIt2>
-    bool 
-    equal(InputIt1 first1, 
-          InputIt1 last1,
-          InputIt2 first2, 
-          InputIt2 last2);
-        
-    template <class InputIt1, class InputIt2, class BinaryPredicate>
-    bool 
-    equal(InputIt1        first1, 
-          InputIt1        last1,
+          InputIt1        last1, 
           InputIt2        first2, 
           InputIt2        last2,
           BinaryPredicate p);
     ```
     - 返回：如果 *序列1* 中所有元素都与 *序列2* 中对应位置元素满足`*iter1 == *iter2`或`p(*iter1, *iter2) == true`，则返回`true`，反之返回`false`
+    - 复杂度：`O(N)`
 - [`std::lexicographical_compare`](https://en.cppreference.com/w/cpp/algorithm/lexicographical_compare)
-- [`std::lexicographical_compare_three_way`](https://en.cppreference.com/w/cpp/algorithm/lexicographical_compare_three_way)（`C++20`）
+    - 可能的实现
+    ```
+    template <class InputIt1, class InputIt2>
+    bool 
+    lexicographical_compare(InputIt1 first1, 
+                            InputIt1 last1,
+                            InputIt2 first2, 
+                            InputIt2 last2)
+    {
+        for ( ; (first1 != last1) && (first2 != last2); ++first1, (void) ++first2 ) 
+        {
+            if (*first1 < *first2) return true;
+            if (*first2 < *first1) return false;
+        }
+        return (first1 == last1) && (first2 != last2);
+    }
+
+    template <class InputIt1, class InputIt2, class Compare>
+    bool 
+    lexicographical_compare(InputIt1 first1, 
+                            InputIt1 last1,
+                            InputIt2 first2, 
+                            InputIt2 last2,
+                            Compare  comp)
+    {
+        for ( ; (first1 != last1) && (first2 != last2); ++first1, (void) ++first2 ) 
+        {
+            if (comp(*first1, *first2)) return true;
+            if (comp(*first2, *first1)) return false;
+        }
+        return (first1 == last1) && (first2 != last2);
+    }
+    ```
+    - 检查 *序列1* 是否按 *字典序* *小于* *序列2*
+        - *字典序比较* 是拥有下列属性的操作
+            1. 逐元素比较二个范围
+            2. 首个不匹配元素定义范围是否按字典序小于或大于另一个
+            3. 若一个范围是另一个的前缀，则较短的范围小于另一个
+            4. 若二个范围拥有等价元素和相同长度，则范围按字典序相等
+            5. 空范围按字典序小于任何非空范围
+            6. 二个空范围按字典序相等
+    - 复杂度：`O(2 * min(N1, N2)`次比较，`N1 = std::distance(first1, last1)`，`N2 = std::distance(first2, last2)` 
 
 #### 排列算法（Permutation operations）
 
 - [`std::is_permutation`](https://en.cppreference.com/w/cpp/algorithm/is_permutation)
+    - 签名
+    ```
+    template <class ForwardIt1, class ForwardIt2>
+    bool 
+    is_permutation(ForwardIt1 first, 
+                   ForwardIt1 last,
+                   ForwardIt2 d_first)；
+                   
+    template <class ForwardIt1, class ForwardIt2, class BinaryPredicate>
+    bool 
+    is_permutation(ForwardIt1      first1, 
+                   ForwardIt1      last1,
+                   ForwardIt2      first2, 
+                   BinaryPredicate p);
+                   
+    template <class ForwardIt1, class ForwardIt2>
+    bool 
+    is_permutation(ForwardIt1 first1, 
+                   ForwardIt1 last1,
+                   ForwardIt2 first2, 
+                   ForwardIt2 last2);
+                     
+    template <class ForwardIt1, class ForwardIt2, class BinaryPredicate>
+    bool 
+    is_permutation(ForwardIt1      first1, 
+                   ForwardIt1      last1,
+                   ForwardIt2      first2, 
+                   ForwardIt2      last2,
+                   BinaryPredicate p);
+    ```
+    - 检查 *序列1* 是否是 *序列2* 的一个排列
+    - 复杂度：`O(N^2)`次谓词调用。若两序列相等，`O(N)`，`N = std::distance(first1, last1)`
+        - 如果迭代器支持 *随机访问* ，且`std::distance(first1, last1) != std::distance(first2, last2)`，则没有谓词调用 
 - [`std::next_permutation`](https://en.cppreference.com/w/cpp/algorithm/next_permutation)
 - [`std::prev_permutation`](https://en.cppreference.com/w/cpp/algorithm/prev_permutation)
 
