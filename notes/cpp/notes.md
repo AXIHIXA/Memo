@@ -60,6 +60,7 @@
     - 向目的位置迭代器写数据的算法都假定 *目的位置足够大* ，能容纳要写入的元素
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
     - 只有当其元素类型也定义了相应的比较运算符时，才可以使用 *关系运算符* 来比较两个容器
+    - 对`std::map`使用下标操作的行为和对数组或者`std::vector`使用时很不相同，使用一个 *不在容器中的键* 作为下标将会 *添加* 一个具有此键的元素到容器中
     - 泛型算法**不能（直接）添加或删除**元素。具体来说，调用`std::unique()`之前要有`std::sort()`，之后还要调用`c.erase()`来实际释放空间
     - 只有迭代器指向的容器支持 *随机访问* 时，才能调用迭代器算术运算（Iterator Arithmetic）
     - 如果要人工转换 *反向迭代器* ，一定记得**反向的`begin`要喂正向的`end`**，且模板参数是 *容器的迭代器类型* ，**不是容器自身类型**
@@ -2247,8 +2248,40 @@ std::map<std::string, int>::mapped_type v5;  // int
     authors.insert({"Barth, John", "Lost in the Funhouse"});
     ```
 - 删除元素
-    - 
-- `std::map`下标操作
+    - `c.erase(k)`：从`c`中删除 *每个* 键为`k`的元素，返回`size_type`值，代表删除的元素的数量
+    - `c.erase(p)`：从`c`中删除迭代器`p`指向的元素。`p`必须指向 *`c`中真实存在* 的元素，且**不能**等于`c.end()`。返回指向`p`元素之后一个元素的迭代器；若`p`指向`c`中的尾元素，则返回`c.end()`
+    - `c.erase(b, e)`：删除区间`[b, e)`内的元素，返回`e`
+    ```
+    // erase on a key returns the number of elements removed
+    if (word_count.erase(removal_word))
+        std::cout << "ok: " << removal_word << " removed" << std::endl;
+    else 
+        std::cout << "oops: " << removal_word << " not found!" << std::endl;
+    
+    // for std::multi_map
+    std::multimap<std::string, std::string> authors;
+    authors.insert({"Barth, John", "Sot-Weed Factor"});
+    authors.insert({"Barth, John", "Lost in the Funhouse"});
+    size_t cnt = authors.erase("Barth, John");  // cnt == 2
+    ```
+- `std::map`的 *下标* 操作
+    - `std::map`和`std::multi_map`提供了 *下标运算符* 和对应的`c.at()`函数
+        - `c[k]`：返回键为`k`的元素的 *引用* ；如果`k` *不在`c`中* ，则 *添加* 一个键为`k`的元素，并值初始化之
+            - 对`std::map`使用下标操作的行为和对数组或者`std::vector`使用时很不相同，使用一个 *不在容器中的键* 作为下标将会 *添加* 一个具有此键的元素到容器中
+        - `c.at(k)`：返回键为`k`的元素的 *引用* ；如果`k` *不在`c`中* ，则抛出`out_of_range`异常
+    ```
+    std::map <std::string, size_t> word_count;  // empty map
+    word_count["Anna"] = 1;                     // insert a value-initialized element with key "Anna"
+                                                // then assign 1 to its value
+    ```
+    - 使用下标操作的返回值
+        - 对于`std::map`，下标返回`mapped_type`类型，而解引用迭代器返回`value_type aka std::pair<const key_type, mapped_type>`
+        - 返回的是 *左值* ，可以读写
+    ```
+    std::cout << word_count["Anna"];  // fetches the element indexed by Anna; prints 1
+    ++word_count["Anna"];             // fetches the element and add 1 to it
+    std::cout << word_count["Anna"];  // fetches the element and print it; prints 2
+    ```
 - 访问元素
 
 #### 无序关联容器        
