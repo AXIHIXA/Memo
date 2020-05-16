@@ -2012,12 +2012,12 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 #### 关联容器概述
 
 - 关联容器类型
-    - 按 *键*（key，关键字） *有序* 保存元素
+    - *有序关联容器* ，按 *键*（key，关键字） *有序* 保存元素，使用 *红黑树* （red-black tree）实现
         - [`std::map`](https://en.cppreference.com/w/cpp/container/map)： *关联数组* （associative array），保存 *键-值词条* （entry，`<key, value>`）
         - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存键
         - [`std::multimap`](https://en.cppreference.com/w/cpp/container/multimap)：键可重复出现的`std::map`
         - [`std::multiset`](https://en.cppreference.com/w/cpp/container/multiset)：键可重复出现的`std::set`
-    - *无序* 集合
+    - *无序关联容器* （unordered associative container），使用 *散列表* （hash table）实现
         - [`std::unordered_map`](https://en.cppreference.com/w/cpp/container/unordered_map)：散列组织的`std::map`
         - [`std::unordered_set`](https://en.cppreference.com/w/cpp/container/unordered_set)：散列组织的`std::set`
         - [`std::unordered_multimap`](https://en.cppreference.com/w/cpp/container/unordered_multimap)：散列组织的`std::map`，键可重复出现
@@ -2268,6 +2268,7 @@ std::map<std::string, int>::mapped_type v5;  // int
     - `std::map`和`std::multi_map`提供了 *下标运算符* 和对应的`c.at()`函数
         - `c[k]`：返回键为`k`的元素的 *引用* ；如果`k` *不在`c`中* ，则 *添加* 一个键为`k`的元素，并值初始化之
             - 对`std::map`使用下标操作的行为和对数组或者`std::vector`使用时很不相同，使用一个 *不在容器中的键* 作为下标将会 *添加* 一个具有此键的元素到容器中
+            - 如果不希望添加元素，则应该使用`c.find(k)`
         - `c.at(k)`：返回键为`k`的元素的 *引用* ；如果`k` *不在`c`中* ，则抛出`out_of_range`异常
     ```
     std::map <std::string, size_t> word_count;  // empty map
@@ -2280,11 +2281,68 @@ std::map<std::string, int>::mapped_type v5;  // int
     ```
     std::cout << word_count["Anna"];            // fetches the element indexed by Anna; prints 1
     ++word_count["Anna"];                       // fetches the element and add 1 to it
-    std::cout << word_count["Anna"];            // fetches the element and print it; prints 2
+    std::cout << word_count["Anna"];            9// fetches the element and print it; prints 2
     ```
-- 访问元素
+- 查找元素
+    - `c.find(k)`：返回指向 *第一个* 键为`k`的元素的迭代器，如不存在则返回尾后迭代器
+    - `c.count(k)`：返回键为`k`的元素的数量。对于非`multi`容器，返回值永远是`0`或`1`
+    - `c.lower_bound(k)`：返回指向 *第一个* 键 *大于等于* `k`的元素的迭代器
+    - `c.upper_bound(k)`：返回指向 *第一个* 键 *大于* `k`的元素的迭代器
+    - `c.equal_range(k)`：返回`std::pair<iterator, iterator>(first, last)`，区间`[first, last)`内元素键全部等于`k`
 
 #### 无序关联容器        
+
+- 无序容器提供与有序容器相同的操作
+- 无序关联容器在存储上组织为一组 *桶* （bucket），每个桶保存零或多个元素
+    - 无序关联容器用 *散列函数* （hash function）将元素映射到桶
+    - 访问时，先计算键的散列值，去对应的桶查找元素
+    - 性能依赖于散列函数的质量，以及桶的数量和大小
+    - *迭代时顺序是乱的*
+- 桶管理
+    - 桶接口
+        - `c.bucket_count()`：正在使用的桶的数目
+        - `c.max_bucket_count()`：容器能容纳的最多的桶的数量
+        - `c.bucket_size(n)`：第`n`个桶中元素数量
+        - `c.bucket(k)`：键为`k`的元素在哪个桶中
+    - 桶迭代
+        - `local_iterator`：用于访问桶中元素的迭代器类型
+        - `const_local_iterator`：用于访问桶中元素的常迭代器类型
+        - `c.begin(n)`，`c.end(n)`：桶`n`的首元素迭代器和尾后迭代器
+        - `c.cbegin(n)`，`c.cend(n)`：桶`n`的首元素常迭代器和尾后常迭代器
+    - 散列策略
+        - `c.load_factor()`：每个桶的平均元素数量，返回`float`
+        - `c.max_load_factor()`：`c`试图维护的平均桶大小，返回`float`值。`c`会在需要的时候添加新的桶，以使得`load_factor <= max_load_factor`
+        - `c.rehash(n)`：重新散列，使得`bucker_count >= n`且`bucket_count > size / max_load_factor`
+        - `c.reserve(n)`：重组存储，在 *不重新散列* 的情况下使得`c`可以保存`n`个元素
+- 无序关联容器对键类型的要求
+    - 默认情况下，无序关联容器使用键类型的`==`运算符来比较元素
+    - 它还使用`hash<key_type>`类型的对象来生成每个元素的散列值
+    - 标准库为 *内置类型* （包括 *指针* ）提供了 *`hash`模板* ，还为包括和 *智能指针* 定义了`hash`
+    - 因此，可以直接定义键是 *内置类型* （包括 *指针* ）、`std::string`和 *智能指针* 类型的无序关联容器
+    - 但**不能直接定义**键是 *自定义类型* 的无序关联容器
+        - 必须人工提供 *`hash`模板* => 16.5
+    - 还可以人工提供充当`==`运算符的函数以及散列函数
+        - 如果类已经有`==`运算符了，则只用重载散列函数
+    ```
+    size_t hasher(const Sales_data & sd)
+    {
+        return hash<string>()(sd.isbn());
+    }
+    
+    bool eqOp(const Sales_data & lhs, const Sales_data & rhs)
+    {
+        return lhs.isbn() == rhs.isbn();
+    }
+    
+    using SD_multiset = std::unordered_multiset<Sales_data, decltype(hasher)*, decltype(eqOp)*>;
+
+    // arguments are the bucket size and pointers to the hash function and equality operator
+    SD_multiset bookstore(42, hasher, eqOp);
+    
+    // use FooHash to generate the hash code; Foo must have an == operator
+    std::unordered_set<Foo, decltype(FooHash)*> fooSet(10, FooHash);
+    ```
+
 
 
 
