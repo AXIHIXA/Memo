@@ -36,6 +36,7 @@
     - 改变容器 *大小* 之后，则 *所有* 指向此容器的迭代器、引用和指针都 *可能* 失效，所以一律更新一波才是 *坠吼的* 。此外，永远**不要缓存**尾后迭代器（这玩意常年变来变去），现用现制，用后即弃
     - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`
     - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
+    - 通常**不对**关联容器使用泛型算法（或不能用或性能很差）
     - `lambda`表达式应尽量**避免**捕获指针或引用。如捕获引用，必须保证在`lambda`执行时变量 *仍存在* 
     - 出于性能考虑，`std::list`和`std::forward_list`应当优先使用 *成员函数版本* 的算法，而**不是**通用算法  
 - 一些小知识
@@ -2007,11 +2008,11 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     
 ### 🌱 [Chap 11] [关联容器](https://en.cppreference.com/w/cpp/container)（Associative Container）
 
-#### 概述
+#### 关联容器概述
 
 - 关联容器类型
     - 按 *键*（key，关键字） *有序* 保存元素
-        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)：关联数组（associative array），保存键-值词条（entry，`<key, value>`）
+        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)： *关联数组* （associative array），保存 *键-值词条* （entry，`<key, value>`）
         - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存键
         - [`std::multimap`](https://en.cppreference.com/w/cpp/container/multimap)：键可重复出现的`std::map`
         - [`std::multiset`](https://en.cppreference.com/w/cpp/container/multiset)：键可重复出现的`std::set`
@@ -2114,7 +2115,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 定义于`<utility>`中
     - 默认构造函数对成员进行 *值初始化*
         - `std::string`，`std::vector`被初始化成空容器，`size_t`被初始化为`0`
-    - 可以提供 *初始化器*
+    - 可以显式调用构造函数传参初始化，或进行 *列表初始化*
     - 数据成员`first`、`second`为 *公有*
     ```
     std::pair<std::string, std::string>      anon;        // holds two strings
@@ -2126,21 +2127,96 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     // print the results
     std::cout << w.first << " occurs " << w.second << ((w.second > 1) ? " times" : " time") << std::endl;
     ```
-    - `std::pair`上的操作
-        - `std::pair<T1, T2> p;`：创建`std::pair`，成员进行值初始化
-        - `std::pair<T1, T2> p(v1, v2);`：创建`std::pair`，成员初始化为给定值
-        - `std::pair<T1, T2> p = {v1, v2};`：创建`std::pair`，成员初始化为给定值
+    - 生成`std::pair`
+        - `std::pair<T1, T2> p;`： *默认初始化* ，创建`std::pair`，成员进行值初始化
+        - `std::pair<T1, T2> p(v1, v2);`： *显式构造* ，创建`std::pair`，成员初始化为给定值
+        - `std::pair<T1, T2> p = {v1, v2};`： *列表初始化* ，创建`std::pair`，成员初始化为给定值
         - `std::make_pair(v1, v2);`：创建`std::pair`，元素类型由`v1`和`v2`自动推断。成员初始化为给定值
+    - 访问`std::pair` 
         - `p.first`
         - `p.second`
         - `p1 rel_op p2`： *关系运算符* `<`，`>`，`<=`，`>=`，按 *字典序* 定义
         - `p1 == p2`
         - `p1 != p2`
+    - 返回`std::pair`
+    ```
+    std::pair <string, int> process(std::vector<std::string> & v)
+    {
+        if (!v.empty())
+            return {v.back(), v.back().size()};    // list initialize
+        else
+            return std::pair<std::string, int>();  // explicitly constructed return value
+    }
+    ```
 
-#### 操作
+#### 关联容器操作
+
+- 类型别名
+    - `key_type`：此容器类型的键类型
+    - `mapped_type`：四种`map`类型中、每个键关联的类型
+    - `value_type`：对于`std::set`，与`key_type`相同；对于`std::map`，为`std::pair<const key_type, mapped_type>`
+        - 不能改变元素的键，因为键是 *常量* 
+```
+std::set<std::string>::value_type v1;        // std::string
+std::set<std::string>::key_type v2;          // std::string
+std::map<std::string, int>::value_type v3;   // std::pair<const std::string, int>
+std::map<std::string, int>::key_type v4;     // std::string
+std::map<std::string, int>::mapped_type v5;  // int
+```
+- 迭代器
+    - 解引用关联容器迭代器时，会得到类型为容器类型的`value_type`的值的 *引用* 
+        - 对`std::map`而言，是`std::pair<const key_type, mapped_type>`类型
+        - 必须记住，一个`std::map`的`value_type`是一个`std::pair`，对一个词条，值可以变，**键不能变**
+    ```
+    // get an iterator to an element in word_count
+    std::map<std::string, size_t>::iterator map_it = word_count.begin();
+    // *map_it is a reference to a pair<const string, size_t> object
+    std::cout << map_it->first;          // prints the key for this element
+    std::cout << " " << map_it->second;  // prints the value of the element
+    map_it->first = "new key";           // error: key is const
+    ++map_it->second;                    // ok: we can change the value through an iterator
+    ```
+    - `std::set`的迭代器 *全部是* *常迭代器*
+        - `std::set`的`iterator`和`const_iterator` *全部是* *常迭代器*
+        - 键可以读，但不能改
+    ```
+    std::set<int> iset = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::set<int>::iterator set_it = iset.begin();
+    
+    if (set_it != iset.end()) 
+    {
+        *set_it = 42;                       // error: keys in a set are read-only
+        std::cout << *set_it << std::endl;  // ok: can read the key
+    }
+    ```
+    - 遍历关联容器
+        - `std::map`和`std::set`都支持`begin()`、`end()`等操作
+        - *有序关联容器* 迭代器按照 *键升序* 遍历元素
+    ```
+    std::map<std::string, size_t>::iterator map_it = word_count.cbegin();
+
+    while (map_it != word_count.cend()) 
+    {
+        cout << map_it->first << " occurs " << map_it->second << " times" << endl;
+        ++map_it; 
+    }
+    ```
+    - 关联容器和泛型算法
+        - 通常**不对**关联容器使用 *泛型算法* => 10
+            - 因为泛型算法经常 *写值* ，但关联容器的键是 *常量* 
+        - 关联容器 *只可用于* 只读算法
+            - 只读算法经常 *搜索* ，但关联容器迭代器**不支持随机访问**，性能会很差
+        - 实际编程中，关联容器要么作为源序列，要么作为目的位置。例如
+            1. 调用`std::copy`将一个关联容器的元素拷贝到另一个序列中
+            2. 将 *插入迭代器* 绑定到关联容器上，将关联容器作为目的位置
+- 添加元素
+    - 
 
 
-#### 无序容器        
+
+
+
+#### 无序关联容器        
 
 
 
