@@ -2210,11 +2210,46 @@ std::map<std::string, int>::mapped_type v5;  // int
             1. 调用`std::copy`将一个关联容器的元素拷贝到另一个序列中
             2. 将 *插入迭代器* 绑定到关联容器上，将关联容器作为目的位置
 - 添加元素
+    - 关联容器的`insert`操作
+        - `c.insert(v)`，`c.emplace(args)`：返回`std::pair<iterator, bool>`，包含指向具有指定键的元素，以及指示插入是否成功的`bool`。对于`std::multi_set`和`std::multi_map`，总会插入给定元素并返回一个指向新元素的迭代器
+        - `c.insert(b, e)`，`c.insert({a, b, c...})`：返回`void`。插入区间或初始化列表中的所有元素，对于非`multi`容器，键不能重复
+        - `c.insert(p, v)`，`c.emplace(p, args)`：迭代器`p`用于 *提示* *开始搜索新元素应该存储的位置* ，返回指向具有给定键的元素的迭代器
+    ```
+    // ways to add word to word_count
+    word_count.insert({word, 1});
+    word_count.insert(std::make_pair(word, 1));
+    word_count.insert(std::pair<std::string, size_t>(word, 1));
+    word_count.insert(std::map<std::string, size_t>::value_type(word, 1));
+    
+    word_count.emplace(word, 1);
+    ```
+    - 检测`insert`的返回值
+    ```
+    std::map<std::string, size_t> word_count;
+    std::string word;
+    
+    while (std::cin >> word) 
+    {
+        std::pair<std::map<std::string, size_t>::iterator, bool> ret = word_count.insert({word, 1});
+        
+        if (!ret.second)
+        {
+            ++ret.first->second;
+        }
+    }
+    ```
+    - 向`std::multi_set`或`std::multi_map`添加元素
+    ```
+    std::multimap<std::string, std::string> authors;
+    // adds the first element with the key Barth, John
+    authors.insert({"Barth, John", "Sot-Weed Factor"});
+    // ok: adds the second element with the key Barth, John
+    authors.insert({"Barth, John", "Lost in the Funhouse"});
+    ```
+- 删除元素
     - 
-
-
-
-
+- `std::map`下标操作
+- 访问元素
 
 #### 无序关联容器        
 
