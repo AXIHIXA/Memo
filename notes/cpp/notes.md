@@ -2278,9 +2278,9 @@ std::map<std::string, int>::mapped_type v5;  // int
         - 对于`std::map`，下标返回`mapped_type`类型，而解引用迭代器返回`value_type aka std::pair<const key_type, mapped_type>`
         - 返回的是 *左值* ，可以读写
     ```
-    std::cout << word_count["Anna"];  // fetches the element indexed by Anna; prints 1
-    ++word_count["Anna"];             // fetches the element and add 1 to it
-    std::cout << word_count["Anna"];  // fetches the element and print it; prints 2
+    std::cout << word_count["Anna"];            // fetches the element indexed by Anna; prints 1
+    ++word_count["Anna"];                       // fetches the element and add 1 to it
+    std::cout << word_count["Anna"];            // fetches the element and print it; prints 2
     ```
 - 访问元素
 
