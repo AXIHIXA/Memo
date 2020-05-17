@@ -276,10 +276,10 @@
         - 否则，进行[无限定名字查找](https://en.cppreference.com/w/cpp/language/unqualified_lookup)（Unqualified name lookup）
 - 根据变量的 *定义位置* 和 *生命周期* ，`C++`的变量具有不同的 *作用域* ，共分为以下几类 
     - [*块作用域*](https://en.cppreference.com/w/cpp/language/scope#Block_scope)（Block scope）
-    - *函数形参作用域* （Function parameter scope）
+    - [*函数形参作用域*](https://en.cppreference.com/w/cpp/language/scope#Function_parameter_scope)（Function parameter scope）
     - *函数作用域* （Function scope）
     - *命名空间作用域* （Namespace scope）
-        - 包含 *全局命名空间作用域* （Global namespace scope），即所谓的全局作用域
+        - 包含 *全局命名空间作用域* （Global namespace scope），即所谓的 *全局作用域* 
     - *类作用域* （Class scope）
     - *枚举作用域* （Enumeration scope）
     - *模板形参作用域* （Template parameter scope）
@@ -306,7 +306,7 @@ int main()
 
 int b = a;                                // 错误：名字 a 不在作用域中
 ```
-- 声明于 *异常处理块* 中的名字的 *块作用域* 开始于其声明点，并在 *该异常处理块* 结束时结束
+- 声明于 *异常处理块* 中的名字的作用域开始于其声明点，并在 *该异常处理块* 结束时结束
     - 对 *其他异常处理块* 或 *外围块* **不可见**
 ```
 try 
@@ -324,7 +324,7 @@ catch (std::exception & e)
     ++n;                                  // 错误： n 不在作用域中
 }
 ```
-- 在`for`循环的初始化语句中，在`for`循环的条件中，在范围`for`循环的范围声明中，在`if`语句或`switch`语句的初始化语句中，在`if`语句、`while`循环或`switch`语句的条件中，声明的名字的潜在作用域，开始于其声明点，并结束于控制语句的末尾
+- 在`for`循环的初始化语句中，在`for`循环的条件中，在范围`for`循环的范围声明中，在`if`语句或`switch`语句的初始化语句中，在`if`语句、`while`循环或`switch`语句的条件中，声明的名字的作用域，开始于其声明点，并结束于控制语句的末尾
 ```
 Base * bp = new Derived;
 if (Derived * dp = dynamic_cast<Derived *>(bp))
@@ -377,6 +377,47 @@ default:
 }
 ```
 
+#### [函数形参作用域](https://en.cppreference.com/w/cpp/language/scope#Function_parameter_scope)（Function parameter scope）
+
+- 函数 *形参* （包括`lambda`表达式的形参）或函数 *局部预定义变量* 的作用域开始于其声明点
+    - 如果是函数 *声明* ，则终止于 *声明符末尾* 
+    - 如果是函数 *定义* ，则终止于 *函数体末尾* ，或使用 *函数`try`块* 时，终止于 *最后一个异常处理块末尾* 
+```
+const int n = 3;
+ 
+int f1(int n,                             // 全局 n 的作用域间断
+                                          // 参数 n 的作用域开始
+       int y = n);                        // 错误：默认实参涉指了形参
+ 
+int (*(*f2)(int n))[n];                   // OK ：函数形参 n 的作用域终止于其函数声明符的末尾
+                                          // 数组声明符中，全局 n 在作用域中
+                                          // （这声明了返回 int 的 3 元素数组的指针的函数的指针）
+ 
+// 相反
+auto (*f3)(int n)->int (*)[n];            // 错误：以参数 n 为数组边界
+ 
+ 
+int f(int n = 2)                          // n 的作用域开始
+try                                       // 函数 try 块
+{                                         // 函数体开始
+    ++n;                                  // n 在作用域中并指代函数形参
+    {
+        int n = 2;                        // 局部变量 n 的作用域开始
+                                          // 函数参数 n 的作用域中断
+        ++n;                              // n 在此块中指代局部变量
+    }                                     // 局部变量 n 的作用域结束
+                                          // 函数参数 n 的作用域恢复
+} 
+catch (...) 
+{
+    ++n;                                  // n 在作用域中并指代函数形参
+    throw;
+}                                         // 最后异常处理块结束，函数形参 n 的作用域结束
+
+int a = n;                                // OK ：名称 n 在作用域中
+```
+
+#### 
 
 #### 从作用域和存储期看变量
 
