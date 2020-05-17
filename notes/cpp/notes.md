@@ -315,9 +315,9 @@
 
 
 
-### 🌱 [`cv`（`const`，`volatile`）限定](https://en.cppreference.com/w/cpp/language/cv)（cv (const and volatile) type qualifiers）
+### 🌱 [`cv`限定](https://en.cppreference.com/w/cpp/language/cv)（`cv` (`const` and `volatile`) type qualifiers）
 
-可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性8 （constness）或 *易变性* （volatility）。
+可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性* （constness）或 *易变性* （volatility）。
 
 1. `const`对象
     - 包含
