@@ -358,16 +358,15 @@
     1. *括号初始化器* `( expression-list )`：括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表
     2. *等号初始化器* `= expression`：等号后面跟着一个表达式
     3. *花括号初始化器* `{ initializer-list }`：花括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表， *可以为空* 
-        - 这种初始化被称作 *列表初始化* 
-        - 如果产生 *精度损失* ，会报 *编译错误* 
-    ```
-    int a = 1;       // ok. 
-    int b(1);        // ok. 
-    int c = {1};     // ok. list-initialization
-    int d{1};        // ok. list-initialization
-    int e = {3.14};  // error: type 'double' can not be narrowed down to 'int' in initializer list
-    int f{3.14};     // error: type 'double' can not be narrowed down to 'int' in initializer list
-    ```
+        - `C++11`引入，被称作 *列表初始化* 。如损失精度，则报 *编译错误* 
+        ```
+        int a = 1;       // ok. 
+        int b(1);        // ok. 
+        int c = {1};     // ok. list-initialization
+        int d{1};        // ok. list-initialization
+        int e = {3.14};  // error: type 'double' can not be narrowed down to 'int' in initializer list
+        int f{3.14};     // error: type 'double' can not be narrowed down to 'int' in initializer list
+        ```
 - 根据上下文， *初始化器* 具体可能进行
     1. [*值初始化*](https://en.cppreference.com/w/cpp/language/value_initialization)，例如`std::string s{};`
     2. [*直接初始化*](https://en.cppreference.com/w/cpp/language/direct_initialization)，例如`std::string s("hello");`
@@ -391,15 +390,15 @@ new T {}                                (6)  // 匿名临时量
 Class::Class(...) : member{} { ... }    (7)
 ```
 - 初始化流程
-    1. 若`T`是 *聚合类* 且使用的是花括号，执行 *聚合初始化* 
-    2. 若`T`是**没有** *合成的默认构造函数* ，则 *默认初始化* 
-    3. 若`T`是拥有 *合成的默认构造函数* 的 *类类型* ，则 
+    1. 若`T`是 *聚合体* 且使用的是花括号，执行 *聚合初始化* 
+    2. 若`T`是**没有** *默认构造函数* ，或拥有 *用户提供的或被删除的默认构造函数* 的类类型，则 *默认初始化* 对象
+    3. 若`T`是拥有 *默认构造函数* 的类类型，而 *默认构造函数既非用户提供亦未被删除* （即 *隐式定义* 的或`= default;`的）
         1. *零初始化* 对象的数据成员
         2. 然后，若数据成员拥有 *非平凡的默认构造函数* ，则 *默认初始化* 
     4. 若`T`是 *数组类型* ，则 *值初始化* 数组的 *每个元素* 
     5. 否则， *零初始化* 对象
 - 注意事项
-    - 只有 *用户未定义的* 或在首个声明处显式`= default;`的构造函数是 *合成的默认构造函数* 
+    - 若 *构造函数* 是 *用户声明* 的，且**未在**其 *首个声明上显式`= default;`* ，则它是 *用户提供* 的 
     - 语法`T object();`声明的是 *函数* 
     - **不能**值初始化 *引用*
     - 语法`T() (1)`对于 *数组* **禁止**，但允许`T{} (5)`
@@ -410,28 +409,72 @@ Class::Class(...) : member{} { ... }    (7)
 
 - 从 *明确的构造函数实参的集合* 初始化对象
 ```
-T object ( arg );
-T object ( arg1, arg2, ... );               (1)     
-T object { arg };                           (2) 
-T ( other )
-T ( arg1, arg2, ... )                       (3)     
+T object (arg);
+T object (arg1, arg2, ...);                 (1)  // 以括号初始化器初始化
+T object {arg};                             (2)  // 以花括号初始化器初始化
+T (other)
+T (arg1, arg2, ...)                         (3)  // 用函数式转型或以带括号的表达式列表初始化  
 static_cast< T >( other )                   (4)     
 new T(args, ...)                            (5)     
 Class::Class() : member(args, ...) { ... }  (6)     
-[arg](){ ... }                              (7) 
+[arg](){ ... }                              (7)  // lambda 表达式中从按复制捕获的变量初始化闭包对象的成员
 ```
-- 
 
 #### [复制初始化](https://en.cppreference.com/w/cpp/language/copy_initialization)
 
-
+- 从 *另一对象* 初始化对象
+```
+T object = other;                           (1)     
+T object = {other} ;                        (2)
+function(other)                             (3)  // 函数非引用形参    
+return other;                               (4)     
+throw object;
+catch (T object)                            (5)     
+T array[N] = {other};                       (6)  // 作为聚合初始化的一部分，以初始化提供了初始化器的每个元素   
+```
 
 #### [列表初始化](https://en.cppreference.com/w/cpp/language/list_initialization)
 
-
+- 从 *花括号初始化器* 初始化对象 
+    - *直接列表初始化* （考虑`explicit`和非`explicit`构造函数）
+    ```
+    T object { arg1, arg2, ... }; 	                (1) 	
+    T { arg1, arg2, ... }                       	(2) 	
+    new T { arg1, arg2, ... } 	                    (3) 	
+    Class { T member { arg1, arg2, ... }; }; 	    (4)   // 在不使用等号的非静态数据成员初始化器中	
+    Class::Class() : member{arg1, arg2, ...} {... 	(5)   // 在构造函数的成员初始化列表中，若使用花括号初始化器列表
+    ```
+    - *复制列表初始化* （考虑`explicit`和非`explicit`构造函数，但只调用非`explicit`构造函数） 
+    ```
+    T object = {arg1, arg2, ...}; 	                (6) 	
+    function({ arg1, arg2, ... }) 	                (7) 	
+    return { arg1, arg2, ... } ; 	                (8) 	
+    object[{ arg1, arg2, ... }]              	    (9) 	
+    object = { arg1, arg2, ... } 	                (10)  // 在赋值表达式中，以列表初始化对重载的运算符的形参初始化
+    U({ arg1, arg2, ... }) 	                        (11)  // 函数式强制转换表达式或其他构造函数调用
+    Class { T member = { arg1, arg2, ... }; };      (12)  // 在使用等号的非静态数据成员初始化器中
+    ```
 
 #### [聚合初始化](https://en.cppreference.com/w/cpp/language/aggregate_initialization)
 
+- 从 *花括号初始化器* 初始化 
+```
+T object = {arg1, arg2, ...};                   	(1) 	
+T object {arg1, arg2, ...}; 	                    (2)
+```
+- 注意事项
+    - 当聚合初始化 *联合体* 时，只初始化其 *首个非静态数据成员*
+    - *聚合体* 是下列类型之一
+        - *数组* 类型
+        - 符合以下条件的类类型（常为`struct`或`union`） 
+            - **无** *私有或受保护的【直接（`C++17`起）】非静态数据成员*  
+            - 构造函数满足
+                - **无**用户提供的构造函数（允许显式预置或弃置的构造函数）（`C++11 ~ C++17`）
+                - **无**用户提供、继承或`explicit`构造函数（允许显式预置或弃置的构造函数）（`C++17 ~ C++20`）
+                - **无**用户声明或继承的构造函数（`C++20`起）
+            - **无** *【虚、私有或受保护（`C++17`起）】基类*
+            - **无** *虚成员函数* 
+            - **无** *默认成员初始化器* （`C++11 ~ C++14`）
 
 
 #### [引用初始化](https://en.cppreference.com/w/cpp/language/reference_initialization)
@@ -1597,11 +1640,15 @@ t.print1(0);  // 0 1 2
 #### 聚合类（aggregate class）
 
 - *聚合类* 使得用户可以直接访问其成员，并且具有特殊的初始化语法形式
-- 当一个类满足如下条件（比如纯`C`风格的`struct`）时，我们说它是 *聚合的*
-    - 所有成员都是`public`的
-    - **没有**定义任何构造函数
-    - **没有**类内初始值
-    - **没有**基类，也没有`virtual`函数
+- 当一个类满足如下条件（常为`struct`或`union`）时，我们说它是 *聚合的* 
+    - **无** *私有或受保护的【直接（`C++17`起）】非静态数据成员*  
+    - 构造函数满足
+        - **无**用户提供的构造函数（允许显式预置或弃置的构造函数）（`C++11 ~ C++17`）
+        - **无**用户提供、继承或`explicit`构造函数（允许显式预置或弃置的构造函数）（`C++17 ~ C++20`）
+        - **无**用户声明或继承的构造函数（`C++20`起）
+    - **无** *【虚、私有或受保护（`C++17`起）】基类*
+    - **无** *虚成员函数* 
+    - **无** *默认成员初始化器* （`C++11 ~ C++14`）
 - 我们可以提供一个花括号括起来的成员初始值列表，并用它初始化聚合类的成员
 ```
 Entry e = {0, "Anna"};
