@@ -315,11 +315,33 @@
 
 
 
-
 ### 🌱 [`cv`（`const`，`volatile`）限定](https://en.cppreference.com/w/cpp/language/cv)（cv (const and volatile) type qualifiers）
 
+可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性8 （constness）或 *易变性* （volatility）。
 
-
+1. `const`对象
+    - 包含
+        - `const`限定的对象
+        - `const`对象的非`mutable`子对象
+    - **不能**修改
+        - 直接这么做是编译时错误
+        - 间接这么做（例如通过到非`const`类型的引用或指针修改`const`对象）是 *未定义行为* 
+2. `volatile`对象
+    - 包含
+        - `volatile`限定的对象
+        - `volatile`对象的子对象
+        - `const volatile`对象的`mutable`子对象
+    - 通过`volatile`限定的类型的 *泛左值表达式* 的每次访问（读或写操作、成员函数调用等）都**不能被优化掉**
+        - 即在单个执行线程内，`volatile`访问不能被优化掉，或者与另一按顺序早于或按顺序晚于该`volatile`访问的可见副作用进行重排序
+        - 这使得`volatile `对象适用于与信号处理函数之间的交流，但不适于与另一执行线程交流
+    - 试图通过非`volatile`泛左值涉指`volatile`对象（例如，通过到非`volatile`类型的引用或指针）是 *未定义行为* 
+3. `const volatile`对象
+    - 包含
+        - `const volatile`限定的对象
+        - `const volatile`对象的非`mutable`子对象
+        - `volatile`对象的`const`子对象
+        - `const`对象的非`mutable volatile`子对象
+    - 同时表现为`const`对象与`volatile`对象 
 
 
 
