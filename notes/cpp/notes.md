@@ -409,28 +409,28 @@ Class::Class(...) : member{} { ... }    (7)
 
 - 从 *明确的构造函数实参的集合* 初始化对象
 ```
-T object (arg);
-T object (arg1, arg2, ...);                 (1)  // 以括号初始化器初始化
-T object {arg};                             (2)  // 以花括号初始化器初始化
-T (other)
-T (arg1, arg2, ...)                         (3)  // 用函数式转型或以带括号的表达式列表初始化  
-static_cast< T >( other )                   (4)     
-new T(args, ...)                            (5)     
-Class::Class() : member(args, ...) { ... }  (6)     
-[arg](){ ... }                              (7)  // lambda 表达式中从按复制捕获的变量初始化闭包对象的成员
+T object(arg);
+T object(arg1, arg2, ...);                                    (1)  // 以括号初始化器初始化
+T object {arg};                                               (2)  // 以花括号初始化器初始化
+T(other)
+T(arg1, arg2, ...)                                            (3)  // 用函数式转型或以带括号的表达式列表初始化  
+static_cast< T >( other )                                     (4)     
+new T(args, ...)                                              (5)     
+Class::Class() : member(args, ...) { ... }                    (6)     
+[arg](){ ... }                                                (7)  // lambda表达式中用复制捕获的变量初始化闭包对象的成员
 ```
 
 #### [复制初始化](https://en.cppreference.com/w/cpp/language/copy_initialization)
 
 - 从 *另一对象* 初始化对象
 ```
-T object = other;                           (1)     
-T object = {other} ;                        (2)
-function(other)                             (3)  // 函数非引用形参    
-return other;                               (4)     
+T object = other;                                             (1)     
+T object = {other} ;                                          (2)
+function(other)                                               (3)  // 函数非引用形参    
+return other;                                                 (4)     
 throw object;
-catch (T object)                            (5)     
-T array[N] = {other};                       (6)  // 作为聚合初始化的一部分，以初始化提供了初始化器的每个元素   
+catch (T object)                                              (5)     
+T array[N] = {other};                                         (6)  // 聚合初始化中以初始化提供了初始化器的每个元素   
 ```
 
 #### [列表初始化](https://en.cppreference.com/w/cpp/language/list_initialization)
@@ -438,11 +438,11 @@ T array[N] = {other};                       (6)  // 作为聚合初始化的一�
 - 从 *花括号初始化器* 初始化对象 
     - *直接列表初始化* （考虑`explicit`和非`explicit`构造函数）
     ```
-    T object { arg1, arg2, ... };                   (1)     
-    T { arg1, arg2, ... }                           (2)     
-    new T { arg1, arg2, ... }                       (3)     
-    Class { T member { arg1, arg2, ... }; };        (4)   // 在不使用等号的非静态数据成员初始化器中    
-    Class::Class() : member{arg1, arg2, ...} {...   (5)   // 在构造函数的成员初始化列表中，若使用花括号初始化器列表
+    T object { arg1, arg2, ... };                             (1)     
+    T { arg1, arg2, ... }                                     (2)     
+    new T { arg1, arg2, ... }                                 (3)     
+    Class { T member { arg1, arg2, ... }; };                  (4)   // 在不使用等号的非静态数据成员初始化器中    
+    Class::Class() : member{arg1, arg2, ...} {...             (5)   // 构造函数的成员初始化列表中使用花括号初始化器列表
     ```
     - *复制列表初始化* （考虑`explicit`和非`explicit`构造函数，但只调用非`explicit`构造函数） 
     ```
@@ -450,7 +450,7 @@ T array[N] = {other};                       (6)  // 作为聚合初始化的一�
     function({ arg1, arg2, ... })                             (7)   
     return { arg1, arg2, ... } ;                              (8)   
     object[{ arg1, arg2, ... }]                               (9)   
-    object = { arg1, arg2, ... }                              (10)  // 在赋值表达式中，以列表初始化对重载的运算符的形参初始化
+    object = { arg1, arg2, ... }                              (10)  // 赋值表达式中以列表初始化对重载的运算符的形参初始化
     U({ arg1, arg2, ... })                                    (11)  // 函数式强制转换表达式或其他构造函数调用
     Class { T member = { arg1, arg2, ... }; };                (12)  // 在使用等号的非静态数据成员初始化器中
     ```
@@ -484,19 +484,19 @@ T object {arg1, arg2, ...};                                   (2)
 ```
 T & ref = object ;
 T & ref = { arg1, arg2, ... };
-T & ref ( object ) ;
+T & ref(object) ;
 T & ref { arg1, arg2, ... } ;                                 (1)   
 T && ref = object ;
 T && ref = { arg1, arg2, ... };
-T && ref ( object ) ;
+T && ref (object) ;
 T && ref { arg1, arg2, ... } ;                                (2) 
-given R fn ( T & arg ); or R fn ( T && arg );
-fn ( object )
-fn ( { arg1, arg2, ... } )                                    (3)   
-inside T & fn () or T && fn ()
+given R fn(T & arg); or R fn(T && arg);
+fn(object )
+fn({ arg1, arg2, ... })                                       (3)  // 有引用形参的函数的调用表达式
+inside T & fn() or T && fn()
 return object ;                                               (4)   
 given T & ref ; or T && ref ; inside the definition of Class
-Class::Class(...) : ref( object) {...}                        (5)   
+Class::Class(...) : ref(object) {...}                         (5)   
 ```
 
 #### [默认初始化](https://en.cppreference.com/w/cpp/language/default_initialization)
