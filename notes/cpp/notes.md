@@ -165,21 +165,23 @@
 
 
 
-### 🌱 作用域（scope）
+### 🌱 [作用域](https://en.cppreference.com/w/cpp/language/scope)（scope）和[存储期](https://en.cppreference.com/w/cpp/language/storage_duration)（Storage duration）
+
+#### 作用域
 
 - 根据变量的 *定义位置* 和 *生命周期* ，`C++`的变量具有不同的 *作用域* ，共分为以下几类 
-    - 全局作用域（global scope，跨文件的全局作用域）
-    - 文件作用域（file scope，仅限自己所在文件内的“全局”作用域）
-    - 局部作用域（local scope）
-        - 块作用域（block scope）
-            - 比如
-                - 分支或循环语句体
-                - 函数体
-                - 其他语句块（直接一个大括号括起来）
-            - 块**不以**分号作为结束
-        - 类作用域（class scope）
-        - 命名空间作用域（namespace scope）
-- 内部作用域（inner scope）会 *覆盖* 外部作用域（outer scope）的同名变量
+    - 全局作用域（Global scope，跨文件的全局作用域）
+    - 文件作用域（File scope，仅限自己所在文件内的“全局”作用域。详见下文 *链接* ）
+    - 局部作用域（Local scope）
+        - 块作用域（Block scope）
+        - 函数形参作用域（Function parameter scope）
+        - 函数作用域（Function scope）
+        - 命名空间作用域（Namespace scope）
+        - 类作用域（Class scope）
+        - 枚举作用域（Enumeration scope）
+        - 模板形参作用域（Template parameter scope）
+- 作用域始于 *声明点* 
+    - 内部作用域（inner scope）的变量会 *覆盖* 外部作用域（outer scope）的 *同名变量* 
 - 从作用域看变量
     - *全局非静态变量* 
         - 即定义于所有函数之外的非静态变量
@@ -221,83 +223,103 @@
     - 函数的返回值类型前加上`static`关键字
     - 只在声明它的文件当中可见，**不能**被其它文件使用
 
+#### 存储期
 
+程序中的所有对象都具有下列存储期之一：
 
+1. *自动存储期*  （Automatic storage duration）
+    - 对象的存储在外围代码块开始时分配，而在结束时解分配
+    - 未声明为`static`、`extern`或`thread_local`的所有 *局部对象* 均拥有此存储期
+2. *静态存储期*  （Static storage duration）
+    - 对象的存储在程序开始时分配，而在程序结束时解分配
+    - 该对象永远 *只存在一个实例*
+    - 所有声明于 *命名空间作用域* （包含全局命名空间）的对象，加上声明带有`static`或`extern` 的对象均拥有此存储期
+    - 有关拥有此存储期的对象的初始化的细节，见 *全局变量* 与 *静态局部变量* 
+3. *线程存储期*  （Thread storage duration）
+    - 对象的存储在线程开始时分配，而在线程结束时解分配
+    - 每个线程拥有其自身的对象实例
+    - 唯有声明为`thread_local`的对象拥有此存储期
+    - `thread_local`能与`static`或`extern`一同出现，以调整连接
+    - 关于具有此存储期的对象的初始化的细节，见 *全局变量* 与 *静态局部变量* 
+4. *动态存储期*  （Dynamic storage duration）
+    - 对象的存储是通过使用 *动态内存分配函数* 来按请求进行分配和解分配的
+    - 关于具有此存储期的对象的初始化的细节，见[`new`表达式](https://en.cppreference.com/w/cpp/language/new)
 
+#### 链接（Linkage）
 
+所有变量都具有如下四种 *链接* 之一：
 
-### 🌱 初始化
-
-#### 显式初始化和隐性初始化
-
-- *显式初始化*
-    - `C`风格显式初始化
+1. *无链接* （No linkage）
+    - 名字只能从 *其所在的作用域* 使用
+    - 声明于 *块作用域* 的下列任何名字均 *无链接* 
+        - **未显式声明**为`extern`的变量（无关乎`static`修饰符）
+        - *局部类* 及 *其成员函数* 
+        - *其他名字* ，`typedef`、 *枚举* 及 *枚举项* 
+        - **未指定**为拥有 *外部* 、 *模块* （`C++20`起）或 *内部* 链接的名字亦 *无连接* ，无关乎其声明所处在的作用域
+2. *内部链接* （Internal linkage）
+    - 名字可从 *当前翻译单元* 中的所有作用域使用
+    - 声明于 *命名空间作用域* 的下列任何名字均具有 *内部链接* 
+        1. 声明为`static`的 *变量*  、 *变量模板* （`C++14`起）、 *函数* 和 *函数模板* 
+        2. `const`限定的 *变量* （包含`constexpr`），但以下情况**除外**
+            - `extern`的
+            - 先前声明为外部链接的
+            - `volatile`
+            - 模板的（`C++14`起）
+            - `inline`的（`C++17`起）
+        3. *匿名联合体* 的数据成员
+        4. 声明于 *无名命名空间* 或 *无名命名空间内的命名空间* 中名字，即使是显式声明为`extern`者，均拥有 *内部链接* 
+    - `const`常量不论是声明还是定义都添加`extern`修饰符
+        - 默认状态下，`const`对象为文件作用域（即：仅在文件内有效）
+        - 如果想在多个文件之间共享`const`对象，则必须在定义的对象之前添加`extern`关键字
+        ```
+        extern const int BUF_SIZE = fcn();  // globals.cpp
+        extern const int BUF_SIZE;          // globals.h
+        extern const int BUF_SIZE;          // sth.h （其他要用到`BUF_SIZE`的头文件）
+        ```
+        - 编译器在编译过程中会把所有的`const`变量都替换成相应的字面值。为了执行上述替换，编译器必须知道变量的初始值。如果程序包含多个文件，则每个用了`const`对象的文件都必须得能访问到它的初始值才行。要做到这一点，就必须在每一个用到变量的文件之中都有它的定义。为了支持这一用法，同时避免对同一变量的重复定义，默认情况下，`const`对象被设定为仅在文件内有效。当多个文件中出现了同名的`const`变量时，其实等同于在不同文件中分别定义了**独立的**变量。如果希望`const`对象只在一个文件中定义一次，而在多个文件中声明并使用它，则需采用上述操作。
+3. *外部链接* （External linkage）
+    - 名字能从 *其他翻译单元中* 的作用域使用
+        - 具有 *外部连接* 的变量和函数亦具有 *语言连接* （Language linkage），这使得可以连接到以不同编程语言编写的翻译单元 
+            - 啊，熟悉的`python`，你来了
+    - 声明于 *命名空间作用域* 的下列任何名字均具有 *外部连接* ，
+        - 所有声明为`extern`的 *变量* 
+        - **未声明**为`static`的 *函数* 和 *函数模板* 
+        - *命名空间作用域* 内**未声明**为`static`的非`const`变量
+        - *枚举*
+        - 和类有关的如下玩意儿
+            - *类名*
+            - *成员函数* 
+            - *静态数据成员* （不论是否`const`）、
+            - *嵌套类*
+            - *嵌套枚举*
+            - *首次引入* 的 *友元函数* 
+        - **未声明**为`static`的 *函数模板* 
+        - 任何 *首次声明于块作用域* 的下列名称
+            - 声明为`extern`的 *变量名* 
+            - *函数名*  
+    - **例外**
+        - 名字声明于 *无名命名空间或内嵌于无名命名空间的命名空间* ，则该名字拥有 *内部连接* 
+        - 声明于 *命名空间作用域* 中的 *具名模块* 且 *不被导出* ，且无内部连接，则该名字拥有 *模块连接* （`C++20`起）
     ```
-    int a = 1;
-    int b(1);
+    int a;             // 这其实是声明并定义了变量a
+    extern int a;      // 这才是仅仅声明而不定义
+    extern int a = 1;  // 这是声明并定义了变量a并初始化为1。
+                       // 任何包含显式初始化的声明即成为定义，如有extern则其作用会被抵消
     ```
-    - *列表初始化* 。如会损失精度，则**CE**
-    ```
-    int c = {1};
-    int d{1};
-        
-    int e = {3.14};  // error: type 'double' can not be narrowed down to 'int' in initializer list
-    int f{3.14};     // error: type 'double' can not be narrowed down to 'int' in initializer list
-    ```
-- *隐式初始化* ：未显式初始化的变量按照如下规则执行隐式初始化
-    - 内置类型
-        - *全局变量* ：内置变量且在函数体之外，隐式初始化为`0`
-        - *局部静态变量* ：函数体内的静态变量，隐式初始化为`0`
-        - *局部非静态变量* ：内置变量且在函数体之内，**无**隐式初始化
-            - 未初始化的内置类型局部变量将产生 *未定义* 的值
-    - 自定义对象
-        - 由具体的类决定 => 7.5.3
-
-#### 拷贝初始化和直接初始化
-
-- 如果初始化时使用了等号，则是 *拷贝初始化* （生成并直接初始化临时右值对象，再将临时对象拷贝到左值），有性能损失
-```
-std::string s = std::string("hehe"); 
-
-// 实际执行时等价于：
-std::string tmp("hehe"); 
-std::string s = tmp; 
-```
-- 如不使用等号，则是 *直接初始化* 
+4. *模块连接* （Module linkage，`C++20`新标准）
+    - 名字 *只能* 从 *同一模块单元* 或 *同一具名模块中的其他翻译单元* 的作用域指代
+    - 声明于 *命名空间作用域* 中的 *具名模块* 且 *不被导出* ，且无内部连接，则该名字拥有 *模块连接*
 
 
 
 
 
 
-### 🌱 `extern`修饰符
 
-#### 声明和定义
+### 🌱 [`cv`（`const`，`volatile`）限定](https://en.cppreference.com/w/cpp/language/cv)（cv (const and volatile) type qualifiers）
 
-```
-int a;             // 这其实是声明并定义了变量a
-extern int a;      // 这才是仅仅声明而不定义
-extern int a = 1;  // 这是声明并定义了变量a并初始化为1。
-                   // 任何包含显式初始化的声明即成为定义，如有extern则其作用会被抵消
-```
 
-#### `const`常量不论是声明还是定义都添加`extern`修饰符
 
-- 默认状态下，`const`对象为文件作用域（即：仅在文件内有效）
-- 如果想在多个文件之间共享`const`对象，则必须在定义的对象之前添加`extern`关键字
-```
-extern const int BUF_SIZE = fcn();  // globals.cpp
-extern const int BUF_SIZE;          // globals.h
-extern const int BUF_SIZE;          // sth.h （其他要用到`BUF_SIZE`的头文件）
-```
-编译器在编译过程中会把所有的`const`变量都替换成相应的字面值。
-为了执行上述替换，编译器必须知道变量的初始值。
-如果程序包含多个文件，则每个用了`const`对象的文件都必须得能访问到它的初始值才行。
-要做到这一点，就必须在每一个用到变量的文件之中都有它的定义。
-为了支持这一用法，同时避免对同一变量的重复定义，默认情况下，`const`对象被设定为仅在文件内有效。
-当多个文件中出现了同名的`const`变量时，其实等同于在不同文件中分别定义了**独立的**变量。
-
-如果希望`const`对象只在一个文件中定义一次，而在多个文件中声明并使用它，则需采用上述操作。
 
 
 
@@ -390,7 +412,7 @@ const intptr p = &a;             // "const (int *)", i.e. `int * const`. NOT `co
 const intptr2 p2 = &a, p3 = &a;  // 注意这里p3已经是指针了，不需要再加*
 ```
 
-#### `auto`类型说明符
+#### [`auto`类型说明符](https://en.cppreference.com/w/cpp/language/auto)
 
 - `auto`定义的变量必须有初始值
     - 编译器通过初始值来推算类型
@@ -428,7 +450,7 @@ auto sz = 0, pi = 3.14;  // 错误，sz和pi类型不同
     auto & n = i, *p2 = &ci;     // 错误：i的类型为int，而&ci的类型为const int
     ```
 
-#### `decltype`类型指示符
+#### [`decltype`类型指示符](https://en.cppreference.com/w/cpp/language/decltype)（`decltype` specifier）
 
 - `decltype(expr)`在不对`expr`进行求值的情况下分析并返回`expr`的数据类型
 ```
@@ -450,20 +472,7 @@ decltype(cj) z;              // 错误：z为const int &，必须被初始化
 
 
 
-### 🌱 左值和右值
-
-- 赋值运算符`a = b`中，`a`需是（非常量）左值，返回结果也是**左**值
-- 取地址符`&a`中，`a`需是左值，返回指向`a`的右值指针
-- 解引用运算符`*a`和下标运算符`a[i]`的返回结果均为**左**值
-- 自增自减运算符`a++`等中，`a`需是左值；前置版本`++a`返回结果亦为**左**值
-- 箭头运算符`p->ele`返回**左**值；点运算符`a.ele`返回值左右类型**和`a`相同**
-
-
-
-
-
-
-### 🌱 `sizeof`运算符
+### 🌱 [`sizeof`运算符](https://en.cppreference.com/w/cpp/language/sizeof)
 
 `sizeof`运算符返回一条表达式或者一个类型名字所占的字节数，返回类型为`size_t`类型的**常量表达式**。   
 `sizeof`运算符满足右结合律。    
@@ -471,7 +480,7 @@ decltype(cj) z;              // 错误：z为const int &，必须被初始化
 有两种形式：
 ```
 sizeof(Type)  // 返回类型大小
-sizeof expr   // 返回表达式结果类型大小
+sizeof expr   // 返回表达式 结果类型 大小
 ```
 `sizeof`运算符的结果部分地依赖于其作用的类型
 - 对`char`，或者`char`类型的表达式，执行结果为`1`
@@ -486,7 +495,252 @@ sizeof expr   // 返回表达式结果类型大小
 
 
 
-### 🌱 强制类型转换
+### 🌱 [位域](https://en.cppreference.com/w/cpp/language/bit_field)（Bit Field）
+
+- 位域
+    - 声明具有以 *位* （bit，比特）为单位的明确大小的类数据成员
+        - 设定成员变量的 *最大宽度* 
+            - 用 *范围外的值* *赋值或初始化* 位域是 *未定义行为* 
+            - 对位域进行 *自增越过其范围* 是 *未定义行为* 
+            - *超越类型极限* 的位域仍 *只容许类型能容纳的最大值* ，剩下的空间就是 *白吃白占* 
+                - `C`语言中干脆规定位域的宽度不能超过底层类型的宽度
+        - 整个结构的实际大小
+            - `16`、`32`、`64`位的处理器一般按照`2`、`4`、`8`字节 *对齐* 
+            - 实际大小可能比位域总宽度要大
+        - *相邻* 的位域成员一般 *按定义顺序打包* ，可以 *共享跨过字节*
+            - 具体行为依赖平台的定义
+                - 在某些平台上，位域不跨过字节，其他平台上会跨过
+                - 在某些平台上，位域从左到右打包，其他为从右到左 
+    - 因为位域不必然始于一个字节的开始，故**不能**取位域的地址
+        - **不能定义** 指向位域的 *指针* 和 *非常量引用* 
+        - 从位域初始化 *常量引用* 时，将绑定到一个 *临时副本* 上
+    - 位域的类型只能是 *整型* 或 *枚举类型* 
+    - 位域**不能是** *静态数据成员* 
+    - **没有**位域 *纯右值* 。左值到右值转换始终生成位域底层类型的对象
+    - 位域 *类内初始值*
+        - `C++20`之前：**不能设置** 
+        - `C++20`开始：用提供的 *花括号或等号初始化器* 初始化
+    ```
+    struct S                              // 64 位处理器一般按 8 字节（ 64 bit ）对齐
+    {
+        unsigned char c : 16;             // 16 bit 的无符号字符位域，但仍只允许允许值 0...255
+                                          // 剩下的 8 bit 那就是白吃白占
+        
+        unsigned int b1 : 3,              // 3 bit 的无符号整数位域，允许值为 0...7
+                        : 2;              // 2 bit 的无名位域，空着 
+                        
+        unsigned int    : 0;              // 0 bit 的无名位域，空着
+                                          // 但为了钦定 b2 对齐下一个字节，实际白吃白占 3 bit 
+                   
+        unsigned int b2 : 6,              // 6 bit 的无符号整数位域，允许值为 0...63
+                     b3 : 2;              // 2 bit 的无符号整数位域，允许值为 0...3
+                                          
+                                          // 到此位域总宽度一共是 32 bit
+                                          // 但整个结构体要按 8 字节（ 64 bit ）对齐
+                                          // 所以这儿再次白吃白占 32 bit
+    };
+
+    S s;
+    std::cout << sizeof(S) << std::endl;  // 64 位处理器上会占用 8 字节（ 64 bit ）
+    s.b1 = 7;
+    ++s.b1;                               // 值 8 不适合此位域
+    std::cout << s.b1 << std::endl;       // 未定义行为，可能是 0
+    ```
+- 位域的声明
+    - 使用下列声明符的类数据成员声明（`[]`代表 *可选* ）
+        - `[identifier] [attr] : size`	
+        - `[identifier] [attr] : size brace-or-equal-initializer`（`C++20`新标准） 	
+    - 位域的 *类型* 由声明语法的 *声明说明符序列* 引入
+        - *标识符* ：被声明的位域名
+            - 名字是可选的， *无名位域* 引入指定数量的填充位
+        - [*属性说明符序列*](https://zh.cppreference.com/w/cpp/language/attributes) ：可选的任何数量属性的序列
+        - *大小* ： *非负整型* 常量表达式
+            - 大于零时，这是位域将占有的位数
+            - *只有* *无名位域* 的大小能等于零，用于钦定自己 *后面* 的那个位域 *对齐下一个字节*
+        - *花括号或等号初始化器* ：此位域所使用的默认成员初始化器
+            - 自然，**不支持** *括号初始化器*
+        ```
+        int a;
+        const int b = 0;
+        
+        struct S 
+        {
+            // simple cases
+            // even these cases are undefined behavior before C++20
+            int x1 : 8 = 42;               // OK; "= 42" is brace-or-equal-initializer
+            int x2 : 8 { 42 };             // OK; "{ 42 }" is brace-or-equal-initializer
+            
+            // ambiguities
+            int y1 : true ? 8 : a = 42;    // OK; brace-or-equal-initializer is absent
+            int y2 : true ? 8 : b = 42;    // error: cannot assign to const int
+            int y3 : (true ? 8 : b) = 42;  // OK; "= 42" is brace-or-equal-initializer
+            int z : 1 || new int { 0 };    // OK; brace-or-equal-initializer is absent
+        };
+        ```
+
+
+
+
+
+### 🌱 [值类别](https://en.cppreference.com/w/cpp/language/value_category)（Value Categories）
+
+#### 基本值类别
+
+每个表达式 *只属于* 三种 *基本值类别* 中的一种： 
+
+- *左值* `lvalue`（left value）
+    - 包括
+        1. 变量、函数、模板形参对象（`C++20`起）或数据成员之名，不论其类型，例如`std::cin`或`std::endl`
+            - 即使变量的类型是 *右值引用* ，由其名字构成的表达式仍是左值表达式
+        2. 返回类型为左值引用的函数调用或重载运算符表达式，例如`std::getline(std::cin, str)`、`std::cout << 1`、`str1 = str2`或`++it`
+        3. `a = b`，`a += b`，`a %= b`，以及所有其他内建的赋值及复合赋值表达式
+        4. `++a`和`--a`，内建的前置自增与前置自减表达式
+        5. `*p`，内建的间接寻址表达式；
+        6. `a[n]`和`n[a]`，内建的下标表达式，但`a[n]`中的一个操作数应为 *数组左值* 
+        7. `a.m`，对象成员表达式，以下两种情况**除外**
+            - `m`为 *成员枚举项* 或 *非静态成员函数* （这玩意儿是 *纯右值* 中的一大奇葩）
+            - `a`为 *右值* ，而`m`为 *非引用类型的非静态数据成员* （这玩意儿是 *将亡值* ）
+        8. `p->m`，内建的指针成员表达式，**除去**`m`为 *成员枚举项* 或 *非静态成员函数* 的情况（ *纯右值* ）
+        9. `a.*mp`，对象的成员指针表达式，其中`a`是 *左值* 且`mp`是 *数据成员指针*
+        10. `p->*mp`，内建的指针的成员指针表达式，其中`mp`是 *数据成员指针*
+        11. `a, b`，内建的逗号表达式，其中`b`是 *左值*
+        12. `a ? b : c`，对某些`b`和`c`的三元条件表达式（例如，当它们都是 *同类型左值时* ，但细节见其定义）
+        13. 字符串字面量，例如`"Hello, world!"`；
+        14. 转换为左值引用类型的转型表达式，例如`static_cast<int &>(x)` 
+        15. 返回类型是到函数的右值引用的函数调用表达式或重载的运算符表达式
+        16. 转换为函数的右值引用类型的转型表达式，如`static_cast<void (&&)(int)>(x)`
+    - 性质
+        1. 与 *泛左值* 相同（见下文）
+        2. 可以由内建的取址运算符 *取地址* ，例如`&++i[1]`,`&std::endl`是合法表达式
+        3. 可以 *赋值* 
+        4. 可用于 *初始化左值引用* ，这会将一个新名字关联给该表达式所标识的对象
+- *将亡值* `xvalue`（expiring value）
+    - 包括
+        1. 返回类型为对象的右值引用的函数调用或重载运算符表达式，例如`std::move(x)`
+        2. `a[b]`，内建的下标表达式，`a`或`b`是 *数组右值* 
+        3. `a.m`，对象成员表达式，`a`是 *右值* ，且`m`是 *非引用类型* 的 *非静态数据成员* 
+        4. `a.*mp`，对象的成员指针表达式，`a`为 *右值* ，`mp`为 *数据成员指针* 
+        5. `a ? b : c`，对某些`b`和`c`的三元条件表达式（细节见其定义）
+        6. *强转右值引用* ，例如`static_cast<T &&>(x)`
+        7. *临时量实质化* 后，任何指代 *临时对象* 的表达式（`C++17`起）
+    - 性质
+        1. 与 *泛左值* 相同（见下文）
+            - 特别是， *亡值* 可以是 *多态* 的，而且 *非类* 的亡值可以有`const` `volatile`限定
+        2. 与 *右值* 相同（见下文）
+            - 特别是， *亡值* 可以绑定到 *右值引用* 上 
+- *纯右值* `prvalue`（pure right value）
+    - 包括
+        1. （除了 *字符串字面量* **之外**的，这是 *左值* ）字面量，例如`42`、`true`或`nullptr`
+        2. 返回类型是非引用的函数调用或重载运算符表达式，例如`str.substr(1, 2)`、`str1 + str2`或`it++`；
+        3. `a++`和`a--`，内建的后置自增与后置自减表达式；
+        4. `a + b`、`a % b`、`a & b`、`a << b`，以及其他所有内建的算术表达式；
+        5. `a && b`、`a || b`、`!a`，内建的逻辑表达式；
+        6. `a < b`、`a == b`、`a >= b`以及其他所有内建的比较表达式；
+        7. `&a`，内建的取地址表达式；
+        8. `a.m`，对象成员表达式，- `m`为 *成员枚举项* 或 *非静态成员函数* 
+        9. `p->m`，内建的指针成员表达式，其中`m`为 *成员枚举项* 或 *非静态成员函数*
+        10. `p->*mp`，内建的指针的成员指针表达式，其中`mp`是 *成员函数指针*
+        11. `a, b`，内建的逗号表达式，其中`b`是 *右值*
+        12. `a ? b : c`，对某些`b`和`c`的三元条件表达式（细节见其定义）
+        13. 转换为非引用类型的转型表达式，例如`static_cast<double>(x)`，`std::string{}`或`(int)42`
+        14. `this`指针
+        15. 枚举项
+        16. 非类型模板形参，除非其类型为类或 (C++20 起)左值引用类型； 
+        17. `lambda`表达式，例如`[](int x){ return x * x; }` 
+        18. `requires`表达式，例如`requires (T i) { typename T::type; }`
+        19. 概念的特化，例如`std::equality_comparable<int>` 
+    - 性质
+        1. 与 *右值* 相同（见下文）
+        2. 不能为 *多态* 
+            - 它所标识的对象的动态类型 *必须* 为该表达式的类型
+        3. *非类非数组的纯右值* **不能**有`const` `volatile`限定
+            - 注意：函数调用或转型表达式可能生成非类的 cv 限定类型的纯右值，但其 cv 限定符被立即剥除
+        4. **不能**具有 *不完整类型* （除了类型`void`（见下文），或在`decltype`说明符中使用之外）
+        5. **不能**具有 *抽象类类型或其数组类型* 
+
+#### 性质
+
+- *泛左值* `glvalue`（generalized left value）
+    - 包括
+        1. *左值* 
+        2. *将亡值* 
+    - 性质
+        1. 可以通过以下三种方式 *隐式转换成纯右值*
+            - *左值* 到 *右值* 
+            - *数组* 到 *指针* 
+            - *函数* 到 *指针* 
+        2. 可以是 *多态* 
+            - 其所标识的对象的 *动态类型* 不必是该表达式的静态类型
+        3. 可以具有 *不完整类型* 
+            - 前提是该表达式中容许
+    - 一个奇葩
+        - 位域（Bit fields）
+            - 代表 *位域* 的表达式（例如`a.m`，其中`a`是类型`struct A { int m: 3; }`的 *左值* ）是 *泛左值* 
+            - 可用作 *赋值运算符的左操作数* ，
+            - **不能** *取地址* 
+                - **不能**绑定于 *非常量左值引用* 上
+                - *常量左值引用* 或 *右值引用* 可以从位域泛左值初始化，但不会直接绑定到位域，而是绑定到一个 *临时副本* 上
+- *右值* `rvalue`（right value，如此称呼的历史原因是，右值可以出现于赋值表达式的右边）
+    - 包括
+        1. *将亡值* 
+        2. *纯右值* 
+    - 性质
+        1. **不能** 由内建的取址运算符 *取地址* ，例如这些表达式非法：`&int()`，`&i++[3]`，`&42`，`&std::move(x)`
+        2. **不能** *被赋值* （ *自定义赋值运算符* **除外**）
+        3. 可以用于 *初始化常量（左值）引用* 
+            - 该右值所标识的对象的生存期被延长到该引用的作用域结尾 
+        4. 可以用于 *初始化右值引用* 
+            - 该右值所标识的对象的生存期被延长到该引用的作用域结尾
+            - 当被用作函数实参，且该函数有同时有（右值引用形参、常量左值引用形参）两个版本时，将传入右值引用
+                - 将调用其移动构造函数，复制和移动赋值运算符与此类似 
+    - 两个奇葩
+        - 未决成员函数调用（Pending member function call）
+            - 调用 *非静态成员函数* （`a.mf`，`p->mf`，`a.*pmf`，`p->*pmf`，其中`mf`是 *非静态成员函数* ，`pmf`是 [*成员函数指针*](https://en.cppreference.com/w/cpp/language/pointer#Pointers_to_member_functions) ）是 *纯右值* 
+            - 但 *只能* 用作 *函数调用运算符的左操作数* ，例如 `(p->*pmf)(args)`
+            - **不能** 用作 *任何其他用途* 
+        - `void`表达式（`void` expressions）
+            - void 表达式**没有** *结果对象* （`C++17`起）
+            - 返回`void`的函数调用表达式，强转`void`的转型表达式以及`throw`表达式都是 *纯右值* 
+            - 但**不能**用来 *初始化引用* 或者 *用作函数实参* 
+            - 可以用在舍弃值的语境，例如
+                - 自成一行、作为逗号运算符的左操作数等
+                - 返回`void`的函数中的`return`语句
+                - `throw`表达式可用作条件运算符`a ? b : c;`的第二个和第三个操作数
+
+
+
+
+
+
+### 🌱 类型转换（Conversions）
+
+#### [`static_cast`](https://en.cppreference.com/w/cpp/language/static_cast)
+
+- 1
+
+#### [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
+
+- 1
+
+#### [`const_cast`](https://en.cppreference.com/w/cpp/language/const_cast)
+
+- 1
+
+#### [`reinterpret_cast`](https://en.cppreference.com/w/cpp/language/reinterpret_cast)
+
+- 1
+
+#### [显式类型转换](https://en.cppreference.com/w/cpp/language/explicit_cast)
+
+- *显式类型转换* 使用`C`风格写法和函数式写法
+
+#### [用户自定义转换](https://en.cppreference.com/w/cpp/language/cast_operator)
+
+- 1
+
+#### [标准转换](https://en.cppreference.com/w/cpp/language/implicit_conversion)
+
+- *标准转换* 就是从一个类型到另一类型的 *隐式转换* ，由 *编译器自动完成* 
 
 #### 命名的强制类型转换
 
@@ -913,7 +1167,69 @@ useBigger(s1, s2, pf);
 
 ### 🌱 [Chap 7] 类（基础概念）
 
-#### 合成的默认构造函数（synthesized default constructor）
+#### [初始化](https://en.cppreference.com/w/cpp/language/initialization)（Initialization）
+
+- 任何对象在被创建时都会被 *初始化* 
+    1. 构造对象时，可以提供一个 *初始值* 进行 *初始化* ，也可以不提供（此时应用 *默认初始化* 规则）
+    2. 在函数调用时也会发生，函数的 *形参* 及 *返回值* 亦会被初始化
+- *初始值* 由以下三种 *初始化器* （initializer）提供
+    1. *括号初始化器* `( expression-list )`：括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表
+    2. *等号初始化器* `= expression`：等号后面跟着一个表达式
+    3. *花括号初始化器* `{ initializer-list }`：花括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表， *可以为空* 
+- 根据上下文， *初始化器* 具体进行
+    1. [*值初始化*](https://en.cppreference.com/w/cpp/language/value_initialization)，例如`std::string s{};`
+    2. [*直接初始化*](https://en.cppreference.com/w/cpp/language/direct_initialization)，例如`std::string s("hello");`
+    3. [*复制初始化*](https://en.cppreference.com/w/cpp/language/copy_initialization)，例如`std::string s = "hello";`
+    4. [*列表初始化*](https://en.cppreference.com/w/cpp/language/list_initialization)，例如`std::string s{'a', 'b', 'c'};`
+    5. [*聚合初始化*](https://en.cppreference.com/w/cpp/language/aggregate_initialization)，例如`char a[3] = {'a', 'b'};`
+    6. [*引用初始化*](https://en.cppreference.com/w/cpp/language/reference_initialization)，例如`char & c = a[0];`，`std::string s = std::move("hello");`
+- 具体规则
+    1. *全局变量* 
+        - *静态初始化*
+            - 所有具有 *静态存储期* 的全局变量，作为程序启动的一部分，在`main`函数的执行之前进行初始化（除非 *被延迟* ，见下文）
+            - 如可以，首先进行 [*常量初始化*](https://en.cppreference.com/w/cpp/language/constant_initialization) 
+                - 设置 *静态变量* 的初值为编译时常量
+                ```
+                static T & ref = constexpr;
+                static T object = constexpr;
+                ```
+            - 对于所有其他静态全局及静态线程局部变量，均进行 *零初始化* 
+        - *动态初始化*
+            - 所有具有 *线程局部存储期* 的全局变量，作为线程启动的一部分进行初始化，按顺序早于线程函数的执行开始
+
+            
+    2. *局部静态变量* 
+        - 有关局部（即块作用域）的静态和线程局部变量，见[静态局部变量](https://en.cppreference.com/w/cpp/language/storage_duration#Static_local_variables)
+        - 拥有 *外部或内部链接* 的变量的块作用域声明中**不允许** *初始化器*
+            - 这种声明必须带`extern`出现
+            - 给了 *初始化器* 倒不会报错，不过这就成了 *普通定义* 了， *链接* 直接被忽视
+    3. 类的[*非静态数据成员*](https://en.cppreference.com/w/cpp/language/data_members)
+        1. 在构造函数的 *成员初始化器列表* 中 
+        ```
+        struct S
+        {
+            S() : n(7) { }  // 直接初始化 n ，默认初始化 s
+            
+            int n;
+            std::string s;
+        };
+        ```
+        2. 通过 *默认成员初始化器* 
+            - 它是包含于成员声明中的花括号或等号初始化器，并在成员初始化器列表中忽略该成员的情况下得到使用 
+            - 通过这种初始化得到的值被称作 *类内初始值*
+        ```
+        struct S
+        {
+            S() { }         // 默认成员初始化器将复制初始化 n ，列表初始化 s
+            
+            
+            int n = 7;
+            std::string s {'a', 'b', 'c'};
+        };
+        ```
+        3. *默认初始化* 
+
+#### 合成的默认构造函数（Synthesized default constructor）
 
 - 按如下规则初始化类成员
     - 存在类内初始值，则以其初始化对应成员
@@ -924,28 +1240,7 @@ useBigger(s1, s2, pf);
         int a3{0};     // 正确
         int a4(0);     // 错误！
         ```
-    - *默认初始化* 或 *值初始化* 该成员
-        - [*默认初始化*](https://en.cppreference.com/w/cpp/language/default_initialization)
-            ```
-            T object;                             (1)
-            new T                                 (2)
-            ```
-            1. if `T` is an `array type`, every element of the array is *default-initialized* ;
-            2. otherwise, nothing is done: the objects with automatic storage duration (and their subobjects) are initialized to *indeterminate values* . 
-        - [*值初始化*](https://en.cppreference.com/w/cpp/language/value_initialization)
-            ```
-            T()                                   (1)
-            new T ()                              (2)
-            Class::Class(...) : member() { ... }  (3)
-            T object {};                          (4)
-            T{}                                   (5)
-            new T {}                              (6)
-            Class::Class(...) : member{} { ... }  (7)
-            ```
-            1. if `T` is a `class type` with no default constructor or with a user-provided or deleted default constructor, the object is *default-initialized* ;
-            2. if `T` is a `class type` with a default constructor that is neither user-provided nor deleted (that is, it may be a class with an implicitly-defined or defaulted default constructor), the object is *zero-initialized* and then it is *default-initialized* if it has a non-trivial default constructor;
-            3. if `T` is an `array type`, each element of the array is *value-initialized*;
-            4. otherwise, the object is *zero-initialized* .
+    - 否则，执行 *默认初始化* 或者 *值初始化* 
 - 生成条件：
     - 只有类**没有声明任何构造函数**时，编译器才会自动生成默认构造函数
     - 如果类中包含其他类类型成员，且它没有默认构造函数，则这个类**不能**生成默认构造函数
@@ -957,15 +1252,17 @@ useBigger(s1, s2, pf);
         - 用于既定义了自己的构造函数，又需要默认构造函数的情况
         - 作为声明写在类内部，则构造函数默认`inline`；或作为定义写在类外部，则构造函数不`inline`
 
-#### 构造函数初始值列表
+#### [成员初始化器列表](https://en.cppreference.com/w/cpp/language/constructor)（Member initializer lists）
 
-- 某个数据成员被初始值列表忽略时，则**先被默认初始化**，之后再按照构造函数体中的规则进行**二次赋值**
-- 初始化列表接受的初始化语法：`x(?)`或`x{?}`
-- 如果成员是`const`、引用或者没有默认构造函数的类类型，如没有类内初始值，则**必须**在初始化列表中初始化，而不能在函数体中赋值
+- 初始化器列表接受的初始化语法
+    1. `Constructor() : x(?), ... { }`
+    2. `Constructor() : x{?}, ... { }`
+- 如果成员是`const`、引用或者没有默认构造函数的类类型，如没有类内初始值，则**必须**在初始化器列表中初始化，而不能在函数体中赋值
 - 初始化的顺序是按照类成员被声明的顺序，与其在列表中的顺序无关
     - 最好令构造函数初始化列表的顺序与成员声明的顺序保持一致
     - 尽量避免用某些成员初始化其他成员，最好用构造函数的参数作为初始值
-- 如果一个构造函数为每一个参数都提供了默认实参，则它实际上也定义了默认构造函数
+- 如果一个构造函数为每一个参数都提供了 *默认实参* ，则它实际上也定义了 *默认构造函数* 
+- 某个数据成员被初始化器列表忽略时，则先被 *默认初始化* ，之后再按照构造函数体中的规则进行 *二次赋值*
 
 #### 委托构造函数（delegating constructor）
 
