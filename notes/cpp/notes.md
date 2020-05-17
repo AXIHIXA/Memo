@@ -375,6 +375,9 @@
     5. [*聚合初始化*](https://en.cppreference.com/w/cpp/language/aggregate_initialization)，例如`char a[3] = {'a', 'b'};`
     6. [*引用初始化*](https://en.cppreference.com/w/cpp/language/reference_initialization)，例如`char & c = a[0];`，`std::string s = std::move("hello");`
     7. [*默认初始化*](https://en.cppreference.com/w/cpp/language/default_initialization)，例如`T object;`
+- *内置类型* 变量的 *隐式初始化* 
+    - *全局* 变量和 *局部静态* 变量： *零初始化* 
+    - *局部非静态* 变量：**无**， *值未定义* 
 - 这章下面几节是当字典用的，看看就得了
 
 #### [值初始化](https://en.cppreference.com/w/cpp/language/value_initialization)
@@ -438,20 +441,20 @@ T array[N] = {other};                                         (6)  // 聚合初�
 - 从 *花括号初始化器* 初始化对象 
     - *直接列表初始化* （考虑`explicit`和非`explicit`构造函数）
     ```
-    T object { arg1, arg2, ... };                             (1)     
-    T { arg1, arg2, ... }                                     (2)     
-    new T { arg1, arg2, ... }                                 (3)     
+    T object {arg1, arg2, ...};                               (1)     
+    T {arg1, arg2, ...}                                       (2)     
+    new T{arg1, arg2, ...}                                    (3)     
     Class { T member { arg1, arg2, ... }; };                  (4)   // 在不使用等号的非静态数据成员初始化器中    
     Class::Class() : member{arg1, arg2, ...} {...             (5)   // 构造函数的成员初始化列表中使用花括号初始化器列表
     ```
     - *复制列表初始化* （考虑`explicit`和非`explicit`构造函数，但只调用非`explicit`构造函数） 
     ```
     T object = {arg1, arg2, ...};                             (6)   
-    function({ arg1, arg2, ... })                             (7)   
-    return { arg1, arg2, ... } ;                              (8)   
-    object[{ arg1, arg2, ... }]                               (9)   
-    object = { arg1, arg2, ... }                              (10)  // 赋值表达式中以列表初始化对重载的运算符的形参初始化
-    U({ arg1, arg2, ... })                                    (11)  // 函数式强制转换表达式或其他构造函数调用
+    function({arg1, arg2, ...})                               (7)   
+    return {arg1, arg2, ... } ;                               (8)   
+    object[{arg1, arg2, ... }]                                (9)   
+    object = {arg1, arg2, ... }                               (10)  // 赋值表达式中以列表初始化对重载的运算符的形参初始化
+    U({arg1, arg2, ... })                                     (11)  // 函数式强制转换表达式或其他构造函数调用
     Class { T member = { arg1, arg2, ... }; };                (12)  // 在使用等号的非静态数据成员初始化器中
     ```
 
@@ -483,21 +486,40 @@ T object {arg1, arg2, ...};                                   (2)
 - *绑定引用* 到对象 
 ```
 T & ref = object ;
-T & ref = { arg1, arg2, ... };
+T & ref = {arg1, arg2, ...};
 T & ref(object) ;
-T & ref { arg1, arg2, ... } ;                                 (1)   
+T & ref {arg1, arg2, ...} ;                                   (1)   
 T && ref = object ;
-T && ref = { arg1, arg2, ... };
+T && ref = {arg1, arg2, ...};
 T && ref (object) ;
-T && ref { arg1, arg2, ... } ;                                (2) 
+T && ref {arg1, arg2, ...} ;                                  (2) 
 given R fn(T & arg); or R fn(T && arg);
-fn(object )
-fn({ arg1, arg2, ... })                                       (3)  // 有引用形参的函数的调用表达式
+fn(object)
+fn({arg1, arg2, ...})                                         (3)  // 有引用形参的函数的调用表达式
 inside T & fn() or T && fn()
-return object ;                                               (4)   
-given T & ref ; or T && ref ; inside the definition of Class
-Class::Class(...) : ref(object) {...}                         (5)   
+return object;                                                (4)  // 当函数返回引用类型时
+given T & ref; or T && ref; inside the definition of Class
+Class::Class(...) : ref(object) {...}                         (5)  // 以成员初始化器初始化引用类型的非静态数据成员时 
 ```
+- 临时量生存期：
+    - 一旦引用被绑定到临时量或其子对象，临时量的生存期就 *被延续* 以匹配引用的生存期，但有下列例外
+        1. `return`语句中绑定到函数返回值的临时量**不被延续**：它立即于返回表达式的末尾销毁。这种函数始终返回悬垂引用 
+        2. 在构造函数初始化器列表中绑定到引用成员的临时量，只持续到构造函数退出前，而非对象存在期间（`C++14`前）
+        3. 在函数调用中绑定到函数形参的临时量，存在到含这次函数调用的全表达式结尾为止：若函数返回一个引用，而其生命长于全表达式，则它将成为悬垂引用 
+        4. 绑定到`new`表达式中所用的初始化器中的引用的临时量，存在到含该`new`表达式的全表达式结尾为止，而非被初始化对象的存在期间。若被初始化对象的声明长于全表达式，则其引用成员将成为悬垂引用
+        5. 绑定到用直接初始化语法（括号），而非列表初始化语法（花括号）初始化的聚合体的引用元素中的引用的临时量，存在直至含该初始化器的全表达式末尾为止（`C++20`起）
+        ```
+        struct A 
+        {
+            int && r;
+        };
+        
+        A a1{7};   // OK：延续生存期
+        A a2(7);   // 良构，但有悬垂引用
+        ```
+    - 总而言之，临时量的生存期不能以进一步“传递”来延续：从绑定了该临时量的引用初始化的第二引用不影响临时量的生存期。 
+- 注意事项
+    - 仅在 *函数形参声明* ， *函数返回类型声明* ， *类成员声明* ，以及 *带`extern`说明符* 时， *引用* 可以 *不与初始化器一同出现*  
 
 #### [默认初始化](https://en.cppreference.com/w/cpp/language/default_initialization)
 
