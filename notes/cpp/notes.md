@@ -170,26 +170,6 @@
 
 #### [存储期](https://en.cppreference.com/w/cpp/language/storage_duration)（Storage duration）
 
-        auto - automatic storage duration. 
-
-    (until C++11)
-
-        register - automatic storage duration. Also hints to the compiler to place the object in the processor's register. (deprecated) 
-
-    (until C++17)
-
-        static - static or thread storage duration and internal linkage.
-        extern - static or thread storage duration and external linkage. 
-
-        thread_local - thread storage duration. 
-
-    (since C++11)
-
-        mutable - does not affect storage duration or linkage. See const/volatile for the explanation. 
-
-
-
-
 程序中的所有对象都具有下列存储期之一：
 
 1. *自动存储期*  （Automatic storage duration）
@@ -502,22 +482,23 @@ return object;                                                (4)  // 当函数�
 given T & ref; or T && ref; inside the definition of Class
 Class::Class(...) : ref(object) {...}                         (5)  // 以成员初始化器初始化引用类型的非静态数据成员时 
 ```
-- 临时量生存期：
+- *临时量* 生存期：
     - 一旦引用被绑定到临时量或其子对象，临时量的生存期就 *被延续* 以匹配引用的生存期，但有下列例外
-        1. `return`语句中绑定到函数返回值的临时量不被延续：它立即于返回表达式的末尾销毁。这种函数始终返回悬垂引用 
-        2. 在构造函数初始化器列表中绑定到引用成员的临时量，只持续到构造函数退出前，而非对象存在期间（`C++14`前）
-        3. 在函数调用中绑定到函数形参的临时量，存在到含这次函数调用的全表达式结尾为止：若函数返回一个引用，而其生命长于全表达式，则它将成为悬垂引用 
-        4. 绑定到`new`表达式中所用的初始化器中的引用的临时量，存在到含该`new`表达式的全表达式结尾为止，而非被初始化对象的存在期间。若被初始化对象的声明长于全表达式，则其引用成员将成为悬垂引用
-        5. 绑定到用直接初始化语法（括号），而非列表初始化语法（花括号）初始化的聚合体的引用元素中的引用的临时量，存在直至含该初始化器的全表达式末尾为止（`C++20`起）
-        ```
-        struct A 
-        {
-            int && r;
-        };
-        
-        A a1{7};   // OK：延续生存期
-        A a2(7);   // 良构，但有悬垂引用
-        ```
+        1. `return`语句中绑定到函数返回值的 *临时量* 不被延续：它立即于返回表达式的末尾销毁。这种函数始终返回悬垂引用 
+            - 特例：右值引用所绑定对象的 *生存期被延长* 到该引用的作用域结尾，因此返回`std::move(temp)`右值引用是可以的
+        2. 在构造函数初始化器列表中绑定到引用成员的 *临时量* ，只持续到构造函数退出前，而非对象存在期间（`C++14`前）
+        3. 在函数调用中绑定到函数形参的 *临时量* ，存在到含这次函数调用的全表达式结尾为止：若函数返回一个引用，而其生命长于全表达式，则它将成为悬垂引用 
+        4. 绑定到`new`表达式中所用的初始化器中的引用的 *临时量* ，存在到含该`new`表达式的全表达式结尾为止，而非被初始化对象的存在期间。若被初始化对象的生命长于全表达式，则其引用成员将成为悬垂引用
+        5. 绑定到用直接初始化语法（括号），而非列表初始化语法（花括号）初始化的聚合体的引用元素中的引用的 *临时量* ，存在直至含该初始化器的全表达式末尾为止（`C++20`起）
+            ```
+            struct A 
+            {
+                int && r;
+            };
+            
+            A a1{7};   // OK：延续生存期
+            A a2(7);   // 良构，但有悬垂引用
+            ```
     - 总而言之，临时量的生存期不能以进一步“传递”来延续：从绑定了该临时量的引用初始化的第二引用不影响临时量的生存期。 
 - 注意事项
     - 仅在 *函数形参声明* ， *函数返回类型声明* ， *类成员声明* ，以及 *带`extern`说明符* 时， *引用* 可以 *不与初始化器一同出现*  
@@ -1088,13 +1069,11 @@ struct X
  
 X x;
 
-int n = static_cast<int>(x);    // OK：设 n 为 7
-int m = x;                      // OK：设 m 为 7
+int n = static_cast<int>(x);                            // OK：设 n 为 7
+int m = x;                                              // OK：设 m 为 7
 
-int* p = static_cast<int*>(x);  // OK：设 p 为 null
-int* q = x;                     // 错误：无隐式转换
-
-int (*pa)[3] = x;               // OK
+int* p = static_cast<int*>(x);                          // OK：设 p 为 null
+int* q = x;                                             // 错误：无隐式转换
 ```
 
 #### [标准转换](https://en.cppreference.com/w/cpp/language/implicit_conversion)
