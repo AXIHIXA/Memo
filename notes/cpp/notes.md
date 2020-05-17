@@ -166,11 +166,11 @@
 
 
 
-### 🌱 [作用域](https://en.cppreference.com/w/cpp/language/scope)（scope）
+### 🌱 [存储期和链接](https://en.cppreference.com/w/cpp/language/storage_duration)（Storage duration and linkage）
 
-#### [存储期](https://en.cppreference.com/w/cpp/language/storage_duration)（Storage duration）
+#### [存储期](https://en.cppreference.com/w/cpp/language/storage_duration#Storage_duration)（Storage duration）
 
-程序中的所有对象都具有下列存储期之一，匹配相应的生存期：
+所有对象都具有下列四种 *存储期* （ *生存期* ）之一：
 
 1. *自动存储期*  （Automatic storage duration）
     - 包含
@@ -193,7 +193,7 @@
         - *所有* 声明带有`thread_local`的对象
     - 存储方式
         - 对象的存储在线程开始时分配，而在线程结束时解分配
-        - 每个线程拥有其自身的对象实例
+        - `thread_local`对象的实例每个线程各有一份
         - `thread_local`能与`static`或`extern`一同出现，以调整链接
 4. *动态存储期*  （Dynamic storage duration）
     - 包含
@@ -204,61 +204,7 @@
         - 显式请求分配时分配，显式请求释放时 *才会* 释放
         - 存储于 *动态存储区* （程序的 *堆* 内存）
 
-#### 作用域
-
-- 根据变量的 *定义位置* 和 *生命周期* ，`C++`的变量具有不同的 *作用域* ，共分为以下几类 
-    - *块作用域* （Block scope）
-    - *函数形参作用域* （Function parameter scope）
-    - *函数作用域* （Function scope）
-    - *命名空间作用域* （Namespace scope）
-        - 包含 *全局命名空间作用域* （Global namespace scope），即所谓的全局作用域
-    - *类作用域* （Class scope）
-    - *枚举作用域* （Enumeration scope）
-    - *模板形参作用域* （Template parameter scope）
-- 作用域始于 *声明点* 
-    - 内部作用域（inner scope）的变量会 *覆盖* 外部作用域（outer scope）的 *同名变量* 
-- 从作用域看变量
-    - *全局非静态变量* 
-        - 即定义于所有函数之外的非静态变量
-        - 具有全局作用域（跨文件）
-            - 只需在一个源文件中定义，就可以作用于所有的源文件
-            - 当其他不包含全局变量定义的源文件中，使用前需用`extern`再次声明这个全局变量
-    - *全局静态变量* 
-        - 具有文件作用域（**不**跨文件）
-            - 如果程序包含多个文件，则仅作用于定义它的文件，不能作用于其它文件
-            - 这样即使两个不同的源文件都定义了相同名字的静态全局变量，它们也是 *不同* 的变量
-                - 这一点和没有加`extern`的全局常量一样    
-                - 注意`static`和`extern`修饰符是 *相互矛盾* 的，同时只能有一个               
-    - *局部非静态变量* 
-        - 具有局部作用域，包括
-            - 函数体内定义的非静态变量
-            - 块语句内定义的非静态变量
-            - 函数形参
-        - 是 *自动对象* （automatic object）
-            - 每当函数控制路径经过变量定义语句时创建该对象并初始化，当到达定义所在块末尾时销毁之
-            - 自然，只存在于块执行期间
-    - *局部静态变量* 
-        - 也具有局部作用域
-        - 是 *局部静态对象* （local static object）
-            - 在程序的执行路径第一次经过对象定义语句时初始化，并且直到整个程序终止时才被销毁。
-            - 在此期间，对象所在函数执行完毕也不会对它有影响。
-            - 如没有显式初始化，则会执行隐式初始化（内置类型隐式初始化为`0`）
-        ```
-        size_t countCalls()
-        {
-            static size_t ctr = 0;  // 调用结束后这个值依然有效，且初始化会且只会在第一次调用时执行一次。
-                                    // 内置类型的局部静态对象隐式初始化为0，即：这里的显式初始化为0其实是不必要的。
-            return ++ctr;
-        }
-        ```
-        - 和全局变量的区别
-            - 全局变量对所有的函数可见的
-            - 静态局部变量只对定义自己的函数可见
-- *静态函数* 
-    - 函数的返回值类型前加上`static`关键字
-    - 只在声明它的文件当中可见，**不能**被其它文件使用
-
-#### 链接（Linkage）
+#### [链接](https://en.cppreference.com/w/cpp/language/storage_duration#Linkage)（Linkage）
 
 所有变量都具有如下四种 *链接* 之一，用于调节变量在不同文件（ *翻译单元* ）之间的可见性：
 
@@ -316,6 +262,166 @@
 4. *模块链接* （Module linkage，`C++20`新标准）
     - 名字 *只能* 从 *同一模块单元* 或 *同一具名模块中的其他翻译单元* 的作用域指代
     - 声明于 *命名空间作用域* 中的 *具名模块* 且 *不被导出* ，且无内部链接，则该名字拥有 *模块链接*
+
+
+
+
+
+
+### 🌱 [作用域](https://en.cppreference.com/w/cpp/language/scope)（scope）
+
+- `C++`程序中出现的每个名字，只在某些可能不连续的源码部分中 *有效* （即，编译器能知道这玩意儿是啥、在哪儿声明的），这些部分被称为其 *作用域* 
+    - 编译器通过[名字查找](https://en.cppreference.com/w/cpp/language/lookup)（Name lookup）实现名字和声明的关联
+        - 如果名字已经指明了 *命名空间* ，则进行[限定名字查找](https://en.cppreference.com/w/cpp/language/qualified_lookup)（Qualified name lookup）
+        - 否则，进行[无限定名字查找](https://en.cppreference.com/w/cpp/language/unqualified_lookup（Unqualified name lookup）
+- 根据变量的 *定义位置* 和 *生命周期* ，`C++`的变量具有不同的 *作用域* ，共分为以下几类 
+    - [*块作用域*](https://en.cppreference.com/w/cpp/language/scope#Block_scope)（Block scope）
+    - *函数形参作用域* （Function parameter scope）
+    - *函数作用域* （Function scope）
+    - *命名空间作用域* （Namespace scope）
+        - 包含 *全局命名空间作用域* （Global namespace scope），即所谓的全局作用域
+    - *类作用域* （Class scope）
+    - *枚举作用域* （Enumeration scope）
+    - *模板形参作用域* （Template parameter scope）
+- 作用域始于 *声明点* ，内部作用域（inner scope）的变量会 *覆盖* 外部作用域（outer scope）的 *同名变量* 
+
+#### [块作用域](https://en.cppreference.com/w/cpp/language/scope#Block_scope)（Block scope）
+
+- *块* （ *复合语句* ）中的声明所引入的变量拥有 *块作用域*
+- *块作用域* 开始于其声明点，并终止于该块末尾
+- 如果 *内嵌块* 引入了相同的相同名字的声明，则会 *覆盖* 掉外层作用域的同名变量
+    - 一句闲话：`python`的语言标准`PEP 8`干脆规定内部作用域里不能声明外部作用域的同名变量
+```
+int main()
+{
+    int a = 0;                            // 第一个 a 的作用域开始
+    ++a;                                  // 名字 a 在作用域中并指代第一个 a
+    {
+        int a = 1;                        // 第二个 a 的作用域开始
+                                          // 第一个 a 的作用域间断
+        a = 42;                           // a 在作用域中并指代第二个 a
+    }                                     // 块结束，第二个 a 的作用域结束
+                                          //         第一个 a 的作用域恢复
+}                                         // 块结束，第一个 a 的作用域结束
+
+int b = a;                                // 错误：名字 a 不在作用域中
+```
+- 声明于 *异常处理块* 中的名字的 *块作用域* 开始于其声明点，并在 *该异常处理块* 结束时结束
+    - 对 *其他异常处理块* 或 *外围块* **不可见**
+```
+try 
+{   
+    f();
+} 
+catch (const std::runtime_error & re)     // re 的作用域开始
+{ 
+    int n = 1;                            // n 的作用开始
+    std::cout << re.what() << std::endl;  // re 在作用域中
+}                                         // re 的作用域结束， n 的作用域结束
+catch (std::exception & e) 
+{
+    std::cout << re.what() << std::endl;  // 错误： re 不在作用域中
+    ++n;                                  // 错误： n 不在作用域中
+}
+```
+- 在`for`循环的初始化语句中，在`for`循环的条件中，在范围`for`循环的范围声明中，在`if`语句或`switch`语句的初始化语句中，在`if`语句、`while`循环或`switch`语句的条件中，声明的名字的潜在作用域，开始于其声明点，并结束于控制语句的末尾
+```
+Base * bp = new Derived;
+if (Derived * dp = dynamic_cast<Derived *>(bp))
+{
+    dp->f();                              // dp 在作用域中
+}                                         // dp 的作用域结束
+ 
+for(int n = 0;                            // n 的作用域开始
+    n < 10;                               // n 在作用域中
+    ++n)                                  // n 在作用域中
+{
+    std::cout << n << ' ';                // n 在作用域中
+}                                         // n 的作用域结束
+```
+- 特别地：`switch`语句中定义的变量的作用域是**整个`switch`语句**，而不仅是某个单独的`case`！
+    - 如果某处一个**带有初值**的变量位于作用域之外，在另一处该变量位于作用域之内，则从前一处跳转至后一处的行为是**非法**的
+```
+switch (num)
+{
+case 0:
+    // 因为程序的执行流程可能绕开下面的初始化语句，所以此 switch 语句不合法
+    std::string filename;                 // 错误：控制流绕过一个隐式初始化的变量
+    int i = 0;                            // 错误：控制流绕过一个显式初始化的变量
+    int j;                                // 正确：j 没有初始化
+    j = 1;                                // 正确：可以给 j 赋值，这样就不是初始化了
+    break;
+
+case 1:
+{
+    std::string filename;                 // 正确：隐式初始化的变量作用域只限于这个 case 下面的块
+    int i = 0;                            // 正确：显式初始化的变量作用域只限于这个 case 下面的块
+    break;
+}
+    
+case 2:
+    // 正确：虽然j在作用域之内，但它没有被初始化
+    j = nextNum();                        // 正确：给 j 赋值
+    
+    if (filename.empty())                 // filename 在作用域内，但没有被初始化
+    {
+        // do something...
+    }
+    
+    break;
+    
+default:
+    j = 2;
+    std::cout <<j << std::endl;
+    break;
+}
+```
+
+
+#### 从作用域和存储期看变量
+
+- *全局非静态变量* 
+    - 包括
+        - 定义于所有函数之外的非静态变量
+    - 具有 *命名空间作用域* （可以通过 *链接* 跨文件），存储于 *静态存储区*
+        - 只需在一个源文件中定义，就可以作用于所有的源文件
+        - 当其他不包含全局变量定义的源文件中，使用前需用`extern`再次声明这个全局变量
+- *全局静态变量* 
+    - 包括
+        - 定义于所有函数之外的静态变量
+    - 具有 *命名空间作用域* （但**不能**跨文件），存储于 *静态存储区*
+        - 如果程序包含多个文件，则仅作用于定义它的文件，不能作用于其它文件
+        - 天坑：如果两个不同的源文件都定义了相同名字的全局静态变量，那么它们是 *不同* 的变量
+            - 这一点和没有加`extern`的全局常量一样            
+- *局部非静态变量* 
+    - 包括
+        - 函数体内定义的非静态变量
+        - 块语句内定义的非静态变量
+        - 函数形参
+    - 具有 *块作用域* ，存储于 *自动存储区*
+        - 是 *自动对象* （automatic object）
+            - 每当函数控制路径经过变量定义语句时创建该对象并初始化，当到达定义所在块末尾时销毁之
+            - 自然，只存在于块执行期间
+- *局部静态变量* 
+    - 具有 *块作用域* ，存储于 *静态存储区*
+        - 是 *局部静态对象* （local static object）
+            - 在程序的执行路径第一次经过对象定义语句时初始化，并且直到整个程序终止时才被销毁。
+            - 在此期间，对象所在函数执行完毕也不会对它有影响。
+            - 如没有显式初始化，则会执行 *默认初始化* （内置类型隐式初始化为`0`）
+        - 和 *全局变量* 的区别
+            - 全局变量对所有的函数可见的
+            - 静态局部变量只对定义自己的函数可见
+    ```
+    size_t countCalls()
+    {
+        static size_t ctr = 0;  // 调用结束后这个值依然有效，且初始化会且只会在第一次调用时执行一次。
+                                // 内置类型的局部静态对象隐式初始化为0，即：这里的显式初始化为0其实是不必要的。
+        return ++ctr;
+    }
+    ```
+- *静态函数* 
+    - 函数的返回值类型前加上`static`关键字
+    - 只在声明它的文件当中可见，**不能**被其它文件使用
 
 
 
@@ -505,7 +611,7 @@ T object;                                                     (1)
 new T                                                         (2)    
 ```
 - 初始化流程
-    1. *静态对象* 和 *线程局部对象* 进行 *零初始化* 
+    1. 位于 *静态存储区* 和 *线程局部存储区* 的对象，首先进行 *零初始化* 
     2. 若`T`是 *类类型* ，则考虑各构造函数并实施针对空实参列表的 [*重载决议*](https://en.cppreference.com/w/cpp/language/overload_resolution)（Overload resolution）。调用所选的构造函数（默认构造函数之一），以提供新对象的初始值
     3. 若`T`是 *数组类型* ，则每个数组元素都被 *默认初始化* 
     4. 否则，不做任何事。 *自动对象（及其子对象）* 被初始化为 *不确定值*  
@@ -618,6 +724,11 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
     // 要怎么看呢？很简单，不要用`const`和`*`，用`Const`和`Ptr`来表达，马上明白：
     Const<Ptr<Ptr<Ptr<Const<int>>>>> shit = nullptr;
     ```
+
+#### 爽歪歪之[指针的声明](https://en.cppreference.com/w/cpp/language/pointer)（Pointer declaration）
+
+
+
 
 
 
@@ -1026,10 +1137,10 @@ sizeof expr   // 返回表达式 结果类型 大小
 
 - *显式类型转换* 使用`C`风格写法和函数式写法，用显式和隐式转换的组合进行类型之间的转换
 ```
-(new_type) expression                   (1) 	
-new_type(expression)                    (2) 	
-new_type(expressions)                   (3) 	
-new_type()                              (4) 	
+(new_type) expression                   (1)     
+new_type(expression)                    (2)     
+new_type(expressions)                   (3)     
+new_type()                              (4)     
 new_type{expression-list(optional)}     (5)  (since C++11)
 template-name(expressions(optional))    (6)  (since C++17)
 template-name{expressions(optional)}    (7)  (since C++17)
@@ -1094,49 +1205,6 @@ int* q = x;                                             // 错误：无隐式转
     3. 零或一个 *标准转换序列* 
         - 当考虑构造函数或用户定义转换函数的实参时， *只允许一个* 标准转换序列（否则将实际上可以将用户定义转换串连起来）
         - 从一个内建类型转换到另一内建类型时， *只允许一个* 标准转换序列
-
-
-
-
-
-
-### 🌱 `switch`
-
-`switch`语句中定义的变量的作用域是**整个`switch`语句**，而不仅是某个单独的`case`！
-
-如果某处一个**带有初值**的变量位于作用域之外，在另一处该变量位于作用域之内，
-则从前一处跳转至后一处的行为是非法的。
-
-```
-int num = 2;
-
-switch (num)
-{
-case 0:
-    // 因为程序的执行流程可能绕开下面的初始化语句，所以此switch语句不合法
-    std::string filename;  // 错误：控制流绕过一个隐式初始化的变量
-    int i = 0;             // 错误：控制流绕过一个显式初始化的变量
-    int j;                 // 正确：j没有初始化
-    j = 1;                 // 正确：可以给j赋值，这样就不是初始化了
-    break;
-    
-case 1:
-    // 正确：虽然j在作用域之内，但它没有被初始化
-    j = nextNum();         // 正确：给j赋值
-    
-    if (filename.empty())  // filename在作用域内，但没有被初始化
-    {
-        // do something...
-    }
-    
-    break;
-    
-default:
-    j = 2;
-    std::cout <<j << std::endl;
-    break;
-}
-```
 
 
 
@@ -1419,15 +1487,15 @@ useBigger(s1, s2, pf);
 ### 🌱 [Chap 8] `I/O`库
 
 - 这章挺没意思的，全篇在讲`<iostream>`，还是[`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c)用着舒服
-    - [`printf()`](https://en.cppreference.com/w/c/io/fprintf)
-    - [`std::printf()`](https://en.cppreference.com/w/cpp/io/c/fprintf)
+    - [`printf`](https://en.cppreference.com/w/c/io/fprintf)
+    - [`std::printf`](https://en.cppreference.com/w/cpp/io/c/fprintf)
 
 
 
 
 
 
-### 🌱 [Chap 7] 类（基础概念）
+### 🌱 [Chap 7] 类的基础概念
 
 #### 合成的默认构造函数（Synthesized default constructor）
 
@@ -1917,7 +1985,7 @@ Entry e = {0, "Anna"};
 
 
 
-### 🌱 [Chap 13] 类（拷贝控制）
+### 🌱 [Chap 13] 拷贝控制
 
 - 
 
@@ -1926,7 +1994,7 @@ Entry e = {0, "Anna"};
 
 
 
-### 🌱 [Chap 14] 类（操作重载与类型转换）
+### 🌱 [Chap 14] 操作重载与类型转换
 
 - 
 
@@ -1935,7 +2003,7 @@ Entry e = {0, "Anna"};
 
 
 
-### 🌱 [Chap 15] 类（OOP）
+### 🌱 [Chap 15] OOP
 
 - 
 
@@ -1944,7 +2012,7 @@ Entry e = {0, "Anna"};
 
 
 
-### 🌱 [Chap 16] 类（模板与泛型编程）
+### 🌱 [Chap 16] 模板与泛型编程
 
 - 
 
@@ -1953,7 +2021,7 @@ Entry e = {0, "Anna"};
 
 
 
-### 🌱 [Chap 12] 动态内存
+### 🌱 [Chap 12] 动态内存（Dynamic Memory）
 
 - 程序中使用的对象都有严格的 *存储期* （生存期）
     - *全局对象* 
@@ -1969,6 +2037,14 @@ Entry e = {0, "Anna"};
         - 从被创建一直存在到被 *显式释放* 为止
             - *智能指针* 可以自动释放该被释放的对象
         - 存储于动态存储区（程序的堆内存）
+
+#### 动态内存和智能指针（Dynamic Memory and Smart Pointers）
+
+#### 动态数组（Dynamic Arrays）
+
+#### Using the Library: A Text-Query Program
+
+
 
 
 
