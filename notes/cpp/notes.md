@@ -273,7 +273,7 @@
 - `C++`程序中出现的每个名字，只在某些可能不连续的源码部分中 *有效* （即，编译器能知道这玩意儿是啥、在哪儿声明的），这些部分被称为其 *作用域* 
     - 编译器通过[名字查找](https://en.cppreference.com/w/cpp/language/lookup)（Name lookup）实现名字和声明的关联
         - 如果名字已经指明了 *命名空间* ，则进行[限定名字查找](https://en.cppreference.com/w/cpp/language/qualified_lookup)（Qualified name lookup）
-        - 否则，进行[无限定名字查找](https://en.cppreference.com/w/cpp/language/unqualified_lookup（Unqualified name lookup）
+        - 否则，进行[无限定名字查找](https://en.cppreference.com/w/cpp/language/unqualified_lookup)（Unqualified name lookup）
 - 根据变量的 *定义位置* 和 *生命周期* ，`C++`的变量具有不同的 *作用域* ，共分为以下几类 
     - [*块作用域*](https://en.cppreference.com/w/cpp/language/scope#Block_scope)（Block scope）
     - *函数形参作用域* （Function parameter scope）
