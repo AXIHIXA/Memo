@@ -392,8 +392,7 @@ int f1(int n,                             // 全局 n 的作用域间断
 int (*(*f2)(int n))[n];                   // OK ：函数形参 n 的作用域终止于其函数声明符的末尾
                                           // 数组声明符中，全局 n 在作用域中
                                           // （这声明了返回 int 的 3 元素数组的指针的函数的指针）
- 
-// 相反
+
 auto (*f3)(int n)->int (*)[n];            // 错误：以参数 n 为数组边界
  
  
@@ -401,6 +400,7 @@ int f(int n = 2)                          // n 的作用域开始
 try                                       // 函数 try 块
 {                                         // 函数体开始
     ++n;                                  // n 在作用域中并指代函数形参
+    
     {
         int n = 2;                        // 局部变量 n 的作用域开始
                                           // 函数参数 n 的作用域中断
@@ -417,7 +417,26 @@ catch (...)
 int a = n;                                // OK ：名称 n 在作用域中
 ```
 
-#### 
+#### 函数作用域
+
+- 声明于函数内的`label`（且 *只有* `label`），在 *该函数* 和 *其所有内嵌代码块* 的 *任何位置* 都在作用域中，无论在其自身声明的前后
+    - Edsger Dijkstra, Go To Statement Considered Harmful, *Communications of the ACM (CACM)*, March 1968
+```
+void f()
+{
+   {   
+       goto label;                        // label 在作用域中，尽管之后才声明
+label:;
+   }
+   
+   goto label;                            // label 忽略块作用域
+}
+ 
+void g()
+{
+    goto label;                           // 错误： g() 中 label 不在作用域中
+}
+```
 
 #### 从作用域和存储期看变量
 
