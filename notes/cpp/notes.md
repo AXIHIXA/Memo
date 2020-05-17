@@ -188,7 +188,7 @@
         - 该对象的定义语句只在程序第一次执行到时会被执行，之后会被程序跳过
             - 也就是说该对象永远 *只存在一个实例*
         - 存储于 *静态存储区* （程序的 *静态* 内存）
-3. *线程（局部）存储期*  （Thread (local) storage duration）
+3. *线程局部存储期*  （Thread local storage duration）
     - 包含
         - *所有* 声明带有`thread_local`的对象
     - 存储方式
