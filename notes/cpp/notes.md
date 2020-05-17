@@ -1,6 +1,6 @@
 # `C++ Primer 5th Edition` Notes
 
-记录一些对C++理解得不到位的地方。
+记录一些对`C++`理解得不到位的地方。
 
 
 
@@ -165,21 +165,75 @@
 
 
 
-### 🌱 [作用域](https://en.cppreference.com/w/cpp/language/scope)（scope）和[存储期](https://en.cppreference.com/w/cpp/language/storage_duration)（Storage duration）
+### 🌱 [作用域](https://en.cppreference.com/w/cpp/language/scope)（scope）
+
+#### [存储期](https://en.cppreference.com/w/cpp/language/storage_duration)（Storage duration）
+
+        auto - automatic storage duration. 
+
+    (until C++11)
+
+        register - automatic storage duration. Also hints to the compiler to place the object in the processor's register. (deprecated) 
+
+    (until C++17)
+
+        static - static or thread storage duration and internal linkage.
+        extern - static or thread storage duration and external linkage. 
+
+        thread_local - thread storage duration. 
+
+    (since C++11)
+
+        mutable - does not affect storage duration or linkage. See const/volatile for the explanation. 
+
+
+
+
+程序中的所有对象都具有下列存储期之一：
+
+1. *自动存储期*  （Automatic storage duration）
+    - 包含
+        - **未声明**为`static`、`extern`或`thread_local`的所有 *局部对象* 
+    - 存储方式
+        - 对象的存储在外围代码块开始时分配，而在结束时解分配
+        - 被称作 *自动对象* 
+2. *静态存储期*  （Static storage duration）
+    - 包含
+        - 所有声明于 *命名空间作用域* （包含 *全局命名空间* ）的对象
+        - 声明带有`static`或`extern`的对象
+    - 存储方式
+        - 对象的存储在程序开始时分配，而在程序结束时解分配
+        - 该对象永远 *只存在一个实例*
+3. *线程存储期*  （Thread storage duration）
+    - 包含
+        - *所有* 声明带有`thread_local`的对象
+    - 存储方式
+        - 对象的存储在线程开始时分配，而在线程结束时解分配
+        - 每个线程拥有其自身的对象实例
+        - `thread_local`能与`static`或`extern`一同出现，以调整连接
+4. *动态存储期*  （Dynamic storage duration）
+    - 包含
+        - [`new`表达式](https://en.cppreference.com/w/cpp/language/new)
+        - 其他内存申请操作搞出来的东西
+    - 存储方式
+        - 对象的存储是通过使用 *动态内存分配函数* 来按请求进行分配和解分配的
 
 #### 作用域
 
 - 根据变量的 *定义位置* 和 *生命周期* ，`C++`的变量具有不同的 *作用域* ，共分为以下几类 
-    - 全局作用域（Global scope，跨文件的全局作用域）
-    - 文件作用域（File scope，仅限自己所在文件内的“全局”作用域。详见下文 *链接* ）
-    - 局部作用域（Local scope）
-        - 块作用域（Block scope）
-        - 函数形参作用域（Function parameter scope）
-        - 函数作用域（Function scope）
-        - 命名空间作用域（Namespace scope）
-        - 类作用域（Class scope）
-        - 枚举作用域（Enumeration scope）
-        - 模板形参作用域（Template parameter scope）
+    - 按全局和局部分类
+        - *全局作用域* （Global scope， *跨文件全局* 的作用域）
+        - *文件作用域* （File scope，仅限自己所在 *文件内全局* 的作用域。详见下文 *链接* ）
+        - *局部作用域* （Local scope，文件内也只有部分人能找到）
+    - `C++`标准的分类
+        - *块作用域* （Block scope）
+        - *函数形参作用域* （Function parameter scope）
+        - *函数作用域* （Function scope）
+        - *命名空间作用域* （Namespace scope）
+            - 包含 *全局命名空间* （Global namespace）
+        - *类作用域* （Class scope）
+        - *枚举作用域* （Enumeration scope）
+        - *模板形参作用域* （Template parameter scope）
 - 作用域始于 *声明点* 
     - 内部作用域（inner scope）的变量会 *覆盖* 外部作用域（outer scope）的 *同名变量* 
 - 从作用域看变量
@@ -223,31 +277,9 @@
     - 函数的返回值类型前加上`static`关键字
     - 只在声明它的文件当中可见，**不能**被其它文件使用
 
-#### 存储期
-
-程序中的所有对象都具有下列存储期之一：
-
-1. *自动存储期*  （Automatic storage duration）
-    - 对象的存储在外围代码块开始时分配，而在结束时解分配
-    - 未声明为`static`、`extern`或`thread_local`的所有 *局部对象* 均拥有此存储期
-2. *静态存储期*  （Static storage duration）
-    - 对象的存储在程序开始时分配，而在程序结束时解分配
-    - 该对象永远 *只存在一个实例*
-    - 所有声明于 *命名空间作用域* （包含全局命名空间）的对象，加上声明带有`static`或`extern` 的对象均拥有此存储期
-    - 有关拥有此存储期的对象的初始化的细节，见 *全局变量* 与 *静态局部变量* 
-3. *线程存储期*  （Thread storage duration）
-    - 对象的存储在线程开始时分配，而在线程结束时解分配
-    - 每个线程拥有其自身的对象实例
-    - 唯有声明为`thread_local`的对象拥有此存储期
-    - `thread_local`能与`static`或`extern`一同出现，以调整连接
-    - 关于具有此存储期的对象的初始化的细节，见 *全局变量* 与 *静态局部变量* 
-4. *动态存储期*  （Dynamic storage duration）
-    - 对象的存储是通过使用 *动态内存分配函数* 来按请求进行分配和解分配的
-    - 关于具有此存储期的对象的初始化的细节，见[`new`表达式](https://en.cppreference.com/w/cpp/language/new)
-
 #### 链接（Linkage）
 
-所有变量都具有如下四种 *链接* 之一：
+所有变量都具有如下四种 *链接* 之一，用于调节变量在不同文件（ *翻译单元* ）之间的可见性：
 
 1. *无链接* （No linkage）
     - 名字只能从 *其所在的作用域* 使用
@@ -309,6 +341,118 @@
 4. *模块连接* （Module linkage，`C++20`新标准）
     - 名字 *只能* 从 *同一模块单元* 或 *同一具名模块中的其他翻译单元* 的作用域指代
     - 声明于 *命名空间作用域* 中的 *具名模块* 且 *不被导出* ，且无内部连接，则该名字拥有 *模块连接*
+
+
+
+
+
+
+### 🌱 [初始化](https://en.cppreference.com/w/cpp/language/initialization)（Initialization）
+
+#### 初始化器（Initializer）
+
+- 任何对象在被创建时都会被 *初始化* 
+    1. 构造对象时，可以提供一个 *初始值* 进行 *初始化* ，也可以不提供（此时应用 *默认初始化* 规则）
+    2. 在函数调用时也会发生，函数的 *形参* 及 *返回值* 亦会被初始化
+- *初始值* 由以下三种 *初始化器* 提供
+    1. *括号初始化器* `( expression-list )`：括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表
+    2. *等号初始化器* `= expression`：等号后面跟着一个表达式
+    3. *花括号初始化器* `{ initializer-list }`：花括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表， *可以为空* 
+        - 这种初始化被称作 *列表初始化* 
+        - 如果产生 *精度损失* ，会报 *编译错误* 
+    ```
+    int a = 1;       // ok. 
+    int b(1);        // ok. 
+    int c = {1};     // ok. list-initialization
+    int d{1};        // ok. list-initialization
+    int e = {3.14};  // error: type 'double' can not be narrowed down to 'int' in initializer list
+    int f{3.14};     // error: type 'double' can not be narrowed down to 'int' in initializer list
+    ```
+- 根据上下文， *初始化器* 具体可能进行
+    1. [*值初始化*](https://en.cppreference.com/w/cpp/language/value_initialization)，例如`std::string s{};`
+    2. [*直接初始化*](https://en.cppreference.com/w/cpp/language/direct_initialization)，例如`std::string s("hello");`
+    3. [*复制初始化*](https://en.cppreference.com/w/cpp/language/copy_initialization)，例如`std::string s = "hello";`
+    4. [*列表初始化*](https://en.cppreference.com/w/cpp/language/list_initialization)，例如`std::string s{'a', 'b', 'c'};`
+    5. [*聚合初始化*](https://en.cppreference.com/w/cpp/language/aggregate_initialization)，例如`char a[3] = {'a', 'b'};`
+    6. [*引用初始化*](https://en.cppreference.com/w/cpp/language/reference_initialization)，例如`char & c = a[0];`，`std::string s = std::move("hello");`
+    7. [*默认初始化*](https://en.cppreference.com/w/cpp/language/default_initialization)，例如`T object;`
+- 这章下面几节是当字典用的，看看就得了
+
+#### [值初始化](https://en.cppreference.com/w/cpp/language/value_initialization)
+
+- 在变量以 *空初始化器* 构造时进行的初始化
+```
+T()                                     (1)  // 匿名临时量
+new T ()                                (2)     
+Class::Class(...) : member() { ... }    (3)     
+T object {};                            (4)
+T{}                                     (5)
+new T {}                                (6)  // 匿名临时量   
+Class::Class(...) : member{} { ... }    (7)
+```
+- 初始化流程
+    1. 若`T`是 *聚合类* 且使用的是花括号，执行 *聚合初始化* 
+    2. 若`T`是**没有** *合成的默认构造函数* ，则 *默认初始化* 
+    3. 若`T`是拥有 *合成的默认构造函数* 的 *类类型* ，则 
+        1. *零初始化* 对象的数据成员
+        2. 然后，若数据成员拥有 *非平凡的默认构造函数* ，则 *默认初始化* 
+    4. 若`T`是 *数组类型* ，则 *值初始化* 数组的 *每个元素* 
+    5. 否则， *零初始化* 对象
+- 注意事项
+    - 只有 *用户未定义的* 或在首个声明处显式`= default;`的构造函数是 *合成的默认构造函数* 
+    - 语法`T object();`声明的是 *函数* 
+    - **不能**值初始化 *引用*
+    - 语法`T() (1)`对于 *数组* **禁止**，但允许`T{} (5)`
+    - 所有 *标准容器* 在以单个`size_type`实参进行构造、或由对`resize()`的调用而增长时， *值初始化* 其各个元素
+    - 对没有用户提供的构造函数而拥有类类型成员的类进行值初始化，其中成员的类拥有用户提供的构造函数，会在调用成员的构造函数前对成员 *清零* 
+
+#### [直接初始化](https://en.cppreference.com/w/cpp/language/direct_initialization)
+
+- 从 *明确的构造函数实参的集合* 初始化对象
+```
+T object ( arg );
+T object ( arg1, arg2, ... );               (1)     
+T object { arg };                           (2) 
+T ( other )
+T ( arg1, arg2, ... )                       (3)     
+static_cast< T >( other )                   (4)     
+new T(args, ...)                            (5)     
+Class::Class() : member(args, ...) { ... }  (6)     
+[arg](){ ... }                              (7) 
+```
+- 
+
+#### [复制初始化](https://en.cppreference.com/w/cpp/language/copy_initialization)
+
+
+
+#### [列表初始化](https://en.cppreference.com/w/cpp/language/list_initialization)
+
+
+
+#### [聚合初始化](https://en.cppreference.com/w/cpp/language/aggregate_initialization)
+
+
+
+#### [引用初始化](https://en.cppreference.com/w/cpp/language/reference_initialization)
+
+
+
+#### [默认初始化](https://en.cppreference.com/w/cpp/language/default_initialization)
+
+- **不使用** *初始化器* 构造变量时执行的初始化
+```
+T object;    (1)    
+new T        (2)    
+```
+- 初始化流程
+    1. *静态对象* 和 *线程局部对象* 进行 *零初始化* 
+    2. 若`T`是 *类类型* ，则考虑各构造函数并实施针对空实参列表的 [*重载决议*](https://en.cppreference.com/w/cpp/language/overload_resolution)（Overload resolution）。调用所选的构造函数（默认构造函数之一），以提供新对象的初始值
+    3. 若`T`是 *数组类型* ，则每个数组元素都被 *默认初始化* 
+    4. 否则，不做任何事。 *自动对象（及其子对象）* 被初始化为 *不确定值*  
+- 注意事项
+    - 若`T`是`const`限定类型，则它必须是 *具有用户提供的默认构造函数* 的 *类类型* 
+    - **不能**默认初始化 *引用*   
 
 
 
@@ -570,8 +714,8 @@ sizeof expr   // 返回表达式 结果类型 大小
     ```
 - 位域的声明
     - 使用下列声明符的类数据成员声明（`[]`代表 *可选* ）
-        - `[identifier] [attr] : size`	
-        - `[identifier] [attr] : size brace-or-equal-initializer`（`C++20`新标准） 	
+        - `[identifier] [attr] : size`  
+        - `[identifier] [attr] : size brace-or-equal-initializer`（`C++20`新标准）   
     - 位域的 *类型* 由声明语法的 *声明说明符序列* 引入
         - *标识符* ：被声明的位域名
             - 名字是可选的， *无名位域* 引入指定数量的填充位
@@ -1190,68 +1334,6 @@ useBigger(s1, s2, pf);
 
 ### 🌱 [Chap 7] 类（基础概念）
 
-#### [初始化](https://en.cppreference.com/w/cpp/language/initialization)（Initialization）
-
-- 任何对象在被创建时都会被 *初始化* 
-    1. 构造对象时，可以提供一个 *初始值* 进行 *初始化* ，也可以不提供（此时应用 *默认初始化* 规则）
-    2. 在函数调用时也会发生，函数的 *形参* 及 *返回值* 亦会被初始化
-- *初始值* 由以下三种 *初始化器* （initializer）提供
-    1. *括号初始化器* `( expression-list )`：括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表
-    2. *等号初始化器* `= expression`：等号后面跟着一个表达式
-    3. *花括号初始化器* `{ initializer-list }`：花括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表， *可以为空* 
-- 根据上下文， *初始化器* 具体进行
-    1. [*值初始化*](https://en.cppreference.com/w/cpp/language/value_initialization)，例如`std::string s{};`
-    2. [*直接初始化*](https://en.cppreference.com/w/cpp/language/direct_initialization)，例如`std::string s("hello");`
-    3. [*复制初始化*](https://en.cppreference.com/w/cpp/language/copy_initialization)，例如`std::string s = "hello";`
-    4. [*列表初始化*](https://en.cppreference.com/w/cpp/language/list_initialization)，例如`std::string s{'a', 'b', 'c'};`
-    5. [*聚合初始化*](https://en.cppreference.com/w/cpp/language/aggregate_initialization)，例如`char a[3] = {'a', 'b'};`
-    6. [*引用初始化*](https://en.cppreference.com/w/cpp/language/reference_initialization)，例如`char & c = a[0];`，`std::string s = std::move("hello");`
-- 具体规则
-    1. *全局变量* 
-        - *静态初始化*
-            - 所有具有 *静态存储期* 的全局变量，作为程序启动的一部分，在`main`函数的执行之前进行初始化（除非 *被延迟* ，见下文）
-            - 如可以，首先进行 [*常量初始化*](https://en.cppreference.com/w/cpp/language/constant_initialization) 
-                - 设置 *静态变量* 的初值为编译时常量
-                ```
-                static T & ref = constexpr;
-                static T object = constexpr;
-                ```
-            - 对于所有其他静态全局及静态线程局部变量，均进行 *零初始化* 
-        - *动态初始化*
-            - 所有具有 *线程局部存储期* 的全局变量，作为线程启动的一部分进行初始化，按顺序早于线程函数的执行开始
-
-            
-    2. *局部静态变量* 
-        - 有关局部（即块作用域）的静态和线程局部变量，见[静态局部变量](https://en.cppreference.com/w/cpp/language/storage_duration#Static_local_variables)
-        - 拥有 *外部或内部链接* 的变量的块作用域声明中**不允许** *初始化器*
-            - 这种声明必须带`extern`出现
-            - 给了 *初始化器* 倒不会报错，不过这就成了 *普通定义* 了， *链接* 直接被忽视
-    3. 类的[*非静态数据成员*](https://en.cppreference.com/w/cpp/language/data_members)
-        1. 在构造函数的 *成员初始化器列表* 中 
-        ```
-        struct S
-        {
-            S() : n(7) { }  // 直接初始化 n ，默认初始化 s
-            
-            int n;
-            std::string s;
-        };
-        ```
-        2. 通过 *默认成员初始化器* 
-            - 它是包含于成员声明中的花括号或等号初始化器，并在成员初始化器列表中忽略该成员的情况下得到使用 
-            - 通过这种初始化得到的值被称作 *类内初始值*
-        ```
-        struct S
-        {
-            S() { }         // 默认成员初始化器将复制初始化 n ，列表初始化 s
-            
-            
-            int n = 7;
-            std::string s {'a', 'b', 'c'};
-        };
-        ```
-        3. *默认初始化* 
-
 #### 合成的默认构造函数（Synthesized default constructor）
 
 - 按如下规则初始化类成员
@@ -1280,7 +1362,7 @@ useBigger(s1, s2, pf);
 - 初始化器列表接受的初始化语法
     1. `Constructor() : x(?), ... { }`
     2. `Constructor() : x{?}, ... { }`
-- 如果成员是`const`、引用或者没有默认构造函数的类类型，如没有类内初始值，则**必须**在初始化器列表中初始化，而不能在函数体中赋值
+- 如果成员是`const`、 *引用* 或者 *没有默认构造函数的类类型* ，如没有类内初始值，则 *必须* 在成员初始化器列表中初始化，而**不能**等到函数体中赋值
 - 初始化的顺序是按照类成员被声明的顺序，与其在列表中的顺序无关
     - 最好令构造函数初始化列表的顺序与成员声明的顺序保持一致
     - 尽量避免用某些成员初始化其他成员，最好用构造函数的参数作为初始值

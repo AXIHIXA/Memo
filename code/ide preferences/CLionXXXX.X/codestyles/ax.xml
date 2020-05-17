@@ -10,6 +10,7 @@
     <option name="BLOCK_BRACE_PLACEMENT" value="2" />
     <option name="SPACE_BEFORE_TEMPLATE_DECLARATION_LT" value="true" />
     <option name="SPACE_WITHIN_TEMPLATE_DOUBLE_GT" value="false" />
+    <option name="SPACE_BEFORE_INIT_LIST" value="true" />
     <option name="SPACE_AFTER_POINTER_IN_DECLARATION" value="true" />
     <option name="SPACE_AFTER_REFERENCE_IN_DECLARATION" value="true" />
   </Objective-C>
@@ -52,6 +53,7 @@
     <option name="WHILE_ON_NEW_LINE" value="true" />
     <option name="CATCH_ON_NEW_LINE" value="true" />
     <option name="INDENT_CASE_FROM_SWITCH" value="false" />
+    <option name="SPACE_WITHIN_ARRAY_INITIALIZER_BRACES" value="true" />
     <option name="KEEP_SIMPLE_BLOCKS_IN_ONE_LINE" value="false" />
     <option name="KEEP_SIMPLE_METHODS_IN_ONE_LINE" value="false" />
     <option name="IF_BRACE_FORCE" value="3" />
