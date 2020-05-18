@@ -1059,7 +1059,7 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
     // 要怎么看呢？很简单，不要用`const`和`*`，用`Const`和`Ptr`来表达，马上明白：
     Const<Ptr<Ptr<Ptr<Const<int>>>>> shit = nullptr;
     ```
-- [*数据成员指针*](https://en.cppreference.com/w/cpp/language/pointer#Pointers_to_members)
+- [*成员指针*](https://en.cppreference.com/w/cpp/language/pointer#Pointers_to_members)
 
 
 
