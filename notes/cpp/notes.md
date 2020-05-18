@@ -631,6 +631,28 @@ auto X::g() -> r                          // OK ：尾随返回类型 X::r 在�
     - 在对其类或其派生类的类型的表达式运用 *`.`运算符* 之后
     - 在对其类或其派生的类的指针类型的表达式运用 *`->`运算符* 之后
     - 在对其类或其派生类的名字运用 *`::`运算符* 之后 
+- 如何强行 *访问被覆盖的外层同名变量* 
+```
+// note: this code is for illustration purposes only and reflects bad practice
+// it is generally a bad idea to use the same name for a parameter and a member
+size_t shit = 2;
+
+struct Item
+{
+    void print1(size_t shit) const
+    {
+        // shit:       function parameter
+        // this->shit: class member
+        // ::shit:     global one
+        printf("%zu %zu %zu\n", shit, this->shit, ::shit);
+    }
+
+    size_t shit = 1;
+};
+
+Item t;
+t.print1(0);  // 0 1 2
+```
 
 #### [枚举作用域](https://en.cppreference.com/w/cpp/language/scope#Enumeration_scope)（Enumeration scope）
 
