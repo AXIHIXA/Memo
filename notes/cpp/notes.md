@@ -166,6 +166,15 @@
 
 
 
+### 🌱 [定义和`ODR`](https://en.cppreference.com/w/cpp/language/definition)（Definitions and `ODR` (One Definition Rule)）
+
+
+
+
+
+
+
+
 ### 🌱 [存储期和链接](https://en.cppreference.com/w/cpp/language/storage_duration)（Storage duration and linkage）
 
 #### [存储期](https://en.cppreference.com/w/cpp/language/storage_duration#Storage_duration)（Storage duration）
@@ -237,9 +246,18 @@
         ```
         - 编译器在编译过程中会把所有的`const`变量都替换成相应的字面值。为了执行上述替换，编译器必须知道变量的初始值。如果程序包含多个文件，则每个用了`const`对象的文件都必须得能访问到它的初始值才行。要做到这一点，就必须在每一个用到变量的文件之中都有它的定义。为了支持这一用法，同时避免对同一变量的重复定义，默认情况下，`const`对象被设定为仅在文件内有效。当多个文件中出现了同名的`const`变量时，其实等同于在不同文件中分别定义了**独立的**变量。如果希望`const`对象只在一个文件中定义一次，而在多个文件中声明并使用它，则需采用上述操作。
 3. *外部链接* （External linkage）
-    - 名字能从 *其他翻译单元中* 的作用域使用
-        - 具有 *外部链接* 的变量和函数亦具有 *语言链接* （Language linkage），这使得可以链接到以不同编程语言编写的翻译单元 
-            - 啊，熟悉的`python`，你来了
+    - 名字能从 *其他翻译单元* 中的作用域使用
+        - 具有 *外部链接* 的变量和函数亦具有 [*语言链接*](https://en.cppreference.com/w/cpp/language/language_linkage)（Language linkage），这使得可以链接到以 *不同编程语言* 编写的 *翻译单元* 
+            - `C++`的默认外联语言当然是`C++`自己
+            - `C++`外联`C`是坠常见的，举个栗子
+            ```
+            #ifdef __cplusplus
+            extern "C" int foo(int, int);  // C++ compiler sees this
+            #else
+            int foo(int, int);             // C compiler sees this
+            #endif
+            ```
+            - 啊，熟悉的[*`python C/C++`拓展*](https://docs.python.org/3.7/extending/extending.html)，你来了
     - *首次* 声明于 *块作用域* 的下列名字均具有 *外部链接* 
         - 声明为`extern`的 *变量名* 
         - *函数名*  
@@ -277,12 +295,12 @@
 - 根据变量的 *定义位置* 和 *生命周期* ，`C++`的变量具有不同的 *作用域* ，共分为以下几类 
     - [*块作用域*](https://en.cppreference.com/w/cpp/language/scope#Block_scope)（Block scope）
     - [*函数形参作用域*](https://en.cppreference.com/w/cpp/language/scope#Function_parameter_scope)（Function parameter scope）
-    - *函数作用域* （Function scope）
-    - *命名空间作用域* （Namespace scope）
+    - [*函数作用域*](https://en.cppreference.com/w/cpp/language/scope#Function_scope)（Function scope）
+    - [*命名空间作用域*](https://en.cppreference.com/w/cpp/language/scope#Namespace_scope)（Namespace scope）
         - 包含 *全局命名空间作用域* （Global namespace scope），即所谓的 *全局作用域* 
-    - *类作用域* （Class scope）
-    - *枚举作用域* （Enumeration scope）
-    - *模板形参作用域* （Template parameter scope）
+    - [*类作用域*](https://en.cppreference.com/w/cpp/language/scope#Class_scope)（Class scope）
+    - [*枚举作用域*](https://en.cppreference.com/w/cpp/language/scope#Enumeration_scope)（Enumeration scope）
+    - [*模板形参作用域*](https://en.cppreference.com/w/cpp/language/scope#Template_parameter_scope)（Template parameter scope）
 - 作用域始于 *声明点* ，内部作用域（inner scope）的变量会 *覆盖* 外部作用域（outer scope）的 *同名变量* 
 
 #### [块作用域](https://en.cppreference.com/w/cpp/language/scope#Block_scope)（Block scope）
@@ -417,10 +435,10 @@ catch (...)
 int a = n;                                // OK ：名称 n 在作用域中
 ```
 
-#### 函数作用域
+#### [函数作用域](https://en.cppreference.com/w/cpp/language/scope#Function_scope)（Function scope）
 
 - 声明于函数内的`label`（且 *只有* `label`），在 *该函数* 和 *其所有内嵌代码块* 的 *任何位置* 都在作用域中，无论在其自身声明的前后
-    - Edsger Dijkstra, Go To Statement Considered Harmful, *Communications of the ACM (CACM)*, March 1968
+    - E. Dijkstra: Go To Statement Considered Harmful. *Communications of the ACM (CACM)* (1968) 
 ```
 void f()
 {
@@ -437,6 +455,74 @@ void g()
     goto label;                           // 错误： g() 中 label 不在作用域中
 }
 ```
+
+#### [命名空间作用域](https://en.cppreference.com/w/cpp/language/scope#Namespace_scope)（Namespace scope）
+
+- [*命名空间*](https://en.cppreference.com/w/cpp/language/namespace) 中声明的任何实体的作用域均开始于其声明，并包含
+    - 其后所有 *同名命名空间* 
+    - 使用了 *`using`命令* 引入了此实体或整个这个命名空间的域
+    - 这个命名空间的 *剩余部分* 
+- *翻译单元* （文件）的顶层作用域（即所谓的 *文件作用域* 或 *全局作用域* ）亦为命名空间，而被正式称作 *全局命名空间作用域* 
+    - 任何声明于 *全局命名空间作用域* 的实体的作用域均开始于其声明，并持续到 *翻译单元的结尾* 
+- 声明于 *无名命名空间* 或 *内联命名空间* 的实体的作用域 *包括外围命名空间* 
+```
+namespace N
+{                                         // N 的作用域开始（作为全局命名空间的成员）
+    int i;                                // i 的作用域开始
+    int g(int a) { return a; }            // g 的作用域开始
+    int j();                              // j 的作用域开始
+    void q();                             // q 的作用域开始
+    
+    namespace 
+    {
+        int x;                            // x 的作用域开始
+    }                                     // x 的作用域不结束
+    
+    inline namespace inl 
+    {                                     // inl 的作用域开始
+        int y;                            // y 的作用域开始
+    }                                     // y 的作用域不结束
+}                                         // i, g, j, q, inl, x, y 的作用域间断
+ 
+namespace 
+{
+    int l = 1;                            // l 的作用域开始
+}                                         // l 的作用域不结束（它是无名命名空间的成员）
+ 
+namespace N 
+{                                         // i, g, j, q, inl, x, y 的作用域持续
+    int g(char a) 
+    {                                     // 重载 N::g(int)
+        return l + a;                     // 来自无名命名空间的 l 在作用域中
+    }
+    
+    int i;                                // 错误：重复定义（ i 已在作用域中）
+    extern int i;                         // OK ：允许重复的变量声明
+    int j();                              // OK ：允许重复的函数声明
+    
+    int j() 
+    {                                     // OK ：先前声明的 N::j() 的定义
+        return g(i);                      // 调用 N::g(int)
+    }
+    
+    int q();                              // 错误： q 已在作用域中并有不同的返回类型
+}                                         // i, g, j, q, inl, x, y 的作用域间断
+
+int main() 
+{
+    using namespace N;                    // i, g, j, q, inl, x, y 的作用域恢复
+    i = 1;                                // N::i 在作用域中
+    x = 1;                                // N::(anonymous)::x 在作用域中
+    y = 1;                                // N::inl::y 在作用域中
+    inl::y = 2;                           // N::inl 亦在作用域中
+}                                         // i, g, j, q, inl, x, y 的作用域间断
+```
+   
+#### [类作用域](https://en.cppreference.com/w/cpp/language/scope#Class_scope)（Class scope）
+
+#### [枚举作用域](https://en.cppreference.com/w/cpp/language/scope#Enumeration_scope)（Enumeration scope）
+
+#### [模板形参作用域](https://en.cppreference.com/w/cpp/language/scope#Template_parameter_scope)（Template parameter scope）
 
 #### 从作用域和存储期看变量
 
