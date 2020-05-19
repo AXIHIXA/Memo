@@ -1079,13 +1079,13 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
 - 这部分是提高内容，当字典用的，看看就得了
 - 指针声明语法
     1. `T    * d;`： *指针声明符* ，`d`为指向`T`类型数据的指针
-    2. `T C::* d;`： *成员指针声明符* ，`d`为指向`C`的`T`类型 *非静态数据成员* 的指针
+    2. `T C::* d;`： *成员指针声明符* ，`d`为指向`C`的`T`类型 *非静态成员* 的指针
     ```
     decl-specifier-seq                       * attr(optional) cv(optional) declarator   (i)
     decl-specifier-seq nested-name-specifier * attr(optional) cv(optional) declarator  (ii) 
     ```
     - *声明说明符序列* （declarator specifier sequence）：用于说明指针指向的类型
-    - *嵌套名说明符* （nested name specifier）：由 *名字* 和 *作用域解析运算符*（`::`）组成的序列
+    - *嵌套名说明符* （nested name specifier）：由 *名字* 和 *作用域解析运算符* `::`组成的序列
     - `attr`： *属性列表* ，可选
     - `cv`：应用到 *被声明指针* 的`cv`限定，可选
         - *被指向类型* 的`cv`限定是 *声明说明符序列* 的一部分
@@ -1103,27 +1103,74 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
         - 某类型的 *空* 指针值 
             - `NULL`（就是`0`）或`nullptr`
         - *无效* 指针值 
-            - *无效指针值* 的 *任何用法* 均是 *未定义行为* 尤其点名`diss`如下作死行为
-                - 通过 *无效指针值* 间接寻址
-                - 将 *无效指针值* 传递给解分配函数
+            - *无效指针值* 的 *任何用法* 均是 *未定义行为* ，尤其点名`diss`如下作大死者
+                - 通过 *无效指针值* 间接寻址者
+                - 将 *无效指针值* 传递给解分配函数者
     - **注意**：两个表示同一地址的指针可能拥有 *不同* 的值
 ```
 struct C 
 {
-    int x, y;
+    int x;
+    int y;
 };
 
 C c;
  
-int * px = &c.x;    // px  的值为 指向 c.x 的指针
-int * pxe= px + 1;  // pxe 的值为  c.x 的尾后指针
-int * py = &c.y;    // py  的值为 指向 c.y 的指针
+int * px = &c.x;                       // px  的值为 指向 c.x 的指针
+int * pxe= px + 1;                     // pxe 的值为  c.x 的尾后指针
+int * py = &c.y;                       // py  的值为 指向 c.y 的指针
+
+assert(pxe == py);                     // 测试两个指针是否表示相同地址
+                                       // 这条 assert 可能被触发，也可能不被触发
+                                       // 至少 g++ version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04) 上实测没有触发
  
-assert(pxe == py);  // 测试两个指针是否表示相同地址
-                    // 这条 assert 可能被触发，也可能不被触发
- 
-*pxe = 1;           // 即使上面的 assert 未被触发，亦为未定义行为
+*pxe = 1;                              // 即使上面的 assert 未被触发，亦为未定义行为
 ```
+- [*对象指针*](https://en.cppreference.com/w/cpp/language/pointer#Pointers_to_objects)（Pointers to objects）
+    - 对 *任何* 对象类型（包含 *指针* 类型）使用 *取址运算符* `&`获得的地址都能用于初始化 *对象指针*
+        - 可以直接用 *数组头* 初始化指向 *数组首元素* 的指针
+            - *数组* 可隐式转换为 *指针* 
+        ```
+        int a[2];
+        int * p1 = a;                  // 指向数组 a 首元素 a[0]（一个 int）的指针
+         
+        int b[6][3][8];
+        int (*p2)[3][8] = b;           // 指向数组 b 首元素 b[0] 的指针，
+                                       // 被指者为 int 的 8 元素数组的 3 元素数组
+        ```
+        - 可以直接用 *派生类的地址* 初始化指向 *基类* 的指针
+            - *派生类指针* 可隐式转换 *基类指针* 
+        ```
+        struct Base {};
+        struct Derived : Base {};
+         
+        Derived d;
+        Base * p = &d;
+        ```
+    ```
+    int n;
+    int * np = &n;                 // int 的指针
+    int * const * npp = &np;       // 非 const int 的 const 指针的非 const 指针
+     
+    int a[2];
+    int (*ap)[2] = &a;             // int 的数组的指针
+     
+    struct S { int n; };
+    S s = {1};
+    int * sp = &s.n;               // 指向作为 s 的成员的 int 的指针
+    ```
+    - 指针可作为 *内建间接寻址运算符* `*`的操作数，返回指代被指向对象的 *左值* 表达式
+    ```
+    int n;
+    int * p = &n;                  // 指向 n 的指针
+    int & r = *p;                  // 绑定到指代 n 的左值表达式的引用
+    r = 7;                         // 存储 int 7 于 n
+    std::cout << *p << std::endl;  // 左值到右值隐式转换从 n 读取值
+    ```
+    - 指向类对象的指针亦可作为 *成员访问运算符* `->`、`->*`的左操作数
+    ```
+
+    ```
 
 
 
