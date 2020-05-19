@@ -1067,6 +1067,7 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
 Type cv(optional)                       * attr(optional) cv(optional) declarator  (a)
 Type cv(optional) nested-name-specifier * attr(optional) cv(optional) declarator  (b) 
 ```
+
     1. `T    * d;`： *指针声明符* ，`d`为指向`T`类型数据的指针
     2. `T C::* d;`： *成员指针声明符* ，`d`为指向`C`的`T`类型 *非静态数据成员* 的指针
     - *声明符* ：除引用声明符之外的任意声明符（无指向引用的指针）。它可以是另一指针声明符（允许指向指针的指针）
