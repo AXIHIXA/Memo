@@ -1071,6 +1071,417 @@ new T                                                         (2)
 
 
 
+### 🌱 [指针](https://en.cppreference.com/w/cpp/language/pointer)
+
+- 一网打尽各种指针
+
+#### 指针声明
+
+1. `T    * d;`： *指针声明符* ，`d`为指向`T`类型数据的指针
+2. `T C::* d;`： *成员指针声明符* ，`d`为指向`C`的`T`类型 *非静态成员* 的指针
+```
+decl-specifier-seq                       * attr(optional) cv(optional) declarator   (i)
+decl-specifier-seq nested-name-specifier * attr(optional) cv(optional) declarator  (ii) 
+```
+- *声明说明符序列* （declarator specifier sequence）：用于说明指针指向的类型
+- *嵌套名说明符* （nested name specifier）：由 *名字* 和 *作用域解析运算符* `::`组成的序列
+- `attr`： *属性列表* ，可选
+- `cv`：应用到 *被声明指针* 的`cv`限定，可选
+    - *被指向类型* 的`cv`限定是 *声明说明符序列* 的一部分
+- *声明符* （declarator）：除 *引用* 声明符**之外**的任意声明符，可以是另一 *指针* 声明符
+    - **无**指向 *引用* 或 *位域* 的指针
+    - 允许指向 *指针* 的指针
+    - 提到 *指针* 一词时，除特别提及，通常**不**包含指向 *非静态成员* 的指针
+
+#### 指针类型的的值
+
+- 指针类型的值是一定是下列四种情况之一
+    - 指向 *对象* 或 *函数* 的指针
+        - 该情况下说该指针指向函数或对象
+        - 对象的地址为内存中对象所 *占用的首字节* 的地址
+    - 对象 *尾后* 指针
+        - 为内存中对象所 *占用的存储之后的首字节* 的地址
+    - 某类型的 *空* 指针值 
+        - `NULL`（就是`0`）或`nullptr`
+    - *无效* 指针值 
+        - *无效指针值* 的 *任何用法* 均是 *未定义行为* ，尤其点名`diss`如下作大死者
+            - 通过 *无效指针值* 间接寻址者
+            - 将 *无效指针值* 传递给解分配函数者
+- **注意**：两个表示同一地址的指针可能拥有 *不同* 的值
+```
+struct C 
+{
+    int x;
+    int y;
+};
+
+C c;
+ 
+int * px = &c.x;                        // px  的值为 指向 c.x 的指针
+int * pxe= px + 1;                      // pxe 的值为  c.x 的尾后指针
+int * py = &c.y;                        // py  的值为 指向 c.y 的指针
+
+assert(pxe == py);                      // 测试两个指针是否表示相同地址
+                                        // 这条 assert 可能被触发，也可能不被触发
+                                        // 至少 g++ version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04) 上实测没有触发
+ 
+*pxe = 1;                               // 即使上面的 assert 未被触发，亦为未定义行为
+```
+
+#### 对象指针
+
+- 对 *任何* 对象类型（包含 *指针* 类型）使用 *取址运算符* `&`获得的地址都能用于初始化 *对象指针*
+    - 可以直接用 *数组头* 初始化指向 *数组首元素* 的指针
+        - *数组* 可隐式转换为 *指针* 
+        ```
+        int a[2];
+        int * p1 = a;                   // 指向数组 a 首元素 a[0]（一个 int）的指针
+         
+        int b[6][3][8];
+        int (*p2)[3][8] = b;            // 指向数组 b 首元素 b[0] 的指针，
+                                        // 被指者为 int 的 8 元素数组的 3 元素数组
+        ```
+        - 数组指针的 *类型别名* ，可用于简化定义
+        ```
+        int arr[10];
+
+        typedef int (*int_arr_10_ptr_t1)[10];         // 指向长度为 10 的 int 数组的指针类型的别名
+        typedef decltype(arr) * int_arr_10_ptr_t2;    // 等价类型别名
+
+        using int_arr_10_ptr_t3 = int[10];            // 等价类型别名
+        using int_arr_10_ptr_t4 = decltype(arr) *;    // 等价类型别名
+        ```
+    - 可以直接用 *派生类的地址* 初始化指向 *基类* 的指针
+        - *派生类指针* 可隐式转换 *基类指针* 
+        - 若`Derived`是 *多态* 的，则这种指针可用于进行 *虚函数调用* 
+    ```
+    struct Base {};
+    struct Derived : Base {};
+     
+    Derived d;
+    Base * p = &d;
+    ```
+```
+int n;
+int * np = &n;                         // int 的指针
+int * const * npp = &np;               // 非 const int 的 const 指针的非 const 指针
+ 
+int a[2];
+int (*ap)[2] = &a;                     // int 的数组的指针
+ 
+struct S { int n; };
+S s = {1};
+int * sp = &s.n;                       // 指向作为 s 的成员的 int 的指针
+```
+- 指针可作为 *内建间接寻址运算符* `*`的操作数，返回指代被指向对象的 *左值* 表达式
+```
+int n;
+int * p = &n;                          // 指向 n 的指针
+int & r = *p;                          // 绑定到指代 n 的左值表达式的引用
+r = 7;                                 // 存储 int 7 于 n
+std::cout << *p << std::endl;          // 左值到右值隐式转换从 n 读取值
+```
+- 指向类对象的指针亦可作为 [*成员访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_pointer-to-member_access_operators) `->`、`->*`的左操作数
+- 某些 *加法* 、 *减法* 、 *自增* 和 *自减* 运算符对于指向数组元素的指针有定义
+    - 这种指针满足`LegacyRandomAccessIterator`要求，使得`C++` *标准库算法可以用于内建数组* 上
+- *比较运算符* 对指针也有定义
+    - 数组元素的地址按照下标递增
+    - 类的非静态数据成员的地址按照声明顺序递增
+
+#### `void`指针
+
+- 指向 *任意类型* 对象的指针
+    - 用于传递 *未知类型* 对象，这在`C`接口中常见
+        - `std::malloc`返回`void *`
+        - `std::qsort`期待接受两个`const void *`参数的用户提供回调
+        - `pthread_create`期待接受并返回`void *`的用户提供的回调
+        - 所有情况下， *调用方负责* 在使用前将指针 *转型* 到正确类型
+- 普通指针可 *隐式转换* 成`void`指针（`cv`限定可选），**不**改变其值
+    - 若原指针指向某 *多态* 类型对象中的 *基类* 子对象，则可用`dynamic_cast`获得指向最终派生类型的完整对象的`void *`
+- `void`指针转回原类型
+    - *必须* `static_cast`、`reinterpret_cast`或 *显式强转* ，生成其原指针值
+```
+int n = 1;
+int * p1 = &n;
+void * pv = p1;
+int * p2 = static_cast<int *>(pv);
+std::cout << *p2 << std::endl;         // 1
+```
+
+#### 函数指针
+
+- 以 *非成员函数* 或 *静态成员函数* 的地址初始化
+    - 由于 *函数* 到 *函数指针* 隐式转换的原因，取址运算符是 *可选* 的
+    ```
+    void f(int);
+    void (*p1)(int) = &f;
+    void (*p2)(int) = f;               // 与 &f 相同
+    ```
+    - 与 *数组指针* 的辨析
+        - *函数名* 可以 *隐式转化* 成 *函数指针*
+        - *数组头* 会 *隐式转化* 成指向 *数组元素类型* 的指针，而**不是**指向 *数组类型* 的指针
+    ```
+    bool le(int, int);
+    bool (*pf1)(int, int) = le;        // 正确，指向函数
+    bool (*pf2)(int, int) = &le;       // 正确，指向函数
+    
+    int arr[10];
+    int * p1 = arr;                    // 正确，指向 int
+    int * p2 = &arr;                   // 错误
+    int *(p3)[10] = &arr;              // 正确，指向数组
+    ```
+- 不同于 *函数* 或 *函数的引用* ， 函数指针是 *对象* ，从而能 *存储于数组* 、 *被复制* 、 *被赋值* 等
+    - 这些玩意儿的解释方法和文法参见开篇章节中的[如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)一块儿
+```
+int (*f)()                  f as pointer to function () returning int
+int (*f())()                f as function () returning pointer to function () returning int
+int * f()                   f as function returning pointer to int
+int (*a[])()                a as array of pointer to function returning int
+int (*f())[]                f as function () returning pointer to array of int
+int (f[])()                 ARRAY OF FUNCTION IS NOT ALLOWED!!!
+                            f as array of function () returning int, which, again, is NOT ALLOWED
+int * const *(*g)(float)    g as pointer to function (float) returning pointer to const pointer to int
+```
+- 函数指针可用作 *函数调用运算符* 的左操作数，这会调用被指向的函数
+```
+int f(int n)
+{
+    std::cout << n << std::endl;
+    return n * n;
+}
+ 
+int (*p)(int) = f;
+int x = p(7);                          // 49
+```
+- *解引用* 函数指针生成标识被指向函数的 *左值*
+```
+int f();
+int (*p)() = f;                        // 指针 p 指向 f
+int (&r)() = *p;                       // 将标识 f 的左值绑定到引用
+
+f();                                   // 直接调用函数 f
+r();                                   // 通过左值引用调用函数 f
+p();                                   // 直接通过指针调用函数 f
+(*p)();                                // 通过函数左值调用函数 f
+```
+- 若 *只有一个重载匹配* 指针类型的话，函数指针可以从可包含函数、函数模板特化及函数模板的一个重载集进行初始化
+```
+template <typename T> T f(T n) { return n; }
+double f(double n) { return n; }
+ 
+int (*p)(int) = f;                     // 实例化并选择 f<int>
+```
+```
+void ff(int*);
+void ff(unsigned int);
+void (*pf1)(unsigned int) = 0;         // pf1 points to nothing
+void (*pf2)(unsigned int) = ff;        // pf1 points to ff(unsigned int)
+
+void (*pf3)(int) = ff;                 // error: no ff with a matching parameter list
+double (*pf4)(int*) = ff;              // error: return type of ff and pf4 don't match
+```
+- *相等比较* 运算符对于函数指针有定义（若指向同一函数则它们比较相等）  
+
+#### （类的）数据成员指针
+
+- 指向类`C`的 *非静态数据成员* `m`的指针，以`&C::m`初始化
+    - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
+    - `C`的 *成员函数* 中，`&(C::m)`、`&m`等**不再是**数据成员指针
+- 能用作 [*成员指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数
+    - 使得每个该类的对象都能用这个 *类的数据成员指针* 访问到自己的数据成员
+```
+struct C { int m; };
+
+int C::* p = &C::m;                    // pointer to data member m of class C
+C c = {7};
+std::cout << c.*p << std::endl;        // prints 7
+
+C * cp = &c;
+cp->m = 10;
+std::cout << cp->*p << std::endl;      // prints 10
+```
+- 无二义 *非虚基类的数据成员指针* 可以 *隐式转化* 为 *派生类的数据成员指针*
+```
+struct Base { int m; };
+struct Derived : Base {};
+ 
+int Base::* bp = &Base::m;
+int Derived::* dp = bp;
+Derived d;
+d.m = 1;
+std::cout << d.*dp << ' ' << d.*bp << std::endl;   // 打印 1 1
+```
+- *派生类的数据成员指针* 转回无二义 *非虚基类的数据成员指针*
+    - *必须* `static_cast` 或 *显式强转* 
+    - 即使 *基类* *并无该成员* （但当用该指针访问时，最终派生类中有）亦可
+        - 此时用基类对象访问此指针是 *未定义行为*
+```
+struct Base {};
+struct Derived : Base { int m; };
+ 
+int Derived::* dp = &Derived::m;
+int Base::* bp = static_cast<int Base::*>(dp);
+
+Derived d;
+d.m = 7;
+std::cout << d.*bp << std::endl;       // OK：打印 7
+
+Base b;
+std::cout << b.*bp << std::endl;       // 未定义行为
+```
+- 套娃
+    - 成员指针的被指向类型也可以是成员指针自身
+    - 成员指针可为多级，而且在每级可以有不同的`cv`限定
+    - 亦允许指针和成员指针的混合多级组合
+```
+struct A
+{
+    int m;
+    int A::* const p;                  // const pointer to non-const member
+};
+ 
+const A a = {1, &A::m};
+ 
+// non-const pointer to data member which is a const pointer to non-const member
+int A::* const A::* p1 = &A::p;
+std::cout << a.*(a.*p1) << std::endl;  // prints 1
+
+// regular non-const pointer to a const pointer-to-member
+int A::* const* p2 = &a.p;
+std::cout << a.**p2 << 'std::endl;     // prints 1
+```
+
+####（类的）成员函数指针
+
+- 指向类`C`的 *非静态成员函数* `f`的指针，以`&C::f`初始化。在 C 的成员函数内，如 &(C::f) 或 &f 这样的表达式不构成成员函数指针。
+    - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
+    - `C`的 *成员函数* 中，`&(C::f)`、`&f`等**不再是**成员函数指针
+- 能用作 [*成员指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数
+    - 使得每个该类的对象都能用这个 *类的数据成员指针* 访问到自己的数据成员
+    - 结果表达式 *只能用作* 函数调用运算符的 *左操作数* 
+```
+struct C
+{
+    void f(int n) { std::cout << n << '\n'; }
+};
+ 
+void (C::* p)(int) = &C::f;            // 指向类 C 的成员函数 f 的指针
+
+C c;
+(c.*p)(1);                             // 打印 1
+
+C* cp = &c;
+(cp->*p)(2);                           // 打印 2
+```
+- *基类的成员函数指针* 可以 *隐式转换* 为 *派生类的成员函数指针*
+    - 指向同一函数
+    - 如果函数是 *多态* 的，则派生类对象调用基类或者派生类成员函数指针都会调用到派生类的
+```
+struct Base
+{
+    virtual void f() { std::cout << "Base::f()" << std::endl; }
+};
+
+
+struct Derived: public Base
+{
+    void f() override { std::cout << "Derived::f()" << std::endl; }
+};
+
+void (Base::* bp)() = &Base::f;
+void (Derived::* dp)() = bp;
+
+Derived d;
+(d.*bp)();                             // Derived::f()
+(d.*dp)();                             // Derived::f()
+```
+- *派生类的成员函数指针* 转回无二义 *基类的成员函数指针*
+    - *必须* `static_cast` 或 *显式强转* 
+    - 即使 *基类* *并无该成员* （但当用该指针访问时，最终派生类中有）亦可
+        - 此时用基类对象访问此指针是 *未定义行为*
+```
+struct Base {};
+struct Derived : Base
+{
+    void f(int n) { std::cout << n << std::endl; }
+};
+ 
+void (Derived::* dp)(int) = &Derived::f;
+void (Base::* bp)(int) = static_cast<void (Base::*)(int)>(dp);
+
+Derived d;
+(d.*bp)(1);                           // OK：打印 1
+
+Base b;
+(b.*bp)(2);                           // 未定义行为
+```
+- *成员函数指针* 可用作 *回调* 或 *函数对象* 
+    - 通常在应用`std::mem_fn`或`std::bind`之后
+```
+std::vector<std::string> v{"a", "ab", "abc"};
+std::vector<std::size_t> l;
+std::transform(v.begin(), v.end(), std::back_inserter(l), std::mem_fn(&std::string::size));
+for (std::size_t n : l) std::cout << n << std::endl;  // 1 2 3
+```
+
+#### 空指针
+
+- 每个类型的指针都拥有一个特殊值，称为该类型的 *空指针值*（null pointer value）
+    - 值为 *空* 的指针**不**指向对象或函数
+        - 解引用空指针是 *未定义行为* 
+        - 与所有 *同类型空指针比较相等* 
+    - *空指针* 可用于 
+        - 指示对象不存在（例如`function::target()`）
+        - 作为其他错误条件的指示器（例如`dynamic_cast`）
+        - 通常，接受指针实参的函数始终 *需要检查值是否为空* ，并以不同方式处理该情况（例如，`delete`表达式在传递空指针时不做任何事） 
+- 为将指针初始化为 *空* 或赋 *空值* 给既存指针，可以使用下面值
+    - *空指针字面量* `nullptr`
+    - *空指针常量* `NULL`
+    - 从整数值`​0​`的 *隐式转换* 
+-  *零初始化* 和 *值初始化* 亦将指针初始化为其 *空* 值
+
+#### 常量性
+
+- 若指针声明中`cv`在`*` *之前* 出现，则它是 *声明说明符序列* 的一部分，并应用到 *被指向的对象* 
+- 若指针声明中`cv`在`*` *之后* 出现，则它是 *声明符* 的一部分，并应用到 *所声明的指针自身*  
+```
+const T *        // pointer to const T
+T const *        // pointer to const T
+T * const        // const pointet to T
+const T * const  // const pointer to const T
+T const * const  // const pointet to const T
+```
+```
+// pc is a non-const pointer to const int
+// cpc is a const pointer to const int
+// ppc is a non-const pointer to non-const pointer to const int
+const int ci = 10, *pc = &ci, *const cpc = pc, **ppc;
+// p is a non-const pointer to non-const int
+// cp is a const pointer to non-const int
+int i, *p, *const cp = &i;
+ 
+i = ci;    // okay: value of const int copied into non-const int
+*cp = ci;  // okay: non-const int (pointed-to by const pointer) can be changed
+pc++;      // okay: non-const pointer (to const int) can be changed
+pc = cpc;  // okay: non-const pointer (to const int) can be changed
+pc = p;    // okay: non-const pointer (to const int) can be changed
+ppc = &pc; // okay: address of pointer to const int is pointer to pointer to const int
+ 
+ci = 1;    // error: const int cannot be changed
+ci++;      // error: const int cannot be changed
+*pc = 2;   // error: pointed-to const int cannot be changed
+cp = &ci;  // error: const pointer (to non-const int) cannot be changed
+cpc++;     // error: const pointer (to const int) cannot be changed
+p = pc;    // error: pointer to non-const int cannot point to const int
+ppc = &p;  // error: pointer to pointer to const int cannot point to
+           // pointer to non-const int
+```
+
+
+
+
+
+
 ### 🌱 复合类型（指针和引用）
 
 - 指针`*`以及引用`&`只从属于某个声明符，而不是基本数据类型的一部分
@@ -1128,393 +1539,6 @@ const int * const p2 = &num;    // 指向`const int`的常指针。既不能用p
     const int * p2 = &ci;       // 底层const
     const int * const p3 = p2;  // 第一个const为底层，第二个为顶层
     const int & r = ci;         // 常量引用永远都是底层const
-    ```
-
-#### [一网打尽各种指针](https://en.cppreference.com/w/cpp/language/pointer)
-
-- 指针声明
-    1. `T    * d;`： *指针声明符* ，`d`为指向`T`类型数据的指针
-    2. `T C::* d;`： *成员指针声明符* ，`d`为指向`C`的`T`类型 *非静态成员* 的指针
-    ```
-    decl-specifier-seq                       * attr(optional) cv(optional) declarator   (i)
-    decl-specifier-seq nested-name-specifier * attr(optional) cv(optional) declarator  (ii) 
-    ```
-    - *声明说明符序列* （declarator specifier sequence）：用于说明指针指向的类型
-    - *嵌套名说明符* （nested name specifier）：由 *名字* 和 *作用域解析运算符* `::`组成的序列
-    - `attr`： *属性列表* ，可选
-    - `cv`：应用到 *被声明指针* 的`cv`限定，可选
-        - *被指向类型* 的`cv`限定是 *声明说明符序列* 的一部分
-    - *声明符* （declarator）：除 *引用* 声明符**之外**的任意声明符，可以是另一 *指针* 声明符
-        - **无**指向 *引用* 或 *位域* 的指针
-        - 允许指向 *指针* 的指针
-        - 提到 *指针* 一词时，除特别提及，通常**不**包含指向 *非静态成员* 的指针
-- 指针类型的的值
-    - 指针类型的值是一定是下列四种情况之一
-        - 指向 *对象* 或 *函数* 的指针
-            - 该情况下说该指针指向函数或对象
-            - 对象的地址为内存中对象所 *占用的首字节* 的地址
-        - 对象 *尾后* 指针
-            - 为内存中对象所 *占用的存储之后的首字节* 的地址
-        - 某类型的 *空* 指针值 
-            - `NULL`（就是`0`）或`nullptr`
-        - *无效* 指针值 
-            - *无效指针值* 的 *任何用法* 均是 *未定义行为* ，尤其点名`diss`如下作大死者
-                - 通过 *无效指针值* 间接寻址者
-                - 将 *无效指针值* 传递给解分配函数者
-    - **注意**：两个表示同一地址的指针可能拥有 *不同* 的值
-    ```
-    struct C 
-    {
-        int x;
-        int y;
-    };
-
-    C c;
-     
-    int * px = &c.x;                        // px  的值为 指向 c.x 的指针
-    int * pxe= px + 1;                      // pxe 的值为  c.x 的尾后指针
-    int * py = &c.y;                        // py  的值为 指向 c.y 的指针
-
-    assert(pxe == py);                      // 测试两个指针是否表示相同地址
-                                            // 这条 assert 可能被触发，也可能不被触发
-                                            // 至少 g++ version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04) 上实测没有触发
-     
-    *pxe = 1;                               // 即使上面的 assert 未被触发，亦为未定义行为
-    ```
-- 对象指针
-    - 对 *任何* 对象类型（包含 *指针* 类型）使用 *取址运算符* `&`获得的地址都能用于初始化 *对象指针*
-        - 可以直接用 *数组头* 初始化指向 *数组首元素* 的指针
-            - *数组* 可隐式转换为 *指针* 
-            ```
-            int a[2];
-            int * p1 = a;                   // 指向数组 a 首元素 a[0]（一个 int）的指针
-             
-            int b[6][3][8];
-            int (*p2)[3][8] = b;            // 指向数组 b 首元素 b[0] 的指针，
-                                            // 被指者为 int 的 8 元素数组的 3 元素数组
-            ```
-            - 数组指针的 *类型别名* ，可用于简化定义
-            ```
-            int arr[10];
-
-            typedef int (*int_arr_10_ptr_t1)[10];         // 指向长度为 10 的 int 数组的指针类型的别名
-            typedef decltype(arr) * int_arr_10_ptr_t2;    // 等价类型别名
-
-            using int_arr_10_ptr_t3 = int[10];            // 等价类型别名
-            using int_arr_10_ptr_t4 = decltype(arr) *;    // 等价类型别名
-            ```
-        - 可以直接用 *派生类的地址* 初始化指向 *基类* 的指针
-            - *派生类指针* 可隐式转换 *基类指针* 
-            - 若`Derived`是 *多态* 的，则这种指针可用于进行 *虚函数调用* 
-        ```
-        struct Base {};
-        struct Derived : Base {};
-         
-        Derived d;
-        Base * p = &d;
-        ```
-    ```
-    int n;
-    int * np = &n;                         // int 的指针
-    int * const * npp = &np;               // 非 const int 的 const 指针的非 const 指针
-     
-    int a[2];
-    int (*ap)[2] = &a;                     // int 的数组的指针
-     
-    struct S { int n; };
-    S s = {1};
-    int * sp = &s.n;                       // 指向作为 s 的成员的 int 的指针
-    ```
-    - 指针可作为 *内建间接寻址运算符* `*`的操作数，返回指代被指向对象的 *左值* 表达式
-    ```
-    int n;
-    int * p = &n;                          // 指向 n 的指针
-    int & r = *p;                          // 绑定到指代 n 的左值表达式的引用
-    r = 7;                                 // 存储 int 7 于 n
-    std::cout << *p << std::endl;          // 左值到右值隐式转换从 n 读取值
-    ```
-    - 指向类对象的指针亦可作为 [*成员访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_pointer-to-member_access_operators) `->`、`->*`的左操作数
-    - 某些 *加法* 、 *减法* 、 *自增* 和 *自减* 运算符对于指向数组元素的指针有定义
-        - 这种指针满足`LegacyRandomAccessIterator`要求，使得`C++` *标准库算法可以用于内建数组* 上
-    - *比较运算符* 对指针也有定义
-        - 数组元素的地址按照下标递增
-        - 类的非静态数据成员的地址按照声明顺序递增
-- `void`指针
-    - 指向 *任意类型* 对象的指针
-        - 用于传递 *未知类型* 对象，这在`C`接口中常见
-            - `std::malloc`返回`void *`
-            - `std::qsort`期待接受两个`const void *`参数的用户提供回调
-            - `pthread_create`期待接受并返回`void *`的用户提供的回调
-            - 所有情况下， *调用方负责* 在使用前将指针 *转型* 到正确类型
-    - 普通指针可 *隐式转换* 成`void`指针（`cv`限定可选），**不**改变其值
-        - 若原指针指向某 *多态* 类型对象中的 *基类* 子对象，则可用`dynamic_cast`获得指向最终派生类型的完整对象的`void *`
-    - `void`指针转回原类型
-        - *必须* `static_cast`、`reinterpret_cast`或 *显式强转* ，生成其原指针值
-    ```
-    int n = 1;
-    int * p1 = &n;
-    void * pv = p1;
-    int * p2 = static_cast<int *>(pv);
-    std::cout << *p2 << std::endl;         // 1
-    ```
-- 函数指针
-    - 以 *非成员函数* 或 *静态成员函数* 的地址初始化
-        - 由于 *函数* 到 *函数指针* 隐式转换的原因，取址运算符是 *可选* 的
-        ```
-        void f(int);
-        void (*p1)(int) = &f;
-        void (*p2)(int) = f;               // 与 &f 相同
-        ```
-        - 与 *数组指针* 的辨析
-            - *函数名* 可以 *隐式转化* 成 *函数指针*
-            - *数组头* 会 *隐式转化* 成指向 *数组元素类型* 的指针，而**不是**指向 *数组类型* 的指针
-        ```
-        bool le(int, int);
-        bool (*pf1)(int, int) = le;        // 正确，指向函数
-        bool (*pf2)(int, int) = &le;       // 正确，指向函数
-        
-        int arr[10];
-        int * p1 = arr;                    // 正确，指向 int
-        int * p2 = &arr;                   // 错误
-        int *(p3)[10] = &arr;              // 正确，指向数组
-        ```
-    - 不同于 *函数* 或 *函数的引用* ， 函数指针是 *对象* ，从而能 *存储于数组* 、 *被复制* 、 *被赋值* 等
-        - 这些玩意儿的解释方法和文法参见开篇章节中的[如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)一块儿
-    ```
-    int (*f)()                  f as pointer to function () returning int
-    int (*f())()                f as function () returning pointer to function () returning int
-    int * f()                   f as function returning pointer to int
-    int (*a[])()                a as array of pointer to function returning int
-    int (*f())[]                f as function () returning pointer to array of int
-    int (f[])()                 ARRAY OF FUNCTION IS NOT ALLOWED!!!
-                                f as array of function () returning int, which, again, is NOT ALLOWED
-    int * const *(*g)(float)    g as pointer to function (float) returning pointer to const pointer to int
-    ```
-    - 函数指针可用作 *函数调用运算符* 的左操作数，这会调用被指向的函数
-    ```
-    int f(int n)
-    {
-        std::cout << n << std::endl;
-        return n * n;
-    }
-     
-    int (*p)(int) = f;
-    int x = p(7);                          // 49
-    ```
-    - *解引用* 函数指针生成标识被指向函数的 *左值*
-    ```
-    int f();
-    int (*p)() = f;                        // 指针 p 指向 f
-    int (&r)() = *p;                       // 将标识 f 的左值绑定到引用
-    
-    f();                                   // 直接调用函数 f
-    r();                                   // 通过左值引用调用函数 f
-    p();                                   // 直接通过指针调用函数 f
-    (*p)();                                // 通过函数左值调用函数 f
-    ```
-    - 若 *只有一个重载匹配* 指针类型的话，函数指针可以从可包含函数、函数模板特化及函数模板的一个重载集进行初始化
-    ```
-    template <typename T> T f(T n) { return n; }
-    double f(double n) { return n; }
-     
-    int (*p)(int) = f;                     // 实例化并选择 f<int>
-    ```
-    ```
-    void ff(int*);
-    void ff(unsigned int);
-    void (*pf1)(unsigned int) = 0;         // pf1 points to nothing
-    void (*pf2)(unsigned int) = ff;        // pf1 points to ff(unsigned int)
-
-    void (*pf3)(int) = ff;                 // error: no ff with a matching parameter list
-    double (*pf4)(int*) = ff;              // error: return type of ff and pf4 don't match
-    ```
-    - *相等比较* 运算符对于函数指针有定义（若指向同一函数则它们比较相等）  
-- （类的）数据成员指针
-    - 指向类`C`的 *非静态数据成员* `m`的指针，以`&C::m`初始化
-        - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
-        - `C`的 *成员函数* 中，`&(C::m)`、`&m`等**不再是**数据成员指针
-    - 能用作 [*成员指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数
-        - 使得每个该类的对象都能用这个 *类的数据成员指针* 访问到自己的数据成员
-    ```
-    struct C { int m; };
- 
-    int C::* p = &C::m;                    // pointer to data member m of class C
-    C c = {7};
-    std::cout << c.*p << std::endl;        // prints 7
-    
-    C * cp = &c;
-    cp->m = 10;
-    std::cout << cp->*p << std::endl;      // prints 10
-    ```
-    - 无二义 *非虚基类的数据成员指针* 可以 *隐式转化* 为 *派生类的数据成员指针*
-    ```
-    struct Base { int m; };
-    struct Derived : Base {};
-     
-    int Base::* bp = &Base::m;
-    int Derived::* dp = bp;
-    Derived d;
-    d.m = 1;
-    std::cout << d.*dp << ' ' << d.*bp << std::endl;   // 打印 1 1
-    ```
-    - *派生类的数据成员指针* 转回无二义 *非虚基类的数据成员指针*
-        - *必须* `static_cast` 或 *显式强转* 
-        - 即使 *基类* *并无该成员* （但当用该指针访问时，最终派生类中有）亦可
-            - 此时用基类对象访问此指针是 *未定义行为*
-    ```
-    struct Base {};
-    struct Derived : Base { int m; };
-     
-    int Derived::* dp = &Derived::m;
-    int Base::* bp = static_cast<int Base::*>(dp);
- 
-    Derived d;
-    d.m = 7;
-    std::cout << d.*bp << std::endl;       // OK：打印 7
- 
-    Base b;
-    std::cout << b.*bp << std::endl;       // 未定义行为
-    ```
-    - 套娃
-        - 成员指针的被指向类型也可以是成员指针自身
-        - 成员指针可为多级，而且在每级可以有不同的`cv`限定
-        - 亦允许指针和成员指针的混合多级组合
-    ```
-    struct A
-    {
-        int m;
-        int A::* const p;                  // const pointer to non-const member
-    };
-     
-    const A a = {1, &A::m};
-     
-    // non-const pointer to data member which is a const pointer to non-const member
-    int A::* const A::* p1 = &A::p;
-    std::cout << a.*(a.*p1) << std::endl;  // prints 1
- 
-    // regular non-const pointer to a const pointer-to-member
-    int A::* const* p2 = &a.p;
-    std::cout << a.**p2 << 'std::endl;     // prints 1
-    ```
-- （类的）成员函数指针
-    - 指向类`C`的 *非静态成员函数* `f`的指针，以`&C::f`初始化。在 C 的成员函数内，如 &(C::f) 或 &f 这样的表达式不构成成员函数指针。
-        - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
-        - `C`的 *成员函数* 中，`&(C::f)`、`&f`等**不再是**成员函数指针
-    - 能用作 [*成员指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数
-        - 使得每个该类的对象都能用这个 *类的数据成员指针* 访问到自己的数据成员
-        - 结果表达式 *只能用作* 函数调用运算符的 *左操作数* 
-    ```
-    struct C
-    {
-        void f(int n) { std::cout << n << '\n'; }
-    };
-     
-    void (C::* p)(int) = &C::f;            // 指向类 C 的成员函数 f 的指针
-    
-    C c;
-    (c.*p)(1);                             // 打印 1
-    
-    C* cp = &c;
-    (cp->*p)(2);                           // 打印 2
-    ```
-    - *基类的成员函数指针* 可以 *隐式转换* 为 *派生类的成员函数指针*
-        - 指向同一函数
-        - 如果函数是 *多态* 的，则派生类对象调用基类或者派生类成员函数指针都会调用到派生类的
-    ```
-    struct Base
-    {
-        virtual void f() { std::cout << "Base::f()" << std::endl; }
-    };
-
-
-    struct Derived: public Base
-    {
-        void f() override { std::cout << "Derived::f()" << std::endl; }
-    };
-
-    void (Base::* bp)() = &Base::f;
-    void (Derived::* dp)() = bp;
-
-    Derived d;
-    (d.*bp)();                             // Derived::f()
-    (d.*dp)();                             // Derived::f()
-    ```
-    - *派生类的成员函数指针* 转回无二义 *基类的成员函数指针*
-        - *必须* `static_cast` 或 *显式强转* 
-        - 即使 *基类* *并无该成员* （但当用该指针访问时，最终派生类中有）亦可
-            - 此时用基类对象访问此指针是 *未定义行为*
-    ```
-    struct Base {};
-    struct Derived : Base
-    {
-        void f(int n) { std::cout << n << std::endl; }
-    };
-     
-    void (Derived::* dp)(int) = &Derived::f;
-    void (Base::* bp)(int) = static_cast<void (Base::*)(int)>(dp);
- 
-    Derived d;
-    (d.*bp)(1);                           // OK：打印 1
- 
-    Base b;
-    (b.*bp)(2);                           // 未定义行为
-    ```
-    - *成员函数指针* 可用作 *回调* 或 *函数对象* 
-        - 通常在应用`std::mem_fn`或`std::bind`之后
-    ```
-    std::vector<std::string> v{"a", "ab", "abc"};
-    std::vector<std::size_t> l;
-    std::transform(v.begin(), v.end(), std::back_inserter(l), std::mem_fn(&std::string::size));
-    for (std::size_t n : l) std::cout << n << std::endl;  // 1 2 3
-    ```
-- 空指针
-    - 每个类型的指针都拥有一个特殊值，称为该类型的 *空指针值*（null pointer value）
-        - 值为 *空* 的指针**不**指向对象或函数
-            - 解引用空指针是 *未定义行为* 
-            - 与所有 *同类型空指针比较相等* 
-        - *空指针* 可用于 
-            - 指示对象不存在（例如`function::target()`）
-            - 作为其他错误条件的指示器（例如`dynamic_cast`）
-            - 通常，接受指针实参的函数始终 *需要检查值是否为空* ，并以不同方式处理该情况（例如，`delete`表达式在传递空指针时不做任何事） 
-    - 为将指针初始化为 *空* 或赋 *空值* 给既存指针，可以使用下面值
-        - *空指针字面量* `nullptr`
-        - *空指针常量* `NULL`
-        - 从整数值`​0​`的 *隐式转换* 
-    -  *零初始化* 和 *值初始化* 亦将指针初始化为其 *空* 值
-- 常量性
-    - 若指针声明中`cv`在`*` *之前* 出现，则它是 *声明说明符序列* 的一部分，并应用到 *被指向的对象* 
-    - 若指针声明中`cv`在`*` *之后* 出现，则它是 *声明符* 的一部分，并应用到 *所声明的指针自身*  
-    ```
-    const T *        // pointer to const T
-    T const *        // pointer to const T
-    T * const        // const pointet to T
-    const T * const  // const pointer to const T
-    T const * const  // const pointet to const T
-    ```
-    ```
-    // pc is a non-const pointer to const int
-    // cpc is a const pointer to const int
-    // ppc is a non-const pointer to non-const pointer to const int
-    const int ci = 10, *pc = &ci, *const cpc = pc, **ppc;
-    // p is a non-const pointer to non-const int
-    // cp is a const pointer to non-const int
-    int i, *p, *const cp = &i;
-     
-    i = ci;    // okay: value of const int copied into non-const int
-    *cp = ci;  // okay: non-const int (pointed-to by const pointer) can be changed
-    pc++;      // okay: non-const pointer (to const int) can be changed
-    pc = cpc;  // okay: non-const pointer (to const int) can be changed
-    pc = p;    // okay: non-const pointer (to const int) can be changed
-    ppc = &pc; // okay: address of pointer to const int is pointer to pointer to const int
-     
-    ci = 1;    // error: const int cannot be changed
-    ci++;      // error: const int cannot be changed
-    *pc = 2;   // error: pointed-to const int cannot be changed
-    cp = &ci;  // error: const pointer (to non-const int) cannot be changed
-    cpc++;     // error: const pointer (to const int) cannot be changed
-    p = pc;    // error: pointer to non-const int cannot point to const int
-    ppc = &p;  // error: pointer to pointer to const int cannot point to
-               // pointer to non-const int
     ```
 
 
