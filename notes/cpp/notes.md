@@ -591,7 +591,7 @@ int main()
     inl::y = 2;                           // N::inl 亦在作用域中
 }                                         // i, g, j, q, inl, x, y 的作用域间断
 ```
-   
+
 #### [类作用域](https://en.cppreference.com/w/cpp/language/scope#Class_scope)（Class scope）
 
 - 类中声明的名字的作用域开始于其声明点，并包含
@@ -630,29 +630,8 @@ auto X::g() -> r                          // OK ：尾随返回类型 X::r 在�
     - 在其自身的 *类作用域* 或在派生类的类作用域之中
     - 在对其类或其派生类的类型的表达式运用 *`.`运算符* 之后
     - 在对其类或其派生的类的指针类型的表达式运用 *`->`运算符* 之后
-    - 在对其类或其派生类的名字运用 *`::`运算符* 之后 
-- 如何强行 *访问被覆盖的外层同名变量* 
-```
-// note: this code is for illustration purposes only and reflects bad practice
-// it is generally a bad idea to use the same name for a parameter and a member
-size_t shit = 2;
-
-struct Item
-{
-    void print1(size_t shit) const
-    {
-        // shit:       function parameter
-        // this->shit: class member
-        // ::shit:     global one
-        printf("%zu %zu %zu\n", shit, this->shit, ::shit);
-    }
-
-    size_t shit = 1;
-};
-
-Item t;
-t.print1(0);  // 0 1 2
-```
+    - 在对其类或其派生类的名字运用 *`::`运算符* 之后
+        - 参见 [*限定标识符*](https://en.cppreference.com/w/cpp/language/identifiers#Qualified_identifiers)（Qualified identifiers）
 
 #### [枚举作用域](https://en.cppreference.com/w/cpp/language/scope#Enumeration_scope)（Enumeration scope）
 
@@ -711,6 +690,41 @@ template <N X,                            // int 类型的非类型模板形参
           typename N,                     // 此 N 的作用域开始，打断 ::N 的作用域
           template<N Y> class T>          // 此处的 N 是模板形参，非 int
 struct A;
+```
+
+#### [*限定标识符*](https://en.cppreference.com/w/cpp/language/identifiers#Qualified_identifiers)（Qualified identifiers）
+
+- *限定标识表达式* 
+    - 在 *无限定标识表达式* 前面带上 *作用域解析运算符*（scope resolution operator）`::`
+    - 以及 *可选地* 带上一系列`::`分隔的 *枚举* 、 *类* 或 *命名空间* 名，或`decltype`表达式
+    - *全局命名空间* 默认指定，不用特别强调时可以不写
+    - 例如
+        - `std::string::npos`：指名命名空间`std`中的，类`string`中的， *静态数据成员* `npos`
+        - `::tolower`：指名 *全局命名空间* 中的 *函数* `tolower`
+        - `::std::cout`：指名 *全局命名空间* 中的，命名空间`std`中的， *全局变量* `cout`
+        - `boost::signals2::connection`指名命名空间`boost`中的，命名空间`signals2`中的，类`connection`
+- *限定标识符* 中，可能会需要以关键词`template`来消除待决模板名歧义
+- 使用示例：如何强行 *访问被覆盖的外层同名变量* 
+```
+// note: this code is for illustration purposes only and reflects bad practice
+// it is generally a bad idea to use the same name for a parameter and a member
+size_t shit = 2;
+
+struct Item
+{
+    void print1(size_t shit) const
+    {
+        // shit:       function parameter
+        // this->shit: class member
+        // ::shit:     global one
+        printf("%zu %zu %zu\n", shit, this->shit, ::shit);
+    }
+
+    size_t shit = 1;
+};
+
+Item t;
+t.print1(0);  // 0 1 2
 ```
 
 #### 从作用域和存储期看变量
@@ -1060,22 +1074,58 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
     Const<Ptr<Ptr<Ptr<Const<int>>>>> shit = nullptr;
     ```
 
-#### [指针声明](https://en.cppreference.com/w/cpp/language/pointer)
+#### [一网打尽各种指针](https://en.cppreference.com/w/cpp/language/pointer)
 
+- 这部分是提高内容，当字典用的，看看就得了
 - 指针声明语法
     1. `T    * d;`： *指针声明符* ，`d`为指向`T`类型数据的指针
     2. `T C::* d;`： *成员指针声明符* ，`d`为指向`C`的`T`类型 *非静态数据成员* 的指针
     ```
-    Type cv(optional)                       * attr(optional) cv(optional) declarator  (a)
-    Type cv(optional) nested-name-specifier * attr(optional) cv(optional) declarator  (b) 
+    decl-specifier-seq                       * attr(optional) cv(optional) declarator   (i)
+    decl-specifier-seq nested-name-specifier * attr(optional) cv(optional) declarator  (ii) 
     ```
-    - *声明符* ：除引用声明符之外的任意声明符（无指向引用的指针）。它可以是另一指针声明符（允许指向指针的指针）
-    - `attr`：属性的可选列表
-    - `cv`：应用到被声明指针的 const/volatile 限定（而并非被指向类型，其限定是 声明说明符序列 的一部分）
-    - *嵌套名说明符* ：名字和作用域解析运算符`::`的序列
+    - *声明说明符序列* （declarator specifier sequence）：用于说明指针指向的类型
+    - *嵌套名说明符* （nested name specifier）：由 *名字* 和 *作用域解析运算符* `::` 组成的序列
+    - `attr`： *属性列表* ，可选
+    - `cv`：应用到 *被声明指针* 的`cv`限定，可选
+        - *被指向类型* 的`cv`限定是 *声明说明符序列* 的一部分
+    - *声明符* （declarator）：除 *引用* 声明符**之外**的任意声明符，可以是另一 *指针* 声明符
+        - **无**指向 *引用* 或 *位域* 的指针
+        - 允许指向 *指针* 的指针
+        - 提到 *指针* 一词时，除特别提及，通常**不**包含指向 *非静态成员* 的指针
+- 指针类型的的值
+    - 指针类型的值是一定是下列四种情况之一
+        - 指向 *对象* 或 *函数* 的指针
+            - 该情况下说该指针指向函数或对象
+            - 对象的地址为内存中对象所 *占用的首字节* 的地址
+        - 对象 *尾后* 指针
+            - 为内存中对象所 *占用的存储之后的首字节* 的地址
+        - 某类型的 *空* 指针值 
+            - `NULL`（就是`0`）或`nullptr`
+        - *无效* 指针值 
+            - *无效指针值* 的 *任何用法* 均是 *未定义行为* 尤其点名`diss`如下作死行为
+                - 通过 *无效指针值* 间接寻址
+                - 将 *无效指针值* 传递给解分配函数
+    - **注意**：两个表示同一地址的指针可能拥有 *不同* 的值
+```
+struct C 
+{
+    int x, y;
+};
+
+C c;
+ 
+int * px = &c.x;    // px  的值为 指向 c.x 的指针
+int * pxe= px + 1;  // pxe 的值为  c.x 的尾后指针
+int * py = &c.y;    // py  的值为 指向 c.y 的指针
+ 
+assert(pxe == py);  // 测试两个指针是否表示相同地址
+                    // 这条 assert 可能被触发，也可能不被触发
+ 
+*pxe = 1;           // 即使上面的 assert 未被触发，亦为未定义行为
+```
 
 
-- 无指向引用的指针，无指向位域的指针。 当没有详述地提及“指针”时，通常不包含指向（非静态）成员的指针。 
 
 - [*成员指针*](https://en.cppreference.com/w/cpp/language/pointer#Pointers_to_members)
 
