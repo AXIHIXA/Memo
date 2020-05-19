@@ -1071,9 +1071,9 @@ new T                                                         (2)
 
 
 
-### 🌱 [指针](https://en.cppreference.com/w/cpp/language/pointer)
+### 🌱 [指针声明](https://en.cppreference.com/w/cpp/language/pointer)
 
-- 一网打尽各种指针
+- 一网打尽各种指针声明
 
 #### 指针声明
 
