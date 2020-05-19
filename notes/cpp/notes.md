@@ -2808,14 +2808,14 @@ Entry e = {0, "Anna"};
     if (p1 && p1->empty()) *p1 = "hi";
     ```
     - `std::shared_ptr`和`std::unique_ptr`都支持的操作
-        - `std::shared_ptr<T> sp`：
-        - `std::unique_ptr<T> up`：
-        - `p`：
-        - `*p`：
-        - `p->mem`：
-        - `p.get()`：
-        - `std::swap(p, q)`：
-        - `p.swap(q)`：
+        - `std::shared_ptr<T> sp`：定义 *空的* `std::shared_ptr`，指向`T`类型对象
+        - `std::unique_ptr<T> up`：定义 *空的* `std::shared_ptr`，指向`T`类型对象
+        - `p`：将`p`用作一个条件判断，若`p`指向一个对象，则为`true`
+        - `*p`：解引用`p`，获得它指向的对象
+        - `p->mem`：等价于`(*p).mem`
+        - `p.get()`：返回`p`中保存的 *普通指针* 。若智能指针释放了其对象，则这一 *普通指针* 所指向的对象亦会失效
+        - `std::swap(p, q)`：交换`p`和`q`中的 *普通指针* 
+        - `p.swap(q)`：交换`p`和`q`中的 *普通指针* 
     - `std::shared_ptr`独有的操作
         - `std::make_shared<T>(args)`：
         - `std::shared_ptr<T> p(q)`：
