@@ -82,22 +82,15 @@
             2. 如果`p`右边是`[n]`，则说`array n of...`
             3. 如果`p`右边是表示函数的括号`(param_list)`（例如`()`，`(float, int)`），则说`function (param_list) returning...
             4. 如果`p`左边是`*`（可能还有`cv`限定），则说`xx pointer to...`（例如`int const * const`说成`const pointer to const int`）
-            5. 重复`(2) - (5)`，碰到 *分组* 的括号则调转阅读方向
+            5. 跳出这一层 *分组* 括号（如有），重复`(2) - (5)`
         - 举例：`int (*(*pf)(int, int (*(*)(int))[20]))[10]`：
             - 按顺序翻译为
             ```
-            declare pf as pointer to 
-                                     function (int, 
-                                               pointer to 
-                                                          function (int) 
-                                                          returning pointer to 
-                                                                    array 20 of int
-                                              ) 
-                                     returning pointer to 
-                                               array 10 of int
+            declare pf as pointer to function (int, pointer to function (int) returning pointer to array 20 of int) 
+                                     returning pointer to array 10 of int
             ```
         - 大宝贝：[cdecl](https://cdecl.org/) ，帮你干这些破事儿，安装：`sudo apt install cdecl`
-    
+
 
 
 
@@ -1237,6 +1230,17 @@ const int * const p2 = &num;    // 指向`const int`的常指针。既不能用p
         int *(p3)[10] = &arr;           // 正确，指向数组
         ```
     - 不同于 *函数* 或 *函数的引用* ， 函数指针是 *对象* ，从而能 *存储于数组* 、 *被复制* 、 *被赋值* 等
+        - 这些玩意儿的解释方法和文法参见开篇章节中的[如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)一块儿
+    ```
+    int (*f)()                  f as pointer to function () returning int
+    int (*f())()                f as function () returning pointer to function () returning int
+    int * f()                   f as function returning pointer to int
+    int (*a[])()                a as array of pointer to function returning int
+    int (*f())[]                f as function () returning pointer to array of int
+    int (f[])()                 NOT ALLOWED!!!
+                                f as array of function () returning int, again, which is NOT ALLOWED
+    int * const *(*g)(float)    g as pointer to function (float) returning pointer to const pointer to int
+    ```
     - 函数指针可用作 *函数调用运算符* 的左操作数，这会调用被指向的函数
     ```
     int f(int n)
