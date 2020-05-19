@@ -84,7 +84,18 @@
             4. 如果`p`左边是`*`（可能还有`cv`限定），则说`xx pointer to...`（例如`int const * const`说成`const pointer to const int`）
             5. 重复`(2) - (5)`，碰到 *分组* 的括号则调转阅读方向
         - 举例：`int (*(*pf)(int, int (*(*)(int))[20]))[10]`：
-            - 按顺序翻译为：declare `pf` as pointer to function (int, pointer to function (int) returning pointer to array 20 of int) returning pointer to array 10 of int
+            - 按顺序翻译为
+            ```
+            declare pf as pointer to 
+                                     function (int, 
+                                               pointer to 
+                                                          function (int) 
+                                                          returning pointer to 
+                                                                    array 20 of int
+                                              ) 
+                                     returning pointer to 
+                                               array 10 of int
+            ```
         - 大宝贝：[cdecl](https://cdecl.org/) ，帮你干这些破事儿，安装：`sudo apt install cdecl`
     
 
