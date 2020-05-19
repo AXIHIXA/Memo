@@ -1080,8 +1080,8 @@ new T                                                         (2)
 1. `T    * d;`： *指针声明符* ，`d`为指向`T`类型数据的指针
 2. `T C::* d;`： *成员指针声明符* ，`d`为指向`C`的`T`类型 *非静态成员* 的指针
 ```
-decl-specifier-seq                       * attr(optional) cv(optional) declarator   (i)
-decl-specifier-seq nested-name-specifier * attr(optional) cv(optional) declarator  (ii) 
+decl-specifier-seq                       * attr(optional) cv(optional) declarator  (1)
+decl-specifier-seq nested-name-specifier * attr(optional) cv(optional) declarator  (2) 
 ```
 - *声明说明符序列* （declarator specifier sequence）：用于说明指针指向的类型
 - *嵌套名说明符* （nested name specifier）：由 *名字* 和 *作用域解析运算符* `::`组成的序列
@@ -1351,7 +1351,7 @@ int A::* const* p2 = &a.p;
 std::cout << a.**p2 << 'std::endl;     // prints 1
 ```
 
-####（类的）成员函数指针
+#### （类的）成员函数指针
 
 - 指向类`C`的 *非静态成员函数* `f`的指针，以`&C::f`初始化。在 C 的成员函数内，如 &(C::f) 或 &f 这样的表达式不构成成员函数指针。
     - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
