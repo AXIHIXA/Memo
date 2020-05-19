@@ -1064,13 +1064,15 @@ const int * const p2 = &num;  // 指向`const int`的常指针。既不能用p1�
 
 - 指针声明语法
 ```
-Type cv(optional)                       * attr(optional) cv(optional) declarator  (a)  // S    * d; d pointer to type S
-Type cv(optional) nested-name-specifier * attr(optional) cv(optional) declarator  (b)  // S C::* d; d pointer to non-static data menber of C w/ Type S     
+Type cv(optional)                       * attr(optional) cv(optional) declarator  (a)
+Type cv(optional) nested-name-specifier * attr(optional) cv(optional) declarator  (b) 
 ```
-    - 声明符 	- 	除引用声明符之外的任意声明符（无指向引用的指针）。它可以是另一指针声明符（允许指向指针的指针）
-    - attr(C++11) 	- 	属性的可选列表
-    - cv 	- 	应用到被声明指针的 const/volatile 限定（而并非被指向类型，其限定是 声明说明符序列 的一部分）
-    - 嵌套名说明符 	- 	名字和作用域解析运算符 :: 的序列
+    1. `T    * d;`： *指针声明符* ，`d`为指向`T`类型数据的指针
+    2. `T C::* d;`： *成员指针声明符* ，`d`为指向`C`的`T`类型 *非静态数据成员* 的指针
+    - *声明符* ：除引用声明符之外的任意声明符（无指向引用的指针）。它可以是另一指针声明符（允许指向指针的指针）
+    - `attr`：属性的可选列表
+    - `cv`：应用到被声明指针的 const/volatile 限定（而并非被指向类型，其限定是 声明说明符序列 的一部分）
+    - *嵌套名说明符* ：名字和作用域解析运算符`::`的序列
 - 无指向引用的指针，无指向位域的指针。 当没有详述地提及“指针”时，通常不包含指向（非静态）成员的指针。 
 
 - [*成员指针*](https://en.cppreference.com/w/cpp/language/pointer#Pointers_to_members)
