@@ -952,7 +952,7 @@ Class::Class(...) : ref(object) {...}                         (5)  // 以成员�
 - *临时量* 生存期：
     - 一旦引用被绑定到临时量或其子对象，临时量的生存期就 *被延续* 以匹配引用的生存期，但有下列例外
         1. `return`语句中绑定到函数返回值的 *临时量* 不被延续：它立即于返回表达式的末尾销毁。这种函数始终返回悬垂引用 
-            - 特例：右值引用所绑定对象的 *生存期被延长* 到该引用的作用域结尾，因此返回`std::move(temp)`右值引用是可以的
+            - 特例： *右值引用* 及 *常量左值引用* 所绑定对象的 *生存期被延长* 到该引用的作用域结尾，因此返回`std::move(temp)`右值引用是可以的
         2. 在构造函数初始化器列表中绑定到引用成员的 *临时量* ，只持续到构造函数退出前，而非对象存在期间 `(until C++14)`
         3. 在函数调用中绑定到函数形参的 *临时量* ，存在到含这次函数调用的全表达式结尾为止：若函数返回一个引用，而其生命长于全表达式，则它将成为悬垂引用 
         4. 绑定到`new`表达式中所用的初始化器中的引用的 *临时量* ，存在到含该`new`表达式的全表达式结尾为止，而非被初始化对象的存在期间。若被初始化对象的生命长于全表达式，则其引用成员将成为悬垂引用
@@ -2771,7 +2771,7 @@ Entry e = {0, "Anna"};
 
 
 
-### 🌱 [Chap 12] 动态内存（Dynamic Memory）
+### 🌱 [Chap 12] [动态内存管理](https://en.cppreference.com/w/cpp/memory)（Dynamic memory management）
 
 - 程序中使用的对象都有严格的 *存储期* （生存期）
     - *全局对象* 
@@ -2788,9 +2788,55 @@ Entry e = {0, "Anna"};
             - *智能指针* 可以自动释放该被释放的对象
         - 存储于动态存储区（程序的堆内存）
 
-#### 动态内存和智能指针（Dynamic Memory and Smart Pointers）
+#### 动态内存和智能指针（Dynamic memory and smart pointers）
 
-#### 动态数组（Dynamic Arrays）
+- `C++`动态内存管理
+    - `new`
+    - `delete`
+- *智能指针*
+    - 定义于头文件`<memory>`中，包括 
+        - [`std::shared_ptr`](https://en.cppreference.com/w/cpp/memory/shared_ptr)：允许多个指针指向同一个对象
+        - [`std::unique_ptr`](https://en.cppreference.com/w/cpp/memory/unique_ptr)： *独占* 指向的对象
+        - [`std::weak_ptr`](https://en.cppreference.com/w/cpp/memory/weak_ptr)： *伴随类* ， *弱引用* ，指向`std::shared_ptr`所指向的对象
+    - 行为类似于常规指针，但负责 *自动释放* 所指向的对象
+    - *默认初始化* 的智能指针中保存着一个 *空指针* 
+    - 智能指针使用方法与普通指针类似
+        - *解引用* 返回对象 *左值* 
+        - *条件判断* 中使用智能指针就是判断它 *是否为空* 
+    ```
+    std::shared_ptr<std::string> p1;
+    if (p1 && p1->empty()) *p1 = "hi";
+    ```
+    - `std::shared_ptr`和`std::unique_ptr`都支持的操作
+        - `std::shared_ptr<T> sp`：
+        - `std::unique_ptr<T> up`：
+        - `p`：
+        - `*p`：
+        - `p->mem`：
+        - `p.get()`：
+        - `std::swap(p, q)`：
+        - `p.swap(q)`：
+    - `std::shared_ptr`独有的操作
+        - `std::make_shared<T>(args)`：
+        - `std::shared_ptr<T> p(q)`：
+        - `p = q`：
+        - `p.unique()`：
+        - `p.use_count()`：
+    - `std::make_shared`函数    
+    - `std::shared_ptr`拷贝和赋值
+    - `std::shared_ptr` *自动销毁* 所管理的对象
+    - `std::shared_ptr` 还会 *自动释放* 相关联的内存
+    - 使用了动态生存期的类
+- 直接管理内存
+
+
+
+
+
+
+
+
+#### 动态数组（Dynamic arrays）
 
 #### Using the Library: A Text-Query Program
 
