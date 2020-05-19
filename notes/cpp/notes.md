@@ -1,6 +1,8 @@
 # `C++ Primer 5th Edition` Notes
 
-记录一些对`C++`理解得不到位的地方。
+- 记录一些对`C++`理解得不到位的地方
+- 基于`C++11`的内容提示，例如`(since C++11)`一般不再明确标注
+- `(until C++11)`、即`C++11`中已经移除的内容，不予收录
 
 
 
@@ -1237,8 +1239,8 @@ const int * const p2 = &num;    // 指向`const int`的常指针。既不能用p
     int * f()                   f as function returning pointer to int
     int (*a[])()                a as array of pointer to function returning int
     int (*f())[]                f as function () returning pointer to array of int
-    int (f[])()                 NOT ALLOWED!!!
-                                f as array of function () returning int, again, which is NOT ALLOWED
+    int (f[])()                 ARRAY OF FUNCTION IS NOT ALLOWED!!!
+                                f as array of function () returning int, which, again, is NOT ALLOWED
     int * const *(*g)(float)    g as pointer to function (float) returning pointer to const pointer to int
     ```
     - 函数指针可用作 *函数调用运算符* 的左操作数，这会调用被指向的函数
@@ -1281,10 +1283,19 @@ const int * const p2 = &num;    // 指向`const int`的常指针。既不能用p
     ```
     - *相等比较* 运算符对于函数指针有定义（若指向同一函数则它们比较相等）  
 - 数据成员指针
-    - 指向作为类`C`的 *非静态数据成员* `m`的指针
-    - 以`&C::m`初始化
-
-
+    - 指向作为类`C`的 *非静态数据成员* `m`的指针，以`&C::m`初始化
+        - 注意：`C`的 *成员函数* 中，`&(C::m)`、`&m`等**不再是**数据成员指针
+    - 能用作成员 [*指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数     
+    ```
+    struct C { int m; };
+ 
+    int C::* p = &C::m;          // pointer to data member m of class C
+    C c = {7};
+    std::cout << c.*p << std::endl;   // prints 7
+    C* cp = &c;
+    cp->m = 10;
+    std::cout << cp->*p << std::endl; // prints 10
+    ```
 
 
 ### 🌱 处理类型
