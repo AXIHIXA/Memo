@@ -1,3 +1,3 @@
-git add .
-git commit -m "Update"
+git add -A &&
+git commit -m "\"{$1}\"" &&
 git push

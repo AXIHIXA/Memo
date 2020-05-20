@@ -148,7 +148,7 @@
         - `U`：`Unicode 32`字符，匹配`char32_t`
         - `L`：宽字符，匹配`wchar_t`
         - `u8`：`UTF-8`字符（仅用于字符串字面值），匹配`char`
-    - 字符串字面值实际是常字符数组，编译器自动在末尾添加空字符`'\0'`作为结尾
+    - 字符串字面值实际是 *常字符数组* ，编译器 *自动在末尾添加空字符* `'\0'`作为结尾
     ```
     strlen("12")   == 3
     strlen("12\0") == 3
@@ -235,7 +235,7 @@
     int f(int x);                     // 声明但不定义 f 和 x
     int f(int x)                      // 定义 f 和 x
     { 
-         return x+a;
+         return x + a;
     }
     ```
     - `typedef`声明 
@@ -263,6 +263,8 @@
     ```
     template<> struct A<int>;         // 声明但不定义 A<int>
     ```
+
+
 
 
 
@@ -3333,15 +3335,15 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `s.compare(pos1, n1, cp)`：比较`s`中`pos1`开始的`n1`个字符和`cp`指向的以`'\0'`结尾的字符数组
     - `s.compare(pos1, n1, cp, n2)`：比较`s`中`pos1`开始的`n1`个字符和`cp + n2`指向的以`'\0'`结尾的字符数组
 - 数值转换
-    - `std::to_string(val)`
-    - `std::stoi(s, p, b)`
-    - `std::stol(s, p, b)`
-    - `std::stoul(s, p, b)`
-    - `std::stoll(s, p, b)`
-    - `std::stoull(s, p, b)`
-    - `std::stof(s, p)`
-    - `std::stod(s, p)`
-    - `std::stold(s, p)`
+    - 字符串转数值
+        - `int                std::stoi(const std::string & str, std::size_t * pos = 0, int base = 10)`
+        - `long               std::stol(const std::string & str, std::size_t * pos = 0, int base = 10)`
+        - `long long          std::stoll(const std::string & str, std::size_t * pos = 0, int base = 10)`
+        - `unsigned long      std::stoul(const std::string & str, std::size_t * pos = 0, int base = 10)`
+        - `unsigned long long std::stoull(const std::string & str, std::size_t * pos = 0, int base = 10)`
+        - `float              std::stof(const std::string & str, std::size_t * pos = 0)`
+        - `double             std::stod(const std::string & str, std::size_t * pos = 0)`
+        - `long double        std::stold(const std::string & str, std::size_t * pos = 0)`
     - 注意事项
         - `s`是`std::string`，第一个非空白字符必须是以下内容之一
             - 正负号（`+`，`-`）
@@ -3353,11 +3355,23 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
             - 字母字符（对应该进制中大于`9`的数字）
         - `p`是 *输出参数* ，类型为`size_t *`，用来保存`s`中第一个非数值字符的下标。默认值为`0`，即：函数不保存下标
         - `b`为基数，默认`10`
-        - 如果`std::string s`参数不能转换成数值，则抛出`invalid_argument`异常；如果转换得到的数值溢出，则抛出`out_of_range`异常
+        - 如果`std::string s`参数不能转换成数值，则抛出`std::invalid_argument`异常；如果转换得到的数值溢出，则抛出`std::out_of_range`异常
     ```
     size_t idx;
     double res = std::stod("+3.14159pi", &idx);
     printf("%lf %zu\n", res, idx);               // 3.141590 8
+    ```
+    - 数值转字符串
+    ```
+    std::string std::to_string(int value)                 (1)  // std::sprintf(buf, "%d", value)
+    std::string std::to_string(long value)                (2)  // std::sprintf(buf, "%ld", value)
+    std::string std::to_string(long long value)           (3)  // std::sprintf(buf, "%lld", value)
+    std::string std::to_string(unsigned value)            (4)  // std::sprintf(buf, "%u", value)
+    std::string std::to_string(unsigned long value)       (5)  // std::sprintf(buf, "%lu", value)
+    std::string std::to_string(unsigned long long value)  (6)  // std::sprintf(buf, "%llu", value)
+    std::string std::to_string(float value)               (7)  // std::sprintf(buf, "%f", value)
+    std::string std::to_string(double value)              (8)  // std::sprintf(buf, "%f", value)
+    std::string std::to_string(long double value)         (9)  // std::sprintf(buf, "%Lf", value)
     ```
 
 #### 用于`std::list`和`std::forward_list`的特定算法（容器成员函数）
