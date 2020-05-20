@@ -3344,7 +3344,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - `float              std::stof(const std::string & str, std::size_t * pos = 0)`
         - `double             std::stod(const std::string & str, std::size_t * pos = 0)`
         - `long double        std::stold(const std::string & str, std::size_t * pos = 0)`
-    - 注意事项：
+    - 注意事项
         - `s`是`std::string`，第一个非空白字符必须是以下内容之一
             - 正负号（`+`，`-`）
             - 数字（`[0-9]`）
