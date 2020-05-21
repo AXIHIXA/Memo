@@ -3878,7 +3878,6 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 - 谓词是可调用的表达式。具体传参可以用
     - *函数头*
     - [*函数指针*](https://en.cppreference.com/w/cpp/language/pointer#Pointers_to_functions)
-    
     - [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional) => 14.8
     - [*`lambda`表达式*](https://en.cppreference.com/w/cpp/language/lambda) => 10.3.2
 - 标准库算法使用以下两类谓词
@@ -7178,7 +7177,7 @@ std::map<std::string, int>::mapped_type v5;  // int
     ```
     - 动态释放内存
         - `delete`表达式
-            - 传递给`delete`的指针必须是 *有对象的指针* 或者 *空指针* 
+            - 传递给`delete`的指针必须是 *指向被动态分配的对象* 的指针或者 *空指针* 
             - 将同一个对象反复释放多次是 *未定义行为*
             - *`const`对象* 虽然不能更改，但却 *可以销毁* 
             - `delete`之后指针成为了 *空悬指针* （dangling pointer）
@@ -7204,7 +7203,39 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `std::shared_ptr`管理的对象会在引用计数降为`0`时被自动释放
         - 内置类型指针管理的对象则一直存在到被显式释放为止
 - `std::shared_ptr`和`new`结合使用
-    - 
+    - 可以使用`new`的返回值初始化`std::shared_ptr`
+        - 接受指针参数的智能指针构造函数是`explicit`的，因此，必须直接初始化，而**不能**将内置指针隐式转化为智能指针
+            - 类似的，返回智能指针的函数也不能在其返回语句中隐式转换普通指针
+        - 用来初始化智能指针的普通指针必须指向动态内存
+            - 因为智能指针默认使用`delete`释放对象
+            - 如果绑定到其他指针上，则必须自定义释放操作 => 12.1.4
+        - 定义和改变`std::shared_ptr`的其他方法
+            - `std::shared_ptr<T> p(q)`：`p`管理内置指针`q`所指向的对象，`q`必须指向`new`分配的内存，且能够转换成`T *`类型
+            - `std::shared_ptr<T> p(u)`：`p`从`std::unique_ptr<T> u`处 *接管* 对象管辖权，将`u` *置空*
+            - `std::shared_ptr<T> p(q, d)`：`p` *接管* 内置指针`q`所指向的对象的所有权，`q`能够转换成`T *`类型。`p`将 *使用可调用对象* `d`来代替`delete`
+            - `std::shared_ptr<T> p(p2, d)`：`p` 是`std::shared_ptr<T> q`的拷贝。`p`将 *使用可调用对象* `d`来代替`delete`
+            - `p.reset()`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，将`p` *置空*
+            - `p.reset(q)`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，令`p` *指向内置指针* `q`
+            - `p.reset(q, d)`：若`p`是唯一指向其对象的`std::shared_ptr`，则 *调用`d`* 释放此对象，将`p` *置空*
+    ```
+    std::shared_ptr<int> p0;                  // shared_ptr that can point at a int
+
+    std::shared_ptr<int> p1 = new int(1024);  // error: must use direct initialization
+    std::shared_ptr<int> p2(new int(1024));   // ok: uses direct initialization
+    
+    std::shared_ptr<int> clone(int p) 
+    {
+        // error: implicit conversion to shared_ptr<int>
+        return new int(p); 
+    }
+
+    std::shared_ptr<int> clone(int p) 
+    {
+        // ok: explicitly create a shared_ptr<int> from int*
+        return std::shared_ptr<int>(new int(p));
+    }
+    ```
+    - **不要混用**智能指针和内置指针
 - 智能指针和异常
 - `std::unique_ptr`
 - `std::weak_ptr`
