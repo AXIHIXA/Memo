@@ -6907,10 +6907,6 @@ std::map<std::string, int>::mapped_type v5;  // int
     - 智能指针使用方法与普通指针类似
         - *解引用* 返回对象 *左值* 
         - *条件判断* 中使用智能指针就是判断它 *是否为空* 
-    ```
-    std::shared_ptr<std::string> p1;
-    if (p1 && p1->empty()) *p1 = "hi";
-    ```
     - 智能指针使用规范
         1. **不**使用相同的内置指针初始化（或`reset`）多个智能指针，否则是 *未定义行为*
         2. **不**`delete`从智能指针`get()`到的内置指针
@@ -6939,30 +6935,25 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `p.reset()`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，将`p` *置空*
         - `p.reset(q)`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，令`p` *指向内置指针* `q`
         - `p.reset(q, d)`：若`p`是唯一指向其对象的`std::shared_ptr`，则 *调用`d`* 释放此对象，将`p` *置空*
-            - 示例1
-            ```
-            p = new int(1024);                 // error: cannot assign a pointer to a shared_ptr
-            p.reset(new int(1024));            // ok: p points to a new object
-            ```
-            - 和赋值类似，`p.reset`会更新引用计数，可能会释放掉对象。`p.reset`常常和`p.unique()`一起使用，来控制多个`std::shared_ptr`之间共享的对象。在改变底层对象之前，我们检查自己是否是当前对象仅有的用户。如果不是，在改变之前需要制作一份新的拷贝
-            ```
-            if (!p.unique())
-            {
-                p.reset(new std::string(*p));  // we aren't alone; allocate a new copy
-            }
-
-            *p += newVal;                      // now that we know we're the only pointer, okay to change this object
-            ```
     - `std::unique_ptr`独有的操作
         - `std::unique_ptr<T> u1`：定义一个 *空的* `std::unique_ptr<T>`，使用默认删除器`delete`
+        - `std::unique_ptr<T> u1(q)`：`u1`管理内置指针`q`所指向的对象，`q`必须指向`new`分配的内存，且能够转换成`T *`类型
         - `std::unique_ptr<T, D> u2`：定义一个 *空的* `std::unique_ptr<T, D>`，`D` *删除器* 的类型
         - `std::unique_ptr<T, D> u(d)`：定义一个 *空的* `std::unique_ptr<T, D>`，`D` *删除器* 的类型，`d`为指定的 *删除器* 
+        - `std::unique_ptr<T, D> u(q, d)`：`u1`管理内置指针`q`所指向的对象，`q`必须指向`new`分配的内存，且能够转换成`T *`类型；调用`D`类型 *删除器* `d`
         - `u = nullptr`：释放`u`指向的对象，将`u` *置空* 
-        - `u.release()`：`u` *放弃* 对指针的控制权，返回内置指针，并将`u` *置空* 
+        - `u.release()`：`u` *放弃* 对指针的控制权，返回内置指针，并将`u` *置空* 。注意`u.release()`只是放弃所有权，并**没有**释放`u`原先指向的对象
         - `u.reset()`：释放指向`u`的对象，将`u` *置空*
-        - `u.reset(q)`：释放指向`u`的对象，令`u` *指向内置指针* `q`
+        - `u.reset(q)`：释放指向`u`的对象，令`u` *指向内置指针* `q`。常见转移操作：`u1.reset(u2.release())`
         - `u.resert(nullptr)`：释放指向`u`的对象，将`u` *置空*
 - `std::shared_ptr`
+    - 智能指针使用方法与普通指针类似
+        - *解引用* 返回对象 *左值* 
+        - *条件判断* 中使用智能指针就是判断它 *是否为空* 
+    ```
+    std::shared_ptr<std::string> p1;
+    if (p1 && p1->empty()) *p1 = "hi";
+    ```
     - `std::make_shared`函数
         - 最安全的分配和使用动态内存的方法
         - 在动态内存中分配一个对象并 *用其参数构造对象* ，返回指向该对象的`shared_ptr`
@@ -6973,6 +6964,21 @@ std::map<std::string, int>::mapped_type v5;  // int
         std::shared_ptr<std::string> p4 = std::make_shared<std::string>(10, '9');        // std::string "9999999999"
         std::shared_ptr<int>         p5 = std::make_shared<int>();                       // int 0 (value initialized)
         auto                         p6 = std::make_shared<std::vector<std::string>>();  // 空 std::vector<std::string>
+        ```
+    - `p.reset()` 函数   
+        - 示例1
+        ```
+        p = new int(1024);                 // error: cannot assign a pointer to a shared_ptr
+        p.reset(new int(1024));            // ok: p points to a new object
+        ```
+        - 和赋值类似，`p.reset`会更新引用计数，可能会释放掉对象。`p.reset`常常和`p.unique()`一起使用，来控制多个`std::shared_ptr`之间共享的对象。在改变底层对象之前，我们检查自己是否是当前对象仅有的用户。如果不是，在改变之前需要制作一份新的拷贝
+        ```
+        if (!p.unique())
+        {
+            p.reset(new std::string(*p));  // we aren't alone; allocate a new copy
+        }
+
+        *p += newVal;                      // now that we know we're the only pointer, okay to change this object
         ```
     - `std::shared_ptr`拷贝和赋值
         - 每个`std::shared_ptr`都有其 *引用计数* （reference count），记录有多少个其他`std::shared_ptr`指向相同的对象
@@ -6988,7 +6994,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         auto q(p);                            // p and q point to the same object
                                               // object to which p and q point has two users
                                              
-        auto r = std:: make_shared<int>(42);  // int to which r points has one user assign to r, 
+        auto r = std::make_shared<int>(42);   // int to which r points has one user assign to r, 
                                               // making it point to a different address
                                               // increase the use count for the object to which q points
                                               // reduce the use count of the object to which r had pointed
@@ -7120,8 +7126,67 @@ std::map<std::string, int>::mapped_type v5;  // int
     ```
 - `std::unique_ptr`
     - *拥有* 自己指向的对象
-    - 同一时刻只能有一个`std::unique_ptr`指向一个给定对象
-    - 
+    - 同一时刻只能有一个`std::unique_ptr`指向一个给定对象，被销毁时其指向的对象也立即被销毁
+    - 没有`make_unique`函数，想要显式指定初值只能传入`new`出来的内置指针进行 *直接初始化* 
+    ```
+    std::unique_ptr<double> p1;                     // unique_ptr that can point at a double
+    std::unique_ptr<int> p2(new int(42));           // p2 points to int with value 42
+    ```
+    - 虽然**不能**拷贝或赋值`std::unique_ptr`，但可以通过调用`u1.reset(u2.release())`将指针的所有权从一个非`const` `std::unique_ptr`转移至另一个
+    ```
+    std::unique_ptr<std::string> p1(new string("Stegosaurus"));
+    std::unique_ptr<std::string> p2(p1);            // error: no copy for unique_ptr
+    std::unique_ptr<std::string> p3;
+    p3 = p2;                                        // error: no assign for unique_ptr
+    
+    // transfers ownership from p1 (which points to the string Stegosaurus) to p2
+    std::unique_ptr<std::string> p2(p1.release());  // release makes p1 null
+    std::unique_ptr<std::string> p3(new string("Trex"));
+    
+    // transfers ownership from p3 to p2
+    p2.reset(p3.release());                         // reset deletes the memory to which p2 had pointed
+    ```
+    - 调用`u.release()`会切断`u`和它原来所管理的对象之间的关系，返回值通常用来初始化另一个智能指针，或者给另一个智能指针赋值
+        - 只是管理内存的责任转移了而已，如果不保存`release`的返回值，那这块内存可就真的永生了
+    ```
+    p2.release();                                   // WRONG: p2 won't free the memory and we've lost the pointer
+    auto p = p2.release();                          // ok, but we must remember to delete(p)
+    ```
+    - `std::unique_ptr`用于传参与返回
+        - *不能拷贝* `std::unique_ptr` 这一规则有一个例外：`std::unique_ptr`将亡值的拷贝和赋值操作编译器都默认成 *移动* 操作 => 13.6.2
+        - 最常见的例子就是从函数返回一个`std::unique_ptr`
+        ```
+        std::unique_ptr<int> clone(int p) 
+        {
+            // ok: explicitly create a unique_ptr<int> from int *
+            return std::unique_ptr<int>(new int(p));
+        }
+        ```
+        - 还可以返回一个局部对象的拷贝
+        ```
+        std::unique_ptr<int> clone(int p) 
+        {
+            std::unique_ptr<int> ret(new int (p));
+            // . . .
+            return ret;
+        }
+            ```
+    - 向`std::unique_ptr`传递 *删除器* 
+        - `std::unique_ptr`管理 *删除器* 的方式和`std::shared_ptr`不同 => 16.1.6
+    ```
+    void f(destination & d /* other needed parameters */)
+    {
+        // open the connection
+        connection c = connect(&d);
+        
+        // when p is destroyed, the connection will be closed
+        std::unique_ptr<connection, decltype(end_connection)*> p(&c, end_connection);
+        
+        // use the connection
+        
+        // when f exits, even if by an exception, the connection will be properly closed
+    }
+    ```
 - `std::weak_ptr`
 
 #### 动态数组（Dynamic arrays）
