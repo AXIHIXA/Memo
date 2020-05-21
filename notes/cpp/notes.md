@@ -43,6 +43,7 @@
     - 出于性能考虑，`std::list`和`std::forward_list`应当优先使用 *成员函数版本* 的算法，而**不是**通用算法  
     - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
     - 如果两个对象 *共享底层数据* ，则某个对象被销毁时，**不能**单方面地销毁底层数据
+    - 坚持使用 *智能指针* ，避免所有动态内存管理的破事
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -2238,17 +2239,6 @@ useBigger(s1, s2, pf);
 
 
 
-### 🌱 [Chap 8] `I/O`库
-
-- 这章挺没意思的，全篇在讲`<iostream>`，还是[`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c)用着舒服
-    - [`printf`](https://en.cppreference.com/w/c/io/fprintf)
-    - [`std::printf`](https://en.cppreference.com/w/cpp/io/c/fprintf)
-
-
-
-
-
-
 ### 🌱 [Chap 7] 类的基础概念
 
 #### 合成的默认构造函数（Synthesized default constructor）
@@ -2739,265 +2729,11 @@ Entry e = {0, "Anna"};
 
 
 
-### 🌱 [Chap 13] 拷贝控制
+### 🌱 [Chap 8] `I/O`库
 
-- 
-
-
-
-
-
-
-### 🌱 [Chap 14] 操作重载与类型转换
-
-- 
-
-
-
-
-
-
-### 🌱 [Chap 15] OOP
-
-- 
-
-
-
-
-
-
-### 🌱 [Chap 16] 模板与泛型编程
-
-- 
-
-
-
-
-
-
-### 🌱 [Chap 12] [动态内存管理](https://en.cppreference.com/w/cpp/memory)（Dynamic memory management）
-
-- 程序中使用的对象都有严格的 *存储期* （生存期）
-    - *全局对象* 
-        - 程序启动时分配，结束时销毁
-        - 存储于静态存储区（程序的静态内存）
-    - *局部静态对象* 
-        - 程序进入其所在的程序块时分配，离开该块时销毁
-        - 存储于静态存储区（程序的静态内存）
-    - *局部非静态对象* （ *自动对象* ）
-        - 第一次使用前分配，程序结束时销毁
-        - 存储于自动存储区（程序的栈内存）
-    - *动态对象* 
-        - 从被创建一直存在到被 *显式释放* 为止
-            - *智能指针* 可以自动释放该被释放的对象
-        - 存储于动态存储区（程序的堆内存）
-
-#### 动态内存和智能指针（Dynamic memory and smart pointers）
-
-- `C++`动态内存管理
-    - `new`
-    - `delete`
-- *智能指针*
-    - 定义于头文件`<memory>`中，包括 
-        - [`std::shared_ptr`](https://en.cppreference.com/w/cpp/memory/shared_ptr)：允许多个指针指向同一个对象
-        - [`std::unique_ptr`](https://en.cppreference.com/w/cpp/memory/unique_ptr)： *独占* 指向的对象
-        - [`std::weak_ptr`](https://en.cppreference.com/w/cpp/memory/weak_ptr)： *伴随类* ， *弱引用* ，指向`std::shared_ptr`所指向的对象
-    - 行为类似于 *常规指针* ，但负责 *自动释放* 所指向的对象
-        - 下文中的 *指针* 除非特别说明，都是指 *常规指针* 
-    - *默认初始化* 的智能指针中保存着一个 *空指针* 
-    - 智能指针使用方法与普通指针类似
-        - *解引用* 返回对象 *左值* 
-        - *条件判断* 中使用智能指针就是判断它 *是否为空* 
-    ```
-    std::shared_ptr<std::string> p1;
-    if (p1 && p1->empty()) *p1 = "hi";
-    ```
-    - `std::shared_ptr`和`std::unique_ptr`都支持的操作
-        - `std::shared_ptr<T> sp`：定义 *空的* `std::shared_ptr`，指向`T`类型对象
-        - `std::unique_ptr<T> up`：定义 *空的* `std::shared_ptr`，指向`T`类型对象
-        - `p`：将`p`用作一个条件判断，若`p`指向一个对象，则为`true`
-        - `*p`：解引用`p`，获得它指向的对象
-        - `p->mem`：等价于`(*p).mem`
-        - `p.get()`：返回`p`中保存的指针。若智能指针释放了其对象，则这一指针所指向的对象亦会失效
-        - `std::swap(p, q)`：交换`p`和`q`中的指针*
-        - `p.swap(q)`：交换`p`和`q`中的指针*
-    - `std::shared_ptr`独有的操作
-        - `std::make_shared<T>(args)`：返回一个`std::shared_ptr<T>`用`args`初始化
-        - `std::shared_ptr<T> p(q)`：`p`是`q`的拷贝，此操作会递增`q`的引用计数。`q`中的指针必须能被转换程`T *`
-        - `p = q`：`p`和`q`都是`std::shared_ptr`，且保存的指针能够相互转换。此操作会递减`p`的引用计数、递增`q`的引用计数；若`p`的引用计数变为`0`，则将其管理的 *原内存释放* 
-        - `p.unique()`：`return p.use_count() = 1;`
-        - `p.use_count()`：返回`p`的 *引用计数* （与`p`共享对象的智能指针的数量）。 *可能很慢，主要用于调试* 
-    - `std::make_shared`函数
-        - 最安全的分配和使用动态内存的方法
-        - 在动态内存中分配一个对象并 *用其参数构造对象* ，返回指向该对象的`shared_ptr`
-            - 就类似与顺序容器的`c.emplace(args)`
-            - 不提供任何参数就是 *值初始化* 对象
-        ```
-        std::shared_ptr<int>         p3 = std::make_shared<int>(42);                     // int 42
-        std::shared_ptr<std::string> p4 = std::make_shared<std::string>(10, '9');        // std::string "9999999999"
-        std::shared_ptr<int>         p5 = std::make_shared<int>();                       // int 0 (value initialized)
-        auto                         p6 = std::make_shared<std::vector<std::string>>();  // 空 std::vector<std::string>
-        ```
-    - `std::shared_ptr`拷贝和赋值
-        - 每个`std::shared_ptr`都有其 *引用计数* （reference count），记录有多少个其他`std::shared_ptr`指向相同的对象
-            - *拷贝* 时，引用计数会 *递增* ，例如
-                - 用一个`std::shared_ptr`初始化另一个`std::shared_ptr`
-                - 将`std::shared_ptr`作为参数传递给一个函数
-                - 将`std::shared_ptr`作为函数返回值
-            - *赋值* 或 *销毁* 时，引用计数会 *递减* ，例如
-                - 局部的`std::shared_ptr`离开其作用域时
-            - 一旦`std::shared_ptr`的引用计数降为`0`，它就会 *自动释放* 自己所管理的对象
-        ```
-        auto p = std::make_shared<int>(42);   // object to which p points has one user
-        auto q(p);                            // p and q point to the same object
-                                              // object to which p and q point has two users
-                                             
-        auto r = std:: make_shared<int>(42);  // int to which r points has one user assign to r, 
-                                              // making it point to a different address
-                                              // increase the use count for the object to which q points
-                                              // reduce the use count of the object to which r had pointed
-                                              // the object r had pointed to has no users; 
-                                              // that object is automatically freed
-        ```
-    - `std::shared_ptr` *自动销毁* 所管理的对象
-        - 销毁工作通过调用对象的 *析构函数* （destructor）来完成
-            - 析构函数一般负责释放该对象所占用的资源
-        - `std::shared_ptr`的析构函数会递减它所指向的对象的引用计数
-            - 降为`0`后就会销毁对象并释放占用的内存
-        - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
-        - 如果两个对象 *共享底层数据* ，则某个对象被销毁时，**不能**单方面地销毁底层数据
-        ```
-        std::vector<std::string> v1;                           // empty vector
-        
-        {                                                      // new scope
-            std::vector<std::string> v2 = {"a", "an", "the"};
-            v1 = v2;                                           // copies the elements from v2 into v1
-        }                                                      // v2 is destroyed, which destroys the elements in v2
-                                                               // v1 has three elements, 
-                                                               // which are copies of the ones originally in v2
-        ```
-        - 工厂例程
-        ```
-        std::shared_ptr<Foo> factory(T arg)
-        {
-            return std::make_shared<Foo>(arg);      // shared_ptr will take care of deleting this memory, ++ref_cnt
-        }                                           // goes out of scope; however the memory remains
-        
-        void use_factory(T arg)
-        {
-            std::shared_ptr<Foo> p = factory(arg);
-            // do something...                      // use p...
-        }                                           // p goes out of scope; 
-                                                    // the memory to which p points is AUTOMATICALLY freed
-        ```
-    - 使用了动态生存期的类
-- 直接管理内存
-    - 使用`new`直接管理内存，初始化可以选择
-        - *默认初始化* 
-            - *不提供* 初始化器 
-            - 对象的值 *未定义* 
-        ```
-        int * pi = new int;
-        std::string * ps = new std::string;
-        ```
-        - *直接初始化* 
-            - 提供 *非空* 的初始化器 
-            - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
-        ```
-        int * pi = new int(1024);
-        std::string * ps = new std::string(10, '9');
-        std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-        ```
-        - *值初始化* 
-            - 提供 *空的* 初始化器 
-            - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
-            - 对于内置类型，值初始化的效果则是 *零初始化* 
-        ```
-        std::string * ps1 = new std::string;   // default initialized to the empty string
-        std::string * ps = new std::string();  // value initialized to the empty string
-        int * pi1 = new int;                   // default initialized; *pi1 is undefined
-        int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
-        ```
-    - 使用`auto`
-        - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
-            - 编译器需要从初始化器中推断类型
-    ```
-    auto p1 = new auto(obj);      // p points to an object of the type of obj
-                                  // that object is initialized from obj
-    auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
-    ```
-    - 动态分配`const`对象
-        - 用`new`分配`const`对象是合法的，返回指向`const`的指针
-        - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
-            - 对于有 *默认构造函数* 的类类型，可以默认初始化
-            - 否则，必须直接初始化
-    ```
-    // allocate and direct-initialize a const int
-    const int * pci = new const int(1024);
-    
-    // allocate a default-initialized const empty string
-    const std::string * pcs = new const std::string;
-    ```
-    - 内存耗尽
-    ```
-    ```
-- `std::shared_ptr`和`new`结合使用
-- 智能指针和异常
-- `std::unique_ptr`
-- `std::weak_ptr`
-
-#### 动态数组（Dynamic arrays）
-
-- `new`和数组
-- `allocator`类
-
-
-
-
-
-
-### 🌱 [Chap 17] 标准库特殊设施
-
-- 
-
-
-
-
-
-
-### 🌱 [Chap 18] 用于大型工程的工具
-
-#### 异常处理
-
-- `C++`标准异常
-    - `<exception>`
-        - `std::exception`：只报告异常的发生，不提供任何额外信息。 *只能* *默认初始化* ，**不能**传参
-    - `<stdexcept>`
-        - `std::runtime_error`：所有运行错误
-            - `std::range_error`：运行错误，生成的结果超出了有意义的值域范围
-            - `std::overflow_error`：运行错误，计算溢出
-            - `std::underflow_error`：运行错误，计算溢出
-        - `std::logic_error`：所有逻辑错误
-            - `std::domain_error`：逻辑错误，参数对应的结果值不存在
-            - `std::invalid_argument`：逻辑错误，无效参数
-            - `std::length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
-            - `std::out_of_range`：逻辑错误，使用了一个超出有效范围的值
-    - `<new>`
-        - `std::bad_alloc`异常类。 *只能* *默认初始化* ，**不能**传参 => 12.1.2
-    - `<typeinfo>`
-        - `std::bad_cast`异常类 => 19.2
-- 以上异常除特别说明的，都 *必须* 传参（`C`风格字符串）
-- 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
-  如果此异常传入了初始参数，则返回之；否则返回值由编译器决定。
-
-
-
-
-
-
-### 🌱 [Chap 19] 特殊工具与技术
-
-- 
+- 这章挺没意思的，全篇在讲`<iostream>`，还是[`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c)用着舒服
+    - [`printf`](https://en.cppreference.com/w/c/io/fprintf)
+    - [`std::printf`](https://en.cppreference.com/w/cpp/io/c/fprintf)
 
 
 
@@ -3542,347 +3278,6 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 - 与其他非成员版本的泛型算法不同，列表这些成员函数版本的算法会 *改变底层容器* 
     - 比如`lst.unique`就会真正地 *删除* 连续的重复元素，而`std::unique()`相当于只是个排序算法
     - 比如`lst.merge`会将源列表的元素 *移动* 至目标，也就是说源列表已经空了
-
-
-
-
-
-    
-### 🌱 [Chap 11] [关联容器](https://en.cppreference.com/w/cpp/container)（Associative Container）
-
-#### 关联容器概述
-
-- 关联容器类型
-    - *有序关联容器* ，按 *键*（key，关键字） *有序* 保存元素，使用 *红黑树* （red-black tree）实现
-        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)： *关联数组* （associative array），保存 *键-值词条* （entry，`<key, value>`）
-        - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存键
-        - [`std::multimap`](https://en.cppreference.com/w/cpp/container/multimap)：键可重复出现的`std::map`
-        - [`std::multiset`](https://en.cppreference.com/w/cpp/container/multiset)：键可重复出现的`std::set`
-    - *无序关联容器* （unordered associative container），使用 *散列表* （hash table）实现
-        - [`std::unordered_map`](https://en.cppreference.com/w/cpp/container/unordered_map)：散列组织的`std::map`
-        - [`std::unordered_set`](https://en.cppreference.com/w/cpp/container/unordered_set)：散列组织的`std::set`
-        - [`std::unordered_multimap`](https://en.cppreference.com/w/cpp/container/unordered_multimap)：散列组织的`std::map`，键可重复出现
-        - [`std::unordered_multiset`](https://en.cppreference.com/w/cpp/container/unordered_multiset)：散列组织的`std::set`，键可重复出现
-- 使用举例
-    - 使用`std::map`（计数）
-    ```
-    std::map<std::string, size_t> word_count;
-    std::string word;
-    
-    while (std::cin >> word)
-    {
-        ++word_count[word]; 
-    }
-        
-    for (const std::pair<std::string, size_t> & w : word_count)
-    {
-        printf("\"%s\" occurs %zu time(s)\n", w.first.c_str(), w.second);
-    }
-    ```
-    - 使用`std::set`（去重）
-    ```
-    std::map<std::string, size_t> word_count;
-    std::set<std::string> exclude = {"The", "But", "And", "Or", "An", "A", "the", "but", "and", "or", "an", "a"};
-    std::string word;
-    
-    while (std::cin >> word)
-    {
-        if (exclude.find(word) == exclude.end())
-        {
-            ++word_count[word];
-        }    
-    }
-    ```
-- 定义（初始化）`std::map`和`std::set`
-    - 每个关联容器都定义了默认构造函数，用于创建指定类型的空容器
-    - 也可以将关联容器创建为其他关联容器的拷贝
-    - 或者从一个值范围来初始化关联容器
-        - 对于`std::map`，必须提供键值对`<key, value>`
-    ```
-    // empty
-    map<std::string, size_t> word_count; 
-    
-    // list initialization
-    std::set<string> exclude = {"the", "but", "and", "or", "an", "a", "The", "But", "And", "Or", "An", "A"};
-    
-    // three elements; authors maps last name to first
-    std::map<std::string, string> authors = {{"Joyce", "James"}, {"Austen", "Jane"}, {"Dickens", "Charles"}};
-    ```
-- 定义（初始化）`std::multi_map`和`std::multi_set`
-    - `std::map`和`std::set`的键必须是唯一的
-        - 插入重复的键或词条会被 *忽略*
-    - `std::multi_map`和`std::multi_set`允许键重复
-        - 插入重复的键或词条会被保留
-    ```
-    // define a vector with 20 elements, holding two copies of each number from 0 to 9
-    std::vector<int> ivec;
-    
-    for (int i = 0; i != 10; ++i) 
-    {
-        ivec.push_back(i);
-        ivec.push_back(i);        // duplicate copies of each number
-    }
-    
-    cout << ivec.size() << endl;  // prints 20
-    
-    // iset holds unique elements from ivec; 
-    std::set<int> iset(ivec.cbegin(), ivec.cend());
-    cout << iset.size() << endl;  // prints 10
-    
-    // miset holds all 20 elements
-    std::multiset<int> miset(ivec.cbegin(), ivec.cend());
-    cout << miset.size() << endl; // prints 20
-    ```
-- 键类型要求
-    - 必须定义了 *严格弱序* （stirct weak ordering，例：`<=`运算符）
-        1. `a <= b`和`b <= a`有且仅能有一个成立
-        2. `a <= b`且`b <= c`，则`a <= c`
-        3. `!(a <= b) && !(b <= a)`意味着`a == b`
-    - 在实际编程中重要的是，如果类型定义了 *行为正常* 的`<`运算符，则可以用它做键
-    - 对于没有重载运算符的自定义类型，`std::multiset`允许传入 *谓词* 
-    ```
-    inline bool compareIsbn(const Sales_data & lhs, const Sales_data & rhs)
-    {
-        return lhs.isbn() < rhs.isbn();
-    }
-
-    // bookstore can have several transactions with the same ISBN
-    // elements in bookstore will be in ISBN order
-    // 3 equivalent declarations
-    std::multiset<Sales_data, decltype(compareIsbn) *>                                      bookstore1(compareIsbn);
-    std::multiset<Sales_data, bool (*)(const Sales_data &, const Sales_data &)>             bookstore2(compareIsbn);
-    std::multiset<Sales_data, std::function<bool (const Sales_data &, const Sales_data &)>> bookstore3(compareIsbn);
-    ```
-- [`std::pair`](https://en.cppreference.com/w/cpp/utility/pair)
-    - 定义于`<utility>`中
-    - 默认构造函数对成员进行 *值初始化*
-        - `std::string`，`std::vector`被初始化成空容器，`size_t`被初始化为`0`
-    - 可以显式调用构造函数传参初始化，或进行 *列表初始化*
-    - 数据成员`first`、`second`为 *公有*
-    ```
-    std::pair<std::string, std::string>      anon;        // holds two strings
-    std::pair<std::string, size_t>           word_count;  // holds a string and an size_t
-    std::pair<std::string, std::vector<int>> line;        // holds string and vector<int>
-    
-    std::pair<std::string, std::string>      author{"James", "Joyce"};
-    
-    // print the results
-    std::cout << w.first << " occurs " << w.second << ((w.second > 1) ? " times" : " time") << std::endl;
-    ```
-    - 生成`std::pair`
-        - `std::pair<T1, T2> p;`： *默认初始化* ，创建`std::pair`，成员进行值初始化
-        - `std::pair<T1, T2> p(v1, v2);`： *显式构造* ，创建`std::pair`，成员初始化为给定值
-        - `std::pair<T1, T2> p = {v1, v2};`： *列表初始化* ，创建`std::pair`，成员初始化为给定值
-        - `std::make_pair(v1, v2);`：创建`std::pair`，元素类型由`v1`和`v2`自动推断。成员初始化为给定值
-    - 访问`std::pair` 
-        - `p.first`
-        - `p.second`
-        - `p1 rel_op p2`： *关系运算符* `<`，`>`，`<=`，`>=`，按 *字典序* 定义
-        - `p1 == p2`
-        - `p1 != p2`
-    - 返回`std::pair`
-    ```
-    std::pair <string, int> process(std::vector<std::string> & v)
-    {
-        if (!v.empty())
-            return {v.back(), v.back().size()};    // list initialize
-        else
-            return std::pair<std::string, int>();  // explicitly constructed return value
-    }
-    ```
-
-#### 关联容器操作
-
-- 类型别名
-    - `key_type`：此容器类型的键类型
-    - `mapped_type`：四种`map`类型中、每个键关联的类型
-    - `value_type`：对于`std::set`，与`key_type`相同；对于`std::map`，为`std::pair<const key_type, mapped_type>`
-        - 不能改变元素的键，因为键是 *常量* 
-```
-std::set<std::string>::value_type v1;        // std::string
-std::set<std::string>::key_type v2;          // std::string
-std::map<std::string, int>::value_type v3;   // std::pair<const std::string, int>
-std::map<std::string, int>::key_type v4;     // std::string
-std::map<std::string, int>::mapped_type v5;  // int
-```
-- 迭代器
-    - 解引用关联容器迭代器时，会得到类型为容器类型的`value_type`的值的 *引用* 
-        - 对`std::map`而言，是`std::pair<const key_type, mapped_type>`类型
-        - 必须记住，一个`std::map`的`value_type`是一个`std::pair`，对一个词条，值可以变，**键不能变**
-    ```
-    // get an iterator to an element in word_count
-    std::map<std::string, size_t>::iterator map_it = word_count.begin();
-    // *map_it is a reference to a pair<const string, size_t> object
-    std::cout << map_it->first;          // prints the key for this element
-    std::cout << " " << map_it->second;  // prints the value of the element
-    map_it->first = "new key";           // error: key is const
-    ++map_it->second;                    // ok: we can change the value through an iterator
-    ```
-    - `std::set`的迭代器 *全部是* *常迭代器*
-        - `std::set`的`iterator`和`const_iterator` *全部是* *常迭代器*
-        - 键可以读，但不能改
-    ```
-    std::set<int> iset = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    std::set<int>::iterator set_it = iset.begin();
-    
-    if (set_it != iset.end()) 
-    {
-        *set_it = 42;                       // error: keys in a set are read-only
-        std::cout << *set_it << std::endl;  // ok: can read the key
-    }
-    ```
-    - 遍历关联容器
-        - `std::map`和`std::set`都支持`begin()`、`end()`等操作
-        - *有序关联容器* 迭代器按照 *键升序* 遍历元素
-    ```
-    std::map<std::string, size_t>::iterator map_it = word_count.cbegin();
-
-    while (map_it != word_count.cend()) 
-    {
-        cout << map_it->first << " occurs " << map_it->second << " times" << endl;
-        ++map_it; 
-    }
-    ```
-    - 关联容器和泛型算法
-        - 通常**不对**关联容器使用 *泛型算法* => 10
-            - 因为泛型算法经常 *写值* ，但关联容器的键是 *常量* 
-        - 关联容器 *只可用于* 只读算法
-            - 只读算法经常 *搜索* ，但关联容器迭代器**不支持随机访问**，性能会很差
-        - 实际编程中，关联容器要么作为源序列，要么作为目的位置。例如
-            1. 调用`std::copy`将一个关联容器的元素拷贝到另一个序列中
-            2. 将 *插入迭代器* 绑定到关联容器上，将关联容器作为目的位置
-- 添加元素
-    - 关联容器的`insert`操作
-        - `c.insert(v)`，`c.emplace(args)`：返回`std::pair<iterator, bool>`，包含指向具有指定键的元素，以及指示插入是否成功的`bool`。对于`std::multi_set`和`std::multi_map`，总会插入给定元素并返回一个指向新元素的迭代器
-        - `c.insert(b, e)`，`c.insert({a, b, c...})`：返回`void`。插入区间或初始化列表中的所有元素，对于非`multi`容器，键不能重复
-        - `c.insert(p, v)`，`c.emplace(p, args)`：迭代器`p`用于 *提示* *开始搜索新元素应该存储的位置* ，返回指向具有给定键的元素的迭代器
-    ```
-    // ways to add word to word_count
-    word_count.insert({word, 1});
-    word_count.insert(std::make_pair(word, 1));
-    word_count.insert(std::pair<std::string, size_t>(word, 1));
-    word_count.insert(std::map<std::string, size_t>::value_type(word, 1));
-    
-    word_count.emplace(word, 1);
-    ```
-    - 检测`insert`的返回值
-    ```
-    std::map<std::string, size_t> word_count;
-    std::string word;
-    
-    while (std::cin >> word) 
-    {
-        std::pair<std::map<std::string, size_t>::iterator, bool> ret = word_count.insert({word, 1});
-        
-        if (!ret.second)
-        {
-            ++ret.first->second;
-        }
-    }
-    ```
-    - 向`std::multi_set`或`std::multi_map`添加元素
-    ```
-    std::multimap<std::string, std::string> authors;
-    // adds the first element with the key Barth, John
-    authors.insert({"Barth, John", "Sot-Weed Factor"});
-    // ok: adds the second element with the key Barth, John
-    authors.insert({"Barth, John", "Lost in the Funhouse"});
-    ```
-- 删除元素
-    - `c.erase(k)`：从`c`中删除 *每个* 键为`k`的元素，返回`size_type`值，代表删除的元素的数量
-    - `c.erase(p)`：从`c`中删除迭代器`p`指向的元素。`p`必须指向 *`c`中真实存在* 的元素，且**不能**等于`c.end()`。返回指向`p`元素之后一个元素的迭代器；若`p`指向`c`中的尾元素，则返回`c.end()`
-    - `c.erase(b, e)`：删除区间`[b, e)`内的元素，返回`e`
-    ```
-    // erase on a key returns the number of elements removed
-    if (word_count.erase(removal_word))
-        std::cout << "ok: " << removal_word << " removed" << std::endl;
-    else 
-        std::cout << "oops: " << removal_word << " not found!" << std::endl;
-    
-    // for std::multi_map
-    std::multimap<std::string, std::string> authors;
-    authors.insert({"Barth, John", "Sot-Weed Factor"});
-    authors.insert({"Barth, John", "Lost in the Funhouse"});
-    size_t cnt = authors.erase("Barth, John");  // cnt == 2
-    ```
-- `std::map`的 *下标* 操作
-    - `std::map`和`std::multi_map`提供了 *下标运算符* 和对应的`c.at()`函数
-        - `c[k]`：返回键为`k`的元素的 *引用* ；如果`k` *不在`c`中* ，则 *添加* 一个键为`k`的元素，并值初始化之
-            - 对`std::map`使用下标操作的行为和对数组或者`std::vector`使用时很不相同，使用一个 *不在容器中的键* 作为下标将会 *添加* 一个具有此键的元素到容器中
-            - 如果不希望添加元素，则应该使用`c.find(k)`
-        - `c.at(k)`：返回键为`k`的元素的 *引用* ；如果`k` *不在`c`中* ，则抛出`out_of_range`异常
-    ```
-    std::map <std::string, size_t> word_count;  // empty map
-    word_count["Anna"] = 1;                     // insert a value-initialized element with key "Anna"
-                                                // then assign 1 to its value
-    ```
-    - 使用下标操作的返回值
-        - 对于`std::map`，下标返回`mapped_type`类型，而解引用迭代器返回`value_type aka std::pair<const key_type, mapped_type>`
-        - 返回的是 *左值* ，可以读写
-    ```
-    std::cout << word_count["Anna"];            // fetches the element indexed by Anna; prints 1
-    ++word_count["Anna"];                       // fetches the element and add 1 to it
-    std::cout << word_count["Anna"];            9// fetches the element and print it; prints 2
-    ```
-- 查找元素
-    - `c.find(k)`：返回指向 *第一个* 键为`k`的元素的迭代器，如不存在则返回尾后迭代器
-    - `c.count(k)`：返回键为`k`的元素的数量。对于非`multi`容器，返回值永远是`0`或`1`
-    - `c.lower_bound(k)`：返回指向 *第一个* 键 *大于等于* `k`的元素的迭代器
-    - `c.upper_bound(k)`：返回指向 *第一个* 键 *大于* `k`的元素的迭代器
-    - `c.equal_range(k)`：返回`std::pair<iterator, iterator>(first, last)`，区间`[first, last)`内元素键全部等于`k`
-
-#### 无序关联容器        
-
-- 无序容器提供与有序容器相同的操作
-- 无序关联容器在存储上组织为一组 *桶* （bucket），每个桶保存零或多个元素
-    - 无序关联容器用 *散列函数* （hash function）将元素映射到桶
-    - 访问时，先计算键的散列值，去对应的桶查找元素
-    - 性能依赖于散列函数的质量，以及桶的数量和大小
-    - *迭代时顺序是乱的*
-- 桶管理
-    - 桶接口
-        - `c.bucket_count()`：正在使用的桶的数目
-        - `c.max_bucket_count()`：容器能容纳的最多的桶的数量
-        - `c.bucket_size(n)`：第`n`个桶中元素数量
-        - `c.bucket(k)`：键为`k`的元素在哪个桶中
-    - 桶迭代
-        - `local_iterator`：用于访问桶中元素的迭代器类型
-        - `const_local_iterator`：用于访问桶中元素的常迭代器类型
-        - `c.begin(n)`，`c.end(n)`：桶`n`的首元素迭代器和尾后迭代器
-        - `c.cbegin(n)`，`c.cend(n)`：桶`n`的首元素常迭代器和尾后常迭代器
-    - 散列策略
-        - `c.load_factor()`：每个桶的平均元素数量，返回`float`
-        - `c.max_load_factor()`：`c`试图维护的平均桶大小，返回`float`值。`c`会在需要的时候添加新的桶，以使得`load_factor <= max_load_factor`
-        - `c.rehash(n)`：重新散列，使得`bucker_count >= n`且`bucket_count > size / max_load_factor`
-        - `c.reserve(n)`：重组存储，在 *不重新散列* 的情况下使得`c`可以保存`n`个元素
-- 无序关联容器对键类型的要求
-    - 默认情况下，无序关联容器使用键类型的`==`运算符来比较元素
-    - 它还使用`hash<key_type>`类型的对象来生成每个元素的散列值
-    - 标准库为 *内置类型* （包括 *指针* ）提供了 *`hash`模板* ，还为包括和 *智能指针* 定义了`hash`
-    - 因此，可以直接定义键是 *内置类型* （包括 *指针* ）、`std::string`和 *智能指针* 类型的无序关联容器
-    - 但**不能直接定义**键是 *自定义类型* 的无序关联容器
-        - 必须人工提供 *`hash`模板* => 16.5
-    - 还可以人工提供充当`==`运算符的函数以及散列函数
-        - 如果类已经有`==`运算符了，则只用重载散列函数
-    ```
-    size_t hasher(const Sales_data & sd)
-    {
-        return hash<string>()(sd.isbn());
-    }
-    
-    bool eqOp(const Sales_data & lhs, const Sales_data & rhs)
-    {
-        return lhs.isbn() == rhs.isbn();
-    }
-    
-    using SD_multiset = std::unordered_multiset<Sales_data, decltype(hasher)*, decltype(eqOp)*>;
-
-    // arguments are the bucket size and pointers to the hash function and equality operator
-    SD_multiset bookstore(42, hasher, eqOp);
-    
-    // use FooHash to generate the hash code; Foo must have an == operator
-    std::unordered_set<Foo, decltype(FooHash)*> fooSet(10, FooHash);
-    ```
 
 
 
@@ -7043,6 +6438,667 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     ```
     - 返回：生成序列的尾后迭代器
     - 复杂度：`O((last - first) - 1)`
+
+
+
+
+
+
+### 🌱 [Chap 11] [关联容器](https://en.cppreference.com/w/cpp/container)（Associative Container）
+
+#### 关联容器概述
+
+- 关联容器类型
+    - *有序关联容器* ，按 *键*（key，关键字） *有序* 保存元素，使用 *红黑树* （red-black tree）实现
+        - [`std::map`](https://en.cppreference.com/w/cpp/container/map)： *关联数组* （associative array），保存 *键-值词条* （entry，`<key, value>`）
+        - [`std::set`](https://en.cppreference.com/w/cpp/container/set)：只保存键
+        - [`std::multimap`](https://en.cppreference.com/w/cpp/container/multimap)：键可重复出现的`std::map`
+        - [`std::multiset`](https://en.cppreference.com/w/cpp/container/multiset)：键可重复出现的`std::set`
+    - *无序关联容器* （unordered associative container），使用 *散列表* （hash table）实现
+        - [`std::unordered_map`](https://en.cppreference.com/w/cpp/container/unordered_map)：散列组织的`std::map`
+        - [`std::unordered_set`](https://en.cppreference.com/w/cpp/container/unordered_set)：散列组织的`std::set`
+        - [`std::unordered_multimap`](https://en.cppreference.com/w/cpp/container/unordered_multimap)：散列组织的`std::map`，键可重复出现
+        - [`std::unordered_multiset`](https://en.cppreference.com/w/cpp/container/unordered_multiset)：散列组织的`std::set`，键可重复出现
+- 使用举例
+    - 使用`std::map`（计数）
+    ```
+    std::map<std::string, size_t> word_count;
+    std::string word;
+    
+    while (std::cin >> word)
+    {
+        ++word_count[word]; 
+    }
+        
+    for (const std::pair<std::string, size_t> & w : word_count)
+    {
+        printf("\"%s\" occurs %zu time(s)\n", w.first.c_str(), w.second);
+    }
+    ```
+    - 使用`std::set`（去重）
+    ```
+    std::map<std::string, size_t> word_count;
+    std::set<std::string> exclude = {"The", "But", "And", "Or", "An", "A", "the", "but", "and", "or", "an", "a"};
+    std::string word;
+    
+    while (std::cin >> word)
+    {
+        if (exclude.find(word) == exclude.end())
+        {
+            ++word_count[word];
+        }    
+    }
+    ```
+- 定义（初始化）`std::map`和`std::set`
+    - 每个关联容器都定义了默认构造函数，用于创建指定类型的空容器
+    - 也可以将关联容器创建为其他关联容器的拷贝
+    - 或者从一个值范围来初始化关联容器
+        - 对于`std::map`，必须提供键值对`<key, value>`
+    ```
+    // empty
+    map<std::string, size_t> word_count; 
+    
+    // list initialization
+    std::set<string> exclude = {"the", "but", "and", "or", "an", "a", "The", "But", "And", "Or", "An", "A"};
+    
+    // three elements; authors maps last name to first
+    std::map<std::string, string> authors = {{"Joyce", "James"}, {"Austen", "Jane"}, {"Dickens", "Charles"}};
+    ```
+- 定义（初始化）`std::multi_map`和`std::multi_set`
+    - `std::map`和`std::set`的键必须是唯一的
+        - 插入重复的键或词条会被 *忽略*
+    - `std::multi_map`和`std::multi_set`允许键重复
+        - 插入重复的键或词条会被保留
+    ```
+    // define a vector with 20 elements, holding two copies of each number from 0 to 9
+    std::vector<int> ivec;
+    
+    for (int i = 0; i != 10; ++i) 
+    {
+        ivec.push_back(i);
+        ivec.push_back(i);        // duplicate copies of each number
+    }
+    
+    cout << ivec.size() << endl;  // prints 20
+    
+    // iset holds unique elements from ivec; 
+    std::set<int> iset(ivec.cbegin(), ivec.cend());
+    cout << iset.size() << endl;  // prints 10
+    
+    // miset holds all 20 elements
+    std::multiset<int> miset(ivec.cbegin(), ivec.cend());
+    cout << miset.size() << endl; // prints 20
+    ```
+- 键类型要求
+    - 必须定义了 *严格弱序* （stirct weak ordering，例：`<=`运算符）
+        1. `a <= b`和`b <= a`有且仅能有一个成立
+        2. `a <= b`且`b <= c`，则`a <= c`
+        3. `!(a <= b) && !(b <= a)`意味着`a == b`
+    - 在实际编程中重要的是，如果类型定义了 *行为正常* 的`<`运算符，则可以用它做键
+    - 对于没有重载运算符的自定义类型，`std::multiset`允许传入 *谓词* 
+    ```
+    inline bool compareIsbn(const Sales_data & lhs, const Sales_data & rhs)
+    {
+        return lhs.isbn() < rhs.isbn();
+    }
+
+    // bookstore can have several transactions with the same ISBN
+    // elements in bookstore will be in ISBN order
+    // 3 equivalent declarations
+    std::multiset<Sales_data, decltype(compareIsbn) *>                                      bookstore1(compareIsbn);
+    std::multiset<Sales_data, bool (*)(const Sales_data &, const Sales_data &)>             bookstore2(compareIsbn);
+    std::multiset<Sales_data, std::function<bool (const Sales_data &, const Sales_data &)>> bookstore3(compareIsbn);
+    ```
+- [`std::pair`](https://en.cppreference.com/w/cpp/utility/pair)
+    - 定义于`<utility>`中
+    - 默认构造函数对成员进行 *值初始化*
+        - `std::string`，`std::vector`被初始化成空容器，`size_t`被初始化为`0`
+    - 可以显式调用构造函数传参初始化，或进行 *列表初始化*
+    - 数据成员`first`、`second`为 *公有*
+    ```
+    std::pair<std::string, std::string>      anon;        // holds two strings
+    std::pair<std::string, size_t>           word_count;  // holds a string and an size_t
+    std::pair<std::string, std::vector<int>> line;        // holds string and vector<int>
+    
+    std::pair<std::string, std::string>      author{"James", "Joyce"};
+    
+    // print the results
+    std::cout << w.first << " occurs " << w.second << ((w.second > 1) ? " times" : " time") << std::endl;
+    ```
+    - 生成`std::pair`
+        - `std::pair<T1, T2> p;`： *默认初始化* ，创建`std::pair`，成员进行值初始化
+        - `std::pair<T1, T2> p(v1, v2);`： *显式构造* ，创建`std::pair`，成员初始化为给定值
+        - `std::pair<T1, T2> p = {v1, v2};`： *列表初始化* ，创建`std::pair`，成员初始化为给定值
+        - `std::make_pair(v1, v2);`：创建`std::pair`，元素类型由`v1`和`v2`自动推断。成员初始化为给定值
+    - 访问`std::pair` 
+        - `p.first`
+        - `p.second`
+        - `p1 rel_op p2`： *关系运算符* `<`，`>`，`<=`，`>=`，按 *字典序* 定义
+        - `p1 == p2`
+        - `p1 != p2`
+    - 返回`std::pair`
+    ```
+    std::pair <string, int> process(std::vector<std::string> & v)
+    {
+        if (!v.empty())
+            return {v.back(), v.back().size()};    // list initialize
+        else
+            return std::pair<std::string, int>();  // explicitly constructed return value
+    }
+    ```
+
+#### 关联容器操作
+
+- 类型别名
+    - `key_type`：此容器类型的键类型
+    - `mapped_type`：四种`map`类型中、每个键关联的类型
+    - `value_type`：对于`std::set`，与`key_type`相同；对于`std::map`，为`std::pair<const key_type, mapped_type>`
+        - 不能改变元素的键，因为键是 *常量* 
+```
+std::set<std::string>::value_type v1;        // std::string
+std::set<std::string>::key_type v2;          // std::string
+std::map<std::string, int>::value_type v3;   // std::pair<const std::string, int>
+std::map<std::string, int>::key_type v4;     // std::string
+std::map<std::string, int>::mapped_type v5;  // int
+```
+- 迭代器
+    - 解引用关联容器迭代器时，会得到类型为容器类型的`value_type`的值的 *引用* 
+        - 对`std::map`而言，是`std::pair<const key_type, mapped_type>`类型
+        - 必须记住，一个`std::map`的`value_type`是一个`std::pair`，对一个词条，值可以变，**键不能变**
+    ```
+    // get an iterator to an element in word_count
+    std::map<std::string, size_t>::iterator map_it = word_count.begin();
+    // *map_it is a reference to a pair<const string, size_t> object
+    std::cout << map_it->first;          // prints the key for this element
+    std::cout << " " << map_it->second;  // prints the value of the element
+    map_it->first = "new key";           // error: key is const
+    ++map_it->second;                    // ok: we can change the value through an iterator
+    ```
+    - `std::set`的迭代器 *全部是* *常迭代器*
+        - `std::set`的`iterator`和`const_iterator` *全部是* *常迭代器*
+        - 键可以读，但不能改
+    ```
+    std::set<int> iset = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::set<int>::iterator set_it = iset.begin();
+    
+    if (set_it != iset.end()) 
+    {
+        *set_it = 42;                       // error: keys in a set are read-only
+        std::cout << *set_it << std::endl;  // ok: can read the key
+    }
+    ```
+    - 遍历关联容器
+        - `std::map`和`std::set`都支持`begin()`、`end()`等操作
+        - *有序关联容器* 迭代器按照 *键升序* 遍历元素
+    ```
+    std::map<std::string, size_t>::iterator map_it = word_count.cbegin();
+
+    while (map_it != word_count.cend()) 
+    {
+        cout << map_it->first << " occurs " << map_it->second << " times" << endl;
+        ++map_it; 
+    }
+    ```
+    - 关联容器和泛型算法
+        - 通常**不对**关联容器使用 *泛型算法* => 10
+            - 因为泛型算法经常 *写值* ，但关联容器的键是 *常量* 
+        - 关联容器 *只可用于* 只读算法
+            - 只读算法经常 *搜索* ，但关联容器迭代器**不支持随机访问**，性能会很差
+        - 实际编程中，关联容器要么作为源序列，要么作为目的位置。例如
+            1. 调用`std::copy`将一个关联容器的元素拷贝到另一个序列中
+            2. 将 *插入迭代器* 绑定到关联容器上，将关联容器作为目的位置
+- 添加元素
+    - 关联容器的`insert`操作
+        - `c.insert(v)`，`c.emplace(args)`：返回`std::pair<iterator, bool>`，包含指向具有指定键的元素，以及指示插入是否成功的`bool`。对于`std::multi_set`和`std::multi_map`，总会插入给定元素并返回一个指向新元素的迭代器
+        - `c.insert(b, e)`，`c.insert({a, b, c...})`：返回`void`。插入区间或初始化列表中的所有元素，对于非`multi`容器，键不能重复
+        - `c.insert(p, v)`，`c.emplace(p, args)`：迭代器`p`用于 *提示* *开始搜索新元素应该存储的位置* ，返回指向具有给定键的元素的迭代器
+    ```
+    // ways to add word to word_count
+    word_count.insert({word, 1});
+    word_count.insert(std::make_pair(word, 1));
+    word_count.insert(std::pair<std::string, size_t>(word, 1));
+    word_count.insert(std::map<std::string, size_t>::value_type(word, 1));
+    
+    word_count.emplace(word, 1);
+    ```
+    - 检测`insert`的返回值
+    ```
+    std::map<std::string, size_t> word_count;
+    std::string word;
+    
+    while (std::cin >> word) 
+    {
+        std::pair<std::map<std::string, size_t>::iterator, bool> ret = word_count.insert({word, 1});
+        
+        if (!ret.second)
+        {
+            ++ret.first->second;
+        }
+    }
+    ```
+    - 向`std::multi_set`或`std::multi_map`添加元素
+    ```
+    std::multimap<std::string, std::string> authors;
+    // adds the first element with the key Barth, John
+    authors.insert({"Barth, John", "Sot-Weed Factor"});
+    // ok: adds the second element with the key Barth, John
+    authors.insert({"Barth, John", "Lost in the Funhouse"});
+    ```
+- 删除元素
+    - `c.erase(k)`：从`c`中删除 *每个* 键为`k`的元素，返回`size_type`值，代表删除的元素的数量
+    - `c.erase(p)`：从`c`中删除迭代器`p`指向的元素。`p`必须指向 *`c`中真实存在* 的元素，且**不能**等于`c.end()`。返回指向`p`元素之后一个元素的迭代器；若`p`指向`c`中的尾元素，则返回`c.end()`
+    - `c.erase(b, e)`：删除区间`[b, e)`内的元素，返回`e`
+    ```
+    // erase on a key returns the number of elements removed
+    if (word_count.erase(removal_word))
+        std::cout << "ok: " << removal_word << " removed" << std::endl;
+    else 
+        std::cout << "oops: " << removal_word << " not found!" << std::endl;
+    
+    // for std::multi_map
+    std::multimap<std::string, std::string> authors;
+    authors.insert({"Barth, John", "Sot-Weed Factor"});
+    authors.insert({"Barth, John", "Lost in the Funhouse"});
+    size_t cnt = authors.erase("Barth, John");  // cnt == 2
+    ```
+- `std::map`的 *下标* 操作
+    - `std::map`和`std::multi_map`提供了 *下标运算符* 和对应的`c.at()`函数
+        - `c[k]`：返回键为`k`的元素的 *引用* ；如果`k` *不在`c`中* ，则 *添加* 一个键为`k`的元素，并值初始化之
+            - 对`std::map`使用下标操作的行为和对数组或者`std::vector`使用时很不相同，使用一个 *不在容器中的键* 作为下标将会 *添加* 一个具有此键的元素到容器中
+            - 如果不希望添加元素，则应该使用`c.find(k)`
+        - `c.at(k)`：返回键为`k`的元素的 *引用* ；如果`k` *不在`c`中* ，则抛出`out_of_range`异常
+    ```
+    std::map <std::string, size_t> word_count;  // empty map
+    word_count["Anna"] = 1;                     // insert a value-initialized element with key "Anna"
+                                                // then assign 1 to its value
+    ```
+    - 使用下标操作的返回值
+        - 对于`std::map`，下标返回`mapped_type`类型，而解引用迭代器返回`value_type aka std::pair<const key_type, mapped_type>`
+        - 返回的是 *左值* ，可以读写
+    ```
+    std::cout << word_count["Anna"];            // fetches the element indexed by Anna; prints 1
+    ++word_count["Anna"];                       // fetches the element and add 1 to it
+    std::cout << word_count["Anna"];            9// fetches the element and print it; prints 2
+    ```
+- 查找元素
+    - `c.find(k)`：返回指向 *第一个* 键为`k`的元素的迭代器，如不存在则返回尾后迭代器
+    - `c.count(k)`：返回键为`k`的元素的数量。对于非`multi`容器，返回值永远是`0`或`1`
+    - `c.lower_bound(k)`：返回指向 *第一个* 键 *大于等于* `k`的元素的迭代器
+    - `c.upper_bound(k)`：返回指向 *第一个* 键 *大于* `k`的元素的迭代器
+    - `c.equal_range(k)`：返回`std::pair<iterator, iterator>(first, last)`，区间`[first, last)`内元素键全部等于`k`
+
+#### 无序关联容器        
+
+- 无序容器提供与有序容器相同的操作
+- 无序关联容器在存储上组织为一组 *桶* （bucket），每个桶保存零或多个元素
+    - 无序关联容器用 *散列函数* （hash function）将元素映射到桶
+    - 访问时，先计算键的散列值，去对应的桶查找元素
+    - 性能依赖于散列函数的质量，以及桶的数量和大小
+    - *迭代时顺序是乱的*
+- 桶管理
+    - 桶接口
+        - `c.bucket_count()`：正在使用的桶的数目
+        - `c.max_bucket_count()`：容器能容纳的最多的桶的数量
+        - `c.bucket_size(n)`：第`n`个桶中元素数量
+        - `c.bucket(k)`：键为`k`的元素在哪个桶中
+    - 桶迭代
+        - `local_iterator`：用于访问桶中元素的迭代器类型
+        - `const_local_iterator`：用于访问桶中元素的常迭代器类型
+        - `c.begin(n)`，`c.end(n)`：桶`n`的首元素迭代器和尾后迭代器
+        - `c.cbegin(n)`，`c.cend(n)`：桶`n`的首元素常迭代器和尾后常迭代器
+    - 散列策略
+        - `c.load_factor()`：每个桶的平均元素数量，返回`float`
+        - `c.max_load_factor()`：`c`试图维护的平均桶大小，返回`float`值。`c`会在需要的时候添加新的桶，以使得`load_factor <= max_load_factor`
+        - `c.rehash(n)`：重新散列，使得`bucker_count >= n`且`bucket_count > size / max_load_factor`
+        - `c.reserve(n)`：重组存储，在 *不重新散列* 的情况下使得`c`可以保存`n`个元素
+- 无序关联容器对键类型的要求
+    - 默认情况下，无序关联容器使用键类型的`==`运算符来比较元素
+    - 它还使用`hash<key_type>`类型的对象来生成每个元素的散列值
+    - 标准库为 *内置类型* （包括 *指针* ）提供了 *`hash`模板* ，还为包括和 *智能指针* 定义了`hash`
+    - 因此，可以直接定义键是 *内置类型* （包括 *指针* ）、`std::string`和 *智能指针* 类型的无序关联容器
+    - 但**不能直接定义**键是 *自定义类型* 的无序关联容器
+        - 必须人工提供 *`hash`模板* => 16.5
+    - 还可以人工提供充当`==`运算符的函数以及散列函数
+        - 如果类已经有`==`运算符了，则只用重载散列函数
+    ```
+    size_t hasher(const Sales_data & sd)
+    {
+        return hash<string>()(sd.isbn());
+    }
+    
+    bool eqOp(const Sales_data & lhs, const Sales_data & rhs)
+    {
+        return lhs.isbn() == rhs.isbn();
+    }
+    
+    using SD_multiset = std::unordered_multiset<Sales_data, decltype(hasher)*, decltype(eqOp)*>;
+
+    // arguments are the bucket size and pointers to the hash function and equality operator
+    SD_multiset bookstore(42, hasher, eqOp);
+    
+    // use FooHash to generate the hash code; Foo must have an == operator
+    std::unordered_set<Foo, decltype(FooHash)*> fooSet(10, FooHash);
+    ```
+    
+    
+    
+    
+    
+
+### 🌱 [Chap 12] [动态内存管理](https://en.cppreference.com/w/cpp/memory)（Dynamic memory management）
+
+- 程序中使用的对象都有严格的 *存储期* （生存期）
+    - *全局对象* 
+        - 程序启动时分配，结束时销毁
+        - 存储于静态存储区（程序的静态内存）
+    - *局部静态对象* 
+        - 程序进入其所在的程序块时分配，离开该块时销毁
+        - 存储于静态存储区（程序的静态内存）
+    - *局部非静态对象* （ *自动对象* ）
+        - 第一次使用前分配，程序结束时销毁
+        - 存储于自动存储区（程序的栈内存）
+    - *动态对象* 
+        - 从被创建一直存在到被 *显式释放* 为止
+            - *智能指针* 可以自动释放该被释放的对象
+        - 存储于动态存储区（程序的堆内存）
+
+#### 动态内存和智能指针（Dynamic memory and smart pointers）
+
+- `C++`动态内存管理
+    - `new`
+    - `delete`
+- *智能指针*
+    - 定义于头文件`<memory>`中，包括 
+        - [`std::shared_ptr`](https://en.cppreference.com/w/cpp/memory/shared_ptr)：允许多个指针指向同一个对象
+        - [`std::unique_ptr`](https://en.cppreference.com/w/cpp/memory/unique_ptr)： *独占* 指向的对象
+        - [`std::weak_ptr`](https://en.cppreference.com/w/cpp/memory/weak_ptr)： *伴随类* ， *弱引用* ，指向`std::shared_ptr`所指向的对象
+    - 行为类似于 *常规指针* ，但负责 *自动释放* 所指向的对象
+        - 下文中的 *指针* 除非特别说明，都是指 *常规指针* 
+    - *默认初始化* 的智能指针中保存着一个 *空指针* 
+    - 智能指针使用方法与普通指针类似
+        - *解引用* 返回对象 *左值* 
+        - *条件判断* 中使用智能指针就是判断它 *是否为空* 
+    ```
+    std::shared_ptr<std::string> p1;
+    if (p1 && p1->empty()) *p1 = "hi";
+    ```
+    - `std::shared_ptr`和`std::unique_ptr`都支持的操作
+        - `std::shared_ptr<T> sp`：定义 *空的* `std::shared_ptr`，指向`T`类型对象
+        - `std::unique_ptr<T> up`：定义 *空的* `std::shared_ptr`，指向`T`类型对象
+        - `p`：将`p`用作一个条件判断，若`p`指向一个对象，则为`true`
+        - `*p`：解引用`p`，获得它指向的对象
+        - `p->mem`：等价于`(*p).mem`
+        - `p.get()`：返回`p`中保存的指针。若智能指针释放了其对象，则这一指针所指向的对象亦会失效
+        - `std::swap(p, q)`：交换`p`和`q`中的指针*
+        - `p.swap(q)`：交换`p`和`q`中的指针*
+    - `std::shared_ptr`独有的操作
+        - `std::make_shared<T>(args)`：返回一个`std::shared_ptr<T>`用`args`初始化
+        - `std::shared_ptr<T> p(q)`：`p`是`q`的拷贝，此操作会递增`q`的引用计数。`q`中的指针必须能被转换程`T *`
+        - `p = q`：`p`和`q`都是`std::shared_ptr`，且保存的指针能够相互转换。此操作会递减`p`的引用计数、递增`q`的引用计数；若`p`的引用计数变为`0`，则将其管理的 *原内存释放* 
+        - `p.unique()`：`return p.use_count() = 1;`
+        - `p.use_count()`：返回`p`的 *引用计数* （与`p`共享对象的智能指针的数量）。 *可能很慢，主要用于调试* 
+    - `std::make_shared`函数
+        - 最安全的分配和使用动态内存的方法
+        - 在动态内存中分配一个对象并 *用其参数构造对象* ，返回指向该对象的`shared_ptr`
+            - 就类似与顺序容器的`c.emplace(args)`
+            - 不提供任何参数就是 *值初始化* 对象
+        ```
+        std::shared_ptr<int>         p3 = std::make_shared<int>(42);                     // int 42
+        std::shared_ptr<std::string> p4 = std::make_shared<std::string>(10, '9');        // std::string "9999999999"
+        std::shared_ptr<int>         p5 = std::make_shared<int>();                       // int 0 (value initialized)
+        auto                         p6 = std::make_shared<std::vector<std::string>>();  // 空 std::vector<std::string>
+        ```
+    - `std::shared_ptr`拷贝和赋值
+        - 每个`std::shared_ptr`都有其 *引用计数* （reference count），记录有多少个其他`std::shared_ptr`指向相同的对象
+            - *拷贝* 时，引用计数会 *递增* ，例如
+                - 用一个`std::shared_ptr`初始化另一个`std::shared_ptr`
+                - 将`std::shared_ptr`作为参数传递给一个函数
+                - 将`std::shared_ptr`作为函数返回值
+            - *赋值* 或 *销毁* 时，引用计数会 *递减* ，例如
+                - 局部的`std::shared_ptr`离开其作用域时
+            - 一旦`std::shared_ptr`的引用计数降为`0`，它就会 *自动释放* 自己所管理的对象
+        ```
+        auto p = std::make_shared<int>(42);   // object to which p points has one user
+        auto q(p);                            // p and q point to the same object
+                                              // object to which p and q point has two users
+                                             
+        auto r = std:: make_shared<int>(42);  // int to which r points has one user assign to r, 
+                                              // making it point to a different address
+                                              // increase the use count for the object to which q points
+                                              // reduce the use count of the object to which r had pointed
+                                              // the object r had pointed to has no users; 
+                                              // that object is automatically freed
+        ```
+    - `std::shared_ptr` *自动销毁* 所管理的对象
+        - 销毁工作通过调用对象的 *析构函数* （destructor）来完成
+            - 析构函数一般负责释放该对象所占用的资源
+        - `std::shared_ptr`的析构函数会递减它所指向的对象的引用计数
+            - 降为`0`后就会销毁对象并释放占用的内存
+        - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
+        - 如果两个对象 *共享底层数据* ，则某个对象被销毁时，**不能**单方面地销毁底层数据
+        ```
+        std::vector<std::string> v1;                           // empty vector
+        
+        {                                                      // new scope
+            std::vector<std::string> v2 = {"a", "an", "the"};
+            v1 = v2;                                           // copies the elements from v2 into v1
+        }                                                      // v2 is destroyed, which destroys the elements in v2
+                                                               // v1 has three elements, 
+                                                               // which are copies of the ones originally in v2
+        ```
+        - 工厂例程
+        ```
+        std::shared_ptr<Foo> factory(T arg)
+        {
+            return std::make_shared<Foo>(arg);      // shared_ptr will take care of deleting this memory, ++ref_cnt
+        }                                           // goes out of scope; however the memory remains
+        
+        void use_factory(T arg)
+        {
+            std::shared_ptr<Foo> p = factory(arg);
+            // do something...                      // use p...
+        }                                           // p goes out of scope; 
+                                                    // the memory to which p points is AUTOMATICALLY freed
+        ```
+    - 使用了动态生存期的类
+- 直接管理内存
+    - 使用`new`直接管理内存，初始化可以选择
+        - *默认初始化* 
+            - *不提供* 初始化器 
+            - 对象的值 *未定义* 
+        ```
+        int * pi = new int;
+        std::string * ps = new std::string;
+        ```
+        - *直接初始化* 
+            - 提供 *非空* 的初始化器 
+            - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
+        ```
+        int * pi = new int(1024);
+        std::string * ps = new std::string(10, '9');
+        std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        ```
+        - *值初始化* 
+            - 提供 *空的* 初始化器 
+            - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
+            - 对于内置类型，值初始化的效果则是 *零初始化* 
+        ```
+        std::string * ps1 = new std::string;   // default initialized to the empty string
+        std::string * ps = new std::string();  // value initialized to the empty string
+        int * pi1 = new int;                   // default initialized; *pi1 is undefined
+        int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
+        ```
+    - 使用`auto`
+        - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
+            - 编译器需要从初始化器中推断类型
+    ```
+    auto p1 = new auto(obj);      // p points to an object of the type of obj
+                                  // that object is initialized from obj
+    auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
+    ```
+    - 动态分配`const`对象
+        - 用`new`分配`const`对象是合法的，返回指向`const`的指针
+        - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
+            - 对于有 *默认构造函数* 的类类型，可以默认初始化
+            - 否则，必须直接初始化
+    ```
+    // allocate and direct-initialize a const int
+    const int * pci = new const int(1024);
+    
+    // allocate a default-initialized const empty string
+    const std::string * pcs = new const std::string;
+    ```
+    - 内存耗尽
+        - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
+        - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
+    ```
+    // if allocation fails, new returns a null pointer
+    int * p1 = new int;            // if allocation fails, new throws std::bad_alloc
+    int * p2 = new (nothrow) int;  // if allocation fails, new returns a null pointer
+    ```
+    - 动态释放内存
+        - `delete`表达式
+            - 传递给`delete`的指针必须是 *有对象的指针* 或者 *空指针* 
+            - 将同一个对象反复释放多次是 *未定义行为*
+            - *`const`对象* 虽然不能更改，但却 *可以销毁* 
+        ```
+        int i; 
+        int * pi1 = &i; 
+        int * pi2 = nullptr;
+        
+        double * pd = new double(33); 
+        double * pd2 = pd;
+        
+        delete i;    // error: i is not a pointer
+        delete pi1;  // undefined: pi1 refers to a local
+        delete pd;   // ok
+        delete pd2;  // undefined: the memory pointed to by pd2 was already freed
+        delete pi2;  // ok: it is always ok to delete a null pointer    
+        
+        const int * pci = new const int(1024);
+        delete pci;  // ok: free a const object 
+        ```
+    - 动态对象的生存期直到被释放时为止
+        - `std::shared_ptr`管理的对象会在引用计数降为`0`时被自动释放
+        - 内置类型指针管理的对象则一直存在到被显式释放为止
+- `std::shared_ptr`和`new`结合使用
+- 智能指针和异常
+- `std::unique_ptr`
+- `std::weak_ptr`
+
+#### 动态数组（Dynamic arrays）
+
+- `new`和数组
+- `allocator`类
+
+
+
+
+
+
+
+
+
+    
+### 🌱 [Chap 13] 拷贝控制
+
+- 
+
+
+
+
+
+
+### 🌱 [Chap 14] 操作重载与类型转换
+
+- 
+
+
+
+
+
+
+### 🌱 [Chap 15] OOP
+
+- 
+
+
+
+
+
+
+### 🌱 [Chap 16] 模板与泛型编程
+
+- 
+
+
+
+
+
+
+### 🌱 [Chap 17] 标准库特殊设施
+
+- 
+
+
+
+
+
+
+### 🌱 [Chap 18] 用于大型工程的工具
+
+#### 异常处理
+
+- `C++`标准异常
+    - `<exception>`
+        - `std::exception`：只报告异常的发生，不提供任何额外信息。 *只能* *默认初始化* ，**不能**传参
+    - `<stdexcept>`
+        - `std::runtime_error`：所有运行错误
+            - `std::range_error`：运行错误，生成的结果超出了有意义的值域范围
+            - `std::overflow_error`：运行错误，计算溢出
+            - `std::underflow_error`：运行错误，计算溢出
+        - `std::logic_error`：所有逻辑错误
+            - `std::domain_error`：逻辑错误，参数对应的结果值不存在
+            - `std::invalid_argument`：逻辑错误，无效参数
+            - `std::length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
+            - `std::out_of_range`：逻辑错误，使用了一个超出有效范围的值
+    - `<new>`
+        - `std::bad_alloc`异常类。 *只能* *默认初始化* ，**不能**传参 => 12.1.2
+    - `<typeinfo>`
+        - `std::bad_cast`异常类 => 19.2
+- 以上异常除特别说明的，都 *必须* 传参（`C`风格字符串）
+- 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
+  如果此异常传入了初始参数，则返回之；否则返回值由编译器决定。
+
+
+
+
+
+
+### 🌱 [Chap 19] 特殊工具与技术
+
+- 
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
 
 
 
