@@ -49,9 +49,12 @@
     - 出于性能考虑，`std::list`和`std::forward_list`应当优先使用 *成员函数版本* 的算法，而**不是**通用算法  
     - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
     - 如果两个对象 *共享底层数据* ，则某个对象被销毁时，**不能**单方面地销毁底层数据
-    - 坚持使用 *智能指针* ，避免所有动态内存管理的破事
-    - **不要**混用智能指针和内置指针
-    - **不要**用智能指针的`get`方法初始化 *另一个* 智能指针或者为智能指针赋值，两个独立的`std::shared_ptr` 绑定到同一块内存上是 *未定义行为*
+    - 坚持使用 *智能指针* ，避免所有动态内存管理的破事。智能指针使用规范
+        1. **不**使用相同的内置指针初始化（或`reset`）多个智能指针，否则是 *未定义行为*
+        2. **不**`delete`从智能指针`get()`到的内置指针
+        3. **不**使用智能指针的`get()`初始化（或`reset`） *另一个* 智能指针
+        4. 使用智能指针的`get()`返回的内置指针时，记住当最后一个对应的智能指针被销毁后，这个内置指针就无效了
+        5. 使用内置指针管理的资源而不是`new`出来的内存时，记住传递给它一个 *删除器*
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -6786,220 +6789,6 @@ std::map<std::string, int>::mapped_type v5;  // int
     // use FooHash to generate the hash code; Foo must have an == operator
     std::unordered_set<Foo, decltype(FooHash)*> fooSet(10, FooHash);
     ```
-    
-    
-    
-    
-    
-
-### 🌱 [Chap 12] [动态内存管理](https://en.cppreference.com/w/cpp/memory)（Dynamic memory management）
-
-- 程序中使用的对象都有严格的 *存储期* （生存期）
-    - *全局对象* 
-        - 程序启动时分配，结束时销毁
-        - 存储于静态存储区（程序的静态内存）
-    - *局部静态对象* 
-        - 程序进入其所在的程序块时分配，离开该块时销毁
-        - 存储于静态存储区（程序的静态内存）
-    - *局部非静态对象* （ *自动对象* ）
-        - 第一次使用前分配，程序结束时销毁
-        - 存储于自动存储区（程序的栈内存）
-    - *动态对象* 
-        - 从被创建一直存在到被 *显式释放* 为止
-            - *智能指针* 可以自动释放该被释放的对象
-        - 存储于动态存储区（程序的堆内存）
-
-#### 动态内存和智能指针（Dynamic memory and smart pointers）
-
-- `C++`动态内存管理
-    - `new`
-    - `delete`
-- *智能指针*
-    - 定义于头文件`<memory>`中，包括 
-        - [`std::shared_ptr`](https://en.cppreference.com/w/cpp/memory/shared_ptr)：允许多个指针指向同一个对象
-        - [`std::unique_ptr`](https://en.cppreference.com/w/cpp/memory/unique_ptr)： *独占* 指向的对象
-        - [`std::weak_ptr`](https://en.cppreference.com/w/cpp/memory/weak_ptr)： *伴随类* ， *弱引用* ，指向`std::shared_ptr`所指向的对象
-    - 行为类似于 *常规指针* ，但负责 *自动释放* 所指向的对象
-        - 下文中的 *指针* 除非特别说明，都是指 *常规指针* 
-    - *默认初始化* 的智能指针中保存着一个 *空指针* 
-    - 智能指针使用方法与普通指针类似
-        - *解引用* 返回对象 *左值* 
-        - *条件判断* 中使用智能指针就是判断它 *是否为空* 
-    ```
-    std::shared_ptr<std::string> p1;
-    if (p1 && p1->empty()) *p1 = "hi";
-    ```
-    - `std::shared_ptr`和`std::unique_ptr`都支持的操作
-        - `std::shared_ptr<T> sp`：定义 *空的* `std::shared_ptr`，指向`T`类型对象
-        - `std::unique_ptr<T> up`：定义 *空的* `std::shared_ptr`，指向`T`类型对象
-        - `p`：将`p`用作一个条件判断，若`p`指向一个对象，则为`true`
-        - `*p`：解引用`p`，获得它指向的对象
-        - `p->mem`：等价于`(*p).mem`
-        - `p.get()`：返回`p`中保存的指针。若智能指针释放了其对象，则这一指针所指向的对象亦会失效
-        - `std::swap(p, q)`：交换`p`和`q`中的指针*
-        - `p.swap(q)`：交换`p`和`q`中的指针*
-    - `std::shared_ptr`独有的操作
-        - `std::make_shared<T>(args)`：返回一个`std::shared_ptr<T>`用`args`初始化
-        - `std::shared_ptr<T> p(q)`：`p`是`q`的拷贝，此操作会递增`q`的引用计数。`q`中的指针必须能被转换程`T *`
-        - `p = q`：`p`和`q`都是`std::shared_ptr`，且保存的指针能够相互转换。此操作会递减`p`的引用计数、递增`q`的引用计数；若`p`的引用计数变为`0`，则将其管理的 *原内存释放* 
-        - `p.unique()`：`return p.use_count() = 1;`
-        - `p.use_count()`：返回`p`的 *引用计数* （与`p`共享对象的智能指针的数量）。 *可能很慢，主要用于调试* 
-    - `std::make_shared`函数
-        - 最安全的分配和使用动态内存的方法
-        - 在动态内存中分配一个对象并 *用其参数构造对象* ，返回指向该对象的`shared_ptr`
-            - 就类似与顺序容器的`c.emplace(args)`
-            - 不提供任何参数就是 *值初始化* 对象
-        ```
-        std::shared_ptr<int>         p3 = std::make_shared<int>(42);                     // int 42
-        std::shared_ptr<std::string> p4 = std::make_shared<std::string>(10, '9');        // std::string "9999999999"
-        std::shared_ptr<int>         p5 = std::make_shared<int>();                       // int 0 (value initialized)
-        auto                         p6 = std::make_shared<std::vector<std::string>>();  // 空 std::vector<std::string>
-        ```
-    - `std::shared_ptr`拷贝和赋值
-        - 每个`std::shared_ptr`都有其 *引用计数* （reference count），记录有多少个其他`std::shared_ptr`指向相同的对象
-            - *拷贝* 时，引用计数会 *递增* ，例如
-                - 用一个`std::shared_ptr`初始化另一个`std::shared_ptr`
-                - 将`std::shared_ptr`作为参数传递给一个函数
-                - 将`std::shared_ptr`作为函数返回值
-            - *赋值* 或 *销毁* 时，引用计数会 *递减* ，例如
-                - 局部的`std::shared_ptr`离开其作用域时
-            - 一旦`std::shared_ptr`的引用计数降为`0`，它就会 *自动释放* 自己所管理的对象
-        ```
-        auto p = std::make_shared<int>(42);   // object to which p points has one user
-        auto q(p);                            // p and q point to the same object
-                                              // object to which p and q point has two users
-                                             
-        auto r = std:: make_shared<int>(42);  // int to which r points has one user assign to r, 
-                                              // making it point to a different address
-                                              // increase the use count for the object to which q points
-                                              // reduce the use count of the object to which r had pointed
-                                              // the object r had pointed to has no users; 
-                                              // that object is automatically freed
-        ```
-    - `std::shared_ptr` *自动销毁* 所管理的对象
-        - 销毁工作通过调用对象的 *析构函数* （destructor）来完成
-            - 析构函数一般负责释放该对象所占用的资源
-        - `std::shared_ptr`的析构函数会递减它所指向的对象的引用计数
-            - 降为`0`后就会销毁对象并释放占用的内存
-        - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
-        - 如果两个对象 *共享底层数据* ，则某个对象被销毁时，**不能**单方面地销毁底层数据
-        ```
-        std::vector<std::string> v1;                           // empty vector
-        
-        {                                                      // new scope
-            std::vector<std::string> v2 = {"a", "an", "the"};
-            v1 = v2;                                           // copies the elements from v2 into v1
-        }                                                      // v2 is destroyed, which destroys the elements in v2
-                                                               // v1 has three elements, 
-                                                               // which are copies of the ones originally in v2
-        ```
-        - 工厂例程
-        ```
-        std::shared_ptr<Foo> factory(T arg)
-        {
-            return std::make_shared<Foo>(arg);      // shared_ptr will take care of deleting this memory, ++ref_cnt
-        }                                           // goes out of scope; however the memory remains
-        
-        void use_factory(T arg)
-        {
-            std::shared_ptr<Foo> p = factory(arg);
-            // do something...                      // use p...
-        }                                           // p goes out of scope; 
-                                                    // the memory to which p points is AUTOMATICALLY freed
-        ```
-    - 使用了动态生存期的类
-- 直接管理内存
-    - 使用`new`直接管理内存，初始化可以选择
-        - *默认初始化* 
-            - *不提供* 初始化器 
-            - 对象的值 *未定义* 
-        ```
-        int * pi = new int;
-        std::string * ps = new std::string;
-        ```
-        - *直接初始化* 
-            - 提供 *非空* 的初始化器 
-            - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
-        ```
-        int * pi = new int(1024);
-        std::string * ps = new std::string(10, '9');
-        std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-        ```
-        - *值初始化* 
-            - 提供 *空的* 初始化器 
-            - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
-            - 对于内置类型，值初始化的效果则是 *零初始化* 
-        ```
-        std::string * ps1 = new std::string;   // default initialized to the empty string
-        std::string * ps = new std::string();  // value initialized to the empty string
-        int * pi1 = new int;                   // default initialized; *pi1 is undefined
-        int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
-        ```
-    - 使用`auto`
-        - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
-            - 编译器需要从初始化器中推断类型
-    ```
-    auto p1 = new auto(obj);      // p points to an object of the type of obj
-                                  // that object is initialized from obj
-    auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
-    ```
-    - 动态分配`const`对象
-        - 用`new`分配`const`对象是合法的，返回指向`const`的指针
-        - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
-            - 对于有 *默认构造函数* 的类类型，可以默认初始化
-            - 否则，必须直接初始化
-    ```
-    // allocate and direct-initialize a const int
-    const int * pci = new const int(1024);
-    
-    // allocate a default-initialized const empty string
-    const std::string * pcs = new const std::string;
-    ```
-    - 内存耗尽
-        - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
-        - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
-    ```
-    // if allocation fails, new returns a null pointer
-    int * p1 = new int;            // if allocation fails, new throws std::bad_alloc
-    int * p2 = new (nothrow) int;  // if allocation fails, new returns a null pointer
-    ```
-    - 动态释放内存
-        - `delete`表达式
-            - 传递给`delete`的指针必须是 *有对象的指针* 或者 *空指针* 
-            - 将同一个对象反复释放多次是 *未定义行为*
-            - *`const`对象* 虽然不能更改，但却 *可以销毁* 
-        ```
-        int i; 
-        int * pi1 = &i; 
-        int * pi2 = nullptr;
-        
-        double * pd = new double(33); 
-        double * pd2 = pd;
-        
-        delete i;    // error: i is not a pointer
-        delete pi1;  // undefined: pi1 refers to a local
-        delete pd;   // ok
-        delete pd2;  // undefined: the memory pointed to by pd2 was already freed
-        delete pi2;  // ok: it is always ok to delete a null pointer    
-        
-        const int * pci = new const int(1024);
-        delete pci;  // ok: free a const object 
-        ```
-    - 动态对象的生存期直到被释放时为止
-        - `std::shared_ptr`管理的对象会在引用计数降为`0`时被自动释放
-        - 内置类型指针管理的对象则一直存在到被显式释放为止
-- `std::shared_ptr`和`new`结合使用
-- 智能指针和异常
-- `std::unique_ptr`
-- `std::weak_ptr`
-
-#### 动态数组（Dynamic arrays）
-
-- `new`和数组
-- `allocator`类
-
-
-
 
 
 
@@ -7058,6 +6847,28 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `p = q`：`p`和`q`都是`std::shared_ptr`，且保存的指针能够相互转换。此操作会递减`p`的引用计数、递增`q`的引用计数；若`p`的引用计数变为`0`，则将其管理的 *原内存释放* 
         - `p.unique()`：`return p.use_count() = 1;`
         - `p.use_count()`：返回`p`的 *引用计数* （与`p`共享对象的智能指针的数量）。 *可能很慢，主要用于调试* 
+    - 定义和改变`std::shared_ptr`的其他方法
+        - `std::shared_ptr<T> p(q)`：`p`管理内置指针`q`所指向的对象，`q`必须指向`new`分配的内存，且能够转换成`T *`类型
+        - `std::shared_ptr<T> p(u)`：`p`从`std::unique_ptr<T> u`处 *接管* 对象管辖权，将`u` *置空*
+        - `std::shared_ptr<T> p(q, d)`：`p` *接管* 内置指针`q`所指向的对象的所有权，`q`能够转换成`T *`类型。`p`将 *使用可调用对象* `d`来代替`delete`
+        - `std::shared_ptr<T> p(p2, d)`：`p` 是`std::shared_ptr<T> q`的拷贝。`p`将 *使用可调用对象* `d`来代替`delete`
+        - `p.reset()`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，将`p` *置空*
+        - `p.reset(q)`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，令`p` *指向内置指针* `q`
+        - `p.reset(q, d)`：若`p`是唯一指向其对象的`std::shared_ptr`，则 *调用`d`* 释放此对象，将`p` *置空*
+            - 示例1
+            ```
+            p = new int(1024);                 // error: cannot assign a pointer to a shared_ptr
+            p.reset(new int(1024));            // ok: p points to a new object
+            ```
+            - 和赋值类似，`p.reset`会更新引用计数，可能会释放掉对象。`p.reset`常常和`p.unique()`一起使用，来控制多个`std::shared_ptr`之间共享的对象。在改变底层对象之前，我们检查自己是否是当前对象仅有的用户。如果不是，在改变之前需要制作一份新的拷贝
+            ```
+            if (!p.unique())
+            {
+                p.reset(new std::string(*p));  // we aren't alone; allocate a new copy
+            }
+
+            *p += newVal;                      // now that we know we're the only pointer, okay to change this object
+            ```
     - `std::make_shared`函数
         - 最安全的分配和使用动态内存的方法
         - 在动态内存中分配一个对象并 *用其参数构造对象* ，返回指向该对象的`shared_ptr`
@@ -7266,26 +7077,42 @@ std::map<std::string, int>::mapped_type v5;  // int
     
     int foo = *p;                         // undefined; the memory to which p points was freed
     ```
-- 定义和改变`std::shared_ptr`的其他方法
-    - `std::shared_ptr<T> p(q)`：`p`管理内置指针`q`所指向的对象，`q`必须指向`new`分配的内存，且能够转换成`T *`类型
-    - `std::shared_ptr<T> p(u)`：`p`从`std::unique_ptr<T> u`处 *接管* 对象管辖权，将`u` *置空*
-    - `std::shared_ptr<T> p(q, d)`：`p` *接管* 内置指针`q`所指向的对象的所有权，`q`能够转换成`T *`类型。`p`将 *使用可调用对象* `d`来代替`delete`
-    - `std::shared_ptr<T> p(p2, d)`：`p` 是`std::shared_ptr<T> q`的拷贝。`p`将 *使用可调用对象* `d`来代替`delete`
-    - `p.reset()`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，将`p` *置空*
-    - `p.reset(q)`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，令`p` *指向内置指针* `q`
-    - `p.reset(q, d)`：若`p`是唯一指向其对象的`std::shared_ptr`，则 *调用`d`* 释放此对象，将`p` *置空*
-```
-p = new int(1024);                 // error: cannot assign a pointer to a shared_ptr
-p.reset(new int(1024));            // ok: p points to a new object
-
-if (!p.unique())
-{
-    p.reset(new std::string(*p));  // we aren't alone; allocate a new copy
-}
-
-*p += newVal;                      // now that we know we're the only pointer, okay to change this object
-```
 - 智能指针和异常
+    - 即使程序出现异常、过早结束，智能指针也能确保内存被释放
+        - 与之相对的，直接管理的内存不会被释放
+    - *删除器* （deleter）
+        - 用于自定义析构智能指针管理的对象的方法
+        - `std::shared_ptr<T>`的删除器接受一个`T *`类型的内置指针
+    ```
+    struct destination;                 // represents what we are connecting to
+    struct connection;                  // information needed to use the connection
+    connection connect(destination *);  // open the connection
+    void disconnect(connection);        // close the given connection
+    
+    void f(destination & d /* other parameters */)
+    {
+        // get a connection; must remember to close it when done
+        connection c = connect(&d);
+        // use the connection
+        // if we forget to call disconnect before exiting f, there will be no way to close c
+    }
+
+    void end_connection(connection * p) { disconnect(*p); }
+
+    void f(destination & d /* other parameters */)
+    {
+        connection c = connect(&d);
+        std::shared_ptr<connection> p(&c, end_connection);
+        // use the connection
+        // when f exits, even if by an exception, the connection will be properly closed
+    }
+    ```
+- 智能指针使用规范
+    1. **不**使用相同的内置指针初始化（或`reset`）多个智能指针，否则是 *未定义行为*
+    2. **不**`delete`从智能指针`get()`到的内置指针
+    3. **不**使用智能指针的`get()`初始化（或`reset`） *另一个* 智能指针
+    4. 使用智能指针的`get()`返回的内置指针时，记住当最后一个对应的智能指针被销毁后，这个内置指针就无效了
+    5. 使用内置指针管理的资源而不是`new`出来的内存时，记住传递给它一个 *删除器*
 - `std::unique_ptr`
 - `std::weak_ptr`
 
