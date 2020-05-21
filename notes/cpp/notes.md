@@ -6923,8 +6923,8 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `*p`：解引用`p`，获得它指向的对象
         - `p->mem`：等价于`(*p).mem`
         - `p.get()`：返回`p`中保存的指针。若智能指针释放了其对象，则这一指针所指向的对象亦会失效
-        - `std::swap(p, q)`：交换`p`和`q`中的指针*
-        - `p.swap(q)`：交换`p`和`q`中的指针*
+        - `std::swap(p, q)`：交换`p`和`q`中的指针
+        - `p.swap(q)`：交换`p`和`q`中的指针
     - `std::shared_ptr`独有的操作
         - `std::shared_ptr<T> p`：定义一个 *空的* `std::shared_ptr<T>`
         - `std::shared_ptr<T> p(p2)`：`p`是`std::shared_ptr<T> p2`的拷贝。此操作会递增`p2`的引用计数。`p2`中的指针必须能被转换程`T *`
@@ -6954,14 +6954,14 @@ std::map<std::string, int>::mapped_type v5;  // int
             *p += newVal;                      // now that we know we're the only pointer, okay to change this object
             ```
     - `std::unique_ptr`独有的操作
-        - `std::unique_ptr<T> u1`：
-        - `std::unique_ptr<T> u1`：
-        - `std::unique_ptr<T> u1`：
-        - `u = nullptr`：
-        - `u.release()`：
-        - `u.reset()`：
-        - `u.reset(q)`：
-        - `u.resert(nullptr)`：
+        - `std::unique_ptr<T> u1`：定义一个 *空的* `std::unique_ptr<T>`，使用默认删除器`delete`
+        - `std::unique_ptr<T, D> u2`：定义一个 *空的* `std::unique_ptr<T, D>`，`D` *删除器* 的类型
+        - `std::unique_ptr<T, D> u(d)`：定义一个 *空的* `std::unique_ptr<T, D>`，`D` *删除器* 的类型，`d`为指定的 *删除器* 
+        - `u = nullptr`：释放`u`指向的对象，将`u` *置空* 
+        - `u.release()`：`u` *放弃* 对指针的控制权，返回内置指针，并将`u` *置空* 
+        - `u.reset()`：释放指向`u`的对象，将`u` *置空*
+        - `u.reset(q)`：释放指向`u`的对象，令`u` *指向内置指针* `q`
+        - `u.resert(nullptr)`：释放指向`u`的对象，将`u` *置空*
 - `std::shared_ptr`
     - `std::make_shared`函数
         - 最安全的分配和使用动态内存的方法
