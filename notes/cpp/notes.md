@@ -807,10 +807,10 @@ t.print1(0);  // 0 1 2
     1. 构造对象时，可以提供一个 *初始值* 进行 *初始化* ，也可以不提供（此时应用 *默认初始化* 规则）
     2. 在函数调用时也会发生，函数的 *形参* 及 *返回值* 亦会被初始化
 - *初始值* 由以下三种 *初始化器* 提供
-    1. *括号初始化器* `( expression-list )`：括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表
+    1. *括号初始化器* `(expression-list)`：括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表
     2. *等号初始化器* `= expression`：等号后面跟着一个表达式
-    3. *花括号初始化器* `{ initializer-list }`：花括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表， *可以为空* 
-        - `C++11`引入，被称作 *列表初始化* 。如损失精度，则报 *编译错误* 
+    3. *花括号初始化器* `{initializer-list}`：花括号包裹、逗号分隔的、由 *表达式* 或 *花括号初始化器* 组成的列表， *可以为空* 
+        - `C++11`引入，使用花括号初始化器进行的初始化被称作 *列表初始化* 。如损失精度，则报 *编译错误* 
         ```
         int a = 1;       // ok. 
         int b(1);        // ok. 
@@ -2892,6 +2892,55 @@ Entry e = {0, "Anna"};
         ```
     - 使用了动态生存期的类
 - 直接管理内存
+    - 使用`new`直接管理内存，初始化可以选择
+        - *默认初始化* 
+            - *不提供* 初始化器 
+            - 对象的值 *未定义* 
+        ```
+        int * pi = new int;
+        std::string * ps = new std::string;
+        ```
+        - *直接初始化* 
+            - 提供 *非空* 的初始化器 
+            - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
+        ```
+        int * pi = new int(1024);
+        std::string * ps = new std::string(10, '9');
+        std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        ```
+        - *值初始化* 
+            - 提供 *空的* 初始化器 
+            - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
+            - 对于内置类型，值初始化的效果则是 *零初始化* 
+        ```
+        std::string * ps1 = new std::string;   // default initialized to the empty string
+        std::string * ps = new std::string();  // value initialized to the empty string
+        int * pi1 = new int;                   // default initialized; *pi1 is undefined
+        int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
+        ```
+    - 使用`auto`
+        - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
+            - 编译器需要从初始化器中推断类型
+    ```
+    auto p1 = new auto(obj);      // p points to an object of the type of obj
+                                  // that object is initialized from obj
+    auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
+    ```
+    - 动态分配`const`对象
+        - 用`new`分配`const`对象是合法的，返回指向`const`的指针
+        - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
+            - 对于有 *默认构造函数* 的类类型，可以默认初始化
+            - 否则，必须直接初始化
+    ```
+    // allocate and direct-initialize a const int
+    const int * pci = new const int(1024);
+    
+    // allocate a default-initialized const empty string
+    const std::string * pcs = new const std::string;
+    ```
+    - 内存耗尽
+    ```
+    ```
 - `std::shared_ptr`和`new`结合使用
 - 智能指针和异常
 - `std::unique_ptr`
@@ -3022,9 +3071,16 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
         - `q.emplace(args)`：入队（在队列末尾）一个用`args` *构造* 的元素
 - [`std::priority_queue`](https://en.cppreference.com/w/cpp/container/priority_queue)（位于头文件`<queue>`中）
     - 默认基于`std::vector`实现，也可以接受`std::deque`
-    - 标准库的实现写死了，是 *小顶堆* 。即：若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
+    ```
+    template <class T,
+              class Container = std::vector<T>,
+              class Compare = std::less<typename Container::value_type>> 
+    class priority_queue;
+    ```
+    - 标准库的实现默认是 *小顶堆* 。即：若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
         - 重载`<`运算符 => 11.2.2
         - 插入相反数
+        - 传入谓词
     - 特有操作
         - `q.pop()`：弹出最高优先级元素，但不返回该元素的值
         - `q.top()`：返回最高优先级元素，但不将其弹出
