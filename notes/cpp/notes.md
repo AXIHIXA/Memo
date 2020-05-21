@@ -20,7 +20,7 @@
 - 常见规则
     - 先声明（或定义）再使用。 *第一次实际使用前* 再声明（定义）
     - **严禁**混用有符号类型和无符号类型（比如：该用`size_t`就用，别啥玩意都整成`int`）
-    - 整数和浮点数字面值的后缀一律使用 *大写* 版本，避免`l`和`1`混淆
+    - 整数和浮点数字面值的 *后缀* 一律使用 *大写* 版本，避免`l`和`1`混淆
     - 如果函数有可能用到某个全局变量，则**不宜**再定义同名的局部变量
     - `const`常量不论是声明还是定义都添加`extern`修饰符
     - 想要`auto`推导出引用或者常量的话，直接写清楚是坠吼的（`const auto & a = b`），别折腾顶层`const`什么的
@@ -55,6 +55,7 @@
         3. **不**使用智能指针的`get()`初始化（或`reset`） *另一个* 智能指针
         4. 使用智能指针的`get()`返回的内置指针时，记住当最后一个对应的智能指针被销毁后，这个内置指针就 *无效* 了
         5. 使用内置指针管理的资源而不是`new`出来的内存时，记住传递给它一个 *删除器*
+    - 大多数应用都应该使用 *标准库容器* 而**不是**动态分配的数组。使用容器更为简单，更不容易出现内存管理错误，并且可能有更好的性能
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -6815,67 +6816,67 @@ std::map<std::string, int>::mapped_type v5;  // int
 #### 动态内存和智能指针（Dynamic memory and smart pointers）
 
 - `C++`直接管理动态内存
-    - 使用`new`直接管理内存，初始化可以选择
-        - *默认初始化* 
-            - *不提供* 初始化器 
-            - 对象的值 *未定义* 
+    - 动态申请内存：[`new`表达式](https://en.cppreference.com/w/cpp/language/new)
+        - 初始化可以选择
+            - *默认初始化* 
+                - *不提供* 初始化器 
+                - 对象的值 *未定义* 
+            ```
+            int * pi = new int;
+            std::string * ps = new std::string;
+            ```
+            - *值初始化* 
+                - 提供 *空的* 初始化器 
+                - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
+                - 对于内置类型，值初始化的效果则是 *零初始化* 
+            ```
+            std::string * ps1 = new std::string;   // default initialized to the empty string
+            std::string * ps = new std::string();  // value initialized to the empty string
+            int * pi1 = new int;                   // default initialized; *pi1 is undefined
+            int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
+            ```
+            - *直接初始化* 
+                - 提供 *非空* 的初始化器 
+                - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
+            ```
+            int * pi = new int(1024);
+            std::string * ps = new std::string(10, '9');
+            std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+            ```
+        - 使用`auto`
+            - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
+                - 编译器需要从初始化器中推断类型
         ```
-        int * pi = new int;
-        std::string * ps = new std::string;
+        auto p1 = new auto(obj);      // p points to an object of the type of obj
+                                      // that object is initialized from obj
+        auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
         ```
-        - *直接初始化* 
-            - 提供 *非空* 的初始化器 
-            - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
+        - 动态分配`const`对象
+            - 用`new`分配`const`对象是合法的，返回指向`const`的指针
+            - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
+                - 对于有 *默认构造函数* 的类类型，可以默认初始化
+                - 否则，必须直接初始化
         ```
-        int * pi = new int(1024);
-        std::string * ps = new std::string(10, '9');
-        std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-        ```
-        - *值初始化* 
-            - 提供 *空的* 初始化器 
-            - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
-            - 对于内置类型，值初始化的效果则是 *零初始化* 
-        ```
-        std::string * ps1 = new std::string;   // default initialized to the empty string
-        std::string * ps = new std::string();  // value initialized to the empty string
-        int * pi1 = new int;                   // default initialized; *pi1 is undefined
-        int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
-        ```
-    - 使用`auto`
-        - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
-            - 编译器需要从初始化器中推断类型
-    ```
-    auto p1 = new auto(obj);      // p points to an object of the type of obj
-                                  // that object is initialized from obj
-    auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
-    ```
-    - 动态分配`const`对象
-        - 用`new`分配`const`对象是合法的，返回指向`const`的指针
-        - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
-            - 对于有 *默认构造函数* 的类类型，可以默认初始化
-            - 否则，必须直接初始化
-    ```
-    // allocate and direct-initialize a const int
-    const int * pci = new const int(1024);
+        // allocate and direct-initialize a const int
+        const int * pci = new const int(1024);
 
-    // allocate a default-initialized const empty string
-    const std::string * pcs = new const std::string;
-    ```
-    - 内存耗尽
-        - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
-        - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
-    ```
-    // if allocation fails, new returns a null pointer
-    int * p1 = new int;            // if allocation fails, new throws std::bad_alloc
-    int * p2 = new (nothrow) int;  // if allocation fails, new returns a null pointer
-    ```
-    - 动态释放内存
-        - `delete`表达式
-            - 传递给`delete`的指针必须是 *指向被动态分配的对象* 的指针或者 *空指针* 
-            - 将同一个对象反复释放多次是 *未定义行为*
-            - *`const`对象* 虽然不能更改，但却 *可以销毁* 
-            - `delete`之后指针成为了 *空悬指针* （dangling pointer）
-                - *你就是一个没有对象的野指针*
+        // allocate a default-initialized const empty string
+        const std::string * pcs = new const std::string;
+        ```
+        - 内存耗尽
+            - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
+            - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
+        ```
+        // if allocation fails, new returns a null pointer
+        int * p1 = new int;            // if allocation fails, new throws std::bad_alloc
+        int * p2 = new (nothrow) int;  // if allocation fails, new returns a null pointer
+        ```
+    - 动态释放内存：[`delete`表达式](https://en.cppreference.com/w/cpp/language/delete)
+        - 传递给`delete`的指针必须是 *指向被动态分配的对象* 的指针或者 *空指针* 
+        - 将同一个对象反复释放多次是 *未定义行为*
+        - *`const`对象* 虽然不能更改，但却 *可以销毁* 
+        - `delete`之后指针成为了 *空悬指针* （dangling pointer）
+            - *你就是一个没有对象的野指针*
         ```
         int i; 
         int * pi1 = &i; 
@@ -6945,7 +6946,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `u.release()`：`u` *放弃* 对指针的控制权，返回内置指针，并将`u` *置空* 。注意`u.release()`只是放弃所有权，并**没有**释放`u`原先指向的对象
         - `u.reset()`：释放指向`u`的对象，将`u` *置空*
         - `u.reset(q)`：释放指向`u`的对象，令`u` *指向内置指针* `q`。常见转移操作：`u1.reset(u2.release())`
-        - `u.resert(nullptr)`：释放指向`u`的对象，将`u` *置空*
+        - `u.reset(nullptr)`：释放指向`u`的对象，将`u` *置空*
     - `std::weak_ptr`支持的操作
         - `std::weak_ptr<T> w`：定义一个 *空的* `std::weak_ptr<T>`
         - `std::weak_ptr<T> w(sp)`：与`std::shared_ptr sp`指向相同对象的`std::weak_ptr`，`T`必须能转换成`sp`指向的类型
@@ -7216,7 +7217,85 @@ std::map<std::string, int>::mapped_type v5;  // int
 
 #### 动态数组（Dynamic arrays）
 
+- `C++`语言和标准库提供了 *两种* 一次分配一个 *对象数组* 的方法
+    1. [`new`表达式](https://en.cppreference.com/w/cpp/language/new)
+    2. [`allocator`类](https://en.cppreference.com/w/cpp/memory/allocator)
+        - 将分配和初始化分离
+        - 更好的性能和更灵活的内存管理能力
+- 大多数应用都应该使用 *标准库容器* 而**不是**动态分配的数组。使用容器更为简单，更不容易出现内存管理错误，并且可能有更好的性能
 - `new`和数组
+    - 在`new`表达式的类型名之后跟一对方括号，其中指明要分配的对象的数目
+        - 数目必须是 *整形* ，但 *不必是常量*
+        - 成功后返回指向 *第一个* 对象的指针
+        - 也可以使用数组类型的 *类型别名*
+    ```
+    int * pia = new int[get_size()];  // pia points to the first of these ints
+    
+    typedef int intarr42_t1[42];      // intarr42_t1 names the type array of 42 ints
+    int * p1 = new intarr42_t1{};     // allocates an array of 42 ints; p1 points to the first one
+    
+    using intarr42_t2 = int [42];     // intarr42_t2 names the type array of 42 ints
+    int * p2 = new IntArr42_t2{};     // allocates an array of 42 ints; p2 points to the first one
+    ```
+    - 分配一个数组会得到一个元素类型的指针，分配的内存**不是**数组类型
+        - **不能**对动态数组调用`std::begin()`或`std::end()`
+        - **不能**使用范围`for`遍历动态数组
+    - 初始化动态分配对象的数组
+        - *默认初始化* 
+            - *不提供* 初始化器 
+            - 对象的值 *未定义* 
+        ```
+        int * pia = new int[10];
+        std::string * psa = new std::string[10];
+        ```
+        - *值初始化* 
+            - 提供 *空的* 初始化器 
+            - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
+            - 对于内置类型，值初始化的效果则是 *零初始化* 
+        ```
+        int * pia = new int[10]();
+        std::string * ps = new std::string[10]();
+        ```
+        - *聚合初始化* 
+            - 提供 *非空* 的初始化器 
+            - 显式指定对象初值，可以使用 *花括号* 初始化器
+            - 初始化器数目小于元素数目时，剩余元素将进行 *值初始化* 
+            - 初始化器数目大于元素数目时，`new`表达式抛出`std::bad_array_new_length`异常，**不会**分配任何内存
+        ```
+        int * pia = new int[10]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        std::string * ps = new std::string[10]{"a", "an", "the", std::string(3, 'x')};
+        ```
+        - 由于不能通过 *直接初始化* 提供单一初始化器，**不能**用`auto`分配数组
+    - 动态分配 *空数组* 是合法的
+        - 与之相对，**不能**创建大小为`0`的静态数组对象
+        - 创建出的指针
+            - **不能**解引用
+            - 保证和`new`返回的任何其他指针都 *不同* 
+            - 可以像使用 *尾后迭代器* 一样使用它
+    ```
+    char arr[0];              // error: cannot define a zero-length array
+    char * cp = new char[0];  // ok: but cp can't be dereferenced
+    
+    size_t n = get_size();    // get_size returns the number of elements needed
+    int * p = new int[n];     // allocate an array to hold the elements
+    
+    for (int * q = p; q != p + n; ++q)  // don't go into loop if n == 0
+    {
+        // process the array... 
+    }
+    ```
+    - 释放动态数组：`delete []`表达式
+        - 数组中的元素按照 *逆序* 被销毁
+        - 销毁动态数组是使用普通的`delete`是 *未定义行为*
+        - 销毁普通动态对象时使用`delete []`同样是 *未定义行为*
+            - 以上两条编译器很可能还没有`warning`，那可真是死都不知道怎么死的了
+        - 只要内存 *实际上* 是动态数组，就必须使用`delete []`
+            - 包括使用 *类型别名* 定义的动态数组
+    ```
+    typedef int intarr42_t[42];        // intarr42_t names the type array of 42 ints
+    int * p = new intarr_42_t{};       // allocates an array of 42 ints; p points to the first one
+    delete [] p;                       // brackets are necessary because we allocated an array
+    ```
 - `allocator`类
 
 
