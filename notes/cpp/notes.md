@@ -41,6 +41,8 @@
     - 通常**不对**关联容器使用泛型算法（或不能用或性能很差）
     - `lambda`表达式应尽量**避免**捕获指针或引用。如捕获引用，必须保证在`lambda`执行时变量 *仍存在* 
     - 出于性能考虑，`std::list`和`std::forward_list`应当优先使用 *成员函数版本* 的算法，而**不是**通用算法  
+    - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
+    - 如果两个对象 *共享底层数据* ，则某个对象被销毁时，**不能**单方面地销毁底层数据
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -2800,7 +2802,8 @@ Entry e = {0, "Anna"};
         - [`std::shared_ptr`](https://en.cppreference.com/w/cpp/memory/shared_ptr)：允许多个指针指向同一个对象
         - [`std::unique_ptr`](https://en.cppreference.com/w/cpp/memory/unique_ptr)： *独占* 指向的对象
         - [`std::weak_ptr`](https://en.cppreference.com/w/cpp/memory/weak_ptr)： *伴随类* ， *弱引用* ，指向`std::shared_ptr`所指向的对象
-    - 行为类似于常规指针，但负责 *自动释放* 所指向的对象
+    - 行为类似于 *常规指针* ，但负责 *自动释放* 所指向的对象
+        - 下文中的 *指针* 除非特别说明，都是指 *常规指针* 
     - *默认初始化* 的智能指针中保存着一个 *空指针* 
     - 智能指针使用方法与普通指针类似
         - *解引用* 返回对象 *左值* 
@@ -2815,32 +2818,86 @@ Entry e = {0, "Anna"};
         - `p`：将`p`用作一个条件判断，若`p`指向一个对象，则为`true`
         - `*p`：解引用`p`，获得它指向的对象
         - `p->mem`：等价于`(*p).mem`
-        - `p.get()`：返回`p`中保存的 *普通指针* 。若智能指针释放了其对象，则这一 *普通指针* 所指向的对象亦会失效
-        - `std::swap(p, q)`：交换`p`和`q`中的 *普通指针* 
-        - `p.swap(q)`：交换`p`和`q`中的 *普通指针* 
+        - `p.get()`：返回`p`中保存的指针。若智能指针释放了其对象，则这一指针所指向的对象亦会失效
+        - `std::swap(p, q)`：交换`p`和`q`中的指针*
+        - `p.swap(q)`：交换`p`和`q`中的指针*
     - `std::shared_ptr`独有的操作
-        - `std::make_shared<T>(args)`：
-        - `std::shared_ptr<T> p(q)`：
-        - `p = q`：
-        - `p.unique()`：
-        - `p.use_count()`：
-    - `std::make_shared`函数    
+        - `std::make_shared<T>(args)`：返回一个`std::shared_ptr<T>`用`args`初始化
+        - `std::shared_ptr<T> p(q)`：`p`是`q`的拷贝，此操作会递增`q`的引用计数。`q`中的指针必须能被转换程`T *`
+        - `p = q`：`p`和`q`都是`std::shared_ptr`，且保存的指针能够相互转换。此操作会递减`p`的引用计数、递增`q`的引用计数；若`p`的引用计数变为`0`，则将其管理的 *原内存释放* 
+        - `p.unique()`：`return p.use_count() = 1;`
+        - `p.use_count()`：返回`p`的 *引用计数* （与`p`共享对象的智能指针的数量）。 *可能很慢，主要用于调试* 
+    - `std::make_shared`函数
+        - 最安全的分配和使用动态内存的方法
+        - 在动态内存中分配一个对象并 *用其参数构造对象* ，返回指向该对象的`shared_ptr`
+            - 就类似与顺序容器的`c.emplace(args)`
+            - 不提供任何参数就是 *值初始化* 对象
+        ```
+        std::shared_ptr<int>         p3 = std::make_shared<int>(42);                     // int 42
+        std::shared_ptr<std::string> p4 = std::make_shared<std::string>(10, '9');        // std::string "9999999999"
+        std::shared_ptr<int>         p5 = std::make_shared<int>();                       // int 0 (value initialized)
+        auto                         p6 = std::make_shared<std::vector<std::string>>();  // empty std::vector<std::string>
+        ```
     - `std::shared_ptr`拷贝和赋值
+        - 每个`std::shared_ptr`都有其 *引用计数* （reference count），记录有多少个其他`std::shared_ptr`指向相同的对象
+            - *拷贝* 时，引用计数会 *递增* ，例如
+                - 用一个`std::shared_ptr`初始化另一个`std::shared_ptr`
+                - 将`std::shared_ptr`作为参数传递给一个函数
+                - 将`std::shared_ptr`作为函数返回值
+            - *赋值* 或 *销毁* 时，引用计数会 *递减* ，例如
+                - 局部的`std::shared_ptr`离开其作用域时
+            - 一旦`std::shared_ptr`的引用计数降为`0`，它就会 *自动释放* 自己所管理的对象
+        ```
+        auto p = std::make_shared<int>(42);   // object to which p points has one user
+        auto q(p);                            // p and q point to the same object
+                                              // object to which p and q point has two users
+                                             
+        auto r = std:: make_shared<int>(42);  // int to which r points has one user assign to r, 
+                                              // making it point to a different address
+                                              // increase the use count for the object to which q points
+                                              // reduce the use count of the object to which r had pointed
+                                              // the object r had pointed to has no users; that object is automatically freed
+        ```
     - `std::shared_ptr` *自动销毁* 所管理的对象
-    - `std::shared_ptr` 还会 *自动释放* 相关联的内存
+        - 销毁工作通过调用对象的 *析构函数* （destructor）来完成
+            - 析构函数一般负责释放该对象所占用的资源
+        - `std::shared_ptr`的析构函数会递减它所指向的对象的引用计数
+            - 降为`0`后就会销毁对象并释放占用的内存
+        - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
+        - 如果两个对象 *共享底层数据* ，则某个对象被销毁时，**不能**单方面地销毁底层数据
+        ```
+        std::vector<std::string> v1;                           // empty vector
+        
+        {                                                      // new scope
+            std::vector<std::string> v2 = {"a", "an", "the"};
+            v1 = v2;                                           // copies the elements from v2 into v1
+        }                                                      // v2 is destroyed, which destroys the elements in v2
+                                                               // v1 has three elements, which are copies of the ones originally in v2
+        ```
+    ```
+    std::shared_ptr<Foo> factory(T arg)
+    {
+        return std::make_shared<Foo>(arg);      // shared_ptr will take care of deleting this memory, ++ref_cnt
+    }                                           // goes out of scope; however the memory remains
+    
+    void use_factory(T arg)
+    {
+        std::shared_ptr<Foo> p = factory(arg);
+        // do something...                      // use p...
+    }                                           // p goes out of scope; 
+                                                // the memory to which p points is AUTOMATICALLY freed
+    ```
     - 使用了动态生存期的类
 - 直接管理内存
-
-
-
-
-
-
-
+- `std::shared_ptr`和`new`结合使用
+- 智能指针和异常
+- `std::unique_ptr`
+- `std::weak_ptr`
 
 #### 动态数组（Dynamic arrays）
 
-#### Using the Library: A Text-Query Program
+- `new`和数组
+- `allocator`类
 
 
 
@@ -2861,21 +2918,23 @@ Entry e = {0, "Anna"};
 #### 异常处理
 
 - `C++`标准异常
-    - `exception`：最通用的异常类`exception`，只报告异常的发生，不提供任何额外信息
-    - `stdexcept`：几种常用的异常类
-        - `excpetion`：最常见的问题
-        - `runtime_error`：所有RE
-            - `range_error`：RE，生成的结果超出了有意义的值域范围
-            - `overflow_error`：RE，计算溢出
-            - `underflow_error`：RE，计算溢出
-        - `logic_error`：所有逻辑错误
-            - `domain_error`：逻辑错误，参数对应的结果值不存在
-            - `invalid_argument`：逻辑错误，无效参数
-            - `length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
-            - `out_of_range`：逻辑错误，使用了一个超出有效范围的值
-    - `new`：`bad_alloc`异常类 => 12.1.2
-    - `type_info`：`bad_cast`异常类 => 19.2
-- `excpetion`，`bad_alloc`和`bad_cast`只能默认初始化，不能传参；其余异常必须传参（`C`风格字符串）
+    - `<exception>`
+        - `std::exception`：只报告异常的发生，不提供任何额外信息。 *只能* *默认初始化* ，**不能**传参
+    - `<stdexcept>`
+        - `std::runtime_error`：所有运行错误
+            - `std::range_error`：运行错误，生成的结果超出了有意义的值域范围
+            - `std::overflow_error`：运行错误，计算溢出
+            - `std::underflow_error`：运行错误，计算溢出
+        - `std::logic_error`：所有逻辑错误
+            - `std::domain_error`：逻辑错误，参数对应的结果值不存在
+            - `std::invalid_argument`：逻辑错误，无效参数
+            - `std::length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
+            - `std::out_of_range`：逻辑错误，使用了一个超出有效范围的值
+    - `<new>`
+        - `std::bad_alloc`异常类。 *只能* *默认初始化* ，**不能**传参 => 12.1.2
+    - `<typeinfo>`
+        - `std::bad_cast`异常类 => 19.2
+- 以上异常除特别说明的，都 *必须* 传参（`C`风格字符串）
 - 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
   如果此异常传入了初始参数，则返回之；否则返回值由编译器决定。
 
@@ -3335,33 +3394,58 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `s.compare(pos1, n1, cp)`：比较`s`中`pos1`开始的`n1`个字符和`cp`指向的以`'\0'`结尾的字符数组
     - `s.compare(pos1, n1, cp, n2)`：比较`s`中`pos1`开始的`n1`个字符和`cp + n2`指向的以`'\0'`结尾的字符数组
 - 数值转换
-    - 字符串转数值
-        - `int                std::stoi(const std::string & str, std::size_t * pos = 0, int base = 10)`
-        - `long               std::stol(const std::string & str, std::size_t * pos = 0, int base = 10)`
-        - `long long          std::stoll(const std::string & str, std::size_t * pos = 0, int base = 10)`
-        - `unsigned long      std::stoul(const std::string & str, std::size_t * pos = 0, int base = 10)`
-        - `unsigned long long std::stoull(const std::string & str, std::size_t * pos = 0, int base = 10)`
-        - `float              std::stof(const std::string & str, std::size_t * pos = 0)`
-        - `double             std::stod(const std::string & str, std::size_t * pos = 0)`
-        - `long double        std::stold(const std::string & str, std::size_t * pos = 0)`
-    - 注意事项
-        - `s`是`std::string`，第一个非空白字符必须是以下内容之一
-            - 正负号（`+`，`-`）
-            - 数字（`[0-9]`）
-            - 十六进制符号（`0x`，`0X`）
-            - 小数点（`.`）
-        - `s`的其他字符字符还可以有
-            - 指数符号（`e`，`E`）
-            - 字母字符（对应该进制中大于`9`的数字）
-        - `p`是 *输出参数* ，类型为`size_t *`，用来保存`s`中第一个非数值字符的下标。默认值为`0`，即：函数不保存下标
-        - `b`为基数，默认`10`
-        - 如果`std::string s`参数不能转换成数值，则抛出`std::invalid_argument`异常；如果转换得到的数值溢出，则抛出`std::out_of_range`异常
-    ```
-    size_t idx;
-    double res = std::stod("+3.14159pi", &idx);
-    printf("%lf %zu\n", res, idx);               // 3.141590 8
-    ```
-    - 数值转字符串
+    - `C++`风格字符串转数值定义于`<string>`中
+        - 签名集锦
+        ```
+        int                std::stoi(const std::string & str, std::size_t * pos = 0, int base = 10)
+        long               std::stol(const std::string & str, std::size_t * pos = 0, int base = 10)
+        long long          std::stoll(const std::string & str, std::size_t * pos = 0, int base = 10)
+        unsigned long      std::stoul(const std::string & str, std::size_t * pos = 0, int base = 10)
+        unsigned long long std::stoull(const std::string & str, std::size_t * pos = 0, int base = 10)
+        float              std::stof(const std::string & str, std::size_t * pos = 0)
+        double             std::stod(const std::string & str, std::size_t * pos = 0)
+        long double        std::stold(const std::string & str, std::size_t * pos = 0)
+        ```
+        - 从`str` *第一个* *非空字符* 开始分析
+        - 转换成整数
+            - `str`有效部分可以包含
+                - 正负号（`+`，`-`），可选
+                - 八进制符号（`0`），只对`base = 8`或`base = 0`时有效，可选
+                - 十六进制符号（`0x`，`0X`），只对`base = 16`或`base = 0`时有效，可选
+                - 数字（`[0-9]`）
+            - `base`：有效进制为`{0...36}`，其中`0`表示自动检测，结果为`8`，`16`或`10`进制
+            - `pos`是 *输出参数* ，用来保存`str`有效部分开始第一个非数值字符的位置。默认值为`0`，即：函数不保存位置
+        - 转换成浮点数
+            - 从`str` *第一个* *非空字符* 开始分析
+            - `str`有效部分可以包含
+                - 十进制
+                    - 正负号（`+`，`-`），可选
+                    - 数字（`[0-9]`）
+                    - 小数点（`.`）
+                    - 指数（`e`、`E`），底数为`10`，可选
+                - 十六进制
+                    - 正负号（`+`，`-`），可选
+                    - 数字（`[0-9]`）
+                    - 十六进制符号（`0x`，`0X`）
+                    - 小数点（`.`）
+                    - 指数（`p`、`P`），底数为`2`，可选
+                - 无穷
+                    - 正负号（`+`，`-`），可选
+                    - `INF`或`INFINITY`，大小写不敏感
+                - `NaN`
+                    - 正负号（`+`，`-`），可选
+                    - `NAN`或`NAN[a-zA-Z0-9_]*`，大小写不敏感
+            - `pos`是 *输出参数* ，用来保存`str`有效部分开始第一个非数值字符的位置。默认值为`0`，即：函数不保存位置
+        - 异常
+            - 如果`str`参数 *不能转换* 成数值，则抛出`std::invalid_argument`异常
+            - 如果转换得到的 *数值溢出* ，则抛出`std::out_of_range`异常
+        - 例程
+        ```
+        size_t idx;
+        double res = std::stod("+3.14159pi", &idx);
+        printf("%lf %zu\n", res, idx);               // 3.141590 8
+        ```
+    - 数值转字符串（`<string>`）
     ```
     std::string std::to_string(int value)                 (1)  // std::sprintf(buf, "%d", value)
     std::string std::to_string(long value)                (2)  // std::sprintf(buf, "%ld", value)
@@ -3454,16 +3538,16 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 每个关联容器都定义了默认构造函数，用于创建指定类型的空容器
     - 也可以将关联容器创建为其他关联容器的拷贝
     - 或者从一个值范围来初始化关联容器
-        - 对于`std::map`，必须提供键值对`{key, value}`
+        - 对于`std::map`，必须提供键值对`<key, value>`
     ```
     // empty
-    map<string, size_t> word_count; 
+    map<std::string, size_t> word_count; 
     
     // list initialization
-    set<string> exclude = {"the", "but", "and", "or", "an", "a", "The", "But", "And", "Or", "An", "A"};
+    std::set<string> exclude = {"the", "but", "and", "or", "an", "a", "The", "But", "And", "Or", "An", "A"};
     
     // three elements; authors maps last name to first
-    map<string, string> authors = {{"Joyce", "James"}, {"Austen", "Jane"}, {"Dickens", "Charles"}};
+    std::map<std::string, string> authors = {{"Joyce", "James"}, {"Austen", "Jane"}, {"Dickens", "Charles"}};
     ```
 - 定义（初始化）`std::multi_map`和`std::multi_set`
     - `std::map`和`std::set`的键必须是唯一的
