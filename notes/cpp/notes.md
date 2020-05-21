@@ -2836,7 +2836,7 @@ Entry e = {0, "Anna"};
         std::shared_ptr<int>         p3 = std::make_shared<int>(42);                     // int 42
         std::shared_ptr<std::string> p4 = std::make_shared<std::string>(10, '9');        // std::string "9999999999"
         std::shared_ptr<int>         p5 = std::make_shared<int>();                       // int 0 (value initialized)
-        auto                         p6 = std::make_shared<std::vector<std::string>>();  // empty std::vector<std::string>
+        auto                         p6 = std::make_shared<std::vector<std::string>>();  // 空 std::vector<std::string>
         ```
     - `std::shared_ptr`拷贝和赋值
         - 每个`std::shared_ptr`都有其 *引用计数* （reference count），记录有多少个其他`std::shared_ptr`指向相同的对象
@@ -2856,7 +2856,8 @@ Entry e = {0, "Anna"};
                                               // making it point to a different address
                                               // increase the use count for the object to which q points
                                               // reduce the use count of the object to which r had pointed
-                                              // the object r had pointed to has no users; that object is automatically freed
+                                              // the object r had pointed to has no users; 
+                                              // that object is automatically freed
         ```
     - `std::shared_ptr` *自动销毁* 所管理的对象
         - 销毁工作通过调用对象的 *析构函数* （destructor）来完成
@@ -2872,21 +2873,23 @@ Entry e = {0, "Anna"};
             std::vector<std::string> v2 = {"a", "an", "the"};
             v1 = v2;                                           // copies the elements from v2 into v1
         }                                                      // v2 is destroyed, which destroys the elements in v2
-                                                               // v1 has three elements, which are copies of the ones originally in v2
+                                                               // v1 has three elements, 
+                                                               // which are copies of the ones originally in v2
         ```
-    ```
-    std::shared_ptr<Foo> factory(T arg)
-    {
-        return std::make_shared<Foo>(arg);      // shared_ptr will take care of deleting this memory, ++ref_cnt
-    }                                           // goes out of scope; however the memory remains
-    
-    void use_factory(T arg)
-    {
-        std::shared_ptr<Foo> p = factory(arg);
-        // do something...                      // use p...
-    }                                           // p goes out of scope; 
-                                                // the memory to which p points is AUTOMATICALLY freed
-    ```
+        - 工厂例程
+        ```
+        std::shared_ptr<Foo> factory(T arg)
+        {
+            return std::make_shared<Foo>(arg);      // shared_ptr will take care of deleting this memory, ++ref_cnt
+        }                                           // goes out of scope; however the memory remains
+        
+        void use_factory(T arg)
+        {
+            std::shared_ptr<Foo> p = factory(arg);
+            // do something...                      // use p...
+        }                                           // p goes out of scope; 
+                                                    // the memory to which p points is AUTOMATICALLY freed
+        ```
     - 使用了动态生存期的类
 - 直接管理内存
 - `std::shared_ptr`和`new`结合使用
