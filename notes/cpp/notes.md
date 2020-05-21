@@ -6930,8 +6930,8 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `std::shared_ptr<T> p(q, d)`：`p` *接管* 内置指针`q`所指向的对象的所有权，`q`能够转换成`T *`类型。`p`将调用 *删除器* `d`来代替`delete`
         - `std::make_shared<T>(args)`：返回一个`std::shared_ptr<T>`用`args`初始化
         - `p = q`：`p`和`q`都是`std::shared_ptr`，且保存的指针能够相互转换。此操作会递减`p`的引用计数、递增`q`的引用计数；若`p`的引用计数变为`0`，则将其管理的 *原内存释放* 
+        - `p.use_count()`：返回`p`的 *引用计数* （与`p`共享对象的`std::shared_ptr`的数量）。 *可能很慢，主要用于调试* 
         - `p.unique()`：`return p.use_count() = 1;`
-        - `p.use_count()`：返回`p`的 *引用计数* （与`p`共享对象的智能指针的数量）。 *可能很慢，主要用于调试* 
         - `p.reset()`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，将`p` *置空*
         - `p.reset(q)`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，令`p` *指向内置指针* `q`
         - `p.reset(q, d)`：若`p`是唯一指向其对象的`std::shared_ptr`，则 *调用`d`* 释放此对象，将`p` *置空*
@@ -6946,6 +6946,14 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `u.reset()`：释放指向`u`的对象，将`u` *置空*
         - `u.reset(q)`：释放指向`u`的对象，令`u` *指向内置指针* `q`。常见转移操作：`u1.reset(u2.release())`
         - `u.resert(nullptr)`：释放指向`u`的对象，将`u` *置空*
+    - `std::weak_ptr`支持的操作
+        - `std::weak_ptr<T> w`：定义一个 *空的* `std::weak_ptr<T>`
+        - `std::weak_ptr<T> w(sp)`：与`std::shared_ptr sp`指向相同对象的`std::weak_ptr`，`T`必须能转换成`sp`指向的类型
+        - `w = p`：`p`可以是`std::shared_ptr`或者`std::weak_ptr`，赋值后`w`和`p` *共享* 对象
+        - `w.reset()`：将`w` *置空* （**并不**释放对象）
+        - `w.use_count()`：与`w`共享对象的`std::shared_ptr`的数量
+        - `w.expired()`：`return w.use_count() == 0;`
+        - `w.lock()`：如果`w.expired() == true`，则返回一个 *空的* `std::shared_ptr`；否则，返回一个指向`w`对象的`std::shared_ptr`
 - `std::shared_ptr`
     - 智能指针使用方法与普通指针类似
         - *解引用* 返回对象 *左值* 
@@ -7188,6 +7196,23 @@ std::map<std::string, int>::mapped_type v5;  // int
     }
     ```
 - `std::weak_ptr`
+    - `std::weak_ptr`指向`std::shared_ptr`管理的对象，但**不影响**`std::shared_ptr`的 *引用计数*
+        - `std::weak_ptr` 不控制被管理对象的生存期
+        - 一旦该对象最后一个`std::shared_ptr`被销毁，即使还有`std::weak_ptr`指向该对象，该对象还是会被销毁
+        - *弱* 共享对象
+    - 创建`std::weak_ptr`时，要用`std::shared_ptr`初始化
+    ```
+    auto p = std::make_shared<int>(42);
+    std::weak_ptr<int> wp(p);            // wp weakly shares with p; use count in p is unchanged
+    ```
+    - 由于对象 *可能不存在* ， *必须* 调用`wp.lock()`访问对象，而**不能**直接解引用
+    ```
+    if (std::shared_ptr<int> np = wp.lock()) 
+    { 
+        // true if np is not null
+        // inside the if, np shares its object with p
+    }
+    ```    
 
 #### 动态数组（Dynamic arrays）
 
