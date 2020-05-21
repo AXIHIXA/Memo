@@ -7275,15 +7275,15 @@ std::map<std::string, int>::mapped_type v5;  // int
     - `p.reset(q)`：若`p`是唯一指向其对象的`std::shared_ptr`，则释放此对象，令`p` *指向内置指针* `q`
     - `p.reset(q, d)`：若`p`是唯一指向其对象的`std::shared_ptr`，则 *调用`d`* 释放此对象，将`p` *置空*
 ```
-p = new int(1024);            // error: cannot assign a pointer to a shared_ptr
-p.reset(new int(1024));       // ok: p points to a new object
+p = new int(1024);                 // error: cannot assign a pointer to a shared_ptr
+p.reset(new int(1024));            // ok: p points to a new object
 
 if (!p.unique())
 {
-    p.reset(new string(*p));  // we aren't alone; allocate a new copy
+    p.reset(new std::string(*p));  // we aren't alone; allocate a new copy
 }
 
-*p += newVal;                 // now that we know we're the only pointer, okay to change this object
+*p += newVal;                      // now that we know we're the only pointer, okay to change this object
 ```
 - 智能指针和异常
 - `std::unique_ptr`
