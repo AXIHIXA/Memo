@@ -836,7 +836,7 @@ t.print1(0);  // 0 1 2
 - 根据上下文， *初始化器* 具体可能进行
     1. [*值初始化*](https://en.cppreference.com/w/cpp/language/value_initialization)，例如`std::string s{};`
     2. [*直接初始化*](https://en.cppreference.com/w/cpp/language/direct_initialization)，例如`std::string s("hello");`
-    3. [*复制初始化*](https://en.cppreference.com/w/cpp/language/copy_initialization)，例如`std::string s = "hello";`
+    3. [*拷贝初始化*](https://en.cppreference.com/w/cpp/language/copy_initialization)，例如`std::string s = "hello";`
     4. [*列表初始化*](https://en.cppreference.com/w/cpp/language/list_initialization)，例如`std::string s{'a', 'b', 'c'};`
     5. [*聚合初始化*](https://en.cppreference.com/w/cpp/language/aggregate_initialization)，例如`char a[3] = {'a', 'b'};`
     6. [*引用初始化*](https://en.cppreference.com/w/cpp/language/reference_initialization)，例如`char & c = a[0];`，`std::string s = std::move("hello");`
@@ -889,7 +889,7 @@ Class::Class() : member(args, ...) { ... }                    (6)
 [arg](){ ... }                                                (7)  // lambda表达式中用复制捕获的变量初始化闭包对象的成员
 ```
 
-#### [复制初始化](https://en.cppreference.com/w/cpp/language/copy_initialization)
+#### [拷贝初始化](https://en.cppreference.com/w/cpp/language/copy_initialization)
 
 - 从 *另一对象* 初始化对象
 ```
@@ -7876,9 +7876,60 @@ std::map<std::string, int>::mapped_type v5;  // int
         5. [*析构函数*](https://en.cppreference.com/w/cpp/language/destructor)（destructor）
             - 此类型对象销毁时会发生什么
 
-#### 拷贝、赋值与销毁
+#### 拷贝、赋值与销毁（Copy, Assign, and Destroy）
 
 - [*拷贝构造函数*](https://en.cppreference.com/w/cpp/language/copy_constructor)
+    - 第一个参数是自身类类型的引用的构造函数
+        - 在几种情况下都会被 *隐式* 地使用，因此**不应该**是`explicit`的
+    ```
+    class Foo 
+    {
+    public:
+        Foo();             // default constructor
+        Foo(const Foo &);  // copy constructor
+    // ...
+    };
+    ```
+    - 合成拷贝构造函数（Synthesized Copy Constructor）
+        - 不管有没有人工定义拷贝构造函数时，编译器都会隐式定义一个
+        - 对某些类，用于阻止拷贝该类型对象（`= delete;`？）
+        - 一般情况，将其参数的 *非静态数据成员* 逐个拷贝到正在创建的对象中
+            - 类类型：调用其拷贝构造函数
+            - 内置类型：直接拷贝
+                - 数组：不能直接拷贝，因此逐元素拷贝
+    - 拷贝初始化（copy initialization）
+        - 直接初始化：从 *明确的构造函数实参的集合* 初始化对象。要求编译器使用普通的函数匹配来选择相应的构造函数
+        - 拷贝初始化：从 *另一个对象* 初始化对象。要求编译器将右侧运算对象（如需要，隐式类型转换后）拷贝到正在创建的对象中
+            - 通常使用拷贝构造函数完成
+            - 如果有 *移动构造函数* ，则拷贝初始化有时会使用移动构造函数来完成
+        ```
+        std::string dots(10, '.');                  // direct initialization
+        std::string s(dots);                        // direct initialization
+        std::string s2 = dots;                      // copy initialization
+        std::string null_book = "9-999-99999-9";    // copy initialization
+        std::string nines = std::string(100, '9');  // copy initialization
+        ```
+        - 拷贝初始化会在以下情况发生
+            - 容器中的`push`、`insert`使用拷贝初始化
+            - 容器中的`emplace`使用直接初始化
+        ```
+        T object = other;                                             (1)     
+        T object = {other} ;                                          (2)
+        function(other)                                               (3)  // 函数非引用形参    
+        return other;                                                 (4)     
+        throw object;
+        catch (T object)                                              (5)     
+        T array[N] = {other};                                         (6)  // 聚合初始化中以初始化提供了初始化器的每个元素   
+        ```
+        - 拷贝初始化的限制
+            - 当使用的初始化值要求通过`explicit`构造函数进行类型转换
+        ```
+        std::vector<int> v1(10);   // ok: direct initialization
+        std::vector<int> v2 = 10;  // error: constructor that takes a size is explicit
+        void f(std::vector<int>);  // f's parameter is copy initialized
+        f(10);                     // error: can't use an explicit constructor to copy an argument
+        f(std::vector<int>(10));   // ok: directly construct a temporary vector from an int
+        ```
 - [*拷贝赋值运算符*](https://en.cppreference.com/w/cpp/language/copy_assignment)
 - [*析构函数*](https://en.cppreference.com/w/cpp/language/destructor)
 - 三五法则
