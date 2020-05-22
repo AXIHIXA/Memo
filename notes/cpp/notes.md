@@ -2254,7 +2254,7 @@ useBigger(s1, s2, pf);
 
 ### 🌱 [Chap 7] 类的基础概念
 
-#### 合成的默认构造函数（Synthesized default constructor）
+#### [合成的默认构造函数](https://en.cppreference.com/w/cpp/language/default_constructor)（Synthesized default constructor）
 
 - 按如下规则初始化类成员
     - 存在类内初始值，则以其初始化对应成员
@@ -2322,7 +2322,7 @@ item.combine(std::string("9-999-99999-9"));
 item.combine(SalesData("9-999-99999-9")); 
 ```
 
-#### 显式构造函数（`explicit` constructor）
+#### 显式构造函数（[`explicit`](https://en.cppreference.com/w/cpp/language/explicit) constructor）
 
 - 我们可以通过将构造函数声明为`explicit`来抑制构造函数定义的隐式转换
 ```
@@ -7379,10 +7379,11 @@ std::map<std::string, int>::mapped_type v5;  // int
     - 标准库`std::allocator`类
         - `std::allocator<T> a`：定义一个`std::allocator<T>`类型对象`a`，用于为`T`类型对象分配 *未构造的内存*
         - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`
-        - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。`p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。调用`a.deallocate(p, n)`之前，用户必须对在这块内存中的每个对象调用`a.destroy(p)`
-        - `a.construct(p, args)`：`p`必须是类型为`T *`的指针，指向一块原始内存；`arg`被传递给`T`的构造函数，用来在`p`指向的内存中构造一个对象`(deprecated in C++17)(removed in C++20)`
-        - `a.destory(p)`：`p`为`T *`类型指针，此算法对`p`指向的对象执行析构函数`(deprecated in C++17)(removed in C++20)`
-    - 标准库 *未初始化内存* 算法
+        - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。`p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。调用`a.deallocate(p, n)`之前，这块内存中的对象必须已经被析构
+        - 下面俩货已经被新时代抛弃了，就当他们不存在
+            - `a.construct(p, args)`：`p`必须是类型为`T *`的指针，指向一块原始内存；`arg`被传递给`T`的构造函数，用来在`p`指向的内存中构造一个对象`(deprecated in C++17)(removed in C++20)`
+            - `a.destory(p)`：`p`为`T *`类型指针，此算法对`p`指向的对象执行析构函数`(deprecated in C++17)(removed in C++20)`
+    - 标准库 *未初始化内存* 算法（`<memory>`）
         - [`std::uninitialized_copy`](https://en.cppreference.com/w/cpp/memory/uninitialized_copy)
             - 可能的实现
             ```
@@ -7416,6 +7417,7 @@ std::map<std::string, int>::mapped_type v5;  // int
             }
             ```
             - 复制来自范围`[first, last)`的元素到始于`d_first`的 *未初始化内存* 
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
             - 返回：指向最后复制的元素后一元素的迭代器
             - 复杂度：`Omega(last - first)`
         - [`std::uninitialized_copy_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_copy_n)
@@ -7451,32 +7453,419 @@ std::map<std::string, int>::mapped_type v5;  // int
             }
             ```
             - 从始于`first`的范围复制`count`个元素到始于`d_first`的 *未初始化内存* 
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
             - 返回：指向最后复制的元素后一元素的迭代器
             - 复杂度：`Omega(count)`
-        - [`std::uninitialized_fill`](https://en.cppreference.com/w/cpp/memory/uninitialized_fill)
-        - [`std::uninitialized_fill_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_fill_n)
+        - [`std::uninitialized_fill`](https://en.cppreference.com/w/cpp/memory/uninitialized_fill) `(C++17)`
+            - 可能的实现
+            ```
+            template <class ForwardIt, class T>
+            void 
+            uninitialized_fill(ForwardIt first, 
+                               ForwardIt last, 
+                               const T & value)
+            {
+                typedef typename std::iterator_traits<ForwardIt>::value_type Value;
+                ForwardIt current = first;
+                
+                try 
+                {
+                    for (; current != last; ++current) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value(value);
+                    }
+                }  
+                catch (...) 
+                {
+                    for (; first != current; ++first) 
+                    {
+                        first->~Value();
+                    }
+                    
+                    throw;
+                }
+            }
+            ```
+            - 复制给定值`value`到以`[first, last)`定义的 *未初始化内存* 区域
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+            - 复杂度：`Omega(last - first)`
+        - [`std::uninitialized_fill_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_fill_n) `(C++17)`
+            - 可能的实现
+            ```
+            template <class ForwardIt, class Size, class T>
+            ForwardIt 
+            uninitialized_fill_n(ForwardIt first, 
+                                 Size      count, 
+                                 const T & value)
+            {
+                typedef typename std::iterator_traits<ForwardIt>::value_type Value;
+                ForwardIt current = first;
+                
+                try 
+                {
+                    for (; count > 0; ++current, (void) --count) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value(value);
+                    }
+                    
+                    return current;
+                } 
+                catch (...) 
+                {
+                    for (; first != current; ++first) 
+                    {
+                        first->~Value();
+                    }
+                    
+                    throw;
+                }
+            }
+            ```
+            - 复制给定值`value`到始于`first`的 *未初始化内存区域* 的首`count`个元素
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+            - 返回：指向最后复制的元素后一位置元素的迭代器
+            - 复杂度：`Omega(count)`
+        - [`std::uninitialized_move`](https://en.cppreference.com/w/cpp/memory/uninitialized_move) `(C++17)`
+            - 可能的实现
+            ```
+            template <class InputIt, class ForwardIt>
+            ForwardIt 
+            uninitialized_move(InputIt   first, 
+                               InputIt   last, 
+                               ForwardIt d_first)
+            {
+                typedef typename std::iterator_traits<ForwardIt>::value_type Value;
+                ForwardIt current = d_first;
+                
+                try 
+                {
+                    for (; first != last; ++first, (void) ++current) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value(std::move(*first));
+                    }
+
+                    return current;
+                } 
+                catch (...) 
+                {
+                    for (; d_first != current; ++d_first) 
+                    {
+                        d_first->~Value();
+                    }
+                    
+                    throw;
+                }
+            }
+            ```
+            - 从范围`[first, last)` *移动* 元素到始于`d_first`的 *未初始化内存区域* 
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+            - 返回：指向最后被移动元素的后一元素的迭代器
+            - 复杂度：`Omega(last - first)`
+        - [`std::uninitialized_move_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_move_n) `(C++17)`
+            - 可能的实现
+            ```
+            template <class InputIt, class Size, class ForwardIt>
+            std::pair<InputIt, ForwardIt> 
+            uninitialized_move_n(InputIt   first, 
+                                 Size      count, 
+                                 ForwardIt d_first)
+            {
+                typedef typename std::iterator_traits<ForwardIt>::value_type Value;
+                ForwardIt current = d_first;
+                
+                try 
+                {
+                    for (; count > 0; ++first, (void) ++current, --count) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value(std::move(*first));
+                    }
+                } 
+                catch (...) 
+                {
+                    for (; d_first != current; ++d_first) 
+                    {
+                        d_first->~Value();
+                    }
+                    
+                    throw;
+                }
+                
+                return {first, current};
+            }
+            ```
+            - 从始于`first`的范围 *移动* `count`个元素到始于`d_first`的 *未初始化内存区域* 
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+            - 返回：指向源范围中最后被移动的元素后一元素的迭代器，和指向目标范围中最后移动到的元素后一元素的迭代器
+            - 复杂度：`Omega(count)`
+        - [`std::uninitialized_default_construct`](https://en.cppreference.com/w/cpp/memory/uninitialized_default_construct) `(C++17)`
+            - 可能的实现
+            ```
+            template <class ForwardIt>
+            void 
+            uninitialized_default_construct(ForwardIt first, 
+                                            ForwardIt last)
+            {
+                using Value = typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                
+                try 
+                {
+                    for (; current != last; ++current) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value;
+                    }
+                }  
+                catch (...) 
+                {
+                    std::destroy(first, current);
+                    throw;
+                }
+            }
+            ```
+            - 以 *默认初始化* 在范围`[first, last)`所指代的 *未初始化内存* 上构造`typename iterator_traits<ForwardIt>::value_type`类型对象
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+            - 复杂度：`Omega(last - first)`
+        - [`std::uninitialized_default_construct_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_default_construct_n) `(C++17)`
+            - 可能的实现
+            ```
+            template <class ForwardIt, class Size>
+            ForwardIt 
+            uninitialized_default_construct_n(ForwardIt first, 
+                                              Size      n)
+            {
+                using Value = typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                
+                try 
+                {
+                    for (; n > 0 ; (void) ++current, --n) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value;
+                    }
+                    
+                    return current;
+                }  
+                catch (...) 
+                {
+                    std::destroy(first, current);
+                    
+                    throw;
+                }
+            }
+            ```
+            - 在`first`起始的 *未初始化内存* 中以 *默认初始化* 构造`n`个`typename iterator_traits<ForwardIt>::value_type`类型对象
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+            - 返回：对象范围的结尾，即`std::next(first, n)`
+            - 复杂度：`Omega(n)`
+        - [`std::uninitialized_value_construct`](https://en.cppreference.com/w/cpp/memory/uninitialized_value_construct) `(C++17)`
+            - 可能的实现
+            ```
+            template <class ForwardIt>
+            void 
+            uninitialized_value_construct(ForwardIt first, 
+                                          ForwardIt last)
+            {
+                using Value = typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                
+                try 
+                {
+                    for (; current != last; ++current) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value();
+                    }
+                } 
+                catch (...) 
+                {
+                    std::destroy(first, current);
+                    throw;
+                }
+            }
+            ```
+            - 以 *值初始化* 在范围`[first, last)`所指代的 *未初始化内存* 上构造`typename iterator_traits<ForwardIt>::value_type`类型对象
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+            - 复杂度：`Omega(last - first)`
+        - [`std::uninitialized_value_construct_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_value_construct_n) `(C++17)`
+            - 可能的实现
+            ```
+            template <class ForwardIt, class Size>
+            ForwardIt 
+            uninitialized_value_construct_n(ForwardIt first, 
+                                            Size      n)
+            {
+                using Value = typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                
+                try 
+                {
+                    for (; n > 0 ; (void) ++current, --n) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value();
+                    }
+                    
+                    return current;
+                }  
+                catch (...)
+                {
+                    std::destroy(first, current);
+                    throw;
+                }
+            }
+            ```
+            - 在`first`起始的 *未初始化内存* 中以 *值初始化* 构造`n`个`typename iterator_traits<ForwardIt>::value_type`类型对象
+                - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+            - 返回：对象范围的结尾，即`std::next(first, n)`
+            - 复杂度：`Omega(n)`
+        - [`std::destroy_at`](https://en.cppreference.com/w/cpp/memory/destroy_at) `(C++17)`
+            - 可能的实现
+            ```
+            template <class T>
+            constexpr void 
+            destroy_at(T * p) 
+            {
+                if constexpr (std::is_array_v<T>)
+                {
+                    for (auto & elem : *p)
+                    {
+                        destroy_at(std::addressof(elem));
+                    }
+                }  
+                else
+                {
+                    p->~T(); 
+                } 
+            }
+            
+            // C++17 version
+            template <class T> 
+            void 
+            destroy_at(T * p) 
+            { 
+                p->~T(); 
+            }
+            ```
+            - 若`T`不是 *数组* 类型，则调用`p`所指向对象的析构函数，如同用`p->~T()`
+            - 若`T`是 *数组* 类型，则
+                - 程序非良构 `(until C++20)`
+                - 按顺序递归地销毁`*p`的元素，如同通过调用`std::destroy(std::begin(*p), std::end(*p))` `(since C++20)` 
+        - [`std::destroy`](https://en.cppreference.com/w/cpp/memory/destroy) `(C++17)`
+            - 可能的实现
+            ```
+            template <class ForwardIt>
+            constexpr void 
+            destroy(ForwardIt first, 
+                    ForwardIt last)
+            {
+                for (; first != last; ++first)
+                {
+                    std::destroy_at(std::addressof(*first));
+                }
+            }
+            ```
+            - 销毁范围`[first, last)`中的对象
+            - 复杂度：`Omega(last - first)`
+        - [`std::destroy_n`](https://en.cppreference.com/w/cpp/memory/destroy_n) `(C++17)`
+            - 可能的实现
+            ```
+            template <class ForwardIt, class Size>
+            constexpr ForwardIt 
+            destroy_n(ForwardIt first, 
+                      Size      n)
+            {
+                for (; n > 0; (void) ++first, --n)
+                {
+                    std::destroy_at(std::addressof(*first));
+                }
+                    
+                return first;
+            }
+            ```
+            - 销毁从`first`开始的范围中的`n`个对象
+            - 返回：已被销毁的元素的范围结尾，即`std::next(first, n)`
+            - 复杂度：`Omega(n)`
     - `std::allocator`对象分配 *未构造的内存* （unconstructed memory）
-        - 使用`a.construct(p, args)`构造对象
-        - 用完了以后要调用`a.destory(p)`来析构对象
-            - 只能对真正构造了的元素执行`destory`操作
+        - `C++17`新时代新方法
         ```
-        std::allocator<std::string> alloc;  // object that can allocate strings
-        auto const p = alloc.allocate(n);   // allocate n unconstructed strings
+        std::vector<int> vec{0, 1, 2, 3, 4, 5, 6};
+        std::allocator<int> a;
+        int * p = a.allocate(vec.size() * 3);
+        int * q = std::uninitialized_copy(vec.begin(), vec.end(), p);
+        q = std::uninitialized_fill_n(q, vec.size(), 42);
+        std::uninitialized_value_construct_n(q, vec.size());
+        std::destroy_n(p, vec.size() * 3);
+        a.deallocate(p, vec.size() * 3);
+        ```
+        - `C++11`昙花一现的用法
+            - 使用`a.construct(p, args)`构造对象
+            - 用完了以后要调用`a.destory(p)`来析构对象
+                - 只能对真正构造了的元素执行`destory`操作
+        ```
+        std::allocator<std::string> alloc;    // object that can allocate strings
+        std::string * p = alloc.allocate(n);  // allocate n unconstructed strings
         
-        auto q = p;                         // q will point to one past the last constructed element
-        alloc.construct(q++);               // *q is the empty string
-        alloc.construct(q++, 10, 'c');      // *q is cccccccccc
-        alloc.construct(q++, "hi");         // *q is hi!
+        auto q = p;                           // q will point to one past the last constructed element
+        alloc.construct(q++);                 // *q is the empty string
+        alloc.construct(q++, 10, 'c');        // *q is cccccccccc
+        alloc.construct(q++, "hi");           // *q is hi!
         
         while (q != p)
         {
-            alloc.destory(--q);             // free the strings we actually allocated
+            alloc.destory(--q);               // destory the strings we actually allocated
         }
+        
+        alloc.deallocate(p, n);               // deallocate memory
         ```
 
-### 🌱 [Chap 13] 拷贝控制
 
-- 
+
+
+
+
+### 🌱 [Chap 13] 拷贝控制（Copy Control）
+
+- *拷贝控制操作* （Copy Control）
+    - 定义一个类时，我们显式或隐式地定义在此类型的对象 *拷贝* 、 *移动* 、 *赋值* 和 *销毁* 时做什么
+    - 一个类通过 *五种* 特殊的成员函数控制这些操作
+        1. [*拷贝构造函数*](https://en.cppreference.com/w/cpp/language/copy_constructor)（copy constructor）
+            - 用同类型 *另一对象* 初始化本对象是会发生什么
+        2. [*拷贝赋值运算符*](https://en.cppreference.com/w/cpp/language/copy_assignment)（copy-assignment operator）
+            - 将一个对象赋值给同类型 *另一对象* 时会发生什么
+        3. [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor)（move constructor）
+            - 用同类型 *另一对象* 初始化本对象是会发生什么
+        4. [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)（move-assignment operator）
+            - 将一个对象赋值给同类型 *另一对象* 时会发生什么
+        5. [*析构函数*](https://en.cppreference.com/w/cpp/language/destructor)（destructor）
+            - 此类型对象销毁时会发生什么
+
+#### 拷贝、赋值与销毁
+
+- [*拷贝构造函数*](https://en.cppreference.com/w/cpp/language/copy_constructor)
+- [*拷贝赋值运算符*](https://en.cppreference.com/w/cpp/language/copy_assignment)
+- [*析构函数*](https://en.cppreference.com/w/cpp/language/destructor)
+- 三五法则
+- 使用`= default;`
+- 阻止拷贝
+
+#### 拷贝控制和资源管理
+
+- 行为像值的类
+- 定义行为像值的类
+
+#### 交换操作
+
+#### 拷贝控制示例
+
+#### 对象移动
+
+- *右值引用* （Rvalue references）
+- [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor)和[*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
+- 右值引用和成员函数
+
+
+
+
+
+
 
 
 
