@@ -6978,7 +6978,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         std::shared_ptr<int>         p3 = std::make_shared<int>(42);                     // int 42
         std::shared_ptr<std::string> p4 = std::make_shared<std::string>(10, '9');        // std::string "9999999999"
         std::shared_ptr<int>         p5 = std::make_shared<int>();                       // int 0 (value initialized)
-        auto                         p6 = std::make_shared<std::vector<std::string>>();  // 空 std::vector<std::string>
+        auto                         p6 = std::make_shared<std::vector<std::string>>();  // std::vector<std::string>
         ```
     - `p.reset()` 函数   
         - 示例1
