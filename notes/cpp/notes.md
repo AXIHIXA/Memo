@@ -1019,39 +1019,6 @@ new T                                                         (2)
 
 
 
-### 🌱 [`cv`限定](https://en.cppreference.com/w/cpp/language/cv)（`cv` (`const` and `volatile`) type qualifiers）
-
-可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性* （constness）或 *易变性* （volatility）。
-
-1. `const`对象
-    - 包含
-        - `const`限定的对象
-        - `const`对象的非`mutable`子对象
-    - **不能**修改
-        - 直接这么做是编译时错误
-        - 间接这么做（例如通过到非`const`类型的引用或指针修改`const`对象）是 *未定义行为* 
-2. `volatile`对象
-    - 包含
-        - `volatile`限定的对象
-        - `volatile`对象的子对象
-        - `const volatile`对象的`mutable`子对象
-    - 通过`volatile`限定的类型的 *泛左值表达式* 的每次访问（读或写操作、成员函数调用等）都**不能被优化掉**
-        - 即在单个执行线程内，`volatile`访问不能被优化掉，或者与另一按顺序早于或按顺序晚于该`volatile`访问的可见副作用进行重排序
-        - 这使得`volatile `对象适用于与信号处理函数之间的交流，但不适于与另一执行线程交流
-    - 试图通过非`volatile`泛左值涉指`volatile`对象（例如，通过到非`volatile`类型的引用或指针）是 *未定义行为* 
-3. `const volatile`对象
-    - 包含
-        - `const volatile`限定的对象
-        - `const volatile`对象的非`mutable`子对象
-        - `volatile`对象的`const`子对象
-        - `const`对象的非`mutable volatile`子对象
-    - 同时表现为`const`对象与`volatile`对象 
-
-
-
-
-
-
 ### 🌱 [成员访问操作符](https://en.cppreference.com/w/cpp/language/operator_member_access)（Member access operators）
 
 - 用于访问其操作数的成员，包括
@@ -1665,93 +1632,6 @@ sizeof expr   // 返回表达式 结果类型 大小
 - 对 *数组头* ，执行结果为**整个数组所占空间**的大小，等价于对数组中所有元素各自执行一次`sizeof`后再求和。`sizeof`**不会**把数组头转换为指针处理
 - 对`std::string`、`std::vector`对象，执行结果为该类型**固定部分**大小，**不会**计算对象中的元素具体占用多大空间
 
-
-
-
-
-
-### 🌱 [位域](https://en.cppreference.com/w/cpp/language/bit_field)（Bit Field）
-
-- 位域
-    - 声明具有以 *位* （bit，比特）为单位的明确大小的类数据成员
-        - 设定成员变量的 *最大宽度* 
-            - 用 *范围外的值* *赋值或初始化* 位域是 *未定义行为* 
-            - 对位域进行 *自增越过其范围* 是 *未定义行为* 
-            - *超越类型极限* 的位域仍 *只容许类型能容纳的最大值* ，剩下的空间就是 *白吃白占* 
-                - `C`语言中干脆规定位域的宽度不能超过底层类型的宽度
-        - 整个结构的实际大小
-            - `16`、`32`、`64`位的处理器一般按照`2`、`4`、`8`字节 *对齐* 
-            - 实际大小可能比位域总宽度要大
-        - *相邻* 的位域成员一般 *按定义顺序打包* ，可以 *共享跨过字节*
-            - 具体行为依赖平台的定义
-                - 在某些平台上，位域不跨过字节，其他平台上会跨过
-                - 在某些平台上，位域从左到右打包，其他为从右到左 
-    - 因为位域不必然始于一个字节的开始，故**不能**取位域的地址
-        - **不能定义** 指向位域的 *指针* 和 *非常量引用* 
-        - 从位域初始化 *常量引用* 时，将绑定到一个 *临时副本* 上
-    - 位域的类型只能是 *整型* 或 *枚举类型* 
-    - 位域**不能是** *静态数据成员* 
-    - **没有**位域 *纯右值* 。左值到右值转换始终生成位域底层类型的对象
-    - 位域 *类内初始值*
-        - `C++20`之前：**不能设置** 
-        - `C++20`开始：用提供的 *花括号或等号初始化器* 初始化
-    ```
-    struct S                              // 64 位处理器一般按 8 字节（ 64 bit ）对齐
-    {
-        unsigned char c : 16;             // 16 bit 的无符号字符位域，但仍只允许允许值 0...255
-                                          // 剩下的 8 bit 那就是白吃白占
-        
-        unsigned int b1 : 3,              // 3 bit 的无符号整数位域，允许值为 0...7
-                        : 2;              // 2 bit 的无名位域，空着 
-                        
-        unsigned int    : 0;              // 0 bit 的无名位域，空着
-                                          // 但为了钦定 b2 对齐下一个字节，实际白吃白占 3 bit 
-                   
-        unsigned int b2 : 6,              // 6 bit 的无符号整数位域，允许值为 0...63
-                     b3 : 2;              // 2 bit 的无符号整数位域，允许值为 0...3
-                                          
-                                          // 到此位域总宽度一共是 32 bit
-                                          // 但整个结构体要按 8 字节（ 64 bit ）对齐
-                                          // 所以这儿再次白吃白占 32 bit
-    };
-
-    S s;
-    std::cout << sizeof(S) << std::endl;  // 64 位处理器上会占用 8 字节（ 64 bit ）
-    s.b1 = 7;
-    ++s.b1;                               // 值 8 不适合此位域
-    std::cout << s.b1 << std::endl;       // 未定义行为，可能是 0
-    ```
-- 位域的声明
-    - 使用下列声明符的类数据成员声明（`[]`代表 *可选* ）
-        - `[identifier] [attr] : size`  
-        - `[identifier] [attr] : size brace-or-equal-initializer` `(since C++20)`  
-    - 位域的 *类型* 由声明语法的 *声明说明符序列* 引入
-        - *标识符* ：被声明的位域名
-            - 名字是可选的， *无名位域* 引入指定数量的填充位
-        - [*属性说明符序列*](https://zh.cppreference.com/w/cpp/language/attributes) ：可选的任何数量属性的序列
-        - *大小* ： *非负整型* 常量表达式
-            - 大于零时，这是位域将占有的位数
-            - *只有* *无名位域* 的大小能等于零，用于钦定自己 *后面* 的那个位域 *对齐下一个字节*
-        - *花括号或等号初始化器* ：此位域所使用的默认成员初始化器
-            - 自然，**不支持** *括号初始化器*
-        ```
-        int a;
-        const int b = 0;
-        
-        struct S 
-        {
-            // simple cases
-            // even these cases are undefined behavior before C++20
-            int x1 : 8 = 42;               // OK; "= 42" is brace-or-equal-initializer
-            int x2 : 8 { 42 };             // OK; "{ 42 }" is brace-or-equal-initializer
-            
-            // ambiguities
-            int y1 : true ? 8 : a = 42;    // OK; brace-or-equal-initializer is absent
-            int y2 : true ? 8 : b = 42;    // error: cannot assign to const int
-            int y3 : (true ? 8 : b) = 42;  // OK; "= 42" is brace-or-equal-initializer
-            int z : 1 || new int { 0 };    // OK; brace-or-equal-initializer is absent
-        };
-        ```
 
 
 
@@ -6609,44 +6489,6 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             return std::pair<std::string, int>();  // explicitly constructed return value
     }
     ```
-- [`std::tuple`](https://en.cppreference.com/w/cpp/utility/tuple)
-    - 定义于`<utility>`中，是`std::pair`的推广
-    ```
-    template <class... Types>
-    class tuple;
-    ```
-    - 生成`std::tuple`
-        - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行值初始化
-        - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值
-        - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
-        - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
-    - 访问`std::tuple` 
-        - `t1.swap(t2)`
-        - `t1 == t2`
-        - `t1 <=> t2`：字典序比较
-        - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
-            - 可以传入`std::ignore`
-        - `std::get<i>(t)`：获取`t`的第`i`个元素或元素类型为`i`的元素
-        ```
-        auto t = std::make_tuple(1, "Foo", 3.14);
-        // index-based access
-        std::cout << "(" << std::get<0>(t) << ", " << std::get<1>(t)
-                  << ", " << std::get<2>(t) << ")\n";
-                  
-        // type-based access (C++14 or later)
-        std::cout << "(" << std::get<int>(t) << ", " << std::get<const char*>(t)
-                  << ", " << std::get<double>(t) << ")\n";
-                  
-        // Note: std::tie and structured binding may also be used to decompose a tuple
-        ```
-    - 返回
-    ```
-    std::tuple<int, int, int> foo_tuple() 
-    {
-        return {0, 1, -1};  
-        return std::make_tuple(0, 1, -1);
-    }
-    ```
 
 #### 关联容器操作
 
@@ -7986,7 +7828,7 @@ std::map<std::string, int>::mapped_type v5;  // int
     - *合成析构函数* （synthesized destructor）
         - 类未定义自己的析构函数时，编译器会自动定义一个
         - 对某些类，用于阻止该类型对象被销毁（`= delete;`）
-- *三·五法则* 
+- *三·五法则* （The rule of three/five）
     - 三个基本操作可以控制类的拷贝操作
         1. 拷贝构造函数
         2. 拷贝赋值运算符
@@ -8030,7 +7872,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         ```
 - 如类有数据成员 *不能默认构造、拷贝、赋值或销毁* ，则对应的合成的拷贝控制成员是 *删除的* 
     - 合成的默认构造函数
-        - 类的某个数据成员的 *析构函数* 函数是删除的或不可访问的
+        - 类的某个数据成员的 *析构函数* 函数是删除的或不可访问的（例如是`private`的）
             - 否则，将自动搞出无法销毁的对象
         - 类的某个数据成员是`const`的，且 *没有类内初始化器* 
             - `const`必须显式初始化、不能赋值
@@ -8044,7 +7886,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         - 类的某个数据成员是`const`的
         - 类的某个数据成员是 *引用* 的
     - 合成析构函数
-        - 类的某个数据成员的 *析构函数* 是析构的或者不可访问的（例如是`private`的）
+        - 类的某个数据成员的 *析构函数* 是析构的或者不可访问的
     - => 13.6.2，15.7.2，19.6
 
 #### 拷贝控制和资源管理
@@ -8075,7 +7917,23 @@ std::map<std::string, int>::mapped_type v5;  // int
 
 ### 🌱 [Chap 14] 操作重载与类型转换
 
-- 
+#### 基本概念
+
+#### 输入与输出流运算符
+
+- 重载输出流运算符`<<`
+- 重载输入流运算符`>>`
+
+#### 算术和关系运算符
+
+- 相等运算符
+- 关系运算符
+
+#### 赋值运算符
+
+#### 下标运算符
+
+#### 
 
 
 
@@ -8084,7 +7942,34 @@ std::map<std::string, int>::mapped_type v5;  // int
 
 ### 🌱 [Chap 15] OOP
 
-- 
+#### 概述
+
+#### 继承
+
+- 基类
+- 派生类
+    - `override`
+    - `final`
+- 类型转换与继承
+
+#### 虚函数
+
+#### 虚基类
+
+#### 抽象基类
+
+#### 访问控制与继承
+
+#### 继承中的类作用域
+
+#### 构造函数与拷贝控制
+
+- 虚析构函数
+- 合成拷贝控制与继承
+- 派生类的拷贝控制成员
+- 继承的构造函数
+
+#### 容器与继承
 
 
 
@@ -8093,7 +7978,34 @@ std::map<std::string, int>::mapped_type v5;  // int
 
 ### 🌱 [Chap 16] 模板与泛型编程
 
-- 
+#### 定义模板
+
+- 函数模板
+- 类模板
+- 模板参数
+- 成员模板
+- 控制实例化
+- 效率与灵活性
+
+#### 模板实参推断
+
+- 类型转换与模板类型参数
+- 函数模板显式实参
+- 尾置返回类型与类型转换
+- 函数指针与实参推断
+- 模板实参推断与引用
+- [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
+- 转发
+
+#### 重载与模板
+
+#### 可变参数模板
+
+- 编写可变参数模板
+- 包扩展
+- 转发参数包
+
+#### 模板特例化
 
 
 
@@ -8102,7 +8014,70 @@ std::map<std::string, int>::mapped_type v5;  // int
 
 ### 🌱 [Chap 17] 标准库特殊设施
 
-- 
+#### [`std::tuple`](https://en.cppreference.com/w/cpp/utility/tuple)
+
+- 定义于`<utility>`中，是`std::pair`的推广
+```
+template <class... Types>
+class tuple;
+```
+- 生成`std::tuple`
+    - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行值初始化
+    - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值
+    - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
+    - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
+- 访问`std::tuple` 
+    - `t1.swap(t2)`
+    - `t1 == t2`
+    - `t1 <=> t2`：字典序比较
+    - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
+        - 可以传入`std::ignore`
+    - `std::get<i>(t)`：获取`t`的第`i`个元素或元素类型为`i`的元素
+    ```
+    auto t = std::make_tuple(1, "Foo", 3.14);
+    // index-based access
+    std::cout << "(" << std::get<0>(t) << ", " << std::get<1>(t)
+              << ", " << std::get<2>(t) << ")\n";
+              
+    // type-based access (C++14 or later)
+    std::cout << "(" << std::get<int>(t) << ", " << std::get<const char*>(t)
+              << ", " << std::get<double>(t) << ")\n";
+              
+    // Note: std::tie and structured binding may also be used to decompose a tuple
+    ```
+- 返回
+```
+std::tuple<int, int, int> foo_tuple() 
+{
+    return {0, 1, -1};  
+    return std::make_tuple(0, 1, -1);
+}
+```
+
+#### [`std::bitset`](https://en.cppreference.com/w/cpp/utility/bitset)
+
+- 定义和初始化
+- 操作
+
+#### [正则表达式](https://en.cppreference.com/w/cpp/regex)
+
+- 使用
+- 匹配
+- [`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
+- 子表达式
+- `regex_replace`
+
+#### [伪随机数](https://en.cppreference.com/w/cpp/numeric/random)
+
+- 随机数引擎和分布
+- 其他随机数分布
+- `bernoulli_distribution`类
+
+#### `I/O`库再探
+
+- 格式化`I/O`
+- 未格式化的`I/O`操作
+- 流随机访问
 
 
 
@@ -8111,28 +8086,61 @@ std::map<std::string, int>::mapped_type v5;  // int
 
 ### 🌱 [Chap 18] 用于大型工程的工具
 
+#### [属性说明符](https://en.cppreference.com/w/cpp/language/attributes)（attribute specifier）
+
+- 为类型、对象、代码等引入由实现定义的 *属性* 
+```
+[[noreturn]]
+
+[[nodiscard]]                   (since C++17)
+[[nodiscard(string_literal)]]   (since C++20)
+
+[[deprecated]]	                (since C++14)
+[[deprecated(string-literal)]]  (since C++14)
+```
+
 #### 异常处理
 
 - `C++`标准异常
-    - `<exception>`
-        - `std::exception`：只报告异常的发生，不提供任何额外信息。 *只能* *默认初始化* ，**不能**传参
-    - `<stdexcept>`
-        - `std::runtime_error`：所有运行错误
-            - `std::range_error`：运行错误，生成的结果超出了有意义的值域范围
-            - `std::overflow_error`：运行错误，计算溢出
-            - `std::underflow_error`：运行错误，计算溢出
-        - `std::logic_error`：所有逻辑错误
-            - `std::domain_error`：逻辑错误，参数对应的结果值不存在
-            - `std::invalid_argument`：逻辑错误，无效参数
-            - `std::length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
-            - `std::out_of_range`：逻辑错误，使用了一个超出有效范围的值
-    - `<new>`
-        - `std::bad_alloc`异常类。 *只能* *默认初始化* ，**不能**传参 => 12.1.2
-    - `<typeinfo>`
-        - `std::bad_cast`异常类 => 19.2
-- 以上异常除特别说明的，都 *必须* 传参（`C`风格字符串）
-- 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
-  如果此异常传入了初始参数，则返回之；否则返回值由编译器决定。
+    - 异常类层次
+        - `<exception>`
+            - `std::exception`：只报告异常的发生，不提供任何额外信息。 *只能* *默认初始化* ，**不能**传参
+        - `<stdexcept>`
+            - `std::runtime_error`：所有运行错误
+                - `std::range_error`：运行错误，生成的结果超出了有意义的值域范围
+                - `std::overflow_error`：运行错误，计算溢出
+                - `std::underflow_error`：运行错误，计算溢出
+            - `std::logic_error`：所有逻辑错误
+                - `std::domain_error`：逻辑错误，参数对应的结果值不存在
+                - `std::invalid_argument`：逻辑错误，无效参数
+                - `std::length_error`：逻辑错误，试图创建一个超出该类型最大长度的对象
+                - `std::out_of_range`：逻辑错误，使用了一个超出有效范围的值
+        - `<new>`
+            - `std::bad_alloc`异常类。 *只能* *默认初始化* ，**不能**传参 => 12.1.2
+        - `<typeinfo>`
+            - `std::bad_cast`异常类 => 19.2
+    - 以上异常除特别说明的，都 *必须* 传参（`C`风格字符串）
+    - 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
+      如果此异常传入了初始参数，则返回之；否则返回值由编译器决定
+- 抛出异常
+- 捕获异常
+- 函数`try`语句块与构造函数
+- `noexcept`异常说明
+
+#### 命名空间
+
+- 命名空间定义
+- 使用命名空间成员
+- 类、命名空间与作用域
+- 重载与命名空间
+
+#### 多重继承与虚继承
+
+- 多重继承
+- 类型转换与多个基类
+- 多重继承下的类作用域
+- 虚继承
+- 构造函数与虚继承
 
 
 
@@ -8141,31 +8149,143 @@ std::map<std::string, int>::mapped_type v5;  // int
 
 ### 🌱 [Chap 19] 特殊工具与技术
 
-- 
+#### 控制内存分配
 
+- 重载`new`和`delete`
+- 定位`new`表达式
 
+#### 运行时类型识别
 
+- `dynamic_cast`运算符
+- `typeid`运算符
+- `RTTI`
+- `type_info`类
 
+#### 枚举类型
 
+#### 类成员指针
 
+- 数据成员指针
+- 成员函数指针
+- 将成员函数用作可调用对象
 
+#### 嵌套类
 
+#### `union`
 
+#### 局部类
 
+#### [位域](https://en.cppreference.com/w/cpp/language/bit_field)（Bit Field）
 
+- 位域
+    - 声明具有以 *位* （bit，比特）为单位的明确大小的类数据成员
+        - 设定成员变量的 *最大宽度* 
+            - 用 *范围外的值* *赋值或初始化* 位域是 *未定义行为* 
+            - 对位域进行 *自增越过其范围* 是 *未定义行为* 
+            - *超越类型极限* 的位域仍 *只容许类型能容纳的最大值* ，剩下的空间就是 *白吃白占* 
+                - `C`语言中干脆规定位域的宽度不能超过底层类型的宽度
+        - 整个结构的实际大小
+            - `16`、`32`、`64`位的处理器一般按照`2`、`4`、`8`字节 *对齐* 
+            - 实际大小可能比位域总宽度要大
+        - *相邻* 的位域成员一般 *按定义顺序打包* ，可以 *共享跨过字节*
+            - 具体行为依赖平台的定义
+                - 在某些平台上，位域不跨过字节，其他平台上会跨过
+                - 在某些平台上，位域从左到右打包，其他为从右到左 
+    - 因为位域不必然始于一个字节的开始，故**不能**取位域的地址
+        - **不能定义** 指向位域的 *指针* 和 *非常量引用* 
+        - 从位域初始化 *常量引用* 时，将绑定到一个 *临时副本* 上
+    - 位域的类型只能是 *整型* 或 *枚举类型* 
+    - 位域**不能是** *静态数据成员* 
+    - **没有**位域 *纯右值* 。左值到右值转换始终生成位域底层类型的对象
+    - 位域 *类内初始值*
+        - `C++20`之前：**不能设置** 
+        - `C++20`开始：用提供的 *花括号或等号初始化器* 初始化
+    ```
+    struct S                              // 64 位处理器一般按 8 字节（ 64 bit ）对齐
+    {
+        unsigned char c : 16;             // 16 bit 的无符号字符位域，但仍只允许允许值 0...255
+                                          // 剩下的 8 bit 那就是白吃白占
+        
+        unsigned int b1 : 3,              // 3 bit 的无符号整数位域，允许值为 0...7
+                        : 2;              // 2 bit 的无名位域，空着 
+                        
+        unsigned int    : 0;              // 0 bit 的无名位域，空着
+                                          // 但为了钦定 b2 对齐下一个字节，实际白吃白占 3 bit 
+                   
+        unsigned int b2 : 6,              // 6 bit 的无符号整数位域，允许值为 0...63
+                     b3 : 2;              // 2 bit 的无符号整数位域，允许值为 0...3
+                                          
+                                          // 到此位域总宽度一共是 32 bit
+                                          // 但整个结构体要按 8 字节（ 64 bit ）对齐
+                                          // 所以这儿再次白吃白占 32 bit
+    };
 
-    
+    S s;
+    std::cout << sizeof(S) << std::endl;  // 64 位处理器上会占用 8 字节（ 64 bit ）
+    s.b1 = 7;
+    ++s.b1;                               // 值 8 不适合此位域
+    std::cout << s.b1 << std::endl;       // 未定义行为，可能是 0
+    ```
+- 位域的声明
+    - 使用下列声明符的类数据成员声明（`[]`代表 *可选* ）
+        - `[identifier] [attr] : size`  
+        - `[identifier] [attr] : size brace-or-equal-initializer` `(since C++20)`  
+    - 位域的 *类型* 由声明语法的 *声明说明符序列* 引入
+        - *标识符* ：被声明的位域名
+            - 名字是可选的， *无名位域* 引入指定数量的填充位
+        - [*属性说明符序列*](https://zh.cppreference.com/w/cpp/language/attributes) ：可选的任何数量属性的序列
+        - *大小* ： *非负整型* 常量表达式
+            - 大于零时，这是位域将占有的位数
+            - *只有* *无名位域* 的大小能等于零，用于钦定自己 *后面* 的那个位域 *对齐下一个字节*
+        - *花括号或等号初始化器* ：此位域所使用的默认成员初始化器
+            - 自然，**不支持** *括号初始化器*
+        ```
+        int a;
+        const int b = 0;
+        
+        struct S 
+        {
+            // simple cases
+            // even these cases are undefined behavior before C++20
+            int x1 : 8 = 42;               // OK; "= 42" is brace-or-equal-initializer
+            int x2 : 8 { 42 };             // OK; "{ 42 }" is brace-or-equal-initializer
+            
+            // ambiguities
+            int y1 : true ? 8 : a = 42;    // OK; brace-or-equal-initializer is absent
+            int y2 : true ? 8 : b = 42;    // error: cannot assign to const int
+            int y3 : (true ? 8 : b) = 42;  // OK; "= 42" is brace-or-equal-initializer
+            int z : 1 || new int { 0 };    // OK; brace-or-equal-initializer is absent
+        };
+        ```
 
+#### [`cv`限定](https://en.cppreference.com/w/cpp/language/cv)（`cv` type qualifiers）
 
+- 可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性* （constness）或 *易变性* （volatility）。
+    1. `const`对象
+        - 包含
+            - `const`限定的对象
+            - `const`对象的非`mutable`子对象
+        - **不能**修改
+            - 直接这么做是编译时错误
+            - 间接这么做（例如通过到非`const`类型的引用或指针修改`const`对象）是 *未定义行为* 
+    2. `volatile`对象
+        - 包含
+            - `volatile`限定的对象
+            - `volatile`对象的子对象
+            - `const volatile`对象的`mutable`子对象
+        - 通过`volatile`限定的类型的 *泛左值表达式* 的每次访问（读或写操作、成员函数调用等）都**不能被优化掉**
+            - 即在单个执行线程内，`volatile`访问不能被优化掉，或者与另一按顺序早于或按顺序晚于该`volatile`访问的可见副作用进行重排序
+            - 这使得`volatile `对象适用于与信号处理函数之间的交流，但不适于与另一执行线程交流
+        - 试图通过非`volatile`泛左值涉指`volatile`对象（例如，通过到非`volatile`类型的引用或指针）是 *未定义行为* 
+    3. `const volatile`对象
+        - 包含
+            - `const volatile`限定的对象
+            - `const volatile`对象的非`mutable`子对象
+            - `volatile`对象的`const`子对象
+            - `const`对象的非`mutable volatile`子对象
+        - 同时表现为`const`对象与`volatile`对象 
 
-
-
-
-
-
-
-
-
+#### 链接指示`extern "C"`
 
 
 
