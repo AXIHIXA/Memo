@@ -9,6 +9,7 @@
 - 基于`C++11`的内容提示，例如`(since C++11)`，一般不再明确标注
 - `(until C++11)`、即`C++11`中已经移除的内容，不予收录
 - 这玩意收录好多[`cppreference`](https://en.cppreference.com)上的内容，该部分内容是打算当字典看的，总体来讲似乎比`C++ Primer`还不适合初学者看了
+- `C++`标准库泛型算法速查：[`Algorithms library - cppreference.com`](https://en.cppreference.com/w/cpp/algorithm)
 
 
 
@@ -7370,20 +7371,108 @@ std::map<std::string, int>::mapped_type v5;  // int
     - 标准库`std::allocator`类定义于`<memory>`中
         - 将 *内存分配* 和 *对象构造* 分离开
         - `std::allocator`是一个 *模板* ，定义时需指明将分配的对象类型
-        - `std::allocotor<T>`的 *对象* 分配 *未初始化内存* 时，它将根据`T`的类型确定 *内存大小* 和 *对齐位置*
+        - `std::allocotor<T>`的 *对象* 分配 *未构造的内存* 时，它将根据`T`的类型确定 *内存大小* 和 *对齐位置*
         ```
         std::allocator<std::string> alloc;  // object that can allocate strings
         auto const p = alloc.allocate(n);   // allocate n unconstructed strings
         ```
-    - `std::allocator`类及算法
-        - `std::allocator<T> a`：定义一个`std::allocator<T>`类型对象`a`，用于为`T`类型对象分配 *未初始化内存*
-        - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未初始化内存* ，返回`T *`
+    - 标准库`std::allocator`类
+        - `std::allocator<T> a`：定义一个`std::allocator<T>`类型对象`a`，用于为`T`类型对象分配 *未构造的内存*
+        - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`
         - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。`p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。调用`a.deallocate(p, n)`之前，用户必须对在这块内存中的每个对象调用`a.destroy(p)`
         - `a.construct(p, args)`：`p`必须是类型为`T *`的指针，指向一块原始内存；`arg`被传递给`T`的构造函数，用来在`p`指向的内存中构造一个对象`(deprecated in C++17)(removed in C++20)`
         - `a.destory(p)`：`p`为`T *`类型指针，此算法对`p`指向的对象执行析构函数`(deprecated in C++17)(removed in C++20)`
-
-
-
+    - 标准库 *未初始化内存* 算法
+        - [`std::uninitialized_copy`](https://en.cppreference.com/w/cpp/memory/uninitialized_copy)
+            - 可能的实现
+            ```
+            template <class InputIt, class ForwardIt>
+            ForwardIt 
+            uninitialized_copy(InputIt   first, 
+                               InputIt   last, 
+                               ForwardIt d_first)
+            {
+                typedef typename std::iterator_traits<ForwardIt>::value_type Value;
+                ForwardIt current = d_first;
+                
+                try 
+                {
+                    for (; first != last; ++first, (void) ++current) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value(*first);
+                    }
+                } 
+                catch (...) 
+                {
+                    for (; d_first != current; ++d_first) 
+                    {
+                        d_first->~Value();
+                    }
+                    
+                    throw;
+                }
+                
+                return current;
+            }
+            ```
+            - 复制来自范围`[first, last)`的元素到始于`d_first`的 *未初始化内存* 
+            - 返回：指向最后复制的元素后一元素的迭代器
+            - 复杂度：`Omega(last - first)`
+        - [`std::uninitialized_copy_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_copy_n)
+            - 可能的实现
+            ```
+            template <class InputIt, class Size, class ForwardIt>
+            ForwardIt 
+            uninitialized_copy_n(InputIt   first, 
+                                 Size      count, 
+                                 ForwardIt d_first)
+            {
+                typedef typename std::iterator_traits<ForwardIt>::value_type Value;
+                ForwardIt current = d_first;
+                
+                try 
+                {
+                    for (; count > 0; ++first, (void) ++current, --count) 
+                    {
+                        ::new (static_cast<void*>(std::addressof(*current))) Value(*first);
+                    }
+                } 
+                catch (...) 
+                {
+                    for (; d_first != current; ++d_first) 
+                    {
+                        d_first->~Value();
+                    }
+                    
+                    throw;
+                }
+                
+                return current;
+            }
+            ```
+            - 从始于`first`的范围复制`count`个元素到始于`d_first`的 *未初始化内存* 
+            - 返回：指向最后复制的元素后一元素的迭代器
+            - 复杂度：`Omega(count)`
+        - [`std::uninitialized_fill`](https://en.cppreference.com/w/cpp/memory/uninitialized_fill)
+        - [`std::uninitialized_fill_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_fill_n)
+    - `std::allocator`对象分配 *未构造的内存* （unconstructed memory）
+        - 使用`a.construct(p, args)`构造对象
+        - 用完了以后要调用`a.destory(p)`来析构对象
+            - 只能对真正构造了的元素执行`destory`操作
+        ```
+        std::allocator<std::string> alloc;  // object that can allocate strings
+        auto const p = alloc.allocate(n);   // allocate n unconstructed strings
+        
+        auto q = p;                         // q will point to one past the last constructed element
+        alloc.construct(q++);               // *q is the empty string
+        alloc.construct(q++, 10, 'c');      // *q is cccccccccc
+        alloc.construct(q++, "hi");         // *q is hi!
+        
+        while (q != p)
+        {
+            alloc.destory(--q);             // free the strings we actually allocated
+        }
+        ```
 
 ### 🌱 [Chap 13] 拷贝控制
 
