@@ -21,6 +21,7 @@
 - 常见规则
     - 先声明（或定义）再使用。 *第一次实际使用前* 再声明（定义）
     - **严禁**混用有符号类型和无符号类型（比如：该用`size_t`就用，别啥玩意都整成`int`）
+    - 下标遍历型`for`循环的唯一指定写法：`for (size_t i = 0; i != 10; ++i) {}`， *括号内声明* `i`、`size_t`，`!=`和`++i`这四条你要细品
     - 整数和浮点数字面值的 *后缀* 一律使用 *大写* 版本，避免`l`和`1`混淆
     - 如果函数有可能用到某个全局变量，则**不宜**再定义同名的局部变量
     - `const`常量不论是声明还是定义都添加`extern`修饰符
@@ -58,6 +59,11 @@
         4. 使用智能指针的`get()`返回的内置指针时，记住当最后一个对应的智能指针被销毁后，这个内置指针就 *无效* 了
         5. 使用内置指针管理的资源而不是`new`出来的内存时，记住传递给它一个 *删除器*
     - 大多数应用都应该使用 *标准库容器* 而**不是**动态分配的数组。使用容器更为简单，更不容易出现内存管理错误，并且可能有更好的性能
+    - 拷贝赋值运算符的要求
+        - 赋值运算符应该返回一个指向其左侧运算对象的 *引用* 
+        - 必须正确处理 *自赋值* （ *拷贝并交换赋值运算符* 则自动能处理自赋值）
+        - 大多数拷贝赋值运算符组合了 *析构函数* 和 *拷贝构造函数* 二者的工作
+            - 公共的工作应放到 *私有的工具函数* 中完成
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -1679,7 +1685,7 @@ sizeof expr   // 返回表达式 结果类型 大小
         7. *临时量实质化* 后，任何指代 *临时对象* 的表达式 `(since C++17)`
     - 性质
         1. 与 *泛左值* 相同（见下文）
-            - 特别是， *将亡值* 可以是 *多态* 的，而且 *非类* 的亡值可以有`cv`限定
+            - 特别是， *将亡值* 可以是 *多态* 的，而且 *非类* 的 *将亡值* 可以有`cv`限定
         2. 与 *右值* 相同（见下文）
             - 特别是， *将亡值* 可以绑定到 *右值引用* 上 
 - *纯右值* `prvalue`（pure rvalue）
@@ -1715,7 +1721,7 @@ sizeof expr   // 返回表达式 结果类型 大小
 #### 生活中常见的两类复合值类别
 
 - *泛左值* `glvalue`（generalized lvalue）
-    - 包括
+    - 哪些值类别是 *泛左值* 
         1. *左值* 
         2. *将亡值* 
     - 性质
@@ -1728,14 +1734,14 @@ sizeof expr   // 返回表达式 结果类型 大小
         3. 可以具有 *不完整类型* 
             - 前提是该表达式中容许
     - 一个奇葩
-        - 位域（Bit fields）
+        - *位域* （Bit fields）
             - 代表 *位域* 的表达式（例如`a.m`，其中`a`是类型`struct A { int m: 3; }`的 *左值* ）是 *泛左值* 
             - 可用作 *赋值运算符的左操作数* 
             - **不能** *取地址* 
                 - **不能**绑定于 *非常量左值引用* 上
                 - *常量左值引用* 或 *右值引用* 可以从位域泛左值初始化，但不会直接绑定到位域，而是绑定到一个 *临时副本* 上
 - *右值* `rvalue`（rvalue，如此称呼的历史原因是，右值可以出现于赋值表达式的右边）
-    - 包括
+    - 哪些值类别是 *右值* 
         1. *将亡值* 
         2. *纯右值* 
     - 性质
@@ -4591,14 +4597,22 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     template <class T>
     void 
     swap(T & a, 
-         T & b);
+         T & b)
+    {
+        T tmp = std::move(a);
+        a = std::moveE(b);
+        b = std::move(tmp);
+    }
 
     template <class T2, std::size_t N>
     void 
     swap(T2 (&a)[N], 
-         T2 (&b)[N]);
+         T2 (&b)[N])
+    {
+        std::swap_ranges(a, a + N, b);
+    }
     ```
-    - *互换* 类或数组的内容。数组版实际调用`std::swap_ranges(a, a + N, b);`
+    - *互换* 类或数组的内容
     - 返回：`void`
     - 复杂度：类版`O(1)`，数组版`O(N)`
 - [`std::swap_ranges`](https://en.cppreference.com/w/cpp/algorithm/swap_ranges)
@@ -6759,10 +6773,11 @@ std::map<std::string, int>::mapped_type v5;  // int
         - 内存耗尽
             - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
             - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
+                - 定位`new`本质作用是在指定地点`new`个东西出来，配合`std::allocator<T>`用的
         ```
         // if allocation fails, new returns a null pointer
         int * p1 = new int;            // if allocation fails, new throws std::bad_alloc
-        int * p2 = new (nothrow) int;  // if allocation fails, new returns a null pointer
+        int * p2 = new (std::nothrow) int;  // if allocation fails, new returns a null pointer
         ```
     - 动态释放内存：[`delete`表达式](https://en.cppreference.com/w/cpp/language/delete)
         - 传递给`delete`的指针必须是 *指向被动态分配的对象* 的指针或者 *空指针* 
@@ -7272,6 +7287,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `std::allocator<T> a`：定义一个`std::allocator<T>`类型对象`a`，用于为`T`类型对象分配 *未构造的内存*
         - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`
         - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。`p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。调用`a.deallocate(p, n)`之前，这块内存中的对象必须已经被析构
+        - 初始化： *定位* `new` => 19.1.2
         - 下面俩货已经被新时代抛弃了，就当他们不存在
             - `a.construct(p, args)`：`p`必须是类型为`T *`的指针，指向一块原始内存；`arg`被传递给`T`的构造函数，用来在`p`指向的内存中构造一个对象`(deprecated in C++17)(removed in C++20)`
             - `a.destory(p)`：`p`为`T *`类型指针，此算法对`p`指向的对象执行析构函数`(deprecated in C++17)(removed in C++20)`
@@ -7794,8 +7810,9 @@ std::map<std::string, int>::mapped_type v5;  // int
 - [*拷贝赋值运算符*](https://en.cppreference.com/w/cpp/language/copy_assignment)
     - 要求
         - 赋值运算符应该返回一个指向其左侧运算对象的 *引用* 
-        - 必须正确处理 *自赋值*
+        - 必须正确处理 *自赋值* （ *拷贝并交换赋值运算符* 则自动能处理自赋值）
         - 大多数拷贝赋值运算符组合了 *析构函数* 和 *拷贝构造函数* 二者的工作
+            - 公共的工作应放到 *私有的工具函数* 中完成
     - *合成拷贝赋值运算符* （Synthesized Copy-Assignment Operator）
         - 如果没有定义拷贝赋值运算符，编译器会自动定义一个
         - 对某些类，用于阻止拷贝该类型对象（`= delete;`）
@@ -7902,9 +7919,6 @@ std::map<std::string, int>::mapped_type v5;  // int
         1. 定义 *拷贝构造函数* ，完成`std::string`的拷贝，而不是拷贝指针
         2. 定义 *析构函数* 来释放`std::string`
         3. 定义 *拷贝赋值运算符* 来释放当前的`std::string`，并从右侧运算对象拷贝`std::string`
-            - 赋值运算符应该返回一个指向其左侧运算对象的 *引用* 
-            - 必须正确处理 *自赋值*
-            - 大多数拷贝赋值运算符组合了 *析构函数* 和 *拷贝构造函数* 二者的工作
     ```
     struct Entry
     {
@@ -7934,8 +7948,8 @@ std::map<std::string, int>::mapped_type v5;  // int
             return *this;
         }
 
-        int i;
-        std::string * ps;
+        int i;                                  // key
+        std::string * ps;                       // value
     };
     ```
 - *浅拷贝* 
@@ -7993,25 +8007,99 @@ std::map<std::string, int>::mapped_type v5;  // int
         }
 
     private:
-        int i;
-        std::string * ps;
-        std::size_t * useCount;
+        int i;                   // if only for preformance, trivial types don't have to be shared
+        std::string * ps;        // share this std::string (as an example of some huge data type)
+        std::size_t * useCount;  // how many instances are sharing *ps
     };
     ```
 
-
-
-
-
-
 #### 交换操作
 
-#### 拷贝控制示例
+- `std::swap`会产生三次 *移动* 赋值，例如`g++`的实现可以约等价为
+```
+template <class T>
+void
+swap(T & a, T & b)
+{
+    T tmp = std::move(a);
+    a = std::moveE(b);
+    b = std::move(tmp);
+}
+```
+- 这些移动赋值虽说比拷贝赋值强多了，有时仍旧是不必要的
+    - 例如交换前面的 *浅复制型* `Entry`类，`swap`就没必要交换`ps`和`useCount`，实际只需要
+        - `ps`和`useCount`两边压根就是共享的，为嘛闲的没事换那俩指针玩儿
+```
+class Entry
+{
+    friend void swap(Entry &, Entry &);  // this is just declaration! still need a definition outside
+    // other members remain the same
+};
+
+inline void swap(Entry & lhs, Entry & rhs)
+{
+    swap(lhs.i, rhs.i);                  // swap the int members
+}
+```
+- 接受类参数的`swap`函数应当调用类成员自己的`swap`，而**不是**`std::swap`
+```
+void swap(Foo & lhs, Foo & rhs)
+{
+    // WRONG: this function uses the library version of swap, not the HasPtr version
+    std::swap(lhs.h, rhs.h);
+    // swap other members of type Foo
+}
+
+void swap(Foo & lhs, Foo & rhs)
+{
+    using std::swap;
+    swap(lhs.h, rhs.h);  // uses the HasPtr version of swap
+    // swap other members of type Foo
+}
+```
+- *拷贝并交换赋值运算符*
+    - 接受普通形参而不是常引用
+    - 天然就是异常安全的，且能正确处理自赋值
+```
+// note rhs is passed by value, which means the Entry copy constructor
+// copies the string in the right-hand operand into rhs
+Entry & operator=(Entry rhs)
+{
+    // swap the contents of the left-hand operand with the local variable rhs
+    swap(*this, rhs);  // rhs now points to the memory this object had used
+    return *this;      // rhs is destroyed, which deletes the pointer in rhs
+}
+```
 
 #### 对象移动
 
-- *右值引用* （Rvalue references）
-- [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor) 和 [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
+- 移动对象
+    - 提升性能
+    - 某些对象不能拷贝，例如 *流对象* ，`std::unique_ptr`等
+        - 标准库容器、`std::string`和`std::shared_ptr`既支持拷贝又支持移动
+        - `I/O`类和`std::unique_ptr`可以移动但不能拷贝
+- *右值引用* （rvalue references）
+    - *必须* 绑定到 *右值* （包括 *纯右值* 、 *将亡值* ，都是没有用户、即将被销毁的）的引用
+        - 复习一下 *右值* 的性质
+            1. 不能取地址
+            2. 不能赋值
+            3. 不能初始化非常量左值引用
+            4. 可以初始化右值引用或常量左值引用
+    - 通过`&&`来获得
+    - 可以自由地将一个右值的资源 *移动* ，或者说， *窃取* 到别处去
+        - 反正没人要，不拿白不拿
+        - 变量是 *左值* ，因此不能直接绑定 *右值引用* ，即使这个变量自己也是 *右值引用* 类型也不行
+            - 搞不懂这句话的人都是把 *（值的）类型* （type）和 *值类别* （value category）这俩货给搞混了
+    ```
+    int i = 42;
+    int & r = i;              // ok: r refers to i
+    int && rr = i;            // error: cannot bind an rvalue reference to an lvalue
+    int & r2 = i * 42;        // error: i * 42 is an rvalue
+    const int & r3 = i * 42;  // ok: we can bind a reference to const to an rvalue
+    int && rr2 = i * 42;      // ok: bind rr2 to the result of the multiplication
+    ```
+- [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor)
+- [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
 - 右值引用和成员函数
 
 
@@ -8266,12 +8354,13 @@ std::tuple<int, int, int> foo_tuple()
 - 重载`new`和`delete`
 - 定位`new`表达式
 
-#### 运行时类型识别
+#### [运行时类型识别](https://en.cppreference.com/w/cpp/types)
 
 - `dynamic_cast`运算符
 - `typeid`运算符
 - `RTTI`
-- `type_info`类
+- [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info)
+- [`<type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)支持更多运行时类型识别
 
 #### 枚举类型
 
