@@ -88,8 +88,6 @@
     - 普通迭代器指向的元素和用它转换成的反向迭代器指向的**不是**相同元素，而是相邻元素；反之亦然
     - 标准库中使用的顺序一般默认是 *非降序* ，二元比较谓词一般等价于`<`
     - `std::sort`如何使用谓词：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
-    - 如果一个类需要自定义 *析构函数* ，那么它几乎肯定也需要自定义 *拷贝构造函数* 和 *拷贝赋值运算符* 
-    - 如果一个类需要自定义 *拷贝构造函数* ，那么它几乎肯定也需要自定义  和 *拷贝赋值运算符* ，反之亦然
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
@@ -7794,7 +7792,10 @@ std::map<std::string, int>::mapped_type v5;  // int
         std::string nullBook("9-999-99999-9");   // compiler omits the copy constructor
         ```
 - [*拷贝赋值运算符*](https://en.cppreference.com/w/cpp/language/copy_assignment)
-    - 赋值运算符应该返回一个指向其左侧运算对象的 *引用* 
+    - 要求
+        - 赋值运算符应该返回一个指向其左侧运算对象的 *引用* 
+        - 必须正确处理 *自赋值*
+        - 大多数拷贝赋值运算符组合了 *析构函数* 和 *拷贝构造函数* 二者的工作
     - *合成拷贝赋值运算符* （Synthesized Copy-Assignment Operator）
         - 如果没有定义拷贝赋值运算符，编译器会自动定义一个
         - 对某些类，用于阻止拷贝该类型对象（`= delete;`）
@@ -7901,7 +7902,9 @@ std::map<std::string, int>::mapped_type v5;  // int
         1. 定义 *拷贝构造函数* ，完成`std::string`的拷贝，而不是拷贝指针
         2. 定义 *析构函数* 来释放`std::string`
         3. 定义 *拷贝赋值运算符* 来释放当前的`std::string`，并从右侧运算对象拷贝`std::string`
+            - 赋值运算符应该返回一个指向其左侧运算对象的 *引用* 
             - 必须正确处理 *自赋值*
+            - 大多数拷贝赋值运算符组合了 *析构函数* 和 *拷贝构造函数* 二者的工作
     ```
     struct Entry
     {
@@ -7938,6 +7941,68 @@ std::map<std::string, int>::mapped_type v5;  // int
 - *浅拷贝* 
     - 拷贝语义：拷贝副本和原对象 *共享* 底层数据。改变一个，另一个也会随之改变
     - 行为像 *指针* ，例如：`std::shared_ptr<T>`
+    - 析构函数不能简单地直接释放内存，而要使用 *引用计数*
+        - 引用计数器可以保存到动态内存中，拷贝时直接拷贝指向引用计数的指针即可
+        - 工作守则
+            1. 除了初始化对象外，每个构造函数（拷贝构造函数除外）还要创建一个引用计数，用于记录有多少对象与正在创建的对象共享底层数据。当创建第一个对象时，引用计数初始化为`1`
+            2. 拷贝构造函数不分配新的计数器，而是拷贝包括计数器在内的给定对象的数据成员。拷贝构造函数递增共享的计数器，指出给定对象的底层数据又被一个新用户所共享
+            3. 析构函数递减计数器，指出共享数据的用户又少了一个。如果计数器变为`0`，则析构函数释放底层数据
+            4. 拷贝赋值运算符递增右侧运算对象的计数器，递减左侧运算对象的计数器。如果左侧运算对象的计数器变为`0`，则销毁其底层数据
+    ```
+    class Entry
+    {
+    public:
+        explicit Entry(const int & _i = 0, const std::string & s = std::string()) :
+                i(_i), ps(new std::string(s)), useCount(new std::size_t(1))
+        {
+        }
+
+        Entry(const Entry & p) :
+                ps(p.ps), i(p.i), useCount(p.useCount)
+        {
+            ++*useCount;
+        }
+
+        ~Entry()
+        {
+            if (--*useCount == 0)
+            {
+                delete ps;
+                delete useCount;
+            }
+        }
+
+        Entry & operator=(const Entry & rhs)
+        {
+            if (this != &rhs)
+            {
+                ++*rhs.useCount;
+
+                if (--*useCount == 0)
+                {
+                    delete ps;
+                    delete useCount;
+                }
+
+                i = rhs.i;
+                ps = rhs.ps;
+                useCount = rhs.useCount;
+            }
+
+            return *this;
+        }
+
+    private:
+        int i;
+        std::string * ps;
+        std::size_t * useCount;
+    };
+    ```
+
+
+
+
+
 
 #### 交换操作
 
