@@ -6588,6 +6588,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - `p1 rel_op p2`： *关系运算符* `<`，`>`，`<=`，`>=`，按 *字典序* 定义
         - `p1 == p2`
         - `p1 != p2`
+        - `p1.swap(p2)`
     - 返回`std::pair`
     ```
     std::pair <string, int> process(std::vector<std::string> & v)
@@ -6596,6 +6597,44 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             return {v.back(), v.back().size()};    // list initialize
         else
             return std::pair<std::string, int>();  // explicitly constructed return value
+    }
+    ```
+- [`std::tuple`](https://en.cppreference.com/w/cpp/utility/tuple)
+    - 定义于`<utility>`中，是`std::pair`的推广
+    ```
+    template <class... Types>
+    class tuple;
+    ```
+    - 生成`std::tuple`
+        - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行值初始化
+        - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值
+        - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
+        - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
+    - 访问`std::tuple` 
+        - `t1.swap(t2)`
+        - `t1 == t2`
+        - `t1 <=> t2`：字典序比较
+        - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
+            - 可以传入`std::ignore`
+        - `std::get<i>(t)`：获取`t`的第`i`个元素或元素类型为`i`的元素
+        ```
+        auto t = std::make_tuple(1, "Foo", 3.14);
+        // index-based access
+        std::cout << "(" << std::get<0>(t) << ", " << std::get<1>(t)
+                  << ", " << std::get<2>(t) << ")\n";
+                  
+        // type-based access (C++14 or later)
+        std::cout << "(" << std::get<int>(t) << ", " << std::get<const char*>(t)
+                  << ", " << std::get<double>(t) << ")\n";
+                  
+        // Note: std::tie and structured binding may also be used to decompose a tuple
+        ```
+    - 返回
+    ```
+    std::tuple<int, int, int> foo_tuple() 
+    {
+        return {0, 1, -1};  
+        return std::make_tuple(0, 1, -1);
     }
     ```
 
@@ -7795,7 +7834,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         std::destroy_n(p, vec.size() * 3);
         a.deallocate(p, vec.size() * 3);
         ```
-        - `C++11`昙花一现的用法
+        - 被抛弃的`C++11`用法，看看得了，**别用**
             - 使用`a.construct(p, args)`构造对象
             - 用完了以后要调用`a.destory(p)`来析构对象
                 - 只能对真正构造了的元素执行`destory`操作
@@ -7858,7 +7897,7 @@ std::map<std::string, int>::mapped_type v5;  // int
 #### 对象移动
 
 - *右值引用* （Rvalue references）
-- [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor)和[*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
+- [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor) 和 [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
 - 右值引用和成员函数
 
 
