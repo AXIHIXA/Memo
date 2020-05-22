@@ -35,6 +35,7 @@
     - 除非必须，**不要**使用自增自减运算符的后置版本（会造成性能浪费）
     - **不在**内部作用域声明函数（内部作用域生命的东西会覆盖外部作用域的同名东西，可能会影响函数重载的使用）
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
+    - `Clang Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
     - 希望类的所有成员都是`public`时，**应**使用`struct`；只有希望使用`private`成员时才用`class`
     - 在类定义开始或结束的地方**集中声明**友元；使用友元，仍另需有一个**单独的函数声明**
     - 类的类型成员（`typedef`以及`using`声明）应该放在类定义**刚开始**的地方的`public`区域
@@ -2215,6 +2216,7 @@ item.combine(SalesData("9-999-99999-9"));
 #### 显式构造函数（[`explicit`](https://en.cppreference.com/w/cpp/language/explicit) constructor）
 
 - 我们可以通过将构造函数声明为`explicit`来抑制构造函数定义的隐式转换
+    - `Clang Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
 ```
 class SalesData 
 {
@@ -4736,7 +4738,8 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         
         for (diff_t i = n - 1; i > 0; --i) 
         {
-            std::swap(first[i], first[D(g, param_t(0, i))]);
+            using std::swap;
+            swap(first[i], first[D(g, param_t(0, i))]);
         }
     }
     ```
@@ -7728,7 +7731,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         5. [*析构函数*](https://en.cppreference.com/w/cpp/language/destructor)（destructor）
             - 此类型对象销毁时会发生什么
 
-#### 拷贝、赋值与销毁（Copy, Assign, and Destroy）
+#### 拷贝、赋值与销毁（Copy, Assign And Destroy）
 
 - [*拷贝构造函数*](https://en.cppreference.com/w/cpp/language/copy_constructor)
     - 第一个参数是自身类类型的引用的构造函数
@@ -7889,10 +7892,52 @@ std::map<std::string, int>::mapped_type v5;  // int
         - 类的某个数据成员的 *析构函数* 是析构的或者不可访问的
     - => 13.6.2，15.7.2，19.6
 
-#### 拷贝控制和资源管理
+#### 深浅拷贝
 
-- 行为像值的类
-- 定义行为像值的类
+- *深拷贝*
+    - 拷贝语义：拷贝副本和原对象完全独立
+    - 行为像 *值* ，例如：`std::string`
+    - 深拷贝`Entry<int, std::string>`的实现
+        1. 定义 *拷贝构造函数* ，完成`std::string`的拷贝，而不是拷贝指针
+        2. 定义 *析构函数* 来释放`std::string`
+        3. 定义 *拷贝赋值运算符* 来释放当前的`std::string`，并从右侧运算对象拷贝`std::string`
+            - 必须正确处理 *自赋值*
+    ```
+    struct Entry
+    {
+        explicit Entry(const int & _i = 0, const std::string & s = std::string()) :
+                i(_i), ps(new std::string(s))
+        {
+        }
+
+        ~Entry()
+        {
+            delete ps;
+        }
+
+        Entry(const Entry & p) : i(p.i), ps(new std::string(*p.ps))
+        {
+        }
+
+        Entry & operator=(const Entry & rhs)
+        {
+            if (this != &rhs)                   // deal with self-assignemnt!
+            {
+                i = rhs.i;
+                delete ps;
+                ps = new std::string(*rhs.ps);  // otherwise will use deleted memory!
+            }
+
+            return *this;
+        }
+
+        int i;
+        std::string * ps;
+    };
+    ```
+- *浅拷贝* 
+    - 拷贝语义：拷贝副本和原对象 *共享* 底层数据。改变一个，另一个也会随之改变
+    - 行为像 *指针* ，例如：`std::shared_ptr<T>`
 
 #### 交换操作
 
@@ -8089,14 +8134,16 @@ std::tuple<int, int, int> foo_tuple()
 #### [属性说明符](https://en.cppreference.com/w/cpp/language/attributes)（attribute specifier）
 
 - 为类型、对象、代码等引入由实现定义的 *属性* 
+    - 几乎可以出现于任何地方
+    - `[[`只能是属性说明符，`a[[] () { return 0; }]`会报错
 ```
 [[noreturn]]
 
-[[nodiscard]]                   (since C++17)
-[[nodiscard(string_literal)]]   (since C++20)
+[[nodiscard]]                     (since C++17)
+[[nodiscard(string_literal)]]     (since C++20)
 
-[[deprecated]]	                (since C++14)
-[[deprecated(string-literal)]]  (since C++14)
+[[deprecated]]	                  (since C++14)
+[[deprecated(string-literal)]]    (since C++14)
 ```
 
 #### 异常处理
