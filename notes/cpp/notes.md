@@ -6947,6 +6947,12 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `u.reset()`：释放指向`u`的对象，将`u` *置空*
         - `u.reset(q)`：释放指向`u`的对象，令`u` *指向内置指针* `q`。常见转移操作：`u1.reset(u2.release())`
         - `u.reset(nullptr)`：释放指向`u`的对象，将`u` *置空*
+    - `std::unique_ptr<T[]>`独有的操作
+        - `std::unique_ptr<T[]> u`：定义一个 *空的* `std::unique_ptr<T[]>`，使用默认删除器`delete []`，可以指向动态分配的数组
+        - `std::unique_ptr<T[]> u(q)`：`u`管理内置指针`q`所指向的动态分配的数组，`q`能够转换成`T *`类型
+        - `u[i]`：返回`u`拥有的数组中的第`i`个元素
+        - **不支持**`->`和`.`
+        - 其他 *不变* 
     - `std::weak_ptr`支持的操作
         - `std::weak_ptr<T> w`：定义一个 *空的* `std::weak_ptr<T>`
         - `std::weak_ptr<T> w(sp)`：与`std::shared_ptr sp`指向相同对象的`std::weak_ptr`，`T`必须能转换成`sp`指向的类型
@@ -7223,7 +7229,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         - 将分配和初始化分离
         - 更好的性能和更灵活的内存管理能力
 - 大多数应用都应该使用 *标准库容器* 而**不是**动态分配的数组。使用容器更为简单，更不容易出现内存管理错误，并且可能有更好的性能
-- `new`和数组
+- [`new`表达式](https://en.cppreference.com/w/cpp/language/new)和数组
     - 在`new`表达式的类型名之后跟一对方括号，其中指明要分配的对象的数目
         - 数目必须是 *整形* ，但 *不必是常量*
         - 成功后返回指向 *第一个* 对象的指针
@@ -7296,10 +7302,85 @@ std::map<std::string, int>::mapped_type v5;  // int
     int * p = new intarr_42_t{};       // allocates an array of 42 ints; p points to the first one
     delete [] p;                       // brackets are necessary because we allocated an array
     ```
-- `allocator`类
+    - 智能指针和动态数组
+        - 标准库提供可以管理`new T[]`分配的数组的`std::unique_ptr<T[]>`版本
+            - 自动销毁时，会自动调用`delete []`
+        - 这种`std::unique_ptr<T[]>`提供的操作与普通`std::unique_ptr`稍有不同
+            - `std::unique_ptr<T[]> u`：定义一个 *空的* `std::unique_ptr<T[]>`，使用默认删除器`delete []`，可以指向动态分配的数组
+            - `std::unique_ptr<T[]> u(q)`：`u`管理内置指针`q`所指向的动态分配的数组，`q`能够转换成`T *`类型
+            - `u[i]`：返回`u`拥有的数组中的第`i`个元素
+            - **不能**使用 *成员访问运算符* （ *点运算符* `.`和 *箭头运算符* `->`）
+                - 这俩货对数组没意义
+            - 其他操作 *不变* 
+        ```
+        // up points to an array of ten uninitialized ints
+        std::unique_ptr<int[]> up(new int[10]);
+        
+        for (size_t i = 0; i != 10; ++i)
+        {
+            up[i] = i;  // assign a new value to each of the elements
+        }
+        
+        // automatically uses delete[] to destroy its pointer
+        up.release();             
+        ```
+        - `std::shared_ptr`**不**直接支持动态数组，
+            - 如果一定要用`std::shared_ptr`，则需自行提供 *删除器* 
+                - 这种情况下不提供删除器是 *未定义行为*
+            - *智能指针类型* **不**支持下标运算符、**不**支持指针算术运算
+                - 必须使用`sp.get()`获取内置指针进行访问
+        ```
+        // to use a shared_ptr we must supply a deleter
+        std::shared_ptr<int> sp(new int[10], [] (int *p) { delete[] p; });
 
-
-
+        // shared_ptrs don't have subscript operator and don't support pointer arithmetic
+        for (size_t i = 0; i != 10; ++i)
+        {
+            *(sp.get() + i) = i; // use get to get a built-in pointer
+        }
+        
+        // uses the lambda we supplied that uses delete[] to free the array
+        sp.reset();     
+        ```
+- [`allocator`类](https://en.cppreference.com/w/cpp/memory/allocator)
+    - *内存分配* 解耦 *对象初始化* 
+        - `new`将内存的分配和对象的初始化绑定
+        - `delete`将内存的释放和对象的析构绑定
+        - 对于单个对象这无可厚非，但对于动态数组我们则需要在内存上 *按需构造对象*
+            - 否则将造成不必要的浪费（对象先被初始化，之后又被重复赋值）
+                - 比如下面的例子，`p`中每个`std::string`都先被默认初始化，之后又被赋值
+            - 且没有默认构造函数的类类型干脆就不能动态分配数组了
+        ```
+        std::string * const p = new std::string[n];  // construct n empty strings
+        std::string s;
+        std::string * q = p;                         // q points to the first string
+        
+        while (cin >> s && q != p + n)
+        {
+            *q++ = s;                                // assign a new value to *q
+        }
+            
+        const size_t size = q - p;                   // remember how many strings we read
+        
+        // use the array
+        
+        delete[] p;                                  // p points to an array; 
+                                                     // must remember to use delete[]
+        ```
+    - 标准库`std::allocator`类定义于`<memory>`中
+        - 将 *内存分配* 和 *对象构造* 分离开
+        - `std::allocator`是一个 *模板* ，定义时需指明将分配的对象类型
+        - `std::allocotor<T>`的 *对象* 分配 *未初始化内存* 时，它将根据`T`的类型确定 *内存大小* 和 *对齐位置*
+        ```
+        std::allocator<std::string> alloc;  // object that can allocate strings
+        auto const p = alloc.allocate(n);   // allocate n unconstructed strings
+        ```
+    - `std::allocator`类及算法
+        - `std::allocator<T> a`：定义一个`std::allocator<T>`类型对象`a`，用于为`T`类型对象分配 *未初始化内存*
+        - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未初始化内存* ，返回`T *`
+        - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。`p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。调用`a.deallocate(p, n)`之前，用户必须对在这块内存中的每个对象调用`a.destroy(p)`
+        - `a.construct(p, args)`：`p`必须是类型为`T *`的指针，指向一块原始内存；`arg`被传递给`T`的构造函数，用来在`p`指向的内存中构造一个对象`(deprecated in C++17)(removed in C++20)`
+        - `a.destory(p)`：`p`为`T *`类型指针，此算法对`p`指向的对象执行析构函数`(deprecated in C++17)(removed in C++20)`
 
 
 
