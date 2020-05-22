@@ -7913,22 +7913,30 @@ std::map<std::string, int>::mapped_type v5;  // int
             - 容器中的`push`、`insert`使用拷贝初始化
             - 容器中的`emplace`使用直接初始化
         ```
-        T object = other;                                             (1)     
-        T object = {other} ;                                          (2)
-        function(other)                                               (3)  // 函数非引用形参    
-        return other;                                                 (4)     
+        T object = other;                      (1)     
+        T object = {other} ;                   (2)
+        function(other)                        (3)  // 函数非引用形参    
+        return other;                          (4)     
         throw object;
-        catch (T object)                                              (5)     
-        T array[N] = {other};                                         (6)  // 聚合初始化中以初始化提供了初始化器的每个元素   
+        catch (T object)                       (5)     
+        T array[N] = {other};                  (6)  // 聚合初始化中以初始化提供了初始化器的每个元素   
         ```
         - 拷贝初始化的限制
-            - 当使用的初始化值要求通过`explicit`构造函数进行类型转换
+            - 当使用的初始化值要求通过`explicit`构造函数，就必须显式进行类型转换
         ```
         std::vector<int> v1(10);   // ok: direct initialization
         std::vector<int> v2 = 10;  // error: constructor that takes a size is explicit
         void f(std::vector<int>);  // f's parameter is copy initialized
         f(10);                     // error: can't use an explicit constructor to copy an argument
         f(std::vector<int>(10));   // ok: directly construct a temporary vector from an int
+        ```
+        - 编译器 *可以* 但 *不是必须* 绕过拷贝构造函数，直接创建对象
+            - 但即使绕过了，拷贝构造函数仍必须 *存在* 且 *可访问* （如，不能是`= delete;`或`private`）
+        ```
+        std::string null_book = "9-999-99999-9";  // copy initialization
+        
+        // is rewritten into
+        std::string null_book("9-999-99999-9");   // compiler omits the copy constructor
         ```
 - [*拷贝赋值运算符*](https://en.cppreference.com/w/cpp/language/copy_assignment)
 - [*析构函数*](https://en.cppreference.com/w/cpp/language/destructor)
