@@ -577,9 +577,9 @@ void g()
 #### [命名空间作用域](https://en.cppreference.com/w/cpp/language/scope#Namespace_scope)（Namespace scope）
 
 - [*命名空间*](https://en.cppreference.com/w/cpp/language/namespace) 中声明的任何实体的作用域均开始于其声明，并包含
-    - 其后所有 *同名命名空间* 
-    - 使用了`using`命令 *引入了此实体或整个这个命名空间的域* 
-    - 这个命名空间的 *剩余部分* 
+    1. 这个命名空间的 *剩余部分* 
+    2. 其后所有 *同名命名空间* 
+    3. 使用了`using`命令 *引入了此实体或整个这个命名空间的域* 
 - *翻译单元* （文件）的顶层作用域（即所谓的 *文件作用域* 或 *全局作用域* ）亦为命名空间，而被正式称作 *全局命名空间作用域* 
     - 任何声明于 *全局命名空间作用域* 的实体的作用域均开始于其声明，并持续到 *翻译单元的结尾* 
 - 声明于 *无名命名空间* 或 *内联命名空间* 的实体的作用域 *包括外围命名空间* 
@@ -639,21 +639,21 @@ int main()
 #### [类作用域](https://en.cppreference.com/w/cpp/language/scope#Class_scope)（Class scope）
 
 - 类中声明的名字的作用域开始于其声明点，并包含
-    - 类体的 *剩余部分* 
-    - 所有 *成员函数体* （无论是否定义于类定义外或在该名字的声明之前）及其 *默认实参* 、 *异常规定* 
-    - 类内 *花括号或等号初始化器* 
-    - 递归地包括 *嵌套类* 中的所有这些内容
+    1. 类体的 *剩余部分* 
+    2. 所有 *成员函数体* （无论是否定义于类定义外或在该名字的声明之前）及其 *默认实参* 、 *异常规定* 
+    3. 类内 *花括号或等号初始化器* 
+    4. 递归地包括 *嵌套类* 中的所有这些内容
 ```
 class X 
 {
     int f(int a = n) 
     {                                     // X::n 在默认实参中在作用域
-         return a*n;                      // X::n 在函数体内在作用域中
+         return a * n;                    // X::n 在函数体内在作用域中
     }
     
     using r = int;
     r g();
-    int i = n*2;                          // X::n 在初始化器内在作用域中
+    int i = n * 2;                        // X::n 在初始化器内在作用域中
  
     int x[n];                             // 错误： n 在类体内不在作用域中
     static const int n = 1;
@@ -1775,7 +1775,10 @@ sizeof expr   // 返回表达式 结果类型 大小
 
 ### 🌱 类型转换（Conversions）
 
-如果`T`是引用类型，则转换结果为**左**值。
+- 所有`cast<T>`的结果的 *值类别* （value category）是
+    - *左值* ，如果`T`为 *左值引用* 或 *函数类型的右值引用* ，则结果为 
+    - *将亡值* ，如果`T`为 *对象类型的右值引用*
+    - *纯右值* ，其他情况
 
 #### [`static_cast`](https://en.cppreference.com/w/cpp/language/static_cast)
 
@@ -7748,7 +7751,8 @@ std::map<std::string, int>::mapped_type v5;  // int
 #### 拷贝、赋值与销毁（Copy, Assign And Destroy）
 
 - [*拷贝构造函数*](https://en.cppreference.com/w/cpp/language/copy_constructor)
-    - 第一个参数是自身类类型的引用的构造函数
+    - *第一个参数* 是自身类类型的 *左值引用* 的构造函数
+        - 可以有额外参数，但必须提供 *默认实参* 
         - 在几种情况下都会被 *隐式* 地使用，因此**不应该**是`explicit`的
     ```
     class Foo 
@@ -8012,6 +8016,146 @@ std::map<std::string, int>::mapped_type v5;  // int
         std::size_t * useCount;  // how many instances are sharing *ps
     };
     ```
+    
+#### 动态内存管理类举例
+
+```
+// simplified implementation of the memory allocation strategy for a vector-like class
+class StrVec
+{
+public:
+    // the allocator member is default initialized
+    StrVec() : elements(nullptr), first_free(nullptr), cap(nullptr)
+    {
+    }
+
+    // copy constructor
+    StrVec(const StrVec & s)  
+    {
+        // call alloc_n_copy to allocate exactly as many elements as in s
+        std::pair<std::string *, std::string *> newdata = alloc_n_copy(s.begin(), s.end());
+        elements = newdata.first;
+        first_free = cap = newdata.second;
+    }
+
+    // copy assignment
+    StrVec & operator=(const StrVec & rhs)  
+    {
+        if (this != &rhs)
+        {
+            // call alloc_n_copy to allocate exactly as many elements as in rhs
+            std::pair<std::string *, std::string *> data = alloc_n_copy(rhs.begin(), rhs.end());
+            free();
+            elements = data.first;
+            first_free = cap = data.second;
+        }
+        return *this;
+    }
+
+    // destructor
+    ~StrVec() 
+    {
+        free();
+    }
+
+    // copy the element
+    void push_back(const std::string & s) 
+    {
+        // ensure that there is room for another element
+        chk_n_alloc(); 
+        // construct a copy of s in the element to which first_free points
+        new(first_free++) std::string(s);
+        // alloc.construct(first_free++, s);  // deprecated in C++14
+    }
+
+    [[nodiscard]] size_t size() const
+    {
+        return first_free - elements;
+    }
+
+    [[nodiscard]] size_t capacity() const
+    {
+        return cap - elements;
+    }
+
+    [[nodiscard]] const std::string * begin() const
+    {
+        return elements;
+    }
+
+    [[nodiscard]] const std::string * end() const
+    {
+        return first_free;
+    }
+    
+    // ...
+
+private:
+    // used by the functions that add elements to the StrVec
+    inline void chk_n_alloc()
+    {
+        if (size() == capacity())
+        {
+            reallocate();
+        }
+    }
+
+    // utilities used by the copy constructor, assignment operator, and destructor
+    std::pair<std::string *, std::string *>
+    alloc_n_copy(const std::string * b, const std::string * e)
+    {
+        // allocate space to hold as many elements as are in the range
+        auto data = alloc.allocate(e - b);
+        // initialize and return a pair constructed from data and
+        // the value returned by uninitialized_copy
+        return {data, uninitialized_copy(b, e, data)};
+    }
+
+    // destroy the elements and free the space
+    void free() 
+    {
+        // may not pass deallocate a 0 pointer; if elements is 0, there's no work to do
+        if (elements)
+        {
+            // destroy the old elements in reverse order
+            for (std::string * p = first_free; p != elements; /* empty */)
+            {
+                alloc.destroy(--p);
+            }
+            alloc.deallocate(elements, cap - elements);
+        }
+    }
+
+    // get more space and copy the existing elements
+    void reallocate() 
+    {
+        // we'll allocate space for twice as many elements as the current size
+        auto newcapacity = size() ? 2 * size() : 1;
+        // allocate new memory
+        auto newdata = alloc.allocate(newcapacity);
+        // move the data from the old memory to the new
+        auto dest = newdata;   // points to the next free position in the new array
+        auto elem = elements;  // points to the next element in the old array
+        for (size_t i = 0; i != size(); ++i)
+        {
+            new (dest++) std::string(std::move(*elem++));
+            //alloc.construct(dest++, std::move(*elem++));  // deprecated in C++14 
+        }
+        free();                // free the old space once we've moved the elements
+        // update our data structure to point to the new elements
+        elements = newdata;
+        first_free = dest;
+        cap = elements + newcapacity;
+    }
+
+private:
+    std::allocator<std::string> alloc;  // allocates the elements
+
+    std::string * elements;             // pointer to the first element in the array
+    std::string * first_free;           // pointer to the first free element in the array
+    std::string * cap;                  // pointer to one past the end of the array
+};
+```
 
 #### 交换操作
 
@@ -8090,15 +8234,59 @@ Entry & operator=(Entry rhs)
         - 反正没人要，不拿白不拿
         - 变量是 *左值* ，因此不能直接绑定 *右值引用* ，即使这个变量自己也是 *右值引用* 类型也不行
             - 搞不懂这句话的人都是把 *（值的）类型* （type）和 *值类别* （value category）这俩货给搞混了
+            - `T a;`， *是右值引用* 说的是`T`， *是左值* 说的是`a`，压根不是一回事儿
     ```
     int i = 42;
-    int & r = i;              // ok: r refers to i
-    int && rr = i;            // error: cannot bind an rvalue reference to an lvalue
+    
+    int & r1 = i;             // ok: r1 refers to i
     int & r2 = i * 42;        // error: i * 42 is an rvalue
     const int & r3 = i * 42;  // ok: we can bind a reference to const to an rvalue
-    int && rr2 = i * 42;      // ok: bind rr2 to the result of the multiplication
+    
+    int && rr1 = i;           // error: cannot bind an rvalue reference to an lvalue
+    int && rr2 = 42;          // ok: literal 42 is an rvalue
+    int && rr3 = rr2;         // error: cannot bind an rvalue reference to an lvalue
+    int && rr4 = i * 42;      // ok: bind rr2 to the result of the multiplication
     ```
+- 从左值获取右值的两个方法
+    1. 通过 *强制类型转换* 显式地将左值变为右值
+    2. `std::move`
+    ```
+    int i1 = 10, i2 = 10, i3 = 10;
+    int && rr1 = static_cast<int &&>(i1);
+    int && rr2 = reinterpret_cast<int &&>(i2);
+    int && rr3 = std::move(i3);
+    ```
+- [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
+    - 签名
+    ```
+    template <class T>
+    constexpr typename std::remove_reference<T>::type && 
+    move(T && t) noexcept;
+    ```
+    - 告诉编译器：我们有一个左值，但我们希望像处理一个右值一样处理它
+    - `cppreference`明确写有： *和`static_cast<T &&>`完全一致*
+    - 调用`std::move(var)`就意味着承诺：除了对`var` *赋值* 或 *销毁* 它外，我们将不再使用它
+        - 调用`std::move`之后，移后源对象的值 *未定义* ；可以被 *赋值* 或 *销毁* ，但**不能** *使用它的值* 
+    - 对`std::move`，调用时**不提供**`using`声明，而是直接调用`std::move` => 18.2.3
+        - 避免名字冲突
 - [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor)
+    - *第一个* 参数是自身类类型的 *右值引用* 的构造函数，要求`noexcept`
+        - 可以有额外参数，但必须提供 *默认实参* 
+        - 从对象 *窃取* 资源
+        - 必须保证完事后
+            1. 移后源对象**不再**指向被移动的资源
+            2. *销毁* 移后源对象是无害的
+    ```
+    StrVec::StrVec(StrVec &&s) noexcept // move won't throw any
+exceptions
+// member initializers take over the resources in s
+: elements(s.elements), first_free(s.first_free),
+cap(s.cap)
+{
+// leave s in a state in which it is safe to run the destructor
+s.elements = s.first_free = s.cap = nullptr;
+}
+    ```
 - [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
 - 右值引用和成员函数
 
