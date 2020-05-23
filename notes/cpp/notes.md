@@ -8017,7 +8017,7 @@ std::map<std::string, int>::mapped_type v5;  // int
     };
     ```
     
-#### 动态内存管理类举例
+#### 动态内存管理类`StrVec`
 
 ```
 // simplified implementation of the dynamic memory allocation strategy for a vector-like class
@@ -8276,24 +8276,71 @@ Entry & operator=(Entry rhs)
     - 对`std::move`，调用时**不提供**`using`声明，而是直接调用`std::move` => 18.2.3
         - 避免名字冲突
 - [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor)
-    - *第一个* 参数是自身类类型的 *右值引用* 的构造函数，要求`noexcept`
+    - *第一个* 参数是自身类类型的 *右值引用* 的构造函数
         - 可以有额外参数，但必须提供 *默认实参* 
-        - 从对象 *窃取* 资源
-        - 必须保证完事后
+        - *必须标注* `noexcept`
+            - 向编译器承诺 *不抛出异常* ，避免编译器为了处理异常做出额外操作（将被操作对象恢复原状）
+            - 如果出现异常，被移动对象无法恢复原状，此时只能使用 *拷贝构造函数*
+        - 从对象 *窃取* 资源， *接管* 对象的全部内存
+        - 必须保证完事后，移后源对象必须保持 *有效的、可析构的* 状态，但用户**不能**对其值做任何假设
             1. 移后源对象**不再**指向被移动的资源
             2. *销毁* 移后源对象是无害的
+                - 指针全部 *置空* 就完事儿了
     ```
-    StrVec::StrVec(StrVec &&s) noexcept // move won't throw any
-exceptions
-// member initializers take over the resources in s
-: elements(s.elements), first_free(s.first_free),
-cap(s.cap)
-{
-// leave s in a state in which it is safe to run the destructor
-s.elements = s.first_free = s.cap = nullptr;
-}
+    // move constructor
+    // move won't throw any exceptions
+    // member initializers take over the resources in s
+    StrVec(StrVec && s) noexcept : elements(s.elements), first_free(s.first_free), cap(s.cap)
+    {
+        // leave s in a state in which it is safe to run the destructor
+        s.elements = s.first_free = s.cap = nullptr;
+    }
+    ```
+    - 合成的移动操作
+        - 只有当类没有自定义任何拷贝控制成员、且类的每个非`static`数据成员都可 *移动构造* 或 *移动赋值* 时，编译器会合成 *移动构造函数* 或 *移动赋值运算符* 
+        - 编译器可以移动内置类型的的成员
+        - 如果一个类没有移动操作，编译器会匹配到对应的拷贝操作
+    ```
+    // the compiler will synthesize the move operations for X and hasX
+    struct X 
+    {
+        int i;                 // built-in types can be moved
+        std::string s;         // std::string defines its own move operations
+    };
+    
+    struct hasX 
+    {
+        X mem;                 // X has synthesized move operations
+    };
+    
+    X x;
+    X x2 = std::move(x);       // uses the synthesized move constructor
+    
+    hasX hx;
+    hasX hx2 = std::move(hx);  // uses the synthesized move constructor
     ```
 - [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
+    - 应标记为`noexcept`，必须妥善处理自赋值
+    ```
+    // move assignment
+    StrVec & operator=(StrVec && rhs) noexcept
+    {
+        // direct test for self-assignment
+        if (this != &rhs)
+        {
+            // free existing elements
+            free();
+            // take over resources from rhs
+            elements = rhs.elements;
+            first_free = rhs.first_free;
+            cap = rhs.cap;
+            // leave rhs in a destructible state
+            rhs.elements = rhs.first_free = rhs.cap = nullptr;
+        }
+
+        return *this;
+    }
+    ```
 - 右值引用和成员函数
 
 
