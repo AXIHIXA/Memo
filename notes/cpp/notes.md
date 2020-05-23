@@ -1633,6 +1633,7 @@ assert(v.empty());
         - 这玩意如果不特意规定，那妥妥的就是 *二义性调用*
         - 所以强制规定，按照 *实参* 的 *值类别* ，`T`分别匹配成 *左值引用* 或 *右值引用*
         - 然后和形参处的 *右值引用* 放一块儿，来一波 *引用坍缩* ，美滋滋
+        - 老冤家：[`std::move`](https://en.cppreference.com/w/cpp/utility/move)，这玩意就是个转发引用，可别认成普通的右值引用了
     ```
     template <class T>
     int g(const T && x);               // x is not a forwarding reference
@@ -1656,6 +1657,9 @@ assert(v.empty());
                                      // T is not a type template parameter of the constructor
                                      // y is a forwarding reference
     };
+    
+    template <class T>
+    typename std::remove_reference<T>::type && move(T && t) noexcept;  // t is a forwarding reference
     ```
     2. `auto &&`，但当其 *从花括号初始化器列表推导* 时则**不是**
     ```
