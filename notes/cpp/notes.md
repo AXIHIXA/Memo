@@ -64,7 +64,8 @@
         - 必须正确处理 *自赋值* （ *拷贝并交换赋值运算符* 则自动能处理自赋值）
         - 大多数拷贝赋值运算符组合了 *析构函数* 和 *拷贝构造函数* 二者的工作
             - 公共的工作应放到 *私有的工具函数* 中完成
-    - 千言万语汇聚成一句话，拷贝操作成员和移动操作成员要定义就 *都定义全* ，就没这么多破事儿了
+    - 千言万语汇聚成一句话， *三五法则* ，五个拷贝控制成员要定义就 *都定义全* ，就没这么多破事儿了
+    - 还有一句： *拷贝并交换赋值运算符* 好哇，天生异常安全、不怕自赋值，还同时能充当拷贝和移动两种运算符
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -889,7 +890,7 @@ Class::Class(...) : member{} { ... }    (7)
 ```
 T object(arg);
 T object(arg1, arg2, ...);                                    (1)  // 以括号初始化器初始化
-T object {arg};                                               (2)  // 以花括号初始化器初始化
+T object{arg};                                                (2)  // 以花括号初始化器初始化
 T(other)
 T(arg1, arg2, ...)                                            (3)  // 用函数式转型或以带括号的表达式列表初始化  
 static_cast< T >( other )                                     (4)     
@@ -1653,9 +1654,9 @@ assert(v.empty());
     struct A 
     {
         template <class U>
-        A(T && x, U && y, int * p);  // x is not a forwarding reference
-                                     // T is not a type template parameter of the constructor
-                                     // y is a forwarding reference
+        A(T && x, U && y, int * p);    // x is not a forwarding reference
+                                       // T is not a type template parameter of the constructor
+                                       // y is a forwarding reference
     };
     
     template <class T>
@@ -7229,10 +7230,13 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `std::unique_ptr<T, D> u2`：定义一个 *空的* `std::unique_ptr<T, D>`，`D` *删除器* 的类型
         - `std::unique_ptr<T, D> u(d)`：定义一个 *空的* `std::unique_ptr<T, D>`，`D` *删除器* 的类型，`d`为指定的 *删除器* 
         - `std::unique_ptr<T, D> u(q, d)`：`u1`管理内置指针`q`所指向的对象，`q`必须指向`new`分配的内存，且能够转换成`T *`类型；调用`D`类型 *删除器* `d`
-        - `u = nullptr`：释放`u`指向的对象，将`u` *置空* 
+        - [`std::make_unique`](https://en.cppreference.com/w/cpp/memory/unique_ptr/make_unique)：返回一个`std::unique_ptr<T>`，用`new(args)`初始化 `(since C++14)`
+        - [`u1 = u2`](https://en.cppreference.com/w/cpp/memory/unique_ptr/operator%3D)：若`u2`是`std::unique_ptr &&`，则等价于`u1.reset(u2.release())`；`u2`还可以是自定义删除器的数组类型指针 `(since C++17)`；若`u2`是`nullptr`，`u1`将释放`u1`指向的对象，将`u1` *置空* 
+            - `Clang-Tidy`：更推荐`u1 = std::move(u2)`
         - `u.release()`：`u` *放弃* 对指针的控制权，返回内置指针，并将`u` *置空* 。注意`u.release()`只是放弃所有权，并**没有**释放`u`原先指向的对象
         - `u.reset()`：释放指向`u`的对象，将`u` *置空*
         - `u.reset(q)`：释放指向`u`的对象，令`u` *指向内置指针* `q`。常见转移操作：`u1.reset(u2.release())`
+            - `Clang-Tidy`：更推荐`u1 = std::move(u2)`
         - `u.reset(nullptr)`：释放指向`u`的对象，将`u` *置空*
     - `std::unique_ptr<T[]>`独有的操作
         - `std::unique_ptr<T[]> u`：定义一个 *空的* `std::unique_ptr<T[]>`，使用默认删除器`delete []`，可以指向动态分配的数组
@@ -8229,7 +8233,7 @@ std::map<std::string, int>::mapped_type v5;  // int
     - *合成析构函数* （synthesized destructor）
         - 类未定义自己的析构函数时，编译器会自动定义一个
         - 对某些类，用于阻止该类型对象被销毁（`= delete;`）
-- *三·五法则* （The rule of three/five）
+- *三五法则* （The rule of three/five）
     - 三个基本操作可以控制类的拷贝操作
         1. 拷贝构造函数
         2. 拷贝赋值运算符
@@ -8237,8 +8241,28 @@ std::map<std::string, int>::mapped_type v5;  // int
     - `C++11`多添加了两个
         1. 移动构造函数
         2. 移动赋值运算符
-    - 如果一个类需要自定义 *析构函数* ，那么它几乎肯定也需要自定义 *拷贝构造函数* 和 *拷贝赋值运算符*
-    - 如果一个类需要自定义 *拷贝构造函数* ，那么它几乎肯定也需要自定义  和 *拷贝赋值运算符* ，反之亦然
+    - 千言万语汇聚成一句话， *三五法则* ，五个拷贝控制成员要定义就 *都定义全* ，就没这么多破事儿了
+        - 还有一句： *拷贝并交换赋值运算符* 好哇，天生异常安全、不怕自赋值，还同时能充当拷贝和移动两种运算符
+    ```
+    struct S35
+    {
+        S35() { printf("S35()\n"); }
+        explicit S35(const int & i) : p(new int(i)) { printf("S35(const int &)\n"); }
+        S35(const S35 & rhs) : p(new int(*rhs.p)) { printf("S35(const S35 &)\n"); }
+        S35(S35 && rhs) noexcept : p(std::move(rhs.p)) { printf("S35(S35 &&)\n"); }
+        ~S35() = default;
+
+        S35 & operator=(S35 rhs)
+        {
+            printf("copy-and-swap operator=(S35 &)\n");
+            using std::swap;
+            swap(p, rhs.p);
+            return *this;
+        }
+
+        std::unique_ptr<int> p{new int(0)};
+    };
+    ```
 - *显式默认* 和 *删除函数* 
     - 大多数类应该定义默认构造函数、拷贝构造函数和拷贝赋值运算符，不论是隐式地还是显式地
     - 有些情况反而应当 *阻止* 拷贝或赋值，方法有
@@ -8613,6 +8637,8 @@ void swap(Foo & lhs, Foo & rhs)
 - *拷贝并交换赋值运算符*
     - 接受普通形参而不是常引用
     - 天然就是异常安全的，且能正确处理自赋值
+    - 天然能同时充当 *拷贝赋值运算符* 和 *移动赋值运算符*
+        - 前提是类定义了 *移动构造函数*
 ```
 // note rhs is passed by value, which means the Entry copy constructor
 // copies the string in the right-hand operand into rhs
@@ -8771,19 +8797,32 @@ Entry & operator=(Entry rhs)
     hasX hx;
     hasX hx2 = std::move(hx);  // uses the synthesized move constructor
     ```
-    - 当且仅当我们显式要求`= default;`的移动成员，而编译器不能移动该类的全部非静态数据成员时，编译器会定义 *被删除的* 移动成员
-        - 移动构造函数
-            - 类成员定义了自己的拷贝构造函数且未定义移动构造函数
-            - 类成员未定义自己的拷贝构造函数且编译器不能为其合成移动构造函数
-            - 类成员的移动构造函数被定义为删除的或者不可访问
-            - 类的 *析构函数* 被定义为删除的或者不可访问
-        - 移动赋值运算符
-            - 类成员定义了自己的拷贝赋值运算符且未定义移动赋值运算符
-            - 类成员未定义自己的拷贝赋值运算符且编译器不能为其合成移动赋值运算符
-            - 类成员的移动赋值运算符被定义为删除的或者不可访问
-            - 类成员有 *`const`的* 或者 *引用* 
+    - 编译器 *自动删除* 拷贝或移动成员
+        - 当且仅当我们显式要求`= default;`的移动成员，而编译器不能移动该类的全部非静态数据成员时，编译器会定义 *被删除的* 移动成员
+            - 移动构造函数
+                - 类成员定义了自己的拷贝构造函数且未定义移动构造函数
+                - 类成员未定义自己的拷贝构造函数且编译器不能为其合成移动构造函数
+                - 类成员的移动构造函数被定义为删除的或者不可访问
+                - 类的 *析构函数* 被定义为删除的或者不可访问
+            - 移动赋值运算符
+                - 类成员定义了自己的拷贝赋值运算符且未定义移动赋值运算符
+                - 类成员未定义自己的拷贝赋值运算符且编译器不能为其合成移动赋值运算符
+                - 类成员的移动赋值运算符被定义为删除的或者不可访问
+                - 类成员有 *`const`的* 或者 *引用* 
+        - 定义了移动成员后，类也必须定义对应的拷贝成员，否则，这些成员也被默认成删除的
+        - 千言万语汇聚成一句话， *三五法则* ，五个拷贝控制成员要定义就 *都定义全* ，就没这么多破事儿了
+            - 还有一句： *拷贝并交换赋值运算符* 好哇，天生异常安全、不怕自赋值，还同时能充当拷贝和移动两种运算符
     ```
     // assume Y is a class that defines its own copy constructor but not a move constructor
+    struct Y
+    {
+        Y & operator=(const Y & rhs) = default;
+        // move operator should be deleted by compiler
+        // move operator should be deleted by compiler
+        int v;
+    };
+    
+    
     struct hasY 
     {
         hasY() = default;
@@ -8792,10 +8831,34 @@ Entry & operator=(Entry rhs)
     };
     hasY hy;
     hasY hy2 = std::move(hy);  // error: move constructor is deleted
+                               // at least on gcc version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04)
+                               // this one passes compiling
     ```
-    - 定义了移动成员后，类也必须定义对应的拷贝成员，否则，这些成员也被默认成删除的
-    - 千言万语汇聚成一句话，拷贝操作成员和移动操作成员要定义就 *都定义全* ，就没这么多破事儿了
-    - 函数调用时，参数
+    - 类既有拷贝操作成员，又有移动操作成员时
+        1. *移动右值，拷贝左值*
+        ```
+        StrVec v1, v2;
+        v1 = v2;                   // v2 is an lvalue; copy assignment
+        StrVec getVec(istream &);
+        v2 = getVec(cin);          // getVec(cin) is an rvalue; move assignment
+        ```
+        2. 如果 *没有移动* 操作成员，则 *右值也被拷贝* 
+        ```
+        class Foo 
+        {
+        public:
+            Foo() = default;
+            Foo(const Foo &);     // copy constructor
+            // other members, but Foo does not define a move constructor
+            // so it is deleted by compiler
+        };
+        
+        Foo x;
+        Foo y(x);                 // copy constructor; x is an lvalue
+        Foo z(std::move(x));      // copy constructor, because there is no move constructor
+        ```
+    - *拷贝并交换赋值运算符* 和移动
+        - 定义了移动构造函数的类的 *拷贝并交换赋值运算符* 天然就同时是 *拷贝赋值运算符* 和 *移动赋值运算符*
 - 右值引用和成员函数
 
 
