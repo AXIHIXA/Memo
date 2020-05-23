@@ -1630,6 +1630,9 @@ assert(v.empty());
 - 转发引用是一种特殊的引用，它保持函数实参的 *值类别* ，使得能利用`std::forward`转发实参
 - 转发引用是下列之一 
     1. *函数模板的函数形参* ，其被声明为同一函数模板的类型模板形参的 *无`cv`限定的右值引用* 
+        - 这玩意如果不特意规定，那妥妥的就是 *二义性调用*
+        - 所以强制规定，按照 *实参* 的 *值类别* ，`T`分别匹配成 *左值引用* 或 *右值引用*
+        - 然后和形参处的 *右值引用* 放一块儿，来一波 *引用坍缩* ，美滋滋
     ```
     template <class T>
     int g(const T && x);               // x is not a forwarding reference
@@ -2261,6 +2264,30 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
     Record lookup(const Phone &);
     Record lookup(const Telno &);         // Telno and Phone are the same type
     ```
+    - 值传递和引用传递同时存在的
+        - 重载本身合法，但高危存在 *二义性调用*
+        - 要是 *值传递* 、 *左值引用传递* 和 *右值引用传递* 同时存在，那可真是死绝了
+    ```
+    void f(int a)
+    {
+        printf("f(int)\n");
+    }
+
+    void f(int & a)
+    {
+        printf("f(int &)\n");
+    }
+    
+    void f(int && a)
+    {
+        printf("f(int &&)\n");
+    }
+    
+    int i = 0;
+    f(i);             // error: ambiguous call
+    f(0);             // error: ambiguous call
+    f(std::move(a));  // error: ambiguous call
+    ```
     - 顶层`const`**不影响**传入的对象，因此以下定义不合法
     ```
     Record lookup(Phone);
@@ -2286,13 +2313,6 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
     - 类成员函数基于`const`的重载
         - 通过区分成员函数是否为`const`的，我们可以对其进行重载
         - 原理：编译器可以根据`this`指针参数的底层`const`区分参数类型
-- *函数匹配* （function matching）
-    - 又称 *重载确定* （overload resolution）
-    - 编译器首先将调用的实参与重载集合中每一个函数的形参进行比较，然后根据结果确定调用版本
-    - 函数匹配过程的三种可能结果
-        1. 找到 *最佳匹配* （best match）
-        2. *无匹配* （no match）
-        3. 多个函数都可调用且无明显最佳选择： *二义性调用* （ambiguous call）
 - 重载和作用域
     - 在不同的作用域中**无法**重载函数
     - **不要**在 *块作用域* 内声明或定义函数，容易覆盖外层作用域中的同名 *实体* （ *对象* ， *函数* 等等都可能覆盖）
@@ -2325,6 +2345,58 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
         print(3.14);             // calls print(double)
     }
     ```
+
+#### [重载确定](https://en.cppreference.com/w/cpp/language/overload_resolution)（overload resolution）
+
+- 又称 *函数匹配* （function matching）
+- 编译器首先将调用的实参与重载集合中每一个函数的形参进行比较，然后根据结果确定调用版本
+- 函数匹配过程的三种可能结果
+    1. 找到 *最佳匹配* （best match）
+    2. *无匹配* （no match）
+    3. 多个函数都可调用且无明显最佳选择： *二义性调用* （ambiguous call）
+- 函数匹配流程
+    1. 确定 *候选函数* （candidate function）
+        - 确定本次调用对应的 *重载函数集* ，集合中的函数就是 *候选函数* ，具备两个特征
+            1. 与被调用的函数 *同名* 
+            2. 声明在调用点 *可见* 
+    2. 选出 *可行函数* （viable function）
+        - 考察调用提供的 *实参* ，从 *候选函数* 中选出能被这组 *实参* 调用的函数（ *可行函数* ），具备两个特征
+            1. 形参 *数量* 与本次调用提供的实参数量 *相等* 
+                - 如果函数有 *默认实参* ，则传入的实参 *数量* 可能 *少于* 实际使用的实参数量
+            2. 每个实参的 *类型* 都与对应的形参类型 *相同* ，或 *能隐式转换* 成该类型
+        - 如果没有 *可行函数* ： *无匹配* 
+    3. 寻找 *最佳匹配* （best match）
+        - 如果有且仅有一个函数同时满足下列两个条件，则匹配成功
+            1. 该函数的每个实参的匹配都不劣于其它可行函数需要的匹配
+            2. 该函数的至少有一个实参的匹配优于其它可行函数需要的匹配
+        - 如果没有 *最佳匹配* ： *二义性调用* 
+        - 调用重载函数时应当尽量 *避免强制类型转换* ，如果确实需要，这说明形参设计不合理
+        - 实参类型转换
+            - 为确定最佳匹配，编译器将实参类型到形参类型的转换划分成以下几个等级，具体排序如下
+                1. 精确匹配，包括
+                    - 实参和形参类型相同
+                    - 实参为数组或函数，转指针
+                    - 给实参添加或删除 *顶层`const`* 
+                2. 通过`const_cast`（添加或删除 *底层`const`* ）实现匹配
+                3. 通过 *类型提升* 实现匹配
+                4. 通过 *算数类型转换* 或 *指针转换* 实现匹配
+                5. 通过 *类类型转换* 实现匹配 => 14.9
+            - 函数匹配和`const`实参
+                - 如果重载函数的区别在于 *底层`const`* 
+                    - *底层`const`* 
+                        - 引用类型的形参是否引用了`const`
+                        - 指针类型的形参是否指向`const`
+                        - 底层`const`直接就是二义性调用
+                    - 通过 *实参是否是常量* 来选择
+                ```
+                Record lookup(Account &);        // function that takes a reference to Account
+                Record lookup(const Account &);  // new function that takes a const reference
+                const Account a;
+                Account b;
+                lookup(a);                       // calls lookup(const Account &)
+                lookup(b);                       // calls lookup(Account &)
+                ```
+            - 左右值引用：和底层`const`同理
 
 #### 数组形参
 
