@@ -8020,7 +8020,7 @@ std::map<std::string, int>::mapped_type v5;  // int
 #### 动态内存管理类举例
 
 ```
-// simplified implementation of the memory allocation strategy for a vector-like class
+// simplified implementation of the dynamic memory allocation strategy for a vector-like class
 class StrVec
 {
 public:
@@ -8030,7 +8030,7 @@ public:
     }
 
     // copy constructor
-    StrVec(const StrVec & s)  
+    StrVec(const StrVec & s)
     {
         // call alloc_n_copy to allocate exactly as many elements as in s
         std::pair<std::string *, std::string *> newdata = alloc_n_copy(s.begin(), s.end());
@@ -8039,7 +8039,7 @@ public:
     }
 
     // copy assignment
-    StrVec & operator=(const StrVec & rhs)  
+    StrVec & operator=(const StrVec & rhs)
     {
         if (this != &rhs)
         {
@@ -8053,16 +8053,16 @@ public:
     }
 
     // destructor
-    ~StrVec() 
+    ~StrVec()
     {
         free();
     }
 
     // copy the element
-    void push_back(const std::string & s) 
+    void push_back(const std::string & s)
     {
         // ensure that there is room for another element
-        chk_n_alloc(); 
+        chk_n_alloc();
         // construct a copy of s in the element to which first_free points
         new(first_free++) std::string(s);
         // alloc.construct(first_free++, s);  // deprecated in C++14
@@ -8087,7 +8087,7 @@ public:
     {
         return first_free;
     }
-    
+
     // ...
 
 private:
@@ -8105,14 +8105,14 @@ private:
     alloc_n_copy(const std::string * b, const std::string * e)
     {
         // allocate space to hold as many elements as are in the range
-        auto data = alloc.allocate(e - b);
+        std::string * data = alloc.allocate(e - b);
         // initialize and return a pair constructed from data and
         // the value returned by uninitialized_copy
         return {data, uninitialized_copy(b, e, data)};
     }
 
     // destroy the elements and free the space
-    void free() 
+    void free()
     {
         // may not pass deallocate a 0 pointer; if elements is 0, there's no work to do
         if (elements)
@@ -8120,28 +8120,34 @@ private:
             // destroy the old elements in reverse order
             for (std::string * p = first_free; p != elements; /* empty */)
             {
-                alloc.destroy(--p);
+                std::destroy_at(--p);
+                // alloc.destroy(--p);  // deprecated in C++14
             }
+            
             alloc.deallocate(elements, cap - elements);
         }
     }
 
     // get more space and copy the existing elements
-    void reallocate() 
+    void reallocate()
     {
         // we'll allocate space for twice as many elements as the current size
-        auto newcapacity = size() ? 2 * size() : 1;
+        size_t newcapacity = size() ? 2 * size() : 1;
         // allocate new memory
-        auto newdata = alloc.allocate(newcapacity);
+        std::string * newdata = alloc.allocate(newcapacity);
+        
         // move the data from the old memory to the new
-        auto dest = newdata;   // points to the next free position in the new array
-        auto elem = elements;  // points to the next element in the old array
+        std::string * dest = newdata;   // points to the next free position in the new array
+        std::string * elem = elements;  // points to the next element in the old array
+        
         for (size_t i = 0; i != size(); ++i)
         {
             new (dest++) std::string(std::move(*elem++));
-            //alloc.construct(dest++, std::move(*elem++));  // deprecated in C++14 
+            // alloc.construct(dest++, std::move(*elem++));  // deprecated in C++14
         }
+        
         free();                // free the old space once we've moved the elements
+        
         // update our data structure to point to the new elements
         elements = newdata;
         first_free = dest;
