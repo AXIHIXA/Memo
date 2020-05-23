@@ -2315,9 +2315,8 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
     Record lookup(Account *);        // new function, takes a pointer to Account
     Record lookup(const Account *);  // new function, takes a pointer to const
     ```
-    - 类成员函数基于`const`的重载
-        - 通过区分成员函数是否为`const`的，我们可以对其进行重载
-        - 原理：编译器可以根据`this`指针参数的底层`const`区分参数类型
+    - 类成员函数 *`const`限定* 和 *引用限定* 均可用于重载
+        - 原理：编译器可以根据`this`指针参数的底层`const`，或者 *值类别* 区分参数类型
 - 重载和作用域
     - 在不同的作用域中**无法**重载函数
     - **不要**在 *块作用域* 内声明或定义函数，容易覆盖外层作用域中的同名 *实体* （ *对象* ， *函数* 等等都可能覆盖）
@@ -4106,7 +4105,9 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         return std::move_iterator<Iter>(std::move(i));
     }
     ```
-    - 使用
+    - 解引用移动迭代器生成 *右值引用*
+        - 普通迭代器生成 *左值引用*
+        - 可以传移动迭代器给`std::uninitialized_copy`（问题是人家`C++17`都有`std::uninitialized_move`了啊233）
     ```
     std::list<std::string> s {"one", "two", "three"};
  
@@ -8252,16 +8253,40 @@ std::map<std::string, int>::mapped_type v5;  // int
         S35(S35 && rhs) noexcept : p(std::move(rhs.p)) { printf("S35(S35 &&)\n"); }
         ~S35() = default;
 
-        S35 & operator=(S35 rhs)
+        S35 & operator=(const S35 & rhs)
         {
-            printf("copy-and-swap operator=(S35 &)\n");
-            using std::swap;
-            swap(p, rhs.p);
+            printf("copy operator=(const S35 &)\n");
+            if (this != &rhs) p = std::make_unique<int>(*rhs.p);
             return *this;
         }
 
+        S35 & operator=(S35 && rhs) noexcept
+        {
+            printf("move operator=(S35 &&)\n");
+            if (this != &rhs) p = std::move(rhs.p);
+            return *this;
+        }
+
+    //    S35 & operator=(S35 rhs)
+    //    {
+    //        printf("copy-and-swap operator=(S35 &)\n");
+    //        using std::swap;
+    //        swap(p, rhs.p);
+    //        return *this;
+    //    }
+
         std::unique_ptr<int> p{new int(0)};
     };
+    
+    S35 s1{0};              // S35(const int &)
+    S35 s2{s1};             // S35(const S35 &)
+    S35 s3{std::move(s2)};  // S35(S35 &&)
+    
+    S35 s4{1};              // S35(const int &)
+    s4 = s3;                // copy operator=(const S35 &)
+    s4 = S35{2};            // S35(const int &)
+                            // move operator=(S35 &&)
+    s4 = std::move(s3);     // move operator=(S35 &&)
     ```
 - *显式默认* 和 *删除函数* 
     - 大多数类应该定义默认构造函数、拷贝构造函数和拷贝赋值运算符，不论是隐式地还是显式地
@@ -8634,17 +8659,19 @@ void swap(Foo & lhs, Foo & rhs)
     // swap other members of type Foo
 }
 ```
-- *拷贝并交换赋值运算符*
+- *拷贝并交换赋值运算符* （copy-and-swap assign operator）
     - 接受普通形参而不是常引用
     - 天然就是异常安全的，且能正确处理自赋值
     - 天然能同时充当 *拷贝赋值运算符* 和 *移动赋值运算符*
         - 前提是类定义了 *移动构造函数*
+        - 传参的时候，会根据实参是左值还是右值调用对应的拷贝或移动构造函数
 ```
 // note rhs is passed by value, which means the Entry copy constructor
 // copies the string in the right-hand operand into rhs
 Entry & operator=(Entry rhs)
 {
     // swap the contents of the left-hand operand with the local variable rhs
+    using std::swap;
     swap(*this, rhs);  // rhs now points to the memory this object had used
     return *this;      // rhs is destroyed, which deletes the pointer in rhs
 }
@@ -8860,12 +8887,106 @@ Entry & operator=(Entry rhs)
     - *拷贝并交换赋值运算符* 和移动
         - 定义了移动构造函数的类的 *拷贝并交换赋值运算符* 天然就同时是 *拷贝赋值运算符* 和 *移动赋值运算符*
 - 右值引用和成员函数
-
-
-
-
-
-
+    - 成员函数一样可以同时提供 *拷贝版本* 和 *移动版本*
+        - 例如标准库容器的`c.push_back`就同时定义了
+        ```
+        void push_back(const X &);  // copy: binds to any kind of X
+        void push_back(X &&);       // move: binds only to modifiable rvalues of type X
+        ```
+    - *引用限定符* （reference qualifier）
+        - 我们调用成员函数时，通常不关心对象是左值还是右值
+            - 但`this`指针还是知道自己是 *左值* 还是 *右值* 的
+        - *标准库类型* 允许 *向该类型的右值赋值* 
+            - 这也是为了向前兼容啊，总不能学`python`吧
+        ```
+        std::string s1 = "a value", s2 = "another";
+        auto n = (s1 + s2).find('a');           // (s1 + s2) is rvalue, and we are calling member function
+        s1 + s2 = "wow!";
+        ```
+        - 通过对类成员函数添加 *引用限定符* 可以限制`this` 的 *值类别* 
+            - 方法是，在和定义`const`成员函数时`const`一样的位置放置`&`或`&&`
+        ```
+        class Foo 
+        {
+        public:
+            Foo & operator=(const Foo &) &;     // may assign only to modifiable lvalues
+            // other members of Foo
+        };
+        
+        Foo & Foo::operator=(const Foo & rhs) &
+        {
+            // do whatever is needed to assign rhs to this object
+            return *this;
+        }
+        
+        Foo & retFoo();  // returns a reference; a call to retFoo is an lvalue
+        Foo retVal();    // returns by value; a call to retVal is an rvalue
+        Foo i, j;        // i and j are lvalues
+        
+        i = j;           // ok: i is an lvalue
+        retFoo() = j;    // ok: retFoo() returns an lvalue
+        retVal() = j;    // error: retVal() returns an rvalue
+        i = retVal();    // ok: we can pass an rvalue as the right-hand operand to assignment
+        ```
+        - 成员函数可以 *同时* 使用`const`限定和 *引用限定*
+            - 此时， *引用限定符* 必须跟在`const` *之后* 
+        ```
+        class Foo 
+        {
+        public:
+            Foo someMem() & const;     // error: const qualifier must come first
+            Foo anotherMem() const &;  // ok: const qualifier comes first
+        };
+        ```
+    - 重载和引用函数
+        - 成员函数的`const`限定和 *引用限定* 均可用于重载函数
+        ```
+        class Foo 
+        {
+        public:
+            Foo sorted() &&;                         // may run on modifiable rvalues
+            Foo sorted() const &;                    // may run on any kind of Foo
+            // other members of Foo
+            
+        private:
+            std::vector<int> data;
+        };
+        
+        // this object is an rvalue, so we can sort in place
+        Foo Foo::sorted() &&
+        {
+            std::sort(data.begin(), data.end());
+            return *this;
+        }
+        
+        // this object is either const or it is an lvalue; either way we can't sort in place
+        Foo Foo::sorted() const & 
+        {
+            Foo ret(*this);                          // make a copy
+            sort(ret.data.begin(), ret.data.end());  // sort the copy
+            return ret;                              // return the copy
+        }
+        
+        retVal().sorted();  // retVal() is an rvalue, calls Foo::sorted() &&
+        retFoo().sorted();  // retFoo() is an lvalue, calls Foo::sorted() const &
+        ```
+        - 如果一个成员函数有 *引用限定符* ，则所有具有相同形参列表的函数都必须也有
+            - 如果根据`const`限定区分重载函数，两个函数可以一个加`const`另一个不加
+            - 如果根据 *引用限定* 区分重载函数，两个函数 *必须都加* *引用限定符*
+        ```
+        class Foo 
+        {
+        public:
+            Foo sorted() &&;
+            Foo sorted() const;        // error: must have reference qualifier
+            
+            // Comp is type alias for the function type that can be used to compare int values
+            using Comp = bool(const int&, const int&);
+            
+            Foo sorted(Comp *);        // ok: different parameter list
+            Foo sorted(Comp *) const;  // ok: neither version is reference qualified
+        };
+        ```
 
 
 
