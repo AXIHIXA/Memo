@@ -64,6 +64,7 @@
         - 必须正确处理 *自赋值* （ *拷贝并交换赋值运算符* 则自动能处理自赋值）
         - 大多数拷贝赋值运算符组合了 *析构函数* 和 *拷贝构造函数* 二者的工作
             - 公共的工作应放到 *私有的工具函数* 中完成
+    - 千言万语汇聚成一句话，拷贝操作成员和移动操作成员要定义就 *都定义全* ，就没这么多破事儿了
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -1475,6 +1476,228 @@ cpc++;     // error: const pointer (to const int) cannot be changed
 p = pc;    // error: pointer to non-const int cannot point to const int
 ppc = &p;  // error: pointer to pointer to const int cannot point to
            // pointer to non-const int
+```
+
+
+
+
+
+
+### 🌱 [引用声明](https://en.cppreference.com/w/cpp/language/reference)
+
+- 一网打尽各种引用声明
+
+#### 引用声明
+
+1. `T  & d = ...`： *左值引用声明符* ，`d`为`T`类型的 *左值引用* 
+2. `T && d = ...`： *右值引用声明符* ，`d`为`T`类型的 *右值引用* 
+```
+decl-specifier-seq  & attr(optional) declarator    (1)
+decl-specifier-seq && attr(optional) declarator    (2)
+```
+- *声明说明符序列* （declarator specifier sequence）：用于说明引用绑定的类型
+    - *被绑定类型* 的`cv`限定是 *声明说明符序列* 的一部分
+- `attr`： *属性列表* ，可选
+- *声明符* （declarator）：除 *引用* 声明符**之外**的任意声明符，可以是另一 *指针* 声明符
+    - 引用必须被 *初始化* 为指代一个有效的对象或函数
+    - **不**存在 *`void`的引用* 以及 *引用的引用* 
+    - 引用类型无法在顶层被`cv`限定
+        - 声明中没有为此而设的语法
+        - 若将限定性添加到`typedef`名、`decltype`说明符或 *类型模板形参* ，则忽略它
+- 引用**不是**对象；它们不必占用内存，尽管若需要，编译器会分配内存空间
+    - 例如，引用类型的非静态数据成员通常会增加类的大小，量为存储内存地址所需
+- 因为引用**不是**对象，故
+    - **不**存在 *引用的数组*
+    - **不**存在 *指向引用的指针* 
+    - **不**存在 *引用的引用* 
+```
+int & a[3];  // error
+int &* p;    // error
+int & &r;    // error
+```
+- *引用坍缩* （Reference collapsing）
+    - 容许通过 *模板* 或 *`typedef`中的类型操作* 构成 *引用的引用* 
+        - 这种情况下适用引用坍缩（reference coolapsing）规则
+        - *右值引用的右值引用* 坍缩成 *右值引用* ， *所有其他组合* 均坍缩成 *左值引用* 
+    - 这条规则，和将`T &&`用于 *函数模板* 时的 *模板实参推导* 的特殊规则一起，组成使得`std::forward`可行的规则
+```
+typedef int &  lref;
+typedef int && rref;
+int n;
+lref &  r1 = n;  // type of r1 is int &
+lref && r2 = n;  // type of r2 is int &
+rref &  r3 = n;  // type of r3 is int &
+rref && r4 = 1;  // type of r4 is int &&
+```
+
+#### 左值引用（lvalue references）
+
+- 左值引用可用于建立既存对象的 *别名* （可选地拥有不同的`cv`限定） 
+```
+std::string s = "Ex";
+std::string & r1 = s;
+const std::string & r2 = s;
+
+r1 += "ample";                 // modifies s
+r2 += "!";                     // error: cannot modify through reference to const
+std::cout << r2 << std::endl;  // prints s, which now holds "Example"
+```
+- 它们亦可用于在函数调用中实现 *按引用传递* 
+```
+void double_string(std::string & s) 
+{
+    s += s;  // 's' is the same object as main()'s 'str'
+}
+ 
+std::string str = "Test";
+double_string(str);
+std::cout << str << std::endl;
+``` 
+- 当函数的返回值是左值引用时，函数调用表达式成为左值表达式
+```
+char & char_number(std::string & s, std::size_t n) 
+{
+    return s.at(n);         // string::at() returns a reference to char
+}
+ 
+std::string str = "Test";
+char_number(str, 1) = 'a';  // the function call is lvalue, can be assigned to
+std::cout << str << std::endl;
+```
+
+#### 右值引用（lvalue references）
+
+- 右值引用可用于 *为临时对象延长生存期* 
+    - 注意， *常左值引用* 亦能延长临时对象生存期，但不能通过常左值引用修改它们
+```
+std::string s1 = "Test";
+std::string && r1 = s1;            // error: can't bind to lvalue
+
+const std::string & r2 = s1 + s1;  // okay: lvalue reference to const extends lifetime
+r2 += "Test";                      // error: can't modify through reference to const
+
+std::string && r3 = s1 + s1;       // okay: rvalue reference extends lifetime
+r3 += "Test";                      // okay: can modify through reference to non-const
+std::cout << r3 << std::endl;;
+```
+- 当函数同时具有 *右值引用* 和 *左值引用* 的 *重载* 时
+    - *右值引用重载* 绑定到 *右值* （包含 *纯右值* 和 *将亡值* ）
+    - *左值引用重载* 绑定到 *左值* 
+- 这允许在适当时机自动选择 *移动构造函数* 、 *移动赋值运算符* 和其他 *具移动能力的函数* 
+    - 例如`std::vector::push_back()`
+```
+void f(int & x) 
+{
+    printf("lvalue reference overload f(%d)\n", x);
+}
+ 
+void f(const int & x) 
+{
+    printf("lvalue reference to const overload f(%d)\n", x);
+}
+ 
+void f(int && x)
+{
+    printf("rvalue reference overload f(%d)\n", x);    
+}
+ 
+int i = 1;
+const int ci = 2;
+f(i);             // calls f(int &)
+f(ci);            // calls f(const int &)
+f(3);             // calls f(int &&)
+                  // would call f(const int &) if f(int &&) overload wasn't provided
+f(std::move(i));  // calls f(int && )
+
+// rvalue reference variables are lvalues when used in expressions
+int && x = 1;
+f(x);             // calls f(int & x)
+f(std::move(x));  // calls f(int && x)
+```
+- 因为 *右值引用* 能绑定到 *将亡值* ，故它们能指代 *非临时对象* 
+    - 这使得可以将作用域中 *不再需要的对象* *移动出去* 
+```
+int i2 = 42;
+int && rri = std::move(i2);         // binds directly to i2
+
+std::vector<int> v{1, 2, 3, 4, 5};
+std::vector<int> v2(std::move(v));  // binds an rvalue reference to v
+assert(v.empty());
+```
+
+#### 转发引用（Forwarding references）
+
+- 转发引用是一种特殊的引用，它保持函数实参的 *值类别* ，使得能利用`std::forward`转发实参
+- 转发引用是下列之一 
+    1. *函数模板的函数形参* ，其被声明为同一函数模板的类型模板形参的 *无`cv`限定的右值引用* 
+    ```
+    template <class T>
+    int g(const T && x);               // x is not a forwarding reference
+                                       // T is const-qualified
+    
+    template <class T>
+    int f(T && x)                      // x is a forwarding reference
+    {                    
+        return g(std::forward<T>(x));  // and so can be forwarded
+    }
+     
+    int i;
+    f(i);   // argument is lvalue, calls f<int &>(int &), std::forward<int &>(x) is lvalue
+    f(0);   // argument is rvalue, calls f<int>(int &&), std::forward<int>(x) is rvalue
+    
+    template <class T> 
+    struct A 
+    {
+        template <class U>
+        A(T && x, U && y, int * p);  // x is not a forwarding reference
+                                     // T is not a type template parameter of the constructor
+                                     // y is a forwarding reference
+    };
+    ```
+    2. `auto &&`，但当其 *从花括号初始化器列表推导* 时则**不是**
+    ```
+    auto && vec = foo();       // foo() may be lvalue or rvalue, vec is a forwarding reference
+    auto i = std::begin(vec);  // works either way
+    (*i)++;                    // works either way
+    g(std::forward<decltype(vec)>(vec)); // forwards, preserving value category
+     
+    for (auto && x: f()) 
+    {
+        // x is a forwarding reference; this is the safest way to use range for loops
+    }
+     
+    auto && z = {1, 2, 3};     // NOT a forwarding reference (special case for initializer lists)
+    ```
+
+#### 悬垂引用（Dangling references）
+
+- 但有可能创建一个程序，被指代对象的生存期结束，但引用仍保持可访问（ *悬垂* ）
+    - 访问悬垂引用是 *未定义行为* 
+    - 一个常见例子是 *返回自动变量的非常量左值引用的函数* 
+        - 比如函数内定义的临时量
+```
+std::string & f()
+{
+    std::string s = "Example";
+    return s;                   // exits the scope of s:
+                                // its destructor is called and its storage deallocated
+}
+
+const std::string & g()
+{
+    std::string s = "Example";
+    return s;                   // lifetime of s is extended
+}
+
+std::string && h()
+{
+    std::string s = "Example";
+    return s;                   // lifetime of s is extended
+}
+ 
+std::string & r = f();          // dangling reference
+std::cout << r << std::endl;    // undefined behavior: reads from a dangling reference
+std::string s = f();            // undefined behavior: copy-initializes from a dangling reference
 ```
 
 
@@ -8049,6 +8272,35 @@ public:
             elements = data.first;
             first_free = cap = data.second;
         }
+
+        return *this;
+    }
+
+    // move constructor
+    // move won't throw any exceptions
+    // member initializers take over the resources in s
+    StrVec(StrVec && s) noexcept : elements(s.elements), first_free(s.first_free), cap(s.cap)
+    {
+        // leave s in a state in which it is safe to run the destructor
+        s.elements = s.first_free = s.cap = nullptr;
+    }
+
+    // move assignment
+    StrVec & operator=(StrVec && rhs) noexcept
+    {
+        // direct test for self-assignment
+        if (this != &rhs)
+        {
+            // free existing elements
+            free();
+            // take over resources from rhs
+            elements = rhs.elements;
+            first_free = rhs.first_free;
+            cap = rhs.cap;
+            // leave rhs in a destructible state
+            rhs.elements = rhs.first_free = rhs.cap = nullptr;
+        }
+
         return *this;
     }
 
@@ -8088,8 +8340,6 @@ public:
         return first_free;
     }
 
-    // ...
-
 private:
     // used by the functions that add elements to the StrVec
     inline void chk_n_alloc()
@@ -8123,7 +8373,7 @@ private:
                 std::destroy_at(--p);
                 // alloc.destroy(--p);  // deprecated in C++14
             }
-            
+
             alloc.deallocate(elements, cap - elements);
         }
     }
@@ -8135,19 +8385,19 @@ private:
         size_t newcapacity = size() ? 2 * size() : 1;
         // allocate new memory
         std::string * newdata = alloc.allocate(newcapacity);
-        
+
         // move the data from the old memory to the new
         std::string * dest = newdata;   // points to the next free position in the new array
         std::string * elem = elements;  // points to the next element in the old array
-        
+
         for (size_t i = 0; i != size(); ++i)
         {
             new (dest++) std::string(std::move(*elem++));
             // alloc.construct(dest++, std::move(*elem++));  // deprecated in C++14
         }
-        
+
         free();                // free the old space once we've moved the elements
-        
+
         // update our data structure to point to the new elements
         elements = newdata;
         first_free = dest;
@@ -8263,14 +8513,40 @@ Entry & operator=(Entry rhs)
     int && rr3 = std::move(i3);
     ```
 - [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
-    - 签名
+    - `g++`的实现
     ```
-    template <class T>
-    constexpr typename std::remove_reference<T>::type && 
-    move(T && t) noexcept;
+    /// <type_traits>
+    /// remove_reference
+    template <typename _Tp>
+    struct remove_reference
+    { 
+        typedef _Tp type; 
+    };
+
+    template <typename _Tp>
+    struct remove_reference<_Tp &>
+    { 
+        typedef _Tp type; 
+    };
+
+    template <typename _Tp>
+    struct remove_reference<_Tp &&>
+    { 
+        typedef _Tp type; 
+    };
+    
+    /// <move.h>
+    /// @brief  Convert a value to an rvalue.
+    /// @param  __t  A thing of arbitrary type.
+    /// @return The parameter cast to an rvalue-reference to allow moving it.
+    template<typename _Tp>
+    constexpr typename std::remove_reference<_Tp>::type &&
+    move(_Tp && __t) noexcept
+    { 
+        return static_cast<typename std::remove_reference<_Tp>::type &&>(__t); 
+    }
     ```
     - 告诉编译器：我们有一个左值，但我们希望像处理一个右值一样处理它
-    - `cppreference`明确写有： *和`static_cast<T &&>`完全一致*
     - 调用`std::move(var)`就意味着承诺：除了对`var` *赋值* 或 *销毁* 它外，我们将不再使用它
         - 调用`std::move`之后，移后源对象的值 *未定义* ；可以被 *赋值* 或 *销毁* ，但**不能** *使用它的值* 
     - 对`std::move`，调用时**不提供**`using`声明，而是直接调用`std::move` => 18.2.3
@@ -8297,7 +8573,7 @@ Entry & operator=(Entry rhs)
     }
     ```
     - 合成的移动操作
-        - 只有当类没有自定义任何拷贝控制成员、且类的每个非`static`数据成员都可 *移动构造* 或 *移动赋值* 时，编译器会合成 *移动构造函数* 或 *移动赋值运算符* 
+        - 只有当类没有自定义任何拷贝控制成员、且类的每个非静态数据成员都可 *移动构造* 或 *移动赋值* 时，编译器会合成 *移动构造函数* 或 *移动赋值运算符* 
         - 编译器可以移动内置类型的的成员
         - 如果一个类没有移动操作，编译器会匹配到对应的拷贝操作
     ```
@@ -8319,6 +8595,31 @@ Entry & operator=(Entry rhs)
     hasX hx;
     hasX hx2 = std::move(hx);  // uses the synthesized move constructor
     ```
+    - 当且仅当我们显式要求`= default;`的移动成员，而编译器不能移动该类的全部非静态数据成员时，编译器会定义 *被删除的* 移动成员
+        - 移动构造函数
+            - 类成员定义了自己的拷贝构造函数且未定义移动构造函数
+            - 类成员未定义自己的拷贝构造函数且编译器不能为其合成移动构造函数
+            - 类成员的移动构造函数被定义为删除的或者不可访问
+            - 类的 *析构函数* 被定义为删除的或者不可访问
+        - 移动赋值运算符
+            - 类成员定义了自己的拷贝赋值运算符且未定义移动赋值运算符
+            - 类成员未定义自己的拷贝赋值运算符且编译器不能为其合成移动赋值运算符
+            - 类成员的移动赋值运算符被定义为删除的或者不可访问
+            - 类成员有 *`const`的* 或者 *引用* 
+    ```
+    // assume Y is a class that defines its own copy constructor but not a move constructor
+    struct hasY 
+    {
+        hasY() = default;
+        hasY(hasY &&) = default;
+        Y mem;                 // hasY will have a deleted move constructor
+    };
+    hasY hy;
+    hasY hy2 = std::move(hy);  // error: move constructor is deleted
+    ```
+    - 定义了移动成员后，类也必须定义对应的拷贝成员，否则，这些成员也被默认成删除的
+    - 如果一个类有一个可用的拷贝构造函数而没有移动构造函数，
+    - 千言万语汇聚成一句话，拷贝操作成员和移动操作成员要定义就 *都定义全* ，就没这么多破事儿了
 - [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
     - 应标记为`noexcept`，必须妥善处理自赋值
     ```
