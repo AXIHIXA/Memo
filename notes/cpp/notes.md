@@ -2221,33 +2221,110 @@ std::vector<std::string> process()
     }
     ```
 
-#### 函数重载
+#### 函数重载（Overloaded functions）
 
-- 顶层`const`不影响传入的对象，因此以下定义不合法
+- 同一作用域中几个函数名字相同而形参列表不同，我们称之为 *重载函数* 
+    - 重载函数一般形参类型不同，但执行的操作非常相似
+    - `main`函数**不能**重载
 ```
-Record lookup(Phone);
-Record lookup(const Phone);      // redeclares Record lookup(Phone)
-
-Record lookup(Phone *);
-Record lookup(Phone * const);    // redeclares Record lookup(Phone *)
+void print(const char * cp);
+void print(const int * beg, const int * end);
+void print(const int ia[], size_t size);
 ```
-- 可以基于底层`const`重载函数
+- 调用时，编译器会根据 *传递的实参的类型* 推断调用哪个版本
+    - 可能允许 *隐式类型转换* ，比如把非常量转化成常量
 ```
-// functions taking const and nonconst references or pointers have different parameters
-// declarations for four independent, overloaded functions
-Record lookup(Account &);        // function that takes a reference to Account
-Record lookup(const Account &);  // new function that takes a const reference
-Record lookup(Account *);        // new function, takes a pointer to Account
-Record lookup(const Account *);  // new function, takes a pointer to const
+int j[2]{0, 1};
+print("Hello World");                     // calls print(const char *)
+print(j, std::end(j) - std::begin(j));    // calls print(const int *, size_t)
+print(std::begin(j), std::end(j));        // calls print(const int *, const int *)
 ```
-- 类成员函数基于`const`的重载
-    - 通过区分成员函数是否为`const`的，我们可以对其进行重载；
-    - 原理：编译器可以根据`this`指针参数的底层`const`区分参数类型
-- 不允许两个函数除了返回值其余都相同：
-```
-Record lookup(const Account&);
-bool lookup(const Account&);     // error: only the return type is different
-```
+- 重载规则
+    - 重载的函数的 *形参列表* *必须* 有所不同
+        - 形参总数
+        - 某位置的形参类型
+    - **不允许** 两个函数除了返回值类型以外的所有要素都相同
+    ```
+    Record lookup(const Account&);
+    bool lookup(const Account&);          // error: only the return type is different
+    ```
+- 如何判断形参类型是否相异
+    - 省略形参名字的
+    ```
+    // each pair declares the same function
+    Record lookup(const Account & acct);
+    Record lookup(const Account &);       // parameter names are ignored
+    ```
+    - 类型别名撞车的
+    ```
+    typedef Phone Telno;
+    Record lookup(const Phone &);
+    Record lookup(const Telno &);         // Telno and Phone are the same type
+    ```
+    - 顶层`const`**不影响**传入的对象，因此以下定义不合法
+    ```
+    Record lookup(Phone);
+    Record lookup(const Phone);           // redeclares Record lookup(Phone)
+    
+    Record lookup(Phone *);
+    Record lookup(Phone * const);         // redeclares Record lookup(Phone *)
+    ```
+    - 可以基于底层`const`重载函数
+        - 可以通过 *实参* 是否是常量来决定调用哪个版本
+            - *常量* **不能**隐式转换成 *非常量* ，因此只能调用普通引用版本
+            - *非常量* 可以隐式转化成 *常量* ，因此理论上哪个都行
+                - 不过编译器会 *优先选用非常量形参的版本* 
+    ```
+    // functions taking const and nonconst references or pointers have different parameters
+    // declarations for four independent, overloaded functions
+    Record lookup(Account &);        // function that takes a reference to Account
+    Record lookup(const Account &);  // new function that takes a const reference
+    
+    Record lookup(Account *);        // new function, takes a pointer to Account
+    Record lookup(const Account *);  // new function, takes a pointer to const
+    ```
+    - 类成员函数基于`const`的重载
+        - 通过区分成员函数是否为`const`的，我们可以对其进行重载
+        - 原理：编译器可以根据`this`指针参数的底层`const`区分参数类型
+- *函数匹配* （function matching）
+    - 又称 *重载确定* （overload resolution）
+    - 编译器首先将调用的实参与重载集合中每一个函数的形参进行比较，然后根据结果确定调用版本
+    - 函数匹配过程的三种可能结果
+        1. 找到 *最佳匹配* （best match）
+        2. *无匹配* （no match）
+        3. 多个函数都可调用且无明显最佳选择： *二义性调用* （ambiguous call）
+- 重载和作用域
+    - 在不同的作用域中**无法**重载函数
+    - **不要**在 *块作用域* 内声明或定义函数，容易覆盖外层作用域中的同名 *实体* （ *对象* ， *函数* 等等都可能覆盖）
+        - `C++`中， *名字查找* 发生在 *类型匹配* 之前
+            - 编译器首先查找对 *名字* 的声明，一旦找到，就会 *忽略掉* 外部作用域的 *同名实体*
+            - 之后才会看声明的类型与调用时的实际类型是否匹配，如果不匹配， *直接报错* 
+    ```
+    string read();
+    void print(const string &);
+    void print(double);          // overloads the print function
+    
+    void fooBar(int ival)
+    {
+        bool read = false;       // new scope: hides the outer declaration of read
+        string s = read();       // error: read is a bool variable, not a function
+                                 // bad practice: usually it's a bad idea to declare functions at local scope
+        
+        void print(int);         // new scope: hides previous instances of print
+        print("Value: ");        // error: print(const string &) is hidden
+        print(ival);             // ok: print(int) is visible
+        print(3.14);             // ok: calls print(int); print(double) is hidden
+    }
+    
+    void print(int);             // another overloaded instance
+    
+    void fooBar2(int ival)
+    {
+        print("Value: ");        // calls print(const string &)
+        print(ival);             // calls print(int)
+        print(3.14);             // calls print(double)
+    }
+    ```
 
 #### 数组形参
 
@@ -8551,27 +8628,50 @@ Entry & operator=(Entry rhs)
         - 调用`std::move`之后，移后源对象的值 *未定义* ；可以被 *赋值* 或 *销毁* ，但**不能** *使用它的值* 
     - 对`std::move`，调用时**不提供**`using`声明，而是直接调用`std::move` => 18.2.3
         - 避免名字冲突
-- [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor)
-    - *第一个* 参数是自身类类型的 *右值引用* 的构造函数
-        - 可以有额外参数，但必须提供 *默认实参* 
-        - *必须标注* `noexcept`
-            - 向编译器承诺 *不抛出异常* ，避免编译器为了处理异常做出额外操作（将被操作对象恢复原状）
-            - 如果出现异常，被移动对象无法恢复原状，此时只能使用 *拷贝构造函数*
-        - 从对象 *窃取* 资源， *接管* 对象的全部内存
-        - 必须保证完事后，移后源对象必须保持 *有效的、可析构的* 状态，但用户**不能**对其值做任何假设
-            1. 移后源对象**不再**指向被移动的资源
-            2. *销毁* 移后源对象是无害的
-                - 指针全部 *置空* 就完事儿了
-    ```
-    // move constructor
-    // move won't throw any exceptions
-    // member initializers take over the resources in s
-    StrVec(StrVec && s) noexcept : elements(s.elements), first_free(s.first_free), cap(s.cap)
-    {
-        // leave s in a state in which it is safe to run the destructor
-        s.elements = s.first_free = s.cap = nullptr;
-    }
-    ```
+- 移动操作成员
+    - [*移动构造函数*](https://en.cppreference.com/w/cpp/language/move_constructor)
+        - *第一个* 参数是自身类类型的 *右值引用* 的构造函数
+            - 可以有额外参数，但必须提供 *默认实参* 
+            - *必须标注* `noexcept`
+                - 向编译器承诺 *不抛出异常* ，避免编译器为了处理异常做出额外操作（将被操作对象恢复原状）
+                - 如果出现异常，被移动对象无法恢复原状，此时只能使用 *拷贝构造函数*
+            - 从对象 *窃取* 资源， *接管* 对象的全部内存
+            - 必须保证完事后，移后源对象必须保持 *有效的、可析构的* 状态，但用户**不能**对其值做任何假设
+                1. 移后源对象**不再**指向被移动的资源
+                2. *销毁* 移后源对象是无害的
+                    - 指针全部 *置空* 就完事儿了
+        ```
+        // move constructor
+        // move won't throw any exceptions
+        // member initializers take over the resources in s
+        StrVec(StrVec && s) noexcept : elements(s.elements), first_free(s.first_free), cap(s.cap)
+        {
+            // leave s in a state in which it is safe to run the destructor
+            s.elements = s.first_free = s.cap = nullptr;
+        }
+        ```
+    - [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
+        - 应标记为`noexcept`，必须妥善处理自赋值
+        ```
+        // move assignment
+        StrVec & operator=(StrVec && rhs) noexcept
+        {
+            // direct test for self-assignment
+            if (this != &rhs)
+            {
+                // free existing elements
+                free();
+                // take over resources from rhs
+                elements = rhs.elements;
+                first_free = rhs.first_free;
+                cap = rhs.cap;
+                // leave rhs in a destructible state
+                rhs.elements = rhs.first_free = rhs.cap = nullptr;
+            }
+
+            return *this;
+        }
+        ```    
     - 合成的移动操作
         - 只有当类没有自定义任何拷贝控制成员、且类的每个非静态数据成员都可 *移动构造* 或 *移动赋值* 时，编译器会合成 *移动构造函数* 或 *移动赋值运算符* 
         - 编译器可以移动内置类型的的成员
@@ -8618,30 +8718,8 @@ Entry & operator=(Entry rhs)
     hasY hy2 = std::move(hy);  // error: move constructor is deleted
     ```
     - 定义了移动成员后，类也必须定义对应的拷贝成员，否则，这些成员也被默认成删除的
-    - 如果一个类有一个可用的拷贝构造函数而没有移动构造函数，
     - 千言万语汇聚成一句话，拷贝操作成员和移动操作成员要定义就 *都定义全* ，就没这么多破事儿了
-- [*移动赋值运算符*](https://en.cppreference.com/w/cpp/language/move_assignment)
-    - 应标记为`noexcept`，必须妥善处理自赋值
-    ```
-    // move assignment
-    StrVec & operator=(StrVec && rhs) noexcept
-    {
-        // direct test for self-assignment
-        if (this != &rhs)
-        {
-            // free existing elements
-            free();
-            // take over resources from rhs
-            elements = rhs.elements;
-            first_free = rhs.first_free;
-            cap = rhs.cap;
-            // leave rhs in a destructible state
-            rhs.elements = rhs.first_free = rhs.cap = nullptr;
-        }
-
-        return *this;
-    }
-    ```
+    - 函数调用时，参数
 - 右值引用和成员函数
 
 
