@@ -78,6 +78,7 @@
     - 非`extern`全局`const`对象和`static`对象被设定为**仅在文件内有效**
     - `std::endl`有刷新缓冲区的效果。最好带上
     - 如果一个函数是永远也不会用到的，那么它可以只有声明而没有定义 => 15.3
+    - 如果一个函数形参是没有用到的，那么在函数定义中也不必为之具名 => 14.6
     - 引用从来都是作为被引用对象的同义词出现（比如`auto`就不能自动推断出引用），唯一例外是`decltype`。它会原样保留引用以及顶层`const`
     - `main`函数不能递归调用、不能重载
     - 定义在类内部的函数是隐式的`inline`函数
@@ -8122,6 +8123,165 @@ std::map<std::string, int>::mapped_type v5;  // int
         alloc.deallocate(p, n);               // deallocate memory
         ```
 
+#### 共享指针应用类`StrBlob`
+
+```
+class StrBlob
+{
+public:
+    friend class StrBlobPtr;
+    typedef std::vector<std::string>::size_type size_type;
+
+    StrBlob() : data(std::make_shared<std::vector<std::string>>())
+    {
+    }
+
+    StrBlob(std::initializer_list<std::string> il) : data(std::make_shared<std::vector<std::string>>(il))
+    {
+    }
+
+    // add and remove elements
+    void push_back(const std::string & t)
+    {
+        data->push_back(t);
+    }
+
+    void pop_back()
+    {
+        check(0, "pop_back on empty StrBlob");
+        data->pop_back();
+    }
+
+    // statistics
+    [[nodiscard]] size_type size() const
+    {
+        return data->size();
+    }
+
+    [[nodiscard]] bool empty() const
+    {
+        return data->empty();
+    }
+
+    // element access
+    std::string & front()
+    {
+        // if the vector is empty, check will throw
+        check(0, "front on empty StrBlob");
+        return data->front();
+    }
+
+    std::string & back()
+    {
+        check(0, "back on empty StrBlob");
+        return data->back();
+    }
+
+private:
+    // throws msg if data[i] isn't valid
+    void check(size_type i, const std::string & msg) const
+    {
+        if (i >= data->size())
+        {
+            throw std::out_of_range(msg);
+        }
+    }
+
+private:
+    std::shared_ptr<std::vector<std::string>> data;
+};
+```
+
+#### 弱指针和重载运算符应用类`StrBlobPtr` => 14.6, 14.7
+
+```
+// StrBlobPtr throws an exception on attempts to access a nonexistent element
+class StrBlobPtr
+{
+public:
+    StrBlobPtr() : curr(0)
+    {
+    }
+
+    explicit StrBlobPtr(StrBlob & a, size_t sz = 0) : wptr(a.data), curr(sz)
+    {
+    }
+
+    // prefix: return a reference to the incremented/decremented object
+    StrBlobPtr & operator++()
+    {
+        // if curr already points past the end of the container, can't increment it
+        check(curr, "increment past end of StrBlobPtr");
+        // advance the current state
+        ++curr;
+        return *this;
+    }
+
+    StrBlobPtr & operator--()
+    {
+        // move the current state back one element
+        --curr;
+        // if curr is zero, decrementing it will yield an invalid subscript
+        check(-1, "decrement past begin of StrBlobPtr");
+        return *this;
+    }
+
+    // postfix: increment/decrement the object but return the unchanged value
+    StrBlobPtr operator++(int)
+    {
+        // no check needed here; the call to prefix increment will do the check
+        StrBlobPtr ret = *this;      // save the current value
+        ++*this;                     // advance one element; prefix ++ checks the increment
+        return ret;                  // return the saved state
+    }
+
+    StrBlobPtr operator--(int)
+    {
+        // no check needed here; the call to prefix decrement will do the check
+        StrBlobPtr ret = *this;      // save the current value
+        --*this;                     // move backward one element; prefix -- checks the decrement
+        return ret;                  // return the saved state
+    }
+
+    std::string & operator*() const
+    {
+        std::shared_ptr<std::vector<std::string>> p = check(curr, "dereference past end");
+        return (*p)[curr];           // (*p) is the vector to which this object points
+    }
+
+    std::string * operator->() const
+    {
+        return & this->operator*();  // delegate the real work to the dereference operator
+    }
+
+private:
+    // check returns a shared_ptr to the vector if the check succeeds
+    std::shared_ptr<std::vector<std::string>> check(std::size_t i, const std::string & msg) const
+    {
+        std::shared_ptr<std::vector<std::string>> ret = wptr.lock();  // is the vector still around?
+
+        if (!ret)
+        {
+            throw std::runtime_error("unbound StrBlobPtr");
+        }
+
+        if (i >= ret->size())
+        {
+            throw std::out_of_range(msg);
+        }
+
+        return ret; // otherwise, return a shared_ptr to the vector
+    }
+
+private:
+    // store a weak_ptr, which means the underlying vector might be destroyed
+    std::weak_ptr<std::vector<std::string>> wptr;
+
+    // current position within the array
+    std::size_t curr;
+};
+```
+
 
 
 
@@ -9086,12 +9246,12 @@ Entry & operator=(Entry rhs)
 表达式    | 成员函数              | 非成员函数        | 示例
 ---------|---------------------|------------------|-----------------------------------
 `@a`      | `(a).operator@()`     | `operator@(a)`    | `!std::cin => std::cin.operator!()`
+`a@`      | `(a).operator@(0)`    | `operator@(a, 0)` | `i++ => i.operator++(0)`
 `a @ b`   | `(a).operator@(b)`    | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`
 `a = b`   | `(a).operator=(b)`    | *必须为成员函数*  | `str = "abc" => str.operator=("abc")`
 `a(b...)` | `(a).operator(b...)`  | *必须为成员函数*  | `std::greater(1, 2) => std::greater.operator()(1, 2)`   
 `a[b]`    | `(a).operator[](b)`   | *必须为成员函数*  | `map["key"] => map.operator[]("key")`
 `a->mem`  | `(a).operator->(mem)` | *必须为成员函数*  | `ptr->mem => ptr.operator->(mem)`      
-`a@`      | `(a).operator@(0)`    | `operator@(a, 0)` | `i++ => i.operator++(0)`
 
 - 直接调用重载的运算符函数
 ```
@@ -9246,21 +9406,123 @@ Sales_data & Sales_data::operator+=(const Sales_data & rhs)
 
 Sales_data operator+(const Sales_data & lhs, const Sales_data & rhs)
 {
-    
+    Sales_data res(lhs);
+    return res += rhs;
 }
 ```
 
 #### 下标运算符（Subscript Operator）
 
+- 下标运算符必须是 *成员函数* 
+- 下标运算符通常定义两个版本
+    - 一个返回 *普通引用* 
+    - 一个是 *常量成员* ，并返回 *常量引用* 
+```
+class StrVec 
+{
+public:
+    std::string & operator[](std::size_t n) { return elements[n]; }
+    const std::string & operator[](std::size_t n) const { return elements[n]; }
 
+private:
+    std::string *elements;  // pointer to the first element in the array
+};
+
+// assume svec is a StrVec
+const StrVec cvec = svec;   // copy elements from svec into cvec
+
+// if svec has any elements, run the string empty function on the first one
+if (svec.size() && svec[0].empty()) 
+{
+    svec[0] = "zero";       // ok: subscript returns a reference to a string
+    cvec[0] = "Zip";        // error: subscripting cvec returns a reference to const
+}
+```
 
 #### 自增和自减运算符（Increment and Decrement Operators）
 
+- *迭代器* 类中通常定义自增运算符`++`和自减运算符`--`
+- 因为改变的是所操作的对象的状态，建议将其设定为 *成员函数*
+- 应当 *同时定义* *前置* 版本和 *后置* 版本
+    - *前置* 版本返回自增或自减 *之后* 的对象的 *引用* ，**无**参数
+    - *后置* 版本返回自增或自减 *之前* 的对象的 *拷贝* ，接受一个`int`类型参数
+        - 因为不能仅靠返回值区分重载版本，因此由这个`int`类型参数作为和前置版本的区分
+        - 编译器调用 *后置* 类型时，会自动传一个`0`
+        - 后置运算符一般不用这个`0`，因此**不必**为之命名
+```
+// prefix: return a reference to the incremented/decremented object
+StrBlobPtr & StrBlobPtr::operator++()
+{
+    // if curr already points past the end of the container, can't increment it
+    check(curr, "increment past end of StrBlobPtr");
+    // advance the current state
+    ++curr; 
+    return *this;
+}
 
+StrBlobPtr & StrBlobPtr::operator--()
+{
+    // move the current state back one element
+    --curr; 
+    // if curr is zero, decrementing it will yield an invalid subscript
+    check(-1, "decrement past begin of StrBlobPtr");
+    return *this;
+}
+
+// postfix: increment/decrement the object but return the unchanged value
+StrBlobPtr StrBlobPtr::operator++(int)
+{
+    // no check needed here; the call to prefix increment will do the check
+    StrBlobPtr ret = *this;  // save the current value
+    ++*this;                 // advance one element; prefix ++ checks the increment
+    return ret;              // return the saved state
+}
+
+StrBlobPtr StrBlobPtr::operator--(int)
+{
+    // no check needed here; the call to prefix decrement will do the check
+    StrBlobPtr ret = *this;  // save the current value
+    --*this;                 // move backward one element; prefix -- checks the decrement
+    return ret;              // return the saved state
+}
+```
+- 显式调用
+```
+StrBlobPtr p(a1);            // p points to the vector inside a1
+p.operator++(0);             // call postfix operator++
+p.operator++();              // call prefix operator++
+```
 
 #### 成员访问运算符（Member Access Operators）
 
+- *解引用* 运算符`*`和 *箭头* 运算符`->`
+    - *解引用* 运算符`*`通常是`const`类成员函数
+    - *箭头* 运算符`->`必须是`const`类成员函数
+    - 成员访问并不应该改变状态
+```
+class StrBlobPtr 
+{
+public:
+    std::string & operator*() const
+    { 
+        std::shared_ptr<std::vector<std::string>> p = check(curr, "dereference past end");
+        return (*p)[curr];              // (*p) is the vector to which this object points
+    }
+    
+    std::string * operator->() const
+    { 
+        return & this->operator*();     // delegate the real work to the dereference operator
+    }
+    
+    // other members as before
+};
 
+StrBlob a1 = {"hi", "bye", "now"};
+StrBlobPtr p(a1);                       // p points to the vector inside a1
+*p = "okay";                            // assigns to the first element in a1
+std::cout << p->size() << std::endl;    // prints 4, the size of the first element in a1
+std::cout << (*p).size() << std::endl;  // equivalent to p->size()
+```
 
 #### 函数调用运算符（Function-Call Operator）
 

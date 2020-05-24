@@ -1,6 +1,6 @@
 # Ubuntu System Configuration
 
-## `.bashrc` 
+## 🌱 `.bashrc` 
 
 ```
 -rw-r--r--  1 ax   ax   3771 Mar 31 13:58 .bashrc
@@ -10,7 +10,7 @@
 chmod 644 ~/.bashrc ~/.bash_history
 ```
 
-## dependencies
+## 🌱 dependencies
 
 ```
 sudo apt install vim tmux git gcc g++ cmake gdb
@@ -33,13 +33,13 @@ sudo gedit /etc/profile
 export EDITOR=/usr/bin/vim
 ```
 
-## time fix
+## 🌱 time fix
 
 ```
 sudo timedatectl set-local-rtc 1 --adjust-system-clock
 ```
     
-## VMWare Shared Folder
+## 🌱 VMWare Shared Folder
 
 ```
 sudo gedit /etc/fstab
@@ -50,7 +50,7 @@ sudo gedit /etc/fstab
 .host:/    /media/ax/DATAIN    fuse.vmhgfs-fuse    defaults,allow_other,uid=1000     0    0
 ```
 
-## Disable `apt-daily-update`
+## 🌱 Disable `apt-daily-update`
 
 ```
 Show Applications => Updates => Automatically check for updates: Never
@@ -68,7 +68,7 @@ APT::Periodic::AutocleanInterval "0";
 APT::Periodic::Unattended-Upgrade "0";
 ```
 
-## Application Entry
+## 🌱 Application Entry
 
 ### current user
 
@@ -100,7 +100,7 @@ Terminal=false
 StartupWMClass=jetbrains-pycharm
 ```
 
-## ex****** passport
+## 🌱 ex****** passport
 
 For people getting the white screen error, go to Library > History > Show All History, right click on ex******, and Forget About This Site
 
@@ -108,3 +108,8 @@ For people getting the white screen error, go to Library > History > Show All Hi
 
 1. `Fn + F6`: disables / enables WIN key
 2. When the touchpad fails to respond: reinstall BIOS `Alienware_15_R3_17_R4_1.9.0.EXE`
+
+## 🌱 Some Surface Pro 4 Stuff
+
+1. 提高`Surface Pro 4`  /`Surface Book`屏幕亮度的键盘快捷键：`Fn + Del`
+2. 降低`Surface Pro 4` / `Surface Book`屏幕亮度的键盘快捷键：`Fn + Backspace`
