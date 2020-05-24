@@ -9058,15 +9058,15 @@ Entry & operator=(Entry rhs)
 - 重载运算符的等价调用
     - 下表中`@`为对应运算符，`a`、`b`为对应操作数的占位符
 
-表达式    | 成员函数              | 非成员函数          | 示例
----------|---------------------|--------------------|-----------------------------------
-`@a`      | `(a).operator@()`     | `operator@(a)`      | `!std::cin => std::cin.operator!()`
-`a @ b`   | `(a).operator@(b)`    | `operator@(a, b)`   | `std::cout << 42 => std::cout.operator<<(42)`
-`a = b`   | `(a).operator=(b)`    | **必须为成员函数** | `std::string s; s = "abc" => s.operator=("abc")`
-`a(b...)` | `(a).operator(b...)`  | **必须为成员函数** | `std::greater(1, 2) => std::greater.operator()(1, 2)`   
-`a[b]`    | `(a).operator[](b)`   | **必须为成员函数** | `map["key"] => map.operator[]("key")`
-`a->mem`  | `(a).operator->(mem)` | **必须为成员函数** | `ptr->mem => ptr.operator->(mem)`      
-`a@`      | `(a).operator@(0)`    | `operator@(a, 0)`   | `i++ => i.operator++(0)`
+表达式    | 成员函数              | 非成员函数        | 示例
+---------|---------------------|------------------|-----------------------------------
+`@a`      | `(a).operator@()`     | `operator@(a)`    | `!std::cin => std::cin.operator!()`
+`a @ b`   | `(a).operator@(b)`    | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`，`str + "\n" => operator+(str, "\n")`
+`a = b`   | `(a).operator=(b)`    | *必须为成员函数*  | `str = "abc" => str.operator=("abc")`
+`a(b...)` | `(a).operator(b...)`  | *必须为成员函数*  | `std::greater(1, 2) => std::greater.operator()(1, 2)`   
+`a[b]`    | `(a).operator[](b)`   | *必须为成员函数*  | `map["key"] => map.operator[]("key")`
+`a->mem`  | `(a).operator->(mem)` | *必须为成员函数*  | `ptr->mem => ptr.operator->(mem)`      
+`a@`      | `(a).operator@(0)`    | `operator@(a, 0)` | `i++ => i.operator++(0)`
 
 - 直接调用重载的运算符函数
 ```
