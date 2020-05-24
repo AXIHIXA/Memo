@@ -9034,6 +9034,7 @@ Entry & operator=(Entry rhs)
     ```
 - 成员函数版本和非成员函数版本重载运算符的等价调用
     - 下表中`@`为对应运算符，`a`、`b`为对应操作数的占位符
+    
 表达式    | 成员函数              | 非成员函数        | 示例
 ---------|---------------------|------------------|-----------------------------------
 `@a`      | `(a).operator@()`     | `operator@(a)`    | `!std::cin => std::cin.operator!()`
@@ -9043,6 +9044,7 @@ Entry & operator=(Entry rhs)
 `a[b]`    | `(a).operator[](b)`   | *必须为成员函数*  | `map["key"] => map.operator[]("key")`
 `a->mem`  | `(a).operator->(mem)` | *必须为成员函数*  | `ptr->mem => ptr.operator->(mem)`      
 `a@`      | `(a).operator@(0)`    | `operator@(a, 0)` | `i++ => i.operator++(0)`
+
 - 直接调用重载的运算符函数
 ```
 // equivalent calls to a nonmember operator function
