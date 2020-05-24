@@ -9061,7 +9061,8 @@ Entry & operator=(Entry rhs)
 表达式    | 成员函数              | 非成员函数        | 示例
 ---------|---------------------|------------------|-----------------------------------
 `@a`      | `(a).operator@()`     | `operator@(a)`    | `!std::cin => std::cin.operator!()`
-`a @ b`   | `(a).operator@(b)`    | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`，`str + "\n" => operator+(str, "\n")`
+`a @ b`   | `(a).operator@(b)`    | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`
+                                                        `str + "\n" => operator+(str, "\n")`
 `a = b`   | `(a).operator=(b)`    | *必须为成员函数*  | `str = "abc" => str.operator=("abc")`
 `a(b...)` | `(a).operator(b...)`  | *必须为成员函数*  | `std::greater(1, 2) => std::greater.operator()(1, 2)`   
 `a[b]`    | `(a).operator[](b)`   | *必须为成员函数*  | `map["key"] => map.operator[]("key")`
