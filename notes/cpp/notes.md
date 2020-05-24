@@ -9248,10 +9248,10 @@ Entry & operator=(Entry rhs)
 `@a`      | `(a).operator@()`     | `operator@(a)`    | `!std::cin => std::cin.operator!()`
 `a@`      | `(a).operator@(0)`    | `operator@(a, 0)` | `i++ => i.operator++(0)`
 `a @ b`   | `(a).operator@(b)`    | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`
-`a = b`   | `(a).operator=(b)`    | *必须为成员函数*  | `str = "abc" => str.operator=("abc")`
+`a = b`   | `(a).operator=(b)`    | *必须为成员函数*  | `std::string s;`，`str = "abc" => str.operator=("abc")`
 `a(b...)` | `(a).operator(b...)`  | *必须为成员函数*  | `std::greater(1, 2) => std::greater.operator()(1, 2)`   
-`a[b]`    | `(a).operator[](b)`   | *必须为成员函数*  | `map["key"] => map.operator[]("key")`
-`a->mem`  | `(a).operator->(mem)` | *必须为成员函数*  | `ptr->mem => ptr.operator->(mem)`      
+`a[b]`    | `(a).operator[](b)`   | *必须为成员函数*  | `std::map<int, int> m;`，`m[1] => m.operator[](1)`
+`a->   `  | `(a).operator->(   )` | *必须为成员函数*  | `std::unique_ptr<S> p;`，`p->bar() => p.operator->()`
 
 - 直接调用重载的运算符函数
 ```
@@ -9495,27 +9495,24 @@ p.operator++();              // call prefix operator++
 
 #### 成员访问运算符（Member Access Operators）
 
-- *解引用* 运算符`*`和 *箭头* 运算符`->`
+- *解引用* 运算符`*`
     - *解引用* 运算符`*`通常是`const`类成员函数
+    - 成员访问并不应该改变状态
+- *箭头* 运算符`->`
     - *箭头* 运算符`->`必须是`const`类成员函数
     - 成员访问并不应该改变状态
 ```
-class StrBlobPtr 
-{
-public:
-    std::string & operator*() const
-    { 
-        std::shared_ptr<std::vector<std::string>> p = check(curr, "dereference past end");
-        return (*p)[curr];              // (*p) is the vector to which this object points
-    }
-    
-    std::string * operator->() const
-    { 
-        return & this->operator*();     // delegate the real work to the dereference operator
-    }
-    
-    // other members as before
-};
+std::string & StrBlobPtr::operator*() const
+{ 
+    // check whether curr is still valid
+    std::shared_ptr<std::vector<std::string>> p = check(curr, "dereference past end");
+    return (*p)[curr];                  // (*p) is the vector to which this object points
+}
+
+std::string * StrBlobPtr::operator->() const
+{ 
+    return & this->operator*();         // delegate the real work to the dereference operator
+}
 
 StrBlob a1 = {"hi", "bye", "now"};
 StrBlobPtr p(a1);                       // p points to the vector inside a1
