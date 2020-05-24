@@ -9058,10 +9058,6 @@ data1.operator+=(data2);  // equivalent call to a member operator function that
 
 #### 重载守则
 
-- 一般情况下**不应该**重载、 *逻辑与* 、 *逻辑或* 、 *逗号* 和 *取地址* 运算符
-    - *逻辑与* `&&`， *逻辑或* `||`， *逗号* `,`：由于重载的运算符本质上是 *函数调用* ，运算对象求值顺序会变
-    - *逻辑与* `&&`， *逻辑或* `||`：无法保留 *短路求值* 属性，运算对象一定都会被求值
-    - *逗号* `,`， *取地址* `&`：`C++`已经定义了它们用于 *类对象* 时的语义，无需重载即可使用，硬要重载成不一样的，会破坏用户的三观
 - 重载应使用与内置类型一致的含义
     - 类使用`I/O`操作，则将重载 *移位运算符* `<<`、`>>` 使其与内置类型的`I/O`保持一致
     - 如果类的某个操作是检查相等性，则定义`operator==`；如果类有了`operator==`，意味着它通常也应该有`operator!=`
@@ -9070,6 +9066,10 @@ data1.operator+=(data2);  // equivalent call to a member operator function that
         - *逻辑运算符* 和 *关系运算符* 返回`bool`
         - *算术运算符* 返回 *类类型* 
         - *赋值运算符* 和 *符合赋值运算符* 返回 *左侧运算对象的左值引用* 
+- 一般情况下**不应该**重载、 *逻辑与* 、 *逻辑或* 、 *逗号* 和 *取地址* 运算符
+    - *逻辑与* `&&`， *逻辑或* `||`， *逗号* `,`：由于重载的运算符本质上是 *函数调用* ，运算对象求值顺序会变
+    - *逻辑与* `&&`， *逻辑或* `||`：无法保留 *短路求值* 属性，运算对象一定都会被求值
+    - *逗号* `,`， *取地址* `&`：`C++`已经定义了它们用于 *类对象* 时的语义，无需重载即可使用，硬要重载成不一样的，会破坏用户的三观
 - 选择是否重载为 *成员函数* 
     - *赋值* `=`、 *调用* `()` 、 *下标* `[]`和 *成员访问箭头* `->` 必须是成员函数
     - *符合赋值运算符* 一般应为成员函数
@@ -9081,11 +9081,54 @@ data1.operator+=(data2);  // equivalent call to a member operator function that
     std::string t = s + "!";   // ok: we can add a const char* to a string
     std::string u = "hi" + s;  // would be an error if + were a member of string
     ```
+    - 如果 *非成员函数* 运算符需要接触私有成员，一般定义成 *友元函数*
 
-#### 输入与输出流运算符（Input and Output Operators）
+#### 输入和输出流运算符（Input and Output Operators）
 
+- `I/O`库分别使用`>>`和`<<`进行输入和输出操作，定义了对 *内置类型* 的版本，但对于自定义类类型则需人工重载
 - 重载输出流运算符`<<`
+    - 第一个形参是非常量`ostream`对象的引用
+        - 非常量：因为输出会改变流对象的状态
+        - 引用：流对象无法复制
+    - 第二个形参是要输出的对象的常量引用
+        - 输出操作不应该改变被输出对象的状态
+    - 输出运算符应当 *尽量减少格式化操作* 
+        - 尤其**不会**打印`std::endl`
+    - `I/O`运算符 *必须* 是 *非成员函数* 
+        - 如果需要输出私有数据成员，会定义成 *友元函数*
+```
+std::ostream & operator<<(ostream & cout, const Sales_data & item)
+{
+    cout << item.isbn() << " " << item.units_sold << " " << item.revenue << " " << item.avg_price();
+    return cout;
+}
+```
 - 重载输入流运算符`>>`
+    - 第一个形参是非常量`istream`对象的引用
+    - 第二个形参是要读入到的对象的非常量引用
+```
+std::istream & operator>>(std::istream & cin, Sales_data & item)
+{
+    // backup used to restore input when error
+    Sales_data tmp = item;
+    
+    // no need to initialize; we'll read into price before we use it
+    double price;                 
+    cin >> item.bookNo >> item.units_sold >> price;
+    
+    // check that the inputs succeeded
+    if (cin) 
+    {
+        item.revenue = item.units_sold * price;
+    }
+    else
+    {
+        item = std::move(tmp);  // input failed: give the object its input state
+    }
+        
+    return cin;
+}
+```
 
 #### 算术和关系运算符（Arithmetic and Relational Operators）
 
