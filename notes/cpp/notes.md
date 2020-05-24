@@ -66,6 +66,7 @@
             - 公共的工作应放到 *私有的工具函数* 中完成
     - 千言万语汇聚成一句话， *三五法则* ，五个拷贝控制成员要定义就 *都定义全* ，就没这么多破事儿了
     - 还有一句： *拷贝并交换赋值运算符* 好哇，天生异常安全、不怕自赋值，还同时能充当拷贝和移动两种运算符
+    - 一般情况下**不应该**重载、 *逻辑与* 、 *逻辑或* 、 *逗号* 和 *取地址* 运算符
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -96,6 +97,8 @@
     - 普通迭代器指向的元素和用它转换成的反向迭代器指向的**不是**相同元素，而是相邻元素；反之亦然
     - 标准库中使用的顺序一般默认是 *非降序* ，二元比较谓词一般等价于`<`
     - `std::sort`如何使用谓词：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
+    - 重载的运算符如果是 *成员函数* ，则第一个（左侧）运算对象绑定到隐式的`this`指针上，只需指定右侧运算符（如有）。成员运算符函数的（显式）参数数量比运算符的运算对象总数 *少一个* 
+    - 重载的运算符要么是 *类成员* ，要么含有 *至少一个类类型参数*
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
@@ -2315,7 +2318,7 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
     Record lookup(Account *);        // new function, takes a pointer to Account
     Record lookup(const Account *);  // new function, takes a pointer to const
     ```
-    - 类成员函数 *`const`限定* 和 *引用限定* 均可用于重载
+    - 类成员函数的 *`const`限定* 和 *引用限定* 均可用于区分重载函数 => 13.6.3
         - 原理：编译器可以根据`this`指针参数的底层`const`，或者 *值类别* 区分参数类型
 - 重载和作用域
     - 在不同的作用域中**无法**重载函数
@@ -7592,7 +7595,7 @@ std::map<std::string, int>::mapped_type v5;  // int
     ```
     typedef int intarr42_t[42];        // intarr42_t names the type array of 42 ints
     int * p = new intarr_42_t{};       // allocates an array of 42 ints; p points to the first one
-    delete [] p;                       // brackets are necessary because we allocated an array
+    delete[] p;                        // brackets are necessary because we allocated an array
     ```
     - 智能指针和动态数组
         - 标准库提供可以管理`new T[]`分配的数组的`std::unique_ptr<T[]>`版本
@@ -8993,25 +8996,93 @@ Entry & operator=(Entry rhs)
 
 
 
-### 🌱 [Chap 14] 操作重载与类型转换
+### 🌱 [Chap 14] [重载运算符](https://en.cppreference.com/w/cpp/language/operators)（Overloaded Operations and Conversions）
 
 #### 基本概念
 
-#### 输入与输出流运算符
+- 重载的运算符是具有 *特殊名字* （`operator`和 *运算符号* ）的函数，也包含返回类型、参数列表以及函数体
+    - 参数数量和该运算符作用的运算对象数量一样多
+        - 一元运算符：一个
+        - 二元运算符：两个，左侧运算对象传递给第一个参数，右侧传给第二个
+        - 除重载的 *函数调用运算符* `operator()`之外，其他重载运算符**不能**有 *默认实参*
+        - 重载的运算符如果是 *成员函数* ，则第一个（左侧）运算对象绑定到隐式的`this`指针上，只需指定右侧运算符（如有）
+        - 成员运算符函数的（显式）参数数量比运算符的运算对象总数 *少一个* 
+    - 重载的运算符和对应的内置运算符享有 *相同的优先级和结合律* 
+- 什么运算符能被重载
+    - 重载的运算符要么是 *类成员* ，要么含有 *至少一个类类型参数*
+        - 这意味着只作用于 *内置类型* 的运算对象的运算符**不能**重载
+    ```
+    int operator+(int, int);  // error: cannot redefine the built-in operator for ints
+    ```
+    - 只能重载 *一部分内置运算符* ，**不能**发明新符号
+        - 例如，不能提供`operator**`来执行幂运算
+    - 能重载的内置运算符
+        - 有四个符号（`+`，`-`，`*`，`&`）既是一元运算符又是二元运算符
+        - 从 *参数数量* 推断具体重载的是哪种
+    ```
+    +        -        *        /        %        ^
+    &        |        ~        !        ,        =
+    <        >        <=       >=       ++       --
+    <<       >>       ==       !=       &&       ||
+    +=       -=       /=       %=       ^=       &=
+    |=       *=       <<=      >>=      []       ()
+    ->       ->*      new      new[]    delete   delete[]
+    ```
+    - **不能**重载的内置运算符
+    ```
+    ::      .*        .        ? :
+    ```
+- 直接调用重载的运算符函数
+```
+// equivalent calls to a nonmember operator function
+data1 + data2;            // normal expression
+operator+(data1, data2);  // equivalent function call
+
+data1 += data2;           // expression-based ''call''
+data1.operator+=(data2);  // equivalent call to a member operator function that
+                          // implicitly binds this to its 1st parameter 
+```
+- 一般情况下**不应该**重载、 *逻辑与* 、 *逻辑或* 、 *逗号* 和 *取地址* 运算符
+    - *逻辑与* `&&`， *逻辑或* `||`， *逗号* `,`：由于重载的运算符本质上是 *函数调用* ，运算对象求值顺序会变
+    - *逻辑与* `&&`， *逻辑或* `||`：无法保留 *短路求值* 属性，运算对象一定都会被求值
+    - *逗号* `,`， *取地址* `&`：`C++`已经定义了它们用于 *类对象* 时的语义，无需重载即可使用，硬要重载成不一样的，会破坏用户的三观
+- 重载应使用与内置类型一致的含义
+
+#### 输入与输出流运算符（Input and Output Operators）
 
 - 重载输出流运算符`<<`
 - 重载输入流运算符`>>`
 
-#### 算术和关系运算符
+#### 算术和关系运算符（Arithmetic and Relational Operators）
 
 - 相等运算符
 - 关系运算符
 
-#### 赋值运算符
+#### 赋值运算符（Assignment Operators）
 
-#### 下标运算符
 
-#### 
+
+#### 下标运算符（Subscript Operator）
+
+
+
+#### 自增和自减运算符（Increment and Decrement Operators）
+
+
+
+#### 成员访问运算符（Member Access Operators）
+
+
+
+#### 函数调用运算符（Function-Call Operator）
+
+
+
+#### 重载、类型转换与运算符（Overloading, Conversions, and Operators）
+
+
+
+
 
 
 
