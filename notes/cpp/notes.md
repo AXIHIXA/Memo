@@ -8666,10 +8666,10 @@ private:
             - 这是优化：即使没有调用拷贝构造函数和移动构造函数，它们也 *必须* 需要可见可访问
             - 可以连锁多次复制消除，以消除多次复制
             - 具体发生于如下情景
-                1. *具名返回值优化* （Named Return Value Optimization, `NRVO`）
+                1. *具名返回值优化* （Named Return Value Optimization，`NRVO`）
                     - *返回语句* 中，操作数是 *非`vloatile`自动对象* ，且**不是** *函数形参* 或 *`catch`子句形参* ，且与返回值 *同类型* （不考虑`cv`限定）
                 2. *初始化* 对象时，源对象是和变量 *同类型无名临时量* （不考虑`cv`限定） `(until C++17)`
-                    - 临时量是返回语句操作数时，被称作 *返回值优化* （Return Value Optimization, `VRO`）
+                    - 临时量是返回语句操作数时，被称作 *返回值优化* （Return Value Optimization，`VRO`）
                     - `C++17`开始， *返回值优化* 已经变成了 *强制消除* 
                 3. `throw`表达式和`catch`子句中某些情况
                 4. *常量表达式* 和 *常量初始化* 中，保证进行`RVO`，但禁止`NRVO` `(since C++14)`
