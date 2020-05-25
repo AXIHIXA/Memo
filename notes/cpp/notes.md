@@ -8628,7 +8628,7 @@ private:
     };
     ```
 
-#### 函数到底该怎么返回临时量
+#### 右值引用探究
 
 - [复制消除](https://en.cppreference.com/w/cpp/language/copy_elision)（Copy Elision）
     - 省略 *拷贝构造函数* 和 *移动构造函数* ，达成无拷贝的按值传递语义，分为
@@ -8673,6 +8673,24 @@ private:
                     - `C++17`开始， *返回值优化* 已经变成了 *强制消除* 
                 3. `throw`表达式和`catch`子句中某些情况
                 4. *常量表达式* 和 *常量初始化* 中，保证进行`RVO`，但禁止`NRVO` `(since C++14)`
+- 最速形参传递
+    - 平凡参数：直接传 *常量* 就完事了，你搞什么右值引用什么的反而还慢了
+    - 复杂参数：`Clang-Tidy`要求使用传值加`std::move`而**不是**传 *常引用* 
+        - 版本1
+            - 不论实参是左值还是右值，都是一步 *引用初始化* （算是 *移动* ）和一步 *拷贝* 
+        - 版本2：不知道高到哪儿去了
+            - 实参为 *左值* ，一步 *拷贝* 和一步 *移动*
+            - 实参为 *右值* ，两步 *移动*
+    ```
+    struct T
+    {
+        T(const std::string & _s, const int _i) : s(_s), i(_i) {}     // Clang-Tidy: not good
+        T(std::string _s, const int _i) : s(std::move(_s)), i(_i) {}  // Clang-Tidy: good
+        
+        std::string s;
+        int i;
+    }
+    ```
 - 函数返回临时量的四种操作
     - 例1
     ```
