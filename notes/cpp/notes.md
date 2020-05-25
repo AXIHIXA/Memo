@@ -2107,7 +2107,7 @@ sizeof expr   // 返回表达式 结果类型 大小
         size_t b3 = reinterpret_cast<size_t>(p);                 // 正确
         ```
 
-#### [显式强制类型转换](https://en.cppreference.com/w/cpp/language/explicit_cast)
+#### [显式类型转换](https://en.cppreference.com/w/cpp/language/explicit_cast)
 
 - *显式强制类型转换* 使用`C`风格写法和函数式写法，用显式和隐式转换的组合进行类型之间的转换
 ```
@@ -2130,7 +2130,7 @@ int * ip;
 char * cp = (char *) ip;  // 相当于reinterpret_cast<char *>(ip);
 ```
 
-#### [用户定义类型转换](https://en.cppreference.com/w/cpp/language/cast_operator)
+#### [用户定义转换](https://en.cppreference.com/w/cpp/language/cast_operator) => 14.9
 
 ```
 operator conversion-type-id             (1)  // 声明用户定义的转换函数，它参与所有隐式和显式转换
@@ -8437,6 +8437,10 @@ private:
         S35(const S35 & rhs) : p(new int(*rhs.p)) { printf("S35(const S35 &)\n"); }
         S35(S35 && rhs) noexcept : p(std::move(rhs.p)) { printf("S35(S35 &&)\n"); }
         ~S35() = default;
+        
+        // when used as condition, this explicit operator will still be applied by conpiler implicitly
+        // "this is a feature, NOT a bug. " -- Microsoft
+        explicit operator bool() const { return static_cast<bool>(*p); }
 
         S35 & operator=(const S35 & rhs)
         {
@@ -9601,7 +9605,7 @@ struct greater
     std::cout << f2(4, 2) << std::endl;                                      // 6
     std::cout << f3(4, 2) << std::endl;                                      // 6
     
-    auto mod = [](int i, int j) { return i % j; };
+    auto mod = [] (int i, int j) { return i % j; };
     
     struct div 
     {
@@ -9615,27 +9619,81 @@ struct greater
     {
         {"+", add_fp},                                                       // function pointer
         {"-", std::minus<int>()},                                            // library function object
-        {"/", div()},                                                        // user-defined function object
         {"*", [] (int i, int j) { return i * j; }},                          // unnamed lambda
+        {"/", div()},                                                        // user-defined function object
         {"%", mod}                                                           // named lambda
     };
     
     binops["+"](10, 5);                                                      // 15
     binops["-"](10, 5);                                                      // 5
-    binops["/"](10, 5);                                                      // 2
     binops["*"](10, 5);                                                      // 50
+    binops["/"](10, 5);                                                      // 2
     binops["%"](10, 5);                                                      // 0
     ```
+    - **不能**将 *重载函数* 的名字存入`std::function`中
+        - 会有 *二义性*
+        - 解决方法
+            1. 传 *函数指针* 
+            2. *用`lambda`调用* `add`
+    ```
+    int add(int i, int j) { return i + j; }
+    Sales_data add(const Sales_data &, const Sales_data &);
+    std::map<std::string, std::function<int (int, int)>> binops;
+    binops.insert({"+", add});  // error: which add?
+    
+    int (*fp)(int,int) = add;   // pointer to the version of add that takes two ints
+    binops.insert({"+", fp});   // ok: fp points to the right version of add
+    
+    // ok: use a lambda to disambiguate which version of add we want to use
+    binops.insert({"+", [] (int a, int b) { return add(a, b); }});
+    ```
 
+#### 类型转换运算符（Conversion Operators）
 
-
-
-
-#### 重载、类型转换与运算符（Overloading, Conversions, and Operators）
-
-
-
-
+- *用户定义转换* （user-defined conversions）
+    - 又称 *类类型转换* （class-type conversions），包括
+        - *转换构造函数* 
+        - *类型转换运算符* （conversion operator）
+- *类型转换运算符* 
+    - 类的一种特殊 *成员函数* ，负责将该类类型转换为`type`类型
+        - **没有**显式的返回类型
+        - **没有**形参
+        - 必须定义成 *类成员函数* 
+        - 一般定义成`const`成员
+            - 类型转换运算符**不应该**改变待转换对象的内容
+    ```
+    operator type() const;
+    ```
+    - 可以面向**除`void`之外**的任何 *能被函数返回的* 类型进行定义
+        - **不能**转换成 *数组* 或 *函数* ，但可以转换成这俩的 *指针* 或 *引用* 
+    - *显式类型转换运算符* 
+        - 告诉编译器**不能**用此运算符进行 *隐式类型转换*   
+        - 一个例外：表达式被用作 *条件* 时，仍会 *隐式应用* *显式类型转换运算符* 
+            - `if`，`while`，`do while`语句的条件部分
+            - `for`语句头的条件表达式
+            - 逻辑非运算符`!`、逻辑与运算符`&&`、逻辑或运算符`&&`的运算对象
+            - 条件运算符`? :`的条件表达式
+    - 一般很少定义类型转换运算符，因为用户会感到意外而不是舒适
+        - 除了向`bool`的类型转换运算符
+            - 通常用在条件部分，`operator bool()`一般定义成`explicit`的 => `struct S35`
+            - 那真是人手一个，谁用谁说好，大家都习惯了
+        - 应当**避免** *二义性型转换运算符* ，比如
+        ```
+        struct A 
+        {
+            A(int = 0);               // usually a bad idea to have two
+            A(double);                // conversions from arithmetic types
+            operator int() const;     // usually a bad idea to have two
+            operator double() const;  // conversions to arithmetic types
+            // other members
+        };
+        
+        void f2(long double);
+        A a;
+        f2(a);                        // error ambiguous: f(A::operator int()) or f(A::operator double())
+        long lg;
+        A a2(lg);                     // error ambiguous: A::A(int) or A::A(double)
+        ```
 
 
 
