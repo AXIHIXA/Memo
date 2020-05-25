@@ -9585,11 +9585,47 @@ struct greater
             - `f`：将`f`作为 *条件* ，当含有可调用对象时为`true`，否则为`false`
             - `f(args)`：调用`f`中的对象，实参列表为`args`
         - 静态类型成员
-            - `result_type`：
-            - `argument_type`：
-            - `first_argument_type`：
-            - `second_argument_type`：
-
+            - `result_type`：该`std::function<T>`类型的可调用对象的返回值类型
+            - `argument_type`，`first_argument_type`，`second_argument_type`：当`T`有一个或两个实参时定义的类型。
+                - 一个：`argument_type`和`first_argument_type`等价
+                - 两个：`first_argument_type`，`second_argument_type`分别代表第一个和第二个实参的类型
+    ```
+    int add_func(int a, int b) { return a + b; }
+    int (*add_fp)(int, int) = add_func;
+    
+    std::function<int (int, int)> f1 = add_fp;                               // function pointer
+    std::function<int (int, int)> f2 = std::add<int>();                      // object of a function-object class
+    std::function<int (int, int)> f3 = [] (int i, int j) { return i + j; };  // lambda
+    
+    std::cout << f1(4, 2) << std::endl;                                      // 6
+    std::cout << f2(4, 2) << std::endl;                                      // 6
+    std::cout << f3(4, 2) << std::endl;                                      // 6
+    
+    auto mod = [](int i, int j) { return i % j; };
+    
+    struct div 
+    {
+        int operator()(int denominator, int divisor) 
+        {
+            return denominator / divisor;
+        }
+    };
+    
+    std::map<std::string, std::function<int (int, int)>> binops = \
+    {
+        {"+", add_fp},                                                       // function pointer
+        {"-", std::minus<int>()},                                            // library function object
+        {"/", div()},                                                        // user-defined function object
+        {"*", [] (int i, int j) { return i * j; }},                          // unnamed lambda
+        {"%", mod}                                                           // named lambda
+    };
+    
+    binops["+"](10, 5);                                                      // calls add_fp(10, 5)
+    binops["-"](10, 5);                                                      // uses the call operator of the std::minus<int> object
+    binops["/"](10, 5);                                                      // uses the call operator of the div object
+    binops["*"](10, 5);                                                      // calls the lambda function object
+    binops["%"](10, 5);                                                      // calls the lambda function object
+    ```
 
 
 
