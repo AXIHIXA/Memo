@@ -100,6 +100,7 @@
     - `std::sort`如何使用谓词：`后 < 前 == true`或`<(后, 前) == true`就 *对换* 
     - 重载的运算符如果是 *成员函数* ，则第一个（左侧）运算对象绑定到隐式的`this`指针上，只需指定右侧运算符（如有）。成员运算符函数的（显式）参数数量比运算符的运算对象总数 *少一个* 
     - 重载的运算符要么是 *类成员* ，要么含有 *至少一个类类型参数*
+    - 重载的 *箭头* 运算符必须返回 *类的指针* 或者 *自定义了箭头运算符的某个类的对象* 
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
@@ -3082,6 +3083,11 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
 #### 容器适配器
 
 - [`std::stack`](https://en.cppreference.com/w/cpp/container/stack)（位于头文件`<stack>`中）
+    ```
+    template <class T,
+              class Container = std::deque<T>> 
+    class stack;
+    ```
     - 默认基于`std::deque`实现
     ```
     // copies elements from deq into stk
@@ -3100,6 +3106,11 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
         - `s.emplace(args)`：压栈一个用`args` *构造* 的元素
         - `s.top()`：返回栈顶元素，但不将其弹出
 - [`std::queue`](https://en.cppreference.com/w/cpp/container/queue)（位于头文件`<queue>`中）
+    ```
+    template <class T,
+              class Container = std::deque<T>> 
+    class queue;
+    ```
     - 默认基于`std::deque`实现，也可以接受除`std::array`、`std::forward_list`以及`std::vector`之外的任一顺序容器
     - 默认 *先入先出* （`FIFO`），队尾入队，队首出队
     - 特有操作
@@ -3117,7 +3128,7 @@ std::array<int, 10> copy = digits;                            // ok: so long as 
     class priority_queue;
     ```
     - 标准库的实现默认是 *小顶堆* 。即：若`a < b`，则`a`的优先级比`b`高。若想制造大顶堆，可以：
-        - 重载`<`运算符 => 11.2.2
+        - 重载`<`运算符
         - 插入相反数
         - 传入谓词
     - 特有操作
@@ -4203,35 +4214,35 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             1. *自反性* （reflexivity）：`equiv(a, a) == true`
             2. *对称性* （symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
             3. *传递性* （transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
-- 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional)（模板类，用时给一个`Type`并创建对象即可）
+- 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional)（模板类，用时给一个 *调用签名* 并创建对象即可）
     - 算术操作（Arithmetic operations）
-        - [`plus`](https://en.cppreference.com/w/cpp/utility/functional/plus)：`x + y`
-        - [`minus`](https://en.cppreference.com/w/cpp/utility/functional/minus)：`x - y`
-        - [`multiplies`](https://en.cppreference.com/w/cpp/utility/functional/multiplies)：`x * y`
-        - [`divides`](https://en.cppreference.com/w/cpp/utility/functional/divides)：`x / y`
-        - [`modulus`](https://en.cppreference.com/w/cpp/utility/functional/modulus)：`x % y`
-        - [`negate`](https://en.cppreference.com/w/cpp/utility/functional/negate)：`-x`
+        - [`std::plus`](https://en.cppreference.com/w/cpp/utility/functional/plus)：`x + y`
+        - [`std::minus`](https://en.cppreference.com/w/cpp/utility/functional/minus)：`x - y`
+        - [`std::multiplies`](https://en.cppreference.com/w/cpp/utility/functional/multiplies)：`x * y`
+        - [`std::divides`](https://en.cppreference.com/w/cpp/utility/functional/divides)：`x / y`
+        - [`std::modulus`](https://en.cppreference.com/w/cpp/utility/functional/modulus)：`x % y`
+        - [`std::negate`](https://en.cppreference.com/w/cpp/utility/functional/negate)：`-x`
     - 比较（Comparisons）
-        - [`equal_to`](https://en.cppreference.com/w/cpp/utility/functional/equal_to)：`x == y`
-        - [`not_equal_to`](https://en.cppreference.com/w/cpp/utility/functional/not_equal_to)：`x != y`
-        - [`greater`](https://en.cppreference.com/w/cpp/utility/functional/greater)：`x > y`
-        - [`less`](https://en.cppreference.com/w/cpp/utility/functional/less)：`x < y`
-        - [`greater_equal`](https://en.cppreference.com/w/cpp/utility/functional/greater_equal)：`x >= y`
-        - [`less_equal`](https://en.cppreference.com/w/cpp/utility/functional/less_equal)：`x <= y`
+        - [`std::equal_to`](https://en.cppreference.com/w/cpp/utility/functional/equal_to)：`x == y`
+        - [`std::not_equal_to`](https://en.cppreference.com/w/cpp/utility/functional/not_equal_to)：`x != y`
+        - [`std::greater`](https://en.cppreference.com/w/cpp/utility/functional/greater)：`x > y`
+        - [`std::less`](https://en.cppreference.com/w/cpp/utility/functional/less)：`x < y`
+        - [`std::greater_equal`](https://en.cppreference.com/w/cpp/utility/functional/greater_equal)：`x >= y`
+        - [`std::less_equal`](https://en.cppreference.com/w/cpp/utility/functional/less_equal)：`x <= y`
         ```
         std::vector<int> v {0, 1, 1, 2};
         std::sort(v.begin(), v.end(), std::greater<>());
         std::for_each(v.begin(), v.end(), [] (const int & i) { printf("%d ", i); });  // 2 1 1 0
         ```
     - 逻辑操作（Logical operations）
-        - [`logical_and`](https://en.cppreference.com/w/cpp/utility/functional/logical_and)：`x && y`
-        - [`logical_or`](https://en.cppreference.com/w/cpp/utility/functional/logical_or)：`x || y`
-        - [`logical_not`](https://en.cppreference.com/w/cpp/utility/functional/logical_not)：`!x`
+        - [`std::logical_and`](https://en.cppreference.com/w/cpp/utility/functional/logical_and)：`x && y`
+        - [`std::logical_or`](https://en.cppreference.com/w/cpp/utility/functional/logical_or)：`x || y`
+        - [`std::logical_not`](https://en.cppreference.com/w/cpp/utility/functional/logical_not)：`!x`
     - 位操作（Bitwise operations）
-        - [`bit_and`](https://en.cppreference.com/w/cpp/utility/functional/bit_and)：`x & y`
-        - [`bit_or`](https://en.cppreference.com/w/cpp/utility/functional/bit_or)：`x | y`
-        - [`bit_xor`](https://en.cppreference.com/w/cpp/utility/functional/bit_xor)：`x ^ y`
-        - [`bit_not`](https://en.cppreference.com/w/cpp/utility/functional/bit_not)：`~x`
+        - [`std::bit_and`](https://en.cppreference.com/w/cpp/utility/functional/bit_and)：`x & y`
+        - [`std::bit_or`](https://en.cppreference.com/w/cpp/utility/functional/bit_or)：`x | y`
+        - [`std::bit_xor`](https://en.cppreference.com/w/cpp/utility/functional/bit_xor)：`x ^ y`
+        - [`std::bit_not`](https://en.cppreference.com/w/cpp/utility/functional/bit_not)：`~x`
 
 ### 🌱 [Appendix A] [标准库](https://en.cppreference.com/w/cpp/algorithm)
 
@@ -9242,17 +9253,17 @@ Entry & operator=(Entry rhs)
     ```
 - 成员函数版本和非成员函数版本重载运算符的等价调用
     - `@`代表对应的 *前置* 、 *中置* 或 *后置* *运算符* 
-    - `a`、`b`代表对应 *操作数* 
+    - `a`、`b`代表对应的 *操作数* 
     
-表达式    | 成员函数              | 非成员函数        | 示例
----------|---------------------|------------------|-----------------------------------
-`@a`      | `(a).operator@()`     | `operator@(a)`    | `!std::cin => std::cin.operator!()`
-`a@`      | `(a).operator@(0)`    | `operator@(a, 0)` | `std::vector<int>::iterator i;`，`i++ => i.operator++(0)`
-`a @ b`   | `(a).operator@(b)`    | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`
-`a = b`   | `(a).operator=(b)`    | *必须为成员函数*  | `std::string s;`，`str = "abc" => str.operator=("abc")`
-`a(b...)` | `(a).operator(b...)`  | *必须为成员函数*  | `std::greater(1, 2) => std::greater.operator()(1, 2)`   
-`a[b]`    | `(a).operator[](b)`   | *必须为成员函数*  | `std::map<int, int> m;`，`m[1] => m.operator[](1)`
-`a->   `  | `(a).operator->(   )` | *必须为成员函数*  | `std::unique_ptr<S> p;`，`p->bar() => p.operator->()`
+表达式    | 成员函数             | 非成员函数        | 示例
+---------|--------------------|------------------|-----------------------------------
+`@a`      | `(a).operator@()`    | `operator@(a)`    | `!std::cin => std::cin.operator!()`
+`a@`      | `(a).operator@(0)`   | `operator@(a, 0)` | `std::vector<int>::iterator i;`，`i++ => i.operator++(0)`
+`a @ b`   | `(a).operator@(b)`   | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`
+`a = b`   | `(a).operator=(b)`   | *必须为成员函数*  | `std::string s;`，`str = "abc" => str.operator=("abc")`
+`a(b...)` | `(a).operator(b...)` | *必须为成员函数*  | `std::greater(1, 2) => std::greater.operator()(1, 2)`   
+`a[b]`    | `(a).operator[](b)`  | *必须为成员函数*  | `std::map<int, int> m;`，`m[1] => m.operator[](1)`
+`a->   `  | `(a).operator->()`   | *必须为成员函数*  | `std::unique_ptr<S> p;`，`p->bar() => p.operator->()`
 
 - 直接调用重载的运算符函数
 ```
@@ -9498,10 +9509,26 @@ p.operator++();              // call prefix operator++
 
 - *解引用* 运算符`*`
     - *解引用* 运算符`*`通常是`const`类成员函数
-    - 成员访问并不应该改变状态
+        - 成员访问并不应该改变状态
 - *箭头* 运算符`->`
     - *箭头* 运算符`->`必须是`const`类成员函数
-    - 成员访问并不应该改变状态
+        - 成员访问并不应该改变状态
+    - 重载的 *箭头* 运算符必须返回 *类的指针* 或者 *自定义了箭头运算符的某个类的对象* 
+        - `operator->()` 一般**不执行任何操作**，而是调用`operator*()`并返回其结果的 *地址* （即返回 *类的指针* ）
+    - 重载箭头时，可以改变的是从 *哪个* 对象访问成员，不能改变的是访问成员这一事实
+    - 形如`point->mem`的表达式等价于下面情况。除此之外，代码都将 *发生错误* 
+    ```
+    (*point).mem;                       // point is a built-in pointer type
+    point.operator()->mem;              // point is an object of class type
+    ```
+    - `point->mem`的执行过程如下
+        1. 如果`point`是 *指针* ，则应用内置的箭头运算符，表达式等价于`(*point).mem`
+            - 首先解引用指针，然后从从所得的对象中获取指定成员
+            - 如果指定成员`mem`不存在，则报错
+        2. 如果`point`是 *定义了`operator->()`的类的一个对象* ，则使用`point.operator->()`的 *结果* 来获取`mem`
+            - 如果 *该结果* 是一个 *指针* ，则 *执行第`1`步* 
+            - 如果 *该结果* *本身含有重载的`operator->()`* ，则 *重复调用当前步骤* 
+            - 最终，过程结束，程序返回所需内容或报错
 ```
 std::string & StrBlobPtr::operator*() const
 { 
@@ -9523,6 +9550,48 @@ std::cout << (*p).size() << std::endl;  // equivalent to p->size()
 ```
 
 #### 函数调用运算符（Function-Call Operator）
+
+- *函数调用运算符* 必须是 *成员函数*
+- 重载了 *函数调用运算符* `operator()()`的类的对象可以像函数一样被调用，被称作 *函数对象* （function object）
+    - 类能存储 *状态* ，相比普通函数更灵活
+    - 函数对象常常作为谓词的一种用于标准库算法中，例如`std::sort(b, e, std::greater<T>())`
+```
+template <class T = void>
+struct greater
+{
+    bool operator()(const T & lhs, const T & rhs) const 
+    {
+        return lhs > rhs;
+    }
+}
+```
+- `lambda`表达式的本质是函数对象
+    - 具体实现讲`lambda`表达式的时候已经说过了，小作用域内的闭包类`Closure`的函数对象
+- 标准库定义的函数对象
+    - 定义于`<funtional>`
+    - 讲泛型算法的时候说过了
+- *调用签名* （call signature）
+    - 指明了调用返回的类型以及传递给调用的实参类型，与函数类型一一对应
+    - 格式：`result_type (first_argument_type, second_argument_type...)`
+    ```
+    bool (int, int)  // e.g. signature of std::greater<int>
+    ```
+    - 标准库[`std::function`](https://en.cppreference.com/w/cpp/utility/functional/function)类型
+        - 定义于`<funtional>`
+        - 操作
+            - `std::function<T> f;`：`f`是一个用来存储 *签名* 为`T`的 *可调用对象* 的空`std::function<T>`
+            - `std::function<T> f(nullptr);`显式地构造一个空`std::function<T>`
+            - `std::function<T> f(obj);`：用`obj`拷贝构造`std::function<T>`
+            - `f`：将`f`作为 *条件* ，当含有可调用对象时为`true`，否则为`false`
+            - `f(args)`：调用`f`中的对象，实参列表为`args`
+        - 静态类型成员
+            - `result_type`：
+            - `argument_type`：
+            - `first_argument_type`：
+            - `second_argument_type`：
+
+
+
 
 
 
