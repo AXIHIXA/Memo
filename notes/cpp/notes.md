@@ -9620,11 +9620,11 @@ struct greater
         {"%", mod}                                                           // named lambda
     };
     
-    binops["+"](10, 5);                                                      // calls add_fp(10, 5)
-    binops["-"](10, 5);                                                      // uses the call operator of the std::minus<int> object
-    binops["/"](10, 5);                                                      // uses the call operator of the div object
-    binops["*"](10, 5);                                                      // calls the lambda function object
-    binops["%"](10, 5);                                                      // calls the lambda function object
+    binops["+"](10, 5);                                                      // 15
+    binops["-"](10, 5);                                                      // 5
+    binops["/"](10, 5);                                                      // 2
+    binops["*"](10, 5);                                                      // 50
+    binops["%"](10, 5);                                                      // 0
     ```
 
 
