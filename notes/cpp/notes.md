@@ -72,7 +72,7 @@
     - 一般情况下**不应该**重载、 *逻辑与* 、 *逻辑或* 、 *逗号* 和 *取地址* 运算符
     - `operator->()` 一般**不执行任何操作**，而是调用`operator*()`并返回其结果的 *地址* （即返回 *类的指针* ）
     - 基类通常应该定义一个 *虚析构函数* ，即使这个函数不执行任何操作也是如此
-    - 派生类构造函数首先初始化基类部分，之后再按照声明的顺序依次初始化派生类成员
+    - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* 
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -9810,7 +9810,7 @@ struct greater
 
 #### 继承
 
-- 定义基类
+- 基类
     - `Quote`类定义
     ```
     class Quote
@@ -9852,7 +9852,7 @@ struct greater
     - 访问控制和继承
         - 派生类**不能**访问基类的`private`成员
         - `protected`除了能被派生类访问到以外，其余和`private`一样
-- 定义派生类
+- 派生类
     - `BulkQuote`类定义
     ```
     // BulkQuote inherits from Quote
@@ -9877,7 +9877,7 @@ struct greater
         double discount = 0.0;    // fractional discount to apply
     };
     ```
-    - 派生类使用 *类派生列表* （class derivation list）指出自己继承的类
+    - 派生类在 *定义时* 使用 *类派生列表* （class derivation list）指出自己继承的类
         - 格式
             - 每个基类之前都可以有三种 *访问说明符* 之一
             - *默认* 为`public`
@@ -9887,32 +9887,91 @@ struct greater
             // ...
         };
         ```
-        - 派生类对象中含有与其基类对应的组成部分，这一事实是继承的关键所在
-        - 派生类中的虚函数
-            - 派生类经常（但并不总是）覆盖它继承的虚函数
-            - 没有覆盖则直接使用继承到的基类的版本
-            - 可以在覆盖的函数前继续使用`virtual`关键字
-            - 还可以在 *形参列表* 之后，或`const`限定之后（如有）、或 *引用成员函数* （=> 13.6.3）之后使用`override`关键字 
-        - `C++`**并未**规定派生类的对象在内存中如何分布
-            - 基类成员和派生类新成员很可能是混在一起、而非泾渭分明的
+        - 类派生列表只能出现于定义处，**不能**出现于声明中
+        ```
+        class Bulk_quote : public Quote;          // error: derivation list can't appear here
+        class Bulk_quote;                         // ok: right way to declare a derived class
+        ```
+        - 类派生列表中的基类必须 *已经定义* ，**不能**仅是声明过的
+        ```
+        class Quote;                              // declared but not defined
+        class Bulk_quote : public Quote { ... };  // error: Quote must be defined
+        ```
+        - *直接基类* （direct base）和 *间接基类* （indirect base）
+        ```
+        class Base { /* ... */ } ;            // direct base for D1, indirect for D2
+        class D1: public Base { /* ... */ };
+        class D2: public D1 { /* ... */ };
+        ```
+    - 派生类中的虚函数
+        - 派生类经常（但并不总是）覆盖它继承的虚函数
+        - 没有覆盖则直接使用继承到的基类的版本
+        - 可以在覆盖的函数前继续使用`virtual`关键字
+        - 还可以在 *形参列表* 之后，或`const`限定之后（如有）、或 *引用成员函数* （=> 13.6.3）之后使用`override`关键字
+        - 还可以在 *形参列表* 之后，或`const`限定之后（如有）、或 *引用成员函数* （=> 13.6.3）之后使用`final`关键字
+    - `C++`**并未**规定派生类的对象在内存中如何分布
+        - 基类成员和派生类新成员很可能是混在一起、而非泾渭分明的
+    - *派生类到基类的* （derived-to-base）类型转换
+        - 编译器 *隐式* 执行
         - 可以把 *派生类对象* 当成 *基类对象* 使用
         - 可以把 *基类指针或引用* 绑定到 *派生类对象* 上
             - 成员访问仅限基类成员
             - 虚函数调用执行动态绑定
-        ```
-        Quote item;         // object of base type
-        BulkQuote bulk;     // object of derived type
-        Quote * p = &item;  // p points to a Quote object
-        p = & bulk;         // p points to the Quote part of bulk
-        Quote & r = bulk;   // r bound to the Quote part of bulk
-        ```
-        - 派生类构造函数
-            - 每个类控制它自己的成员初始化过程
-                - 派生类并不默认调用基类构造函数，自然也不能直接初始化从基类继承来的成员
-                - 除非特别指出，派生类对象的基类部分会像数据成员一样执行 *默认初始化* 
-            - 派生类构造函数首先初始化基类部分，之后再按照声明的顺序依次初始化派生类成员
-    - `final`
+    ```
+    Quote item;         // object of base type
+    BulkQuote bulk;     // object of derived type
+    Quote * p = &item;  // p points to a Quote object
+    p = & bulk;         // p points to the Quote part of bulk
+    Quote & r = bulk;   // r bound to the Quote part of bulk
+    ```
+    - 派生类构造函数
+        - 每个类控制它自己的成员初始化过程
+            - 派生类并不默认调用基类构造函数，自然也不能直接初始化从基类继承来的成员
+            - 除非特别指出，派生类对象的基类部分会像数据成员一样执行 *默认初始化* 
+        - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* 
+    - 派生类使用基类成员
+        - 派生类对象中含有与其基类对应的组成部分，这一事实是继承的关键所在
+        - 派生类可以访问基类的 *公有* 及 *受保护* 成员
+    - 继承与静态成员
+        - 如果基类定义了 *静态成员* ，则在整个体系中只存在该成员的 *唯一* 定义
+            - 不论从基类中派生出多少派生类，它们都 *与基类共享同一个静态成员实例* 
+        - 静态成员遵循通用的 *访问控制* 规则，即
+            - 派生类和基类都能访问基类的 *公有* 或 *受保护* 成员
+            - 派生类**不能**访问基类的 *私有* 成员
+    ```
+    class Base 
+    {
+    public:
+        static void statmem();
+    };
+    
+    class Derived : public Base 
+    {
+        void f(const Derived &);
+    };
+    
+    void Derived::f(const Derived & derived_obj)
+    {
+        Base::statmem();                // ok: Base defines statmem
+        Derived::statmem();             // ok: Derived inherits statmem
+        
+        // ok: derived objects can be used to access static from base
+        derived_obj.statmem();          // accessed through a Derived object
+        statmem();                      // accessed through this object
+    }
+    ```
+    - 防止继承
+        - 在类（**不是**基类）名后面跟一个`final`关键字可以防止此类被继承
+    ```
+    class NoDerived final { /* */ };    // NoDerived can't be a base class
+    class Base { /* */ };
+    // Last is final; we cannot inherit from Last
+    class Last final : Base { /* */ };  // Last can't be a base class
+    class Bad : NoDerived { /* */ };    // error: NoDerived is final
+    class Bad2 : Last { /* */ };        // error: Last is final
+    ```
 - 类型转换与继承
+    
 
 #### 虚函数
 
