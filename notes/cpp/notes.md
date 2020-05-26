@@ -36,14 +36,6 @@
     - 现代`C++`**不应**使用旧式的强制类型转换，应当明确调用对应的`xx_cast<T>(expr)`
     - 除非必须，**不要**使用自增自减运算符的后置版本（会造成性能浪费）
     - **不在**内部作用域声明函数（内部作用域生命的东西会覆盖外部作用域的同名东西，可能会影响函数重载的使用）
-    - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
-    - `Clang Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
-    - 希望类的所有成员都是`public`时，**应**使用`struct`；只有希望使用`private`成员时才用`class`
-    - 在类定义开始或结束的地方**集中声明**友元；使用友元，仍另需有一个**单独的函数声明**
-    - 类的类型成员（`typedef`以及`using`声明）应该放在类定义**刚开始**的地方的`public`区域
-    - 最好令构造函数初始化列表的顺序与成员声明的顺序**保持一致**；**避免**用某些成员初始化其他成员，用构造函数的参数作为初始值
-    - 应把静态数据成员的定义与其他非内联函数的定义放在**同一个文件**中
-    - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）
     - 不需要写访问时，应当使用`const_iterator`
     - 改变容器 *大小* 之后，则 *所有* 指向此容器的迭代器、引用和指针都 *可能* 失效，所以一律更新一波才是 *坠吼的* 。此外，永远**不要缓存**尾后迭代器（这玩意常年变来变去），现用现制，用后即弃
     - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`
@@ -60,7 +52,17 @@
         4. 使用智能指针的`get()`返回的内置指针时，记住当最后一个对应的智能指针被销毁后，这个内置指针就 *无效* 了
         5. 使用内置指针管理的资源而不是`new`出来的内存时，记住传递给它一个 *删除器*
     - 大多数应用都应该使用 *标准库容器* 而**不是**动态分配的数组。使用容器更为简单，更不容易出现内存管理错误，并且可能有更好的性能
-    - 拷贝赋值运算符的要求
+- 跟类有关的一箩筐规则
+    - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
+    - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
+    - 对复杂参数，`Clang-Tidy`规定构造函数传参应该是按值传递加`std::move`，而**不是**传常引用
+    - 希望类的所有成员都是`public`时，**应**使用`struct`；只有希望使用`private`成员时才用`class`
+    - 在类定义开始或结束的地方**集中声明**友元；使用友元，仍另需有一个**单独的函数声明**
+    - 类的类型成员（`typedef`以及`using`声明）应该放在类定义**刚开始**的地方的`public`区域
+    - 最好令构造函数初始化列表的顺序与成员声明的顺序**保持一致**；**避免**用某些成员初始化其他成员，用构造函数的参数作为初始值
+    - 应把 *静态数据成员* 的定义与其他 *非内联函数* 的定义放在类外、和类的定义**同一个头文件**中
+    - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）
+    - *拷贝赋值运算符* 的要求
         - 赋值运算符应该返回一个指向其左侧运算对象的 *引用* 
         - 必须正确处理 *自赋值* （ *拷贝并交换赋值运算符* 则自动能处理自赋值）
         - 大多数拷贝赋值运算符组合了 *析构函数* 和 *拷贝构造函数* 二者的工作
@@ -68,6 +70,9 @@
     - 千言万语汇聚成一句话， *三五法则* ，五个拷贝控制成员要定义就 *都定义全* ，就没这么多破事儿了
     - 还有一句： *拷贝并交换赋值运算符* 好哇，天生异常安全、不怕自赋值，还同时能充当拷贝和移动两种运算符
     - 一般情况下**不应该**重载、 *逻辑与* 、 *逻辑或* 、 *逗号* 和 *取地址* 运算符
+    - `operator->()` 一般**不执行任何操作**，而是调用`operator*()`并返回其结果的 *地址* （即返回 *类的指针* ）
+    - 基类通常应该定义一个 *虚析构函数* ，即使这个函数不执行任何操作也是如此
+    - 派生类构造函数首先初始化基类部分，之后再按照声明的顺序依次初始化派生类成员
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -87,7 +92,8 @@
     - 每个类定义了**唯一**的类型；两个类即使内容完全一样，它们也是不同的类型，**不能**自动相互转化
     - 如果一个构造函数为每一个参数都提供了默认实参，则它实际上也定义了默认构造函数
     - 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则
-    - 非`constexpr`静态成员只能在**类外**初始化；在类外部定义静态成员时，**不能**重复`static`关键字
+    - 非`constexpr`静态成员只能在**类外**初始化
+    - *类静态成员* *只能* 在 *类外* 部定义、定义时**不能**重复`static`关键字
     - 那些只接受一个单一迭代器来表示第二个序列的算法，都假定 *第二个序列至少与第一个序列一样长*
     - 向目的位置迭代器写数据的算法都假定 *目的位置足够大* ，能容纳要写入的元素
     - 如果容器为空，则`begin`和`end`返回的是**同一个**迭代器，都是尾后迭代器
@@ -9775,7 +9781,7 @@ struct greater
 
 
 
-### 🌱 [Chap 15] 面向对象程序设计（Object-Oriented Programming, `OOP`）
+### 🌱 [Chap 15] 面向对象程序设计（Object-Oriented Programming，`OOP`）
 
 #### `OOP`概述
 
@@ -9804,37 +9810,107 @@ struct greater
 
 #### 继承
 
-- 基类
-```
-class Quote
-{
-public:
-    Quote() = default;
-    Quote(std::string book, double sales_price) : bookNo(std::move(book)), price(sales_price) {}
-    virtual ~Quote() = default;  // dynamic binding for the destructor
-
-    std::string isbn() const
+- 定义基类
+    - `Quote`类定义
+    ```
+    class Quote
     {
-        return bookNo;
-    }
+    public:
+        Quote() = default;
+        Quote(std::string book, double sales_price) : bookNo(std::move(book)), price(sales_price) {}
+        virtual ~Quote() = default;  // dynamic binding for the destructor, see 15.7.1 for virtual destructors
 
-    // returns the total sales price for the specified number of items
-    // derived classes will override and apply different discount algorithms
-    virtual double net_price(std::size_t n) const
+        std::string isbn() const
+        {
+            return bookNo;
+        }
+
+        // returns the total sales price for the specified number of items
+        // derived classes will override and apply different discount algorithms
+        virtual double net_price(std::size_t n) const
+        {
+            return n * price;
+        }
+
+    protected:
+        double price = 0.0;          // normal, undiscounted price
+
+    private:
+        std::string bookNo;          // ISBN number of this item
+    };
+    ```
+    - 基类通常应该定义一个 *虚析构函数* ，即使这个函数不执行任何操作也是如此
+        - 为了`delete base_ptr`时能正确调用到派生类的析构函数
+    - 成员函数和继承
+        - 派生类可以 *覆盖* （override）基类函数
+            - 基类希望派生类覆盖的函数： *虚函数* （virtual function） => 15.3
+                - 函数声明语句之前加上`virtual`
+                - *只能* 出现于类内部的声明语句之前
+                - 执行 *动态绑定* 
+                - 基类中的虚函数在派生类中也 *隐式* 地是虚函数
+            - 非虚函数解析过程发生于编译时而不是执行时
+    - 访问控制和继承
+        - 派生类**不能**访问基类的`private`成员
+        - `protected`除了能被派生类访问到以外，其余和`private`一样
+- 定义派生类
+    - `BulkQuote`类定义
+    ```
+    // BulkQuote inherits from Quote
+    class BulkQuote : public Quote
     {
-        return n * price;
-    }
+        BulkQuote() = default;
 
-protected:
-    double price = 0.0;          // normal, undiscounted price
+        BulkQuote(std::string book, double p, std::size_t qty, double disc) : 
+                Quote(std::move(book), p), min_qty(qty), discount(disc)
+        {
+        }
+        
 
-private:
-    std::string bookNo;          // ISBN number of this item
-};
+        // overrides the base version in order to implement the bulk purchase discount policy
+        double net_price(std::size_t cnt) const override
+        {
+            return cnt >= min_qty ? cnt * (1 - discount) * price : cnt * price;
+        }
 
-```
-- 派生类
-    - `override`
+    private:
+        std::size_t min_qty = 0;  // minimum purchase for the discount to apply
+        double discount = 0.0;    // fractional discount to apply
+    };
+    ```
+    - 派生类使用 *类派生列表* （class derivation list）指出自己继承的类
+        - 格式
+            - 每个基类之前都可以有三种 *访问说明符* 之一
+            - *默认* 为`public`
+        ```
+        class Derived : public Base1, private Base2, protected Base3...
+        {
+            // ...
+        };
+        ```
+        - 派生类对象中含有与其基类对应的组成部分，这一事实是继承的关键所在
+        - 派生类中的虚函数
+            - 派生类经常（但并不总是）覆盖它继承的虚函数
+            - 没有覆盖则直接使用继承到的基类的版本
+            - 可以在覆盖的函数前继续使用`virtual`关键字
+            - 还可以在 *形参列表* 之后，或`const`限定之后（如有）、或 *引用成员函数* （=> 13.6.3）之后使用`override`关键字 
+        - `C++`**并未**规定派生类的对象在内存中如何分布
+            - 基类成员和派生类新成员很可能是混在一起、而非泾渭分明的
+        - 可以把 *派生类对象* 当成 *基类对象* 使用
+        - 可以把 *基类指针或引用* 绑定到 *派生类对象* 上
+            - 成员访问仅限基类成员
+            - 虚函数调用执行动态绑定
+        ```
+        Quote item;         // object of base type
+        BulkQuote bulk;     // object of derived type
+        Quote * p = &item;  // p points to a Quote object
+        p = & bulk;         // p points to the Quote part of bulk
+        Quote & r = bulk;   // r bound to the Quote part of bulk
+        ```
+        - 派生类构造函数
+            - 每个类控制它自己的成员初始化过程
+                - 派生类并不默认调用基类构造函数，自然也不能直接初始化从基类继承来的成员
+                - 除非特别指出，派生类对象的基类部分会像数据成员一样执行 *默认初始化* 
+            - 派生类构造函数首先初始化基类部分，之后再按照声明的顺序依次初始化派生类成员
     - `final`
 - 类型转换与继承
 
@@ -9850,7 +9926,7 @@ private:
 
 #### 构造函数与拷贝控制
 
-- 虚析构函数
+- *虚析构函数* （virtual destructor）
 - 合成拷贝控制与继承
 - 派生类的拷贝控制成员
 - 继承的构造函数
