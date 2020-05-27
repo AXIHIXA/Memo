@@ -9852,6 +9852,16 @@ struct greater
     - 访问控制和继承
         - 派生类**不能**访问基类的`private`成员
         - `protected`除了能被派生类访问到以外，其余和`private`一样
+    - 防止继承
+        - 在类名后面跟一个`final`关键字可以防止此类被继承
+    ```
+    class NoDerived final { /* */ };    // NoDerived can't be a base class
+    class Base { /* */ };
+    // Last is final; we cannot inherit from Last
+    class Last final : Base { /* */ };  // Last can't be a base class
+    class Bad : NoDerived { /* */ };    // error: NoDerived is final
+    class Bad2 : Last { /* */ };        // error: Last is final
+    ```
 - 派生类
     - `BulkQuote`类定义
     ```
@@ -9889,17 +9899,17 @@ struct greater
         ```
         - 类派生列表只能出现于定义处，**不能**出现于声明中
         ```
-        class Bulk_quote : public Quote;          // error: derivation list can't appear here
-        class Bulk_quote;                         // ok: right way to declare a derived class
+        class BulkQuote : public Quote;          // error: derivation list can't appear here
+        class BulkQuote;                         // ok: right way to declare a derived class
         ```
         - 类派生列表中的基类必须 *已经定义* ，**不能**仅是声明过的
         ```
-        class Quote;                              // declared but not defined
-        class Bulk_quote : public Quote { ... };  // error: Quote must be defined
+        class Quote;                             // declared but not defined
+        class BulkQuote : public Quote { ... };  // error: Quote must be defined
         ```
         - *直接基类* （direct base）和 *间接基类* （indirect base）
         ```
-        class Base { /* ... */ } ;            // direct base for D1, indirect for D2
+        class Base { /* ... */ } ;               // direct base for D1, indirect for D2
         class D1: public Base { /* ... */ };
         class D2: public D1 { /* ... */ };
         ```
@@ -9911,19 +9921,6 @@ struct greater
         - 还可以在 *形参列表* 之后，或`const`限定之后（如有）、或 *引用成员函数* （=> 13.6.3）之后使用`final`关键字
     - `C++`**并未**规定派生类的对象在内存中如何分布
         - 基类成员和派生类新成员很可能是混在一起、而非泾渭分明的
-    - *派生类到基类的* （derived-to-base）类型转换
-        - 编译器 *隐式* 执行
-        - 可以把 *派生类对象* 当成 *基类对象* 使用
-        - 可以把 *基类指针或引用* 绑定到 *派生类对象* 上
-            - 成员访问仅限基类成员
-            - 虚函数调用执行动态绑定
-    ```
-    Quote item;         // object of base type
-    BulkQuote bulk;     // object of derived type
-    Quote * p = &item;  // p points to a Quote object
-    p = & bulk;         // p points to the Quote part of bulk
-    Quote & r = bulk;   // r bound to the Quote part of bulk
-    ```
     - 派生类构造函数
         - 每个类控制它自己的成员初始化过程
             - 派生类并不默认调用基类构造函数，自然也不能直接初始化从基类继承来的成员
@@ -9952,26 +9949,48 @@ struct greater
     
     void Derived::f(const Derived & derived_obj)
     {
-        Base::statmem();                // ok: Base defines statmem
-        Derived::statmem();             // ok: Derived inherits statmem
+        Base::statmem();         // ok: Base defines statmem
+        Derived::statmem();      // ok: Derived inherits statmem
         
         // ok: derived objects can be used to access static from base
-        derived_obj.statmem();          // accessed through a Derived object
-        statmem();                      // accessed through this object
+        derived_obj.statmem();   // accessed through a Derived object
+        statmem();               // accessed through this object
     }
     ```
-    - 防止继承
-        - 在类（**不是**基类）名后面跟一个`final`关键字可以防止此类被继承
-    ```
-    class NoDerived final { /* */ };    // NoDerived can't be a base class
-    class Base { /* */ };
-    // Last is final; we cannot inherit from Last
-    class Last final : Base { /* */ };  // Last can't be a base class
-    class Bad : NoDerived { /* */ };    // error: NoDerived is final
-    class Bad2 : Last { /* */ };        // error: Last is final
-    ```
 - 类型转换与继承
-    
+    - *派生类到基类的* （derived-to-base）类型转换
+        - 编译器 *隐式* 执行
+        - 可以把 *派生类对象* 当成 *基类对象* 使用
+        - 可以把 *基类指针或引用* 绑定到 *派生类对象* 上，通过此指针或引用访问对象时
+            - 成员访问仅限基类成员
+            - 虚函数调用执行 *动态绑定* 
+        - *智能指针* 和 *内置指针* 一样，都支持派生类向基类的类型转换
+    ```
+    Quote item;                  // object of base type
+    BulkQuote bulk;              // object of derived type
+    Quote * p = &item;           // p points to a Quote object
+    p = & bulk;                  // p points to the Quote part of bulk
+    Quote & r = bulk;            // r bound to the Quote part of bulk
+    ```
+    - *静态类型* （static type）和 *动态类型* （dynamic type）
+        - 如果表达式既不是 *指针* 也不是 *引用* ，则其 *动态类型* 与 *静态类型* 一致
+        - 基类的 *指针* 或 *引用* 的 *静态类型* 和它所表示对象的 *动态类型* 可能不同
+            - *静态类型* ：编译时已知，变量声明时的类型或表达式生成的类型
+            - *动态类型* ：变量或表达式所表示的内存中的对象的类型。知道运行时才可知
+    - **不存在**基类向派生类的 *隐式类型转换* 
+        - 多态的基类指针或引用一样**无法**隐式转换为派生类
+    ```
+    Quote base;
+    BulkQuote * bulkP = &base;   // error: can't convert base to derived
+    BulkQuote & bulkRef = base;  // error: can't convert base to derived
+
+    BulkQuote bulk;
+    Quote * itemP = &bulk;       // ok: dynamic type is BulkQuote
+    BulkQuote * bulkP = itemP;   // error: can't convert base to derived
+    ```
+
+
+
 
 #### 虚函数
 
