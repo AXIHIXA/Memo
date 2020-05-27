@@ -73,6 +73,7 @@
     - `operator->()` 一般**不执行任何操作**，而是调用`operator*()`并返回其结果的 *地址* （即返回 *类的指针* ）
     - 基类通常应该定义一个 *虚析构函数* ，即使这个函数不执行任何操作也是如此
     - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* 
+    - 如果虚函数使用 *默认实参* ，**必须**和基类中的定义一致
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -9210,7 +9211,7 @@ Entry & operator=(Entry rhs)
         auto n = (s1 + s2).find('a');           // (s1 + s2) is rvalue, and we are calling member function
         s1 + s2 = "wow!";
         ```
-        - 通过对类成员函数添加 *引用限定符* 可以限制`this` 的 *值类别* 
+        - 通过对类成员函数添加 *引用限定符* 可以限制`this`的 *值类别* 
             - 方法是，在和定义`const`成员函数时`const`一样的位置放置`&`或`&&`
         ```
         class Foo 
@@ -9791,7 +9792,7 @@ struct greater
     2. *继承* （inheritance）
         - 定义相似的类型并对其相似关系建模
     3. *动态绑定* （dynamic binding）
-        - *多态* ：一定程度上忽略相似类型的区别，以统一的方式使用它们的对象
+        - *多态性* （Polymorphism）：一定程度上忽略相似类型的区别，以统一的方式使用它们的对象
 - 继承
     - *基类* （base class）产生 *派生类* （derived class）
         - 派生类通过 *派生类列表* （class derivation list）指出他继承谁
@@ -9917,8 +9918,6 @@ struct greater
         - 派生类经常（但并不总是）覆盖它继承的虚函数
         - 没有覆盖则直接使用继承到的基类的版本
         - 可以在覆盖的函数前继续使用`virtual`关键字
-        - 还可以在 *形参列表* 之后，或`const`限定之后（如有）、或 *引用成员函数* （=> 13.6.3）之后使用`override`关键字
-        - 还可以在 *形参列表* 之后，或`const`限定之后（如有）、或 *引用成员函数* （=> 13.6.3）之后使用`final`关键字
     - `C++`**并未**规定派生类的对象在内存中如何分布
         - 基类成员和派生类新成员很可能是混在一起、而非泾渭分明的
     - 派生类构造函数
@@ -9960,12 +9959,16 @@ struct greater
 - 类型转换与继承
     - *派生类到基类的* （derived-to-base）类型转换
         - 编译器 *隐式* 执行
-        - 可以把 *派生类对象* 当成 *基类对象* 使用
+        - 可以把 *派生类对象* 当成 *基类对象* 使用（此时派生类部分被 *切掉* （sliced down））
         - 可以把 *基类指针或引用* 绑定到 *派生类对象* 上，通过此指针或引用访问对象时
             - 成员访问仅限基类成员
             - 虚函数调用执行 *动态绑定* 
         - *智能指针* 和 *内置指针* 一样，都支持派生类向基类的类型转换
     ```
+    BulkQuote bulk;              // object of derived type
+    Quote item(bulk);            // uses the Quote::Quote(const Quote&) constructor
+    item = bulk;                 // calls Quote::operator=(const Quote &)
+    
     Quote item;                  // object of base type
     BulkQuote bulk;              // object of derived type
     Quote * p = &item;           // p points to a Quote object
@@ -9979,6 +9982,7 @@ struct greater
             - *动态类型* ：变量或表达式所表示的内存中的对象的类型。知道运行时才可知
     - **不存在**基类向派生类的 *隐式类型转换* 
         - 多态的基类指针或引用一样**无法**隐式转换为派生类
+        - 编译器只能检查静态类型确定类型安全，如果基类中含有虚函数，可以使用`dynamic_cast`请求显式类型转换，进行运行时安全检查 => 19.2.1
     ```
     Quote base;
     BulkQuote * bulkP = &base;   // error: can't convert base to derived
@@ -9989,16 +9993,206 @@ struct greater
     BulkQuote * bulkP = itemP;   // error: can't convert base to derived
     ```
 
-
-
-
 #### 虚函数
 
-#### 虚基类
+- 所有虚函数都必须被定义
+    - *普通函数* 如不被使用， *可以不被定义* 
+    - *虚函数* 不管有没有被用到，都 *必须提供定义* 
+- 动态绑定只在通过基类指针或引用调用虚函数时才会发生
+```
+Quote base("0-201-82470-1", 50);
+print_total(std::cout, base, 10);     // calls Quote::net_price
+BulkQuote derived("0-201-82470-1", 50, 5, .19);
+print_total(std::cout, derived, 10);  // calls BulkQuote::net_price
+```
+- 派生类中的虚函数
+    - 在派生类中覆盖某个虚函数时，可以重复`virtual`关键字，但不是必须
+        - 基类中的虚函数在其所有派生类中都默认还是虚函数
+    - 派生类中的虚函数的 *函数签名* 必须和基类的版本 *完全一致* 
+        - 如不一致，则会被理解成重载的新函数，**无法**执行动态绑定
+    - `final`和`override`说明符
+        - `override`说明符用于显式指定派生类中的虚函数，编译器会对 *函数签名* 执行检查，帮助发现错误
+            - 在 *形参列表* 之后，或`const`限定符之后（如有）、或引用限定符之后（如有）、或尾置返回类型之后（如有）使用`override`关键字
+            - `override`函数必须在基类中是虚函数
+            - `override`函数的签名必须与基类版本一致
+        ```
+        struct B 
+        {
+            virtual void f1(int) const;
+            virtual void f2();
+            void f3();
+        };
+        
+        struct D1 : B 
+        {
+            void f1(int) const override;  // ok: f1 matches f1 in the base
+            void f2(int) override;        // error: B has no f2(int) function
+            void f3() override;           // error: f3 not virtual
+            void f4() override;           // error: B doesn't have a function named f4
+        }
+        ```
+        - `final`说明符用于指定此函数**不能**被派生类覆盖
+            - 在 *形参列表* 之后，或`const`限定符之后（如有）、或引用限定符之后（如有）、或尾置返回类型之后（如有）使用`final`关键字
+        ```
+        struct D2 : B 
+        {
+            // inherits f2() and f3() from B and overrides f1(int)
+            void f1(int) const final;     // subsequent classes can't override f1(int)
+        };
+            
+        struct D3 : D2 
+        {
+            void f1(int) const;           // error: D2 declared f2 as final
+            void f2();                    // ok: overrides f2 inherited from the indirect base, B
+        };
+        ```
+    - 虚函数和 *默认实参*
+        - 虚函数也可以有默认实参
+        - 通过动态绑定调用的派生类虚函数，传入的默认实参是 *基类版本* 的
+        - 如果虚函数使用默认实参，**必须**和基类中的定义一致
+    - 回避虚函数机制
+        - 如果不想使用动态绑定，可以通过 *域运算符* `::`强制执行某一版本的虚函数
+        ```
+        // calls the version from the base class regardless of the dynamic type of baseP
+        double undiscounted = baseP->Quote::net_price(42);
+        ```
+        - 一般只有成员函数或友元才需要使用域运算符来回避虚函数机制
+            - 当派生类虚函数调用其覆盖的基类的虚函数版本时需要强制执行某一版本的虚函数
+            - 此时基类版本通常完成继承层次中所有类型都要做的共同任务
+            - 而派生类版本只负责执行与派生类本身密切相关的操作
+        - 如果派生类虚函数需要调用它的基类版本，但是没有使用域运算符，则在运行时该调用将被解析为递归调用自己，将导致 *死递归* 
 
-#### 抽象基类
+#### 抽象基类（abstract base class）
+
+- *纯虚函数* （Pure Virtual Functions）
+    - 将函数定义为 *纯虚* 的，明确告知用户定义此函数没有意义
+    - 纯虚函数不需定义，而是用`= 0;`代替函数体
+        - `= 0;` *只能* 出现于类内部虚函数声明语句处
+        - 也可以为纯虚函数提供定义，不过 *必须在类外单独定义* 
+- `DiscQuote`类定义
+```
+// class to hold the discount rate and quantity
+// derived classes will implement pricing strategies using these data
+class DiscQuote : public Quote 
+{
+public:
+    DiscQuote() = default;
+    
+    DiscQuote(const std::string & book, double price, std::size_t qty, double disc) :
+        Quote(book, price), quantity(qty), discount(disc) 
+    { 
+    }
+    
+    double net_price(std::size_t) const = 0;  // pure virtual function
+    
+protected:
+    std::size_t quantity = 0;                 // purchase size for the discount to apply
+    double discount = 0.0;                    // fractional discount to apply
+};
+```
+- *抽象基类* 就是含有 *纯虚函数* 的类
+    - 负责定义 *接口* ，后续派生类负责实现接口
+    - **不能**创建纯虚基类的对象
+    - 只能定义确实覆盖了纯虚函数的派生类的对象
+```
+// Disc_quote declares pure virtual functions, which Bulk_quote will override
+DiscQuote discounted;                            // error: can't define a Disc_quote object
+BulkQuote bulk;                                  // ok: Bulk_quote has no pure virtual functions
+```
+- `BulkQuote`类重定义
+```
+// the discount kicks in when a specified number of copies of the same book are sold
+// the discount is expressed as a fraction to use to reduce the normal price
+class BulkQuote : public DiscQuote 
+{
+public:
+    BulkQuote() = default;
+    
+    BulkQuote(const std::string & book, double price, std::size_t qty, double disc):
+        Disc_quote(book, price, qty, disc)
+    { 
+    }
+    
+    // overrides the base version to implement the bulk purchase discount policy
+    double net_price(std::size_t) const override;
+};
+```
+- *重构* （refactoring）
+    - 在类的继承体系中添加 *抽象基类* 就是 *重构* 操作
+    - 重构负责重新设计类的体系以便将操作和（或）数据从一个类移动到另一个类中
+    - 重构不需重新编写已有代码，但需重新编译
 
 #### 访问控制与继承
+
+- 公有，私有和受保护成员
+    - *受保护成员* 
+        - 对于类的用户不可访问
+        - 对于派生类的成员及其友元可访问
+            - 派生类的成员及其友元 *只能* 通过 *派生类对象* 访问基类的受保护成员
+            - 派生类的成员及其友元**不能**通过 *基类对象* 访问基类的受保护成员
+                - 很好理解，友元不能传递，儿子的哥们又不是老子的哥们
+    ```
+    class Base 
+    {
+    protected:
+        int prot_mem;                   // protected member
+    };
+    
+    class Sneaky : public Base 
+    {
+        friend void clobber(Sneaky &);  // can access Sneaky::prot_mem
+        friend void clobber(Base &);    // can't access Base::prot_mem
+        
+        int j;                          // j is private by default
+    };
+    
+    // ok: clobber can access the private and protected members in Sneaky objects
+    void clobber(Sneaky & s) 
+    { 
+        s.j = s.prot_mem = 0; 
+    }
+    
+    // error: clobber can't access the protected members in Base
+    void clobber(Base & b) 
+    { 
+        b.prot_mem = 0; 
+    }
+    ```
+- 公有，私有和受保护继承
+    - 公有继承：保持基类中的访问控制不变
+    - 私有继承：基类全部内容一律变为私有
+    - 受保护继承：基类 *公有* 内容一律变为受保护
+```
+class Base 
+{
+public:
+    void pub_mem(); // public member
+protected:
+    int prot_mem;   // protected member
+private:
+    char priv_mem;  // private member
+};
+
+struct PubDerv : public Base 
+{
+    // ok: derived classes can access protected members
+    int f() { return prot_mem; }
+    
+    // error: private members are inaccessible to derived classes
+    char g() { return priv_mem; }
+};
+
+struct PrivDerv : private Base 
+{
+    // private derivation doesn't affect access in the derived class
+    int f1() const { return prot_mem; }
+};
+
+PubDerv d1;         // members inherited from Base are public
+PrivDerv d2;        // members inherited from Base are private
+d1.pub_mem();       // ok: pub_mem is public in the derived class
+d2.pub_mem();       // error: pub_mem is private in the derived class
+```
 
 #### 继承中的类作用域
 
