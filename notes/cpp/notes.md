@@ -10883,8 +10883,8 @@ protected:
             // other implementation members
         };
         
-        template <typename T>
-        size_t Foo<T>::ctr = 0;              // define and initialize ctr for all instance classes of this class template
+        template <typename T>                // define and initialize ctr
+        size_t Foo<T>::ctr = 0;              // for all instance classes of this class template
         
         // instantiates static members Foo<std::string>::ctr and Foo<std::string>::count
         Foo<std::string> fs;
