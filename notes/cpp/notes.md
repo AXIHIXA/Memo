@@ -57,6 +57,7 @@
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
     - 对复杂参数，`Clang-Tidy`规定构造函数传参应该是按值传递加`std::move`，而**不是**传常引用
     - 希望类的所有成员都是`public`时，**应**使用`struct`；只有希望使用`private`成员时才用`class`
+    - `class`中的 *私有成员* 之前**应该**显式写出`private`，仅依靠默认会混淆继承关系，容易产生误会
     - 在类定义开始或结束的地方**集中声明**友元；使用友元，仍另需有一个**单独的函数声明**
     - 类的类型成员（`typedef`以及`using`声明）应该放在类定义**刚开始**的地方的`public`区域
     - 最好令构造函数初始化列表的顺序与成员声明的顺序**保持一致**；**避免**用某些成员初始化其他成员，用构造函数的参数作为初始值
@@ -73,7 +74,9 @@
     - `operator->()` 一般**不执行任何操作**，而是调用`operator*()`并返回其结果的 *地址* （即返回 *类的指针* ）
     - 基类通常应该定义一个 *虚析构函数* ，即使这个函数不执行任何操作也是如此
     - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* 
+    - 派生类覆盖基类虚函数时必须保证函数签名与基类版本完全一致、**必须**显式加上`override`或`final`
     - 如果虚函数使用 *默认实参* ，**必须**和基类中的定义一致
+    - 除了继承来的 *虚函数* ，派生类**不应该**重用那些定义在其基类中的名字
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -88,8 +91,11 @@
     - 如果一个函数形参是没有用到的，那么在函数定义中也不必为之具名 => 14.6
     - 引用从来都是作为被引用对象的同义词出现（比如`auto`就不能自动推断出引用），唯一例外是`decltype`。它会原样保留引用以及顶层`const`
     - `main`函数不能递归调用、不能重载
+    - *名字查找* 先于 *类型匹配* ，因此不同的作用域中**无法**重载函数
     - 定义在类内部的函数是隐式的`inline`函数
-    - 使用`struct`或`class`定义类的**唯一区别**就是默认访问权限：`struct`中默认 *公有* ，而`class`默认 *私有*
+    - 使用`struct`或`class`定义类的**唯一区别**就是默认访问权限
+        - `struct`成员默认 *公有* ，继承时默认 *公有继承*
+        - `class`成员默认 *私有* ，继承时默认 *私有继承*
     - 每个类定义了**唯一**的类型；两个类即使内容完全一样，它们也是不同的类型，**不能**自动相互转化
     - 如果一个构造函数为每一个参数都提供了默认实参，则它实际上也定义了默认构造函数
     - 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则
@@ -2342,7 +2348,7 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
 - 重载和作用域
     - 在不同的作用域中**无法**重载函数
     - **不要**在 *块作用域* 内声明或定义函数，容易覆盖外层作用域中的同名 *实体* （ *对象* ， *函数* 等等都可能覆盖）
-        - `C++`中， *名字查找* 发生在 *类型匹配* 之前
+        - `C++`中， *名字查找* 先于 *类型匹配* 
             - 编译器首先查找对 *名字* 的声明，一旦找到，就会 *忽略掉* 外部作用域的 *同名实体*
             - 之后才会看声明的类型与调用时的实际类型是否匹配，如果不匹配， *直接报错* 
     ```
@@ -10169,8 +10175,10 @@ class Base
 {
 public:
     void pub_mem(); // public member
+    
 protected:
     int prot_mem;   // protected member
+    
 private:
     char priv_mem;  // private member
 };
@@ -10209,15 +10217,215 @@ d2.pub_mem();       // error: pub_mem is private in the derived class
     - 友元**不能**传递、**不能**继承，哪怕是基类和派生类之间
         - 派生类的友元一样只能通过基类对象访问基类的公有成员
         - 但可以通过派生类对象访问到派生类的基类部分
+- 改变个别成员可访问性
+    - 使用`using`声明在对应的访问限定符下指明基类成员
+    - 只能对 *派生类可见* 的名字使用`using`声明
+        - 也就是说基类的`private`必须是没救的
+```
+class Base 
+{
+public:
+    std::size_t size() const { return n; }
+    
+protected:
+    std::size_t n;
+};
 
-
-
+class Derived : private Base  // note: private inheritance
+{ 
+public:
+    // maintain access levels for members related to the size of the object
+    using Base::size;
+    
+protected:
+    using Base::n;
+};
+```
+- 默认的继承保护级别
+    - `struct`成员默认 *公有* ，继承时默认 *公有继承*
+    - `class`成员默认 *私有* ，继承时默认 *私有继承*
+    - 这也是`struct`和`class`唯一的区别
+    
 #### 继承中的类作用域
+
+- 派生类的作用域 *嵌套* 在其基类的作用域之内
+    - 每个类拥有自己的 *类作用域* 
+    - 如果一个名字在派生类作用域内无法解析，则编译器会 *回溯至其上一级作用域* （即其直接基类的作用域）
+    - 这也解释了为什么动态绑定的基类指针和引用虽然实际指向派生类对象，但却无法通过它们访问派生类成员
+        - 因为 *名字查找* 直接从基类作用域开始了，自然找不到派生类作用域里才有的东西
+- 名字冲突和继承
+    - 派生类可以重用定义在其直接或间接基类中的名字
+        - 此时定义在内部（派生类）作用域的名字将隐藏定义在外部（基类）作用域中的 *同名实体* 
+            - 包括对象和函数
+        - 可以通过 *作用域运算符* 显式使用被隐藏的成员
+    - 除了继承来的 *虚函数* ，派生类**不应该**重用那些定义在其基类中的名字
+    ```
+    struct Base 
+    {
+    public:
+        Base(): mem(0) {}
+        
+    protected:
+        int mem;
+    };
+    
+    struct Derived : Base 
+    {
+    public:
+        Derived(int i): mem(i) {}           // initializes Derived::mem to i
+        
+        // Base::mem is default initialized
+        int get_mem() { return mem; }       // returns Derived::mem
+    
+    protected:
+        int mem;                            // hides mem in the base
+    };
+    
+    Derived d(42);
+    std::cout << d.get_mem() << std::endl;  // prints 42
+    ```
+    - *名字查找* 先于 *类型匹配* 
+        - *函数重载* 一节中已经强调过，不同的作用域中**无法**重载函数
+        - 同理，派生类中无法重载基类的函数，如果函数同名，将在其作用域内 *隐藏* **而不是**重载该基类成员 
+            - 即使形参列表不一样，也仍旧是隐藏而不是重载
+        - 仍然可以通过 *作用域运算符* 显式指定访问哪个版本
+        ```
+        struct Base 
+        {
+            int memfcn();
+        };
+        
+        struct Derived : Base 
+        {
+            int memfcn(int);  // hides memfcn in the base
+        };
+        
+        Derived d; 
+        Base b;
+        b.memfcn();           // calls Base::memfcn
+        d.memfcn(10);         // calls Derived::memfcn
+        d.memfcn();           // error: memfcn with no arguments is hidden
+        d.Base::memfcn();     // ok: calls Base::memfcn
+        ```
+    - 虚函数与作用域
+        - 派生类覆盖的虚函数必须和基类具有相同的签名
+        - 否则无法通过基类指针或引用调用派生类版本的虚函数
+    ```
+    class Base 
+    {
+    public:
+        virtual int fcn();
+    };
+    
+    class D1 : public Base 
+    {
+    public:
+        // hides fcn in the base; this fcn is not virtual
+        // D1 inherits the definition of Base::fcn()
+        int fcn(int);       // parameter list differs from fcn in Base
+        
+        virtual void f2();  // new virtual function that does not exist in Base
+    };
+    
+    class D2 : public D1 
+    {
+    public:
+        int fcn(int);       // nonvirtual function hides D1::fcn(int)
+        int fcn();          // overrides virtual fcn from Base
+        void f2();          // overrides virtual f2 from D1
+    };
+    
+    Base bobj; 
+    D1 d1obj; 
+    D2 d2obj;
+    
+    Base * bp1 = &bobj;
+    Base * bp2 = &d1obj;
+    Base * bp3 = &d2obj;
+    
+    bp1->fcn();             // virtual call, will call Base::fcn at run time
+    bp2->fcn();             // virtual call, will call Base::fcn at run time
+    bp3->fcn();             // virtual call, will call D2::fcn at run time
+    
+    D1 * d1p = &d1obj; 
+    D2 * d2p = &d2obj;
+    
+    bp2->f2();              // error: Base has no member named f2
+    d1p->f2();              // virtual call, will call D1::f2() at run time
+    d2p->f2();              // virtual call, will call D2::f2() at run time
+    
+    Base * p1 = &d2obj; 
+    D1 * p2 = &d2obj; 
+    D2 * p3 = &d2obj;
+    
+    p1->fcn(42);            // error: Base has no version of fcn that takes an int
+    p2->fcn(42);            // statically bound, calls D1::fcn(int)
+    p3->fcn(42);            // statically bound, calls D2::fcn(int)
+    ```
+    - 覆盖重载的函数
+        - 成员函数不论是否是虚函数都能被重载
+        - 派生类可以覆盖重载函数的零或多个实例
+        - 如果派生类希望所有重载版本均对齐可见，则它要么需要覆盖所有重载，要么一个也不覆盖
+        - 为重载的成员提供`using`声明，就无须覆盖每一个版本了
 
 #### 构造函数与拷贝控制
 
 - *虚析构函数* （virtual destructor）
+    - 继承关系对类拷贝控制最直接的影响就是基类通常应该定义一个 *虚析构函数* ，用于动态分配继承体系中的对象
+        - 虚析构函数可以保证析构对象时执行正确的版本
+            - 当`delete`动态分配对象指针时，将执行析构函数
+            - 如果基类的析构函数不是虚函数，则`delete`动态绑定到派生类的指针是 *未定义行为* 
+        - 基类的虚析构函数很可能是空的，此时并不需要遵循 *三五法则* 
+            - 虚析构函数将阻止编译器自动 *合成移动操作* 
+    ```
+    class Quote 
+    {
+    public:
+        // virtual destructor needed if a base pointer pointing to a derived object is deleted
+        virtual ~Quote() = default;  // dynamic binding for the destructor
+    };
+    
+    Quote * itemP = new Quote;       // same static and dynamic type
+    delete itemP;                    // destructor for Quote called
+    itemP = new BulkQuote;           // static and dynamic types differ
+    delete itemP;                    // destructor for Bulk_quote called
+    ```
 - 合成拷贝控制与继承
+    - 某些基类的定义方式会导致派生类的合成拷贝控制成员被定义成 *删除的* 
+        - *基类* 的 *默认构造函数* 、 *拷贝构造函数* 、 *拷贝赋值运算符* 或 *析构函数* 是 *删除的或者不可访问* 的，则 *派生类* 中 *对应成员* 将是 *被删除的* 
+            - 因为编译器**不能**使用基类成员来执行派生类对象基类部分的构造、复制或销毁操作
+        - 如果在 *基类* 中有一个 *不可访问或删除* 掉的 *析构函数* ，则 *派生类* 中 *合成的默认构造函数和拷贝构造函数* 将是 *被删除* 的
+            - 因为编译器**无法**销毁派生类对象的基类部分
+        - 编译器将**不会**合成一个 *删除掉的移动操作* 
+            - 当我们使用`= default;`请求一个移动操作时，如果基类中的对应操作是删除的或不可访问的，那么派生类中该函数将是被删除的
+                - 原因是派生类对象的基类部分不可移动
+            - 同样，如果基类的析构函数是删除的或不可访问的，则派生类的移动构造函数也将是被删除的
+    ```
+    class B 
+    {
+    public:
+        B();
+        B(const B &) = delete;
+        // other members, not including a move constructor
+    };
+    
+    class D : public B 
+    {
+        // no constructors
+    };
+    
+    D d;                 // ok: D's synthesized default constructor uses B's default constructor
+    D d2(d);             // error: D's synthesized copy constructor is deleted
+    D d3(std::move(d));  // error: implicitly uses D's deleted copy constructor 
+                         // (no synthesized move constructor as copy constructor is user-defined)
+    ```
+    - 派生类中需要执行移动操作时，应先在基类中定义
+        - 基类缺少移动操作会阻止派生类有自己的合成移动操作
+        - 基类可以使用合成的版本，但必须显式定义`= default;`
+        - 这种情况下基类需要遵循 *三五法则* 
+    ```
+    
+    ```
 - 派生类的拷贝控制成员
 - 继承的构造函数
 
