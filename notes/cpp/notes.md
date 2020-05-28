@@ -8450,34 +8450,36 @@ private:
     ```
     struct S35
     {
-        S35() { printf("S35()\n"); }
-        explicit S35(const int & i) : p(new int(i)) { printf("S35(const int &)\n"); }
-        S35(const S35 & rhs) : p(new int(*rhs.p)) { printf("S35(const S35 &)\n"); }
-        S35(S35 && rhs) noexcept : p(std::move(rhs.p)) { printf("S35(S35 &&)\n"); }
-        ~S35() { printf("~S35()\n"); };
-        
+        S35() { printf("S35::S35()\n"); }
+        explicit S35(const int i) : p(new int(i)) { printf("S35::S35(const int &)\n"); }
+        S35(const S35 & rhs) : p(new int(*rhs.p)) { printf("S35::S35(const S35 &)\n"); }
+        S35(S35 && rhs) noexcept : p(std::move(rhs.p)) { printf("S35::S35(S35 &&)\n"); }
+        virtual ~S35() { printf("S35::~S35()\n"); };
+
         S35 & operator=(const S35 & rhs)
         {
-            printf("operator=(const S35 &)\n");
+            printf("S35::operator=(const S35 &)\n");
             if (this != &rhs) p = std::make_unique<int>(*rhs.p);
             return *this;
         }
 
         S35 & operator=(S35 && rhs) noexcept
         {
-            printf("operator=(S35 &&)\n");
+            printf("S35::operator=(S35 &&)\n");
             if (this != &rhs) p = std::move(rhs.p);
             return *this;
         }
 
+    //    // copy-and-swap assign operator deals with self-assignment 
+    //    // and servers automatically as both copy and move assign operator
     //    S35 & operator=(S35 rhs)
     //    {
-    //        printf("operator=(S35)\n");
+    //        printf("S35::operator=(S35)\n");
     //        using std::swap;
     //        swap(p, rhs.p);
     //        return *this;
     //    }
-    
+
         // when used as condition, this explicit operator will still be applied by conpiler implicitly
         // "this is a feature, NOT a bug. " -- Microsoft
         explicit operator bool() const { return static_cast<bool>(*p); }
