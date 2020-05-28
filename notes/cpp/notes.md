@@ -10664,8 +10664,8 @@ protected:
         typedef typename std::vector<T>::size_type size_type;
 
         // constructors
-        Blob();
-        Blob(std::initializer_list<T> il);
+        Blob() : data(std::make_shared<std::vector<T>>()) {}
+        Blob(std::initializer_list<T> il) : data(std::make_shared<std::vector<T>>(il)) {}
 
         // number of elements in the Blob
         size_type size() const
@@ -10689,23 +10689,43 @@ protected:
             data->push_back(std::move(t));
         }
 
-        void pop_back();
+        void pop_back()
+        {
+            check(0, "pop_back on empty Blob");
+            data->pop_back();
+        }
 
         // element access
-        T & back();
+        T & back()
+        {
+            check(0, "back on empty Blob");
+            return data->back();
+        }
 
-        T & operator[](size_type i); // defined in § 14.5 (p. 566)
+        T & operator[](size_type i)
+        {
+            // if i is too big, check will throw, preventing access to a nonexistent element
+            check(i, "subscript out of range");
+            return (*data)[i];
+        }
 
     private:
         // throws msg if data[i] isn't valid
-        void check(size_type i, const std::string & msg) const;
+        void check(size_type i, const std::string & msg) const
+        {
+            if (i >= data->size()) throw std::out_of_range(msg);
+        }
 
     private:
         std::shared_ptr<std::vector<T>> data;
     };
+    
+    Blob<std::string> articles = {"a", "an", "the"};
     ```
     - 实例化类模板
         - 编译器**不能**为类模板推断模板参数类型，必须在 *显式模板实参* （explicit template argument）列表中指出
+            - 类模板的名字**不是**类型名
+                - 类模板用于实例化类型，实例化的类型总是包含 *显式模板实参列表* 
         ```
         Blob<int> ia;                     // empty Blob<int>
         Blob<int> ia2 = {0, 1, 2, 3, 4};  // Blob<int> with five elements
@@ -10738,6 +10758,94 @@ protected:
         // these definitions instantiate two distinct Blob types
         Blob<std::string> names;  // Blob that holds strings
         Blob<double> prices;      // different element type
+        ```
+    - 类模板的成员函数
+        - 与任何其他类相同，既可以在类模板内部，也可以在类模板外部定义成员函数，且定义在类模板内的成员函数被隐式声明为`inline`函数
+        - 定义在类模板之外的成员函数必须以`template`开始，后接模板参数列表
+            - 类模板的成员函数本身就是一个普通函数，但是，类模板的每个实例都有其自己版本的成员函数
+        ```
+        // in-class declaration
+        ret mem_func(param_list);
+        
+        // out-of-class declaration
+        template <typename T>
+        ret Class<T>::mem_func(param_list);
+        
+        // out-of-class definition for Blob<T>::pop_back
+        template <typename T> 
+        void Blob<T>::pop_back()
+        {
+            check(0, "pop_back on empty Blob");
+            data->pop_back();
+        }
+        ```
+        - 默认情况下，一个类模板成员函数只有在被用到时才进行实例化
+        ```
+        // instantiates Blob<int> and the initializer_list<int> constructor
+        Blob<int> squares = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        
+        // instantiates Blob<int>::size() const
+        for (size_t i = 0; i != squares.size(); ++i)
+        {
+            squares[i] = i * i; // instantiates Blob<int>::operator[](size_t)
+        }
+        ```
+    - 在类代码中简化模板类名的使用
+        - 在类模板自己的作用域中，可以 *直接使用模板名而不提供实参* 
+        ```
+        // inside template class scope, the following are equivalent
+        BlobPtr & operator++(); 
+        BlobPtr & operator--();
+        
+        BlobPtr<T> & operator++();
+        BlobPtr<T> & operator--();
+        ```
+        - `BlobPtr`类定义
+        ```
+        // BlobPtr throws an exception on attempts to access a nonexistent element
+        template <typename T>
+        class BlobPtr
+        {
+        public:
+            BlobPtr() : curr(0) {}
+
+            BlobPtr(Blob<T> & a, size_t sz = 0) : wptr(a.data), curr(sz) {}
+
+            T & operator*() const
+            {
+                auto p = check(curr, "dereference past end");
+                return (*p)[curr];               // (*p) is the vector to which this object points
+            }
+
+            // increment and decrement
+            BlobPtr & operator++();              // prefix operators
+            {
+                // no check needed here; the call to prefix increment will do the check
+                BlobPtr ret = *this;             // save the current value
+                ++*this;                         // advance one element; prefix ++ checks the increment
+                return ret;                      // return the saved state
+            }
+            BlobPtr & operator--();
+
+        private:
+            // check returns a shared_ptr to the vector if the check succeeds
+            std::shared_ptr<std::vector<T>> check(std::size_t, const std::string &) const;
+
+        private:
+            // store a weak_ptr, which means the underlying vector might be destroyed
+            std::weak_ptr<std::vector<T>> wptr;
+            std::size_t curr;                    // current position within the array
+        };
+        ```
+    - 在类模板外使用类模板名
+        - 在类模板外定义其成员时，必须记住：我们此时并不在其作用域中，类作用域从遇到类名处才开始
+    - 类模板和友元
+        - 当一个类包含一个友元声明时，类与友元各自是否是模板是相互无关的
+        - 如果一个类模板包含一个非模板友元，则友元被授权可以访问 *所有* 模板实例
+        - 如果友元自身是模板，类可以授权给友元模板的 *所有实例* ，也可以只授权给 *特定实例* 
+    - 一对一友好关系
+        - 为了引用（类或函数）模板的一个特定实例，我们必须首先声明模板自身
+        ```
         ```
 - 模板参数
 - 成员模板
