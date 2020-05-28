@@ -73,6 +73,7 @@
     - 一般情况下**不应该**重载、 *逻辑与* 、 *逻辑或* 、 *逗号* 和 *取地址* 运算符
     - `operator->()` 一般**不执行任何操作**，而是调用`operator*()`并返回其结果的 *地址* （即返回 *类的指针* ）
     - 基类通常应该定义一个 *虚析构函数* ，即使这个函数不执行任何操作也是如此
+    - 基类除了只需要虚析构函数时以外，亦**必须遵守** *三五法则* 
     - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* 
     - 派生类覆盖基类虚函数时必须保证函数签名与基类版本完全一致、**必须**显式加上`override`或`final`
     - 如果虚函数使用 *默认实参* ，**必须**和基类中的定义一致
@@ -10417,14 +10418,24 @@ protected:
     D d;                 // ok: D's synthesized default constructor uses B's default constructor
     D d2(d);             // error: D's synthesized copy constructor is deleted
     D d3(std::move(d));  // error: implicitly uses D's deleted copy constructor 
-                         // (no synthesized move constructor as copy constructor is user-defined)
+                         // (no synthesized move constructor as copy constructor is user-defined => 13.6.2)
     ```
     - 派生类中需要执行移动操作时，应先在基类中定义
         - 基类缺少移动操作会阻止派生类有自己的合成移动操作
         - 基类可以使用合成的版本，但必须显式定义`= default;`
         - 这种情况下基类需要遵循 *三五法则* 
     ```
-    
+    class Quote 
+    {
+    public:
+        Quote() = default;                          // memberwise default initialize
+        Quote(const Quote &) = default;             // memberwise copy
+        Quote(Quote &&) = default;                  // memberwise copy
+        Quote& operator=(const Quote &) = default;  // copy assign
+        Quote& operator=(Quote &&) = default;       // move assign
+        virtual ~Quote() = default;
+        // other members as before
+    };
     ```
 - 派生类的拷贝控制成员
 - 继承的构造函数
