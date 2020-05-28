@@ -8487,15 +8487,15 @@ private:
         std::unique_ptr<int> p{new int(0)};
     };
     
-    S35 s1{0};              // S35(const int &)
-    S35 s2{s1};             // S35(const S35 &)
-    S35 s3{std::move(s2)};  // S35(S35 &&)
+    S35 s1{0};              // S35::S35(const int &)
+    S35 s2{s1};             // S35::S35(const S35 &)
+    S35 s3{std::move(s2)};  // S35::S35(S35 &&)
     
-    S35 s4{1};              // S35(const int &)
-    s4 = s3;                // copy operator=(const S35 &)
-    s4 = S35{2};            // S35(const int &)
-                            // move operator=(S35 &&)
-    s4 = std::move(s3);     // move operator=(S35 &&)
+    S35 s4{1};              // S35::S35(const int &)
+    s4 = s3;                // S35::operator=(const S35 &)
+    s4 = S35{2};            // S35::S35(const int &)
+                            // S35::operator=(S35 &&)
+    s4 = std::move(s3);     // S35::operator=(S35 &&)
     ```
 - *显式默认* 和 *删除函数* 
     - 大多数类应该定义默认构造函数、拷贝构造函数和拷贝赋值运算符，不论是隐式地还是显式地
@@ -10555,8 +10555,21 @@ protected:
 
 #### 定义模板
 
-- 函数模板
-- 类模板
+- *函数模板* （function template）
+    - 一个函数模板就是一个公式，用于生成针对特定类型的函数版本
+    ```
+    template <template_parameter_list>
+    ```
+    - *模板参数列表* （template parameter list）
+        - **不能**为空
+        - 就像是函数形参列表，定义了若干特定类型的局部变量，但并未指出如何初始化它们
+            - 运行时由调用者提供实参来初始化形参
+        - 表示类或函数定义中用到的类型或值
+            - 使用时 *隐式* 或 *显式* 地指定 *模板实参* （template argument）并绑定到模板参数上
+    - *实例化* 函数模板（Instantiating a Function Template）
+        - 
+- *类模板* （class template）
+    - 
 - 模板参数
 - 成员模板
 - 控制实例化
