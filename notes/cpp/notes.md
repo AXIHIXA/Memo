@@ -123,6 +123,7 @@
     - 重载的 *箭头* 运算符必须返回 *类的指针* 或者 *自定义了箭头运算符的某个类的对象* 
     - 对于 *用户代码* 中某个节点来说，当且仅当 *基类公有成员可访问* 时， *派生类向基类的类型转换可用* 
     - 友元**不能**传递、**不能**继承
+    - 引用类或函数模板的 *一个特定实例* 之前 *必须前向声明模板自身* ；如果引用的是 *全部实例* ，则**不需前向声明**
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
@@ -10656,10 +10657,26 @@ protected:
     - 类模板及其成员的定义中，模板参数可以代替使用模板是用户需要提供的类型或值
     - `Blob`类定义
     ```
+    // needed for friendship declaration
+    template <typename> 
+    class BlobPtr;
+    
+    // needed for the following declaraton
+    template <typename>
+    class Blob;
+    
+    // needed for friendship declaration!!!
+    // template specialization MUST be present for any reference on its one specific instance
+    template <typename T>
+    bool operator==(const Blob<T> &, const Blob<T> &);
+    
     template <typename T>
     class Blob
     {
     public:
+        friend class BlobPtr<T>;
+        friend bool operator==<T>(const Blob<T> &, const Blob<T> &);
+    
         typedef T value_type;
         typedef typename std::vector<T>::size_type size_type;
 
@@ -10761,8 +10778,10 @@ protected:
         ```
     - 类模板的成员函数
         - 与任何其他类相同，既可以在类模板内部，也可以在类模板外部定义成员函数，且定义在类模板内的成员函数被隐式声明为`inline`函数
-        - 定义在类模板之外的成员函数必须以`template`开始，后接模板参数列表
-            - 类模板的成员函数本身就是一个普通函数，但是，类模板的每个实例都有其自己版本的成员函数
+        - 在类模板外使用类模板名
+            - 在类模板外定义其成员时，必须记住：我们此时并不在其作用域中，类作用域从遇到类名处才开始
+            - 定义在类模板之外的成员函数必须以`template`开始，后接模板参数列表
+                - 类模板的成员函数本身就是一个普通函数，但是，类模板的每个实例都有其自己版本的成员函数
         ```
         // in-class declaration
         ret mem_func(param_list);
@@ -10808,7 +10827,6 @@ protected:
         {
         public:
             BlobPtr() : curr(0) {}
-
             BlobPtr(Blob<T> & a, size_t sz = 0) : wptr(a.data), curr(sz) {}
 
             T & operator*() const
@@ -10819,13 +10837,18 @@ protected:
 
             // increment and decrement
             BlobPtr & operator++();              // prefix operators
+            
+            BlobPtr & operator--();
+            
+            BlobPtr & operator++(int)            // postfix operators
             {
                 // no check needed here; the call to prefix increment will do the check
                 BlobPtr ret = *this;             // save the current value
                 ++*this;                         // advance one element; prefix ++ checks the increment
                 return ret;                      // return the saved state
             }
-            BlobPtr & operator--();
+            
+            BlobPtr & operator--(int);
 
         private:
             // check returns a shared_ptr to the vector if the check succeeds
@@ -10837,15 +10860,62 @@ protected:
             std::size_t curr;                    // current position within the array
         };
         ```
-    - 在类模板外使用类模板名
-        - 在类模板外定义其成员时，必须记住：我们此时并不在其作用域中，类作用域从遇到类名处才开始
     - 类模板和友元
+        - 引用类或函数模板的 *一个特定实例* 之前 *必须前向声明模板自身* ；如果引用的是 *全部实例* ，则**不需前向声明**
         - 当一个类包含一个友元声明时，类与友元各自是否是模板是相互无关的
         - 如果一个类模板包含一个非模板友元，则友元被授权可以访问 *所有* 模板实例
-        - 如果友元自身是模板，类可以授权给友元模板的 *所有实例* ，也可以只授权给 *特定实例* 
-    - 一对一友好关系
-        - 为了引用（类或函数）模板的一个特定实例，我们必须首先声明模板自身
         ```
+        // needed for friendship declaration
+        template <typename> 
+        class BlobPtr;
+        
+        // needed for the following declaraton
+        template <typename>
+        class Blob;
+        
+        // needed for friendship declaration!!!
+        // template specialization MUST be present for any reference on its one specific instance
+        template <typename T>
+        bool operator==(const Blob<T> &, const Blob<T> &);
+        
+        template <typename T>
+        class Blob
+        {
+        public:
+            friend class BlobPtr<T>;
+            friend bool operator==<T>(const Blob<T> &, const Blob<T> &);
+            
+            // others are the same
+        }
+        ```
+        - 如果友元自身是模板，类可以授权给友元模板的 *所有实例* ，也可以只授权给 *特定实例* 
+        ```
+        // forward declaration necessary to befriend a specific instantiation of a template
+        template <typename T> 
+        class Pal;
+        
+        class C                   // C is an ordinary, nontemplate class
+        { 
+            friend class Pal<C>;  // Pal instantiated with class C is a friend to C
+            
+            // all instances of Pal2 are friends to C;
+            // no forward declaration required when we befriend all instantiations
+            template <typename T> 
+            friend class Pal2;
+        };
+        
+        template <typename T> 
+        class C2                  // C2 is itself a class template
+        { 
+            // each instantiation of C2 has the same instance of Pal as a friend
+            friend class Pal<T>;  // a template declaration for Pal must be in scope
+            
+            // all instances of Pal2 are friends of each instance of C2, prior declaration needed
+            template <typename X> friend class Pal2;
+            
+            // Pal3 is a nontemplate class that is a friend of every instance of C2
+            friend class Pal3;    // prior declaration for Pal3 not needed
+        };
         ```
 - 模板参数
 - 成员模板
