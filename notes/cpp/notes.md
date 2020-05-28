@@ -56,6 +56,7 @@
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
     - 对复杂参数，`Clang-Tidy`规定构造函数传参应该是按值传递加`std::move`，而**不是**传常引用
+    - *构造函数初始化器列表* 的顺序**必须**按照类成员被声明的顺序。 *构造函数初始化器列表* 中执行初始化的 *顺序是按照类成员被声明的顺序* ，与其在列表中的顺序**无关**
     - 希望类的所有成员都是`public`时，**应**使用`struct`；只有希望使用`private`成员时才用`class`
     - `class`中的 *私有成员* 之前**应该**显式写出`private`，仅依靠默认会混淆继承关系，容易产生误会
     - 在类定义开始或结束的地方**集中声明**友元；使用友元，仍另需有一个**单独的函数声明**
@@ -74,10 +75,12 @@
     - `operator->()` 一般**不执行任何操作**，而是调用`operator*()`并返回其结果的 *地址* （即返回 *类的指针* ）
     - 基类通常应该定义一个 *虚析构函数* ，即使这个函数不执行任何操作也是如此
     - 基类除了只需要虚析构函数时以外，亦**必须遵守** *三五法则* 
-    - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* 
-    - 派生类覆盖基类虚函数时必须保证函数签名与基类版本完全一致、**必须**显式加上`override`或`final`
+    - 派生类覆盖基类虚函数时必须保证函数签名与基类版本完全一致、**必须**显式加上`override`或`final`（此时不必再加`virtual`）
     - 如果虚函数使用 *默认实参* ，**必须**和基类中的定义一致
     - 除了继承来的 *虚函数* ，派生类**不应该**重用那些定义在其基类中的名字
+    - 派生类 *拷贝控制成员* 应首先 *首先调用基类对应成员* 处理基类部分，再处理自己的部分
+    - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* ， *析构函数* **除外**：顺序和构造是反的，且编译器会自动调用基类析构函数
+    - 派生类拷贝或移动构造函数**必须**显式调用基类对应构造函数，否则基类部分将被 *默认初始化* ，产生 *未定义值* 
 - 一些小知识
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -2586,7 +2589,7 @@ useBigger(s1, s2, pf);
     1. `Constructor() : x(?), ... { }`
     2. `Constructor() : x{?}, ... { }`
 - 如果成员是`const`、 *引用* 或者 *没有默认构造函数的类类型* ，如没有类内初始值，则 *必须* 在成员初始化器列表中初始化，而**不能**等到函数体中赋值
-- 初始化的顺序是按照类成员被声明的顺序，与其在列表中的顺序无关
+- 初始化的 *顺序是按照类成员被声明的顺序* ，与其在列表中的顺序**无关**
     - 最好令构造函数初始化列表的顺序与成员声明的顺序保持一致
     - 尽量避免用某些成员初始化其他成员，最好用构造函数的参数作为初始值
 - 如果一个构造函数为每一个参数都提供了 *默认实参* ，则它实际上也定义了 *默认构造函数* 
@@ -9813,7 +9816,7 @@ struct greater
         ```
     - *虚函数* （virtual function）：由派生类各自实现更适合自身的版本
         - 派生类中重新定义的虚函数也需要声明`virtual`
-        - 通过`override`限定符显式注明此函数是改写的基类的虚函数
+        - 通过`override`限定符显式注明此函数是改写的基类的虚函数（此时不必再加`virtual`）
 - 动态绑定
     - 使用基类的 *引用* 、 *对象指针* 或 *成员指针* 调用虚函数时，将发生动态绑定
     - 调用指针或引用实际指向的对象的函数
@@ -10024,6 +10027,7 @@ print_total(std::cout, derived, 10);  // calls BulkQuote::net_price
             - 在 *形参列表* 之后，或`const`限定符之后（如有）、或引用限定符之后（如有）、或尾置返回类型之后（如有）使用`override`关键字
             - `override`函数必须在基类中是虚函数
             - `override`函数的签名必须与基类版本一致
+            - 此时不必再加`virtual`
         ```
         struct B 
         {
@@ -10042,6 +10046,7 @@ print_total(std::cout, derived, 10);  // calls BulkQuote::net_price
         ```
         - `final`说明符用于指定此函数**不能**被派生类覆盖
             - 在 *形参列表* 之后，或`const`限定符之后（如有）、或引用限定符之后（如有）、或尾置返回类型之后（如有）使用`final`关键字
+            - 此时不必再加`virtual`
         ```
         struct D2 : B 
         {
@@ -10428,16 +10433,75 @@ protected:
     class Quote 
     {
     public:
-        Quote() = default;                          // memberwise default initialize
-        Quote(const Quote &) = default;             // memberwise copy
-        Quote(Quote &&) = default;                  // memberwise copy
-        Quote& operator=(const Quote &) = default;  // copy assign
-        Quote& operator=(Quote &&) = default;       // move assign
+        Quote() = default;                           // memberwise default initialize
+        Quote(const Quote &) = default;              // memberwise copy
+        Quote(Quote &&) = default;                   // memberwise copy
+        Quote & operator=(const Quote &) = default;  // copy assign
+        Quote & operator=(Quote &&) = default;       // move assign
         virtual ~Quote() = default;
         // other members as before
     };
     ```
-- 派生类的拷贝控制成员
+- 派生类拷贝控制成员
+    - 具体职责
+        - 派生类 *构造函数* 要 *同时负责* 初始化 *自己和基类* 的部分
+            - 首先调用 *基类对应成员负责基类部分* ，再做自己的那部分
+        - 派生类 *拷贝构造函数* 和 *移动构造函数* 要 *同时负责* 拷贝和移动 *自己和基类* 的部分
+            - 首先调用 *基类对应成员负责基类部分* ，再做自己的那部分
+        - 派生类 *赋值运算符* 也必须 *同时负责自己和基类* 的部分
+            - 首先调用 *基类对应成员负责基类部分* ，再做自己的那部分
+        - 派生类 *析构函数* *只负责* 销毁派生类 *自己* 分配的资源
+            - *编译器会自动调用基类析构函数* 销毁派生类对象的基类部分
+    - 派生类 *拷贝或移动构造函数* 
+        - **必须**显式调用基类对应构造函数，否则基类部分将被 *默认初始化* ，产生 *未定义值* 
+        - 对移动构造函数初始化器列表，应委托`Base(std::move(d))`
+    ```
+    class Base { /* ... */ } ;
+
+    class D: public Base 
+    {
+    public:
+        // by default, the base class default constructor initializes the base part of an object
+        // to use the copy or move constructor, we must explicitly call that
+        // constructor in the constructor initializer list
+        
+        D(const D & d): Base(d)        // copy the base members
+        /* initializers for members of D */ { /* ... */ }
+        
+        D(D && d): Base(std::move(d))  // move the base members
+        /* initializers for members of D */ { /* ... */ }
+        // note: we are using (derived part) of moved object d
+        // d's base part should NOT be accessed, but the derived part will remain valid
+    };
+    ```
+    - 派生类 *赋值运算符* 
+        - 必须显式调用基类对应版本为其基类部分赋值
+        ```
+        // Base::operator=(const Base &) is NOT invoked automatically
+        D & D::operator=(const D & rhs)
+        {
+            Base::operator=(rhs); // assigns the base part
+            // assign the members in the derived class, as usual,
+            // handling self-assignment and freeing existing resources as appropriate
+            return *this;
+        }
+        ```
+    - 派生类 *析构函数* 
+        - 派生类析构函数 *只负责* 销毁 *自己* 分配的资源
+            - 析构函数体执行完后，对象的成员会被 *隐式销毁* 
+            - 类似地，派生类对象的基类部分也是在派生类析构函数执行完后、由编译器 *隐式* 调用基类析构函数销毁的
+        - 对象销毁的顺序和被创建的顺序正好相反：派生类虚构函数先执行，然后是其直接基类的析构函数，依此类推
+    ```
+    class D: public Base 
+    {
+    public:
+        // Base::~Base invoked automatically at end of ~D()
+        ~D() { /* do what it takes to clean up derived members */ }
+    };
+    ```
+    - 在构造函数和析构函数中调用虚函数
+        - 
+        - 如果构造函数或析构函数调用了某个虚函数，则我们应该执行与构造函数或析构函数所属类型相对应的虚函数版本
 - 继承的构造函数
 
 #### 容器与继承
