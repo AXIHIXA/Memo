@@ -2788,8 +2788,8 @@ printf("%zu\n", s1.some_member());                 // 1
 #### 类的前向声明
 
 - 只声明不定义一个类：`class Item;`
-    - 在定义之前，`Item`是 *不完全类型*
-    - 不完全类型使用受限
+    - 在定义之前，`Item`是 *不完整类型* （incomplete type）
+    - *不完整类型* 使用受限
         - 可以定义指向这种类型的指针或引用
         - 可以声明（**不能**定义）以这种类型为参数，或返回值类型的函数
         - **不能**创建这种类型的对象
@@ -2797,7 +2797,6 @@ printf("%zu\n", s1.some_member());                 // 1
         - *非静态数据成员* **不能**被声明为这种类型
             - *静态数据成员* 可以！
 - 特别地：类可以包含指向 *自身类型* 的引用或指针
-
 
 #### 类作用域
 
@@ -10561,15 +10560,185 @@ protected:
     template <template_parameter_list>
     ```
     - *模板参数列表* （template parameter list）
-        - **不能**为空
+        - 逗号分隔的列表，**不能**为空
         - 就像是函数形参列表，定义了若干特定类型的局部变量，但并未指出如何初始化它们
             - 运行时由调用者提供实参来初始化形参
         - 表示类或函数定义中用到的类型或值
             - 使用时 *隐式* 或 *显式* 地指定 *模板实参* （template argument）并绑定到模板参数上
-    - *实例化* 函数模板（Instantiating a Function Template）
-        - 
+        - 可以包含如下内容
+            1. *模板类型参数* （template type parameter）
+                - 可以将类型参数看做类型说明符，就像内置类型或者类类型说明符一样使用
+                    - 特别地，板类型参数可以作为 *函数返回值* ，或用作 *类型转换目标类型* 
+                - 类型参数前必须加上关键字`class`或`typename`，模板参数列表中二者 *等价* 
+            ```
+            // error: must precede U with either typename or class
+            template <typename T, U> 
+            T calc(const T &, const U &);
+            
+            // ok: no distinction between typename and class in a template parameter list
+            template <typename T, class U> 
+            calc (const T &, const U &);
+            ```
+            2. *非类型模板参数* （nontype template parameter）
+                - 非类型参数是一个 *值* ，而不是类型
+                - 通过 *特定的类型名* ，而非关键字`class`或`template`来指定
+                    - 可以是 *整形* ，或指向对象或函数类型的 *指针* 或 *左值引用* 
+                - 模板被实例化时，非类型参数被用户提供后编译器推断出的值所代替
+                    - 这些值必须是 *常量表达式* ，以便模板实例化能 *在编译期发生* 
+                    - **不能**用普通 *局部非静态变量* 或 *动态对象* 作为指针或引用非类型模板参数的实参
+            ```
+            template <unsigned N, unsigned M>
+            int compare(const char (&p1)[N], const char (&p2)[M])
+            {
+                return strcmp(p1, p2);
+            }
+            
+            // call of 
+            compare("hi", "mom");
+            // instantiates the following
+            int compare(const char (&p1)[3], const char (&p2)[4])  // len + 1 for '\0' terminator
+            ```
+    - `inline`和`constexpr`函数模板
+        - 函数模板可以被声明为`inline`的或`cosntexpr`，就像非模板函数一样
+        - `inline`或`constexpr`说明符放在模板形参列表之后，返回类型之前
+    ```
+    // ok: inline specifier follows the template parameter list
+    template <typename T> 
+    inline T min(const T &, const T &);
+    
+    // error: incorrect placement of the inline specifier
+    inline template <typename T> 
+    T min(const T &, const T &);
+    ```
+    - 模板 *实例化* （Instantiating a Template）
+        - 发生于 *编译期*
+        - 调用函数模板时，编译器 （通常）用函数实参来 *推断* 模板实参，并 *实例化* 一个特定版本的函数
+            - 编译器用实际的模板实参代替对应的模板参数来创建出模板的一个新 *实例* （instantiation）
+        ```
+        template <typename T>
+        int compare(const T & v1, const T & v2)
+        {
+            if (v1 < v2) return -1;
+            if (v2 < v1) return 1;
+            return 0;
+        }
+        
+        // instantiates int compare(const int &, const int &)
+        std::cout << compare(1, 0) << std::endl;        // T is int
+        // instantiates int compare(const vector<int> &, const vector<int> &)
+        vector<int> vec1{1, 2, 3}, vec2{4, 5, 6};
+        std::cout << compare(vec1, vec2) << std::endl;  // T is vector<int>
+        
+        int compare(const int & v1, const int & v2)
+        {
+            if (v1 < v2) return -1;
+            if (v2 < v1) return 1;
+            return 0;
+        }
+        ```
+    - 模板编译
+        - 编译器遇到模板定义时，并不生成代码，只有当实例化出模板的一个特定版本时，编译器才会生成代码
+            - 当我们 *使用* 而不是定义模板时编译器才生成代码，这一特性影响了我们如何组织代码，以及错误何时被检测
+        - 调用函数时，编译器只需要掌握函数的声明；类似地，使用类类型对象时，类定义必须可用，但成员函数定义不必已经出现
+            - 因此函数声明和类的定义被放在 *头文件* （header file）中，而普通函数和类的成员函数的定义放在 *源文件* （source file）中
+        - 模板则**不同**
+            - 为了生成实例化版本，编译器需要掌握函数模板或类模板成员函数的定义
+            - 因此，**模板的头文件既需包括声明、也需包含定义**
+    - 大多数编译错误在实例化期间报告
+        - 第一阶段：编译模板本身时。只能检查语法错误
+        - 第二阶段：遇到模板使用时。检查模板调用实参数目是否准确、参数类型是否匹配
+        - 第三阶段：模板实例化时。只有这个阶段可以发现类型相关错误
+            - 依赖于编译器如何管理实例化，有可能到 *链接* 时才报告
+    - 编写类型无关的代码
+        - 模板程序应尽量减少对 *实参* 的要求
+        - 例如，比较运算符只用`<`，不要混用好几个
 - *类模板* （class template）
-    - 
+    - 类模板及其成员的定义中，模板参数可以代替使用模板是用户需要提供的类型或值
+    - `Blob`类定义
+    ```
+    template <typename T>
+    class Blob
+    {
+    public:
+        typedef T value_type;
+        typedef typename std::vector<T>::size_type size_type;
+
+        // constructors
+        Blob();
+        Blob(std::initializer_list<T> il);
+
+        // number of elements in the Blob
+        size_type size() const
+        {
+            return data->size();
+        }
+
+        bool empty() const
+        {
+            return data->empty();
+        }
+
+        // add and remove elements
+        void push_back(const T & t)
+        {
+            data->push_back(t);
+        }
+        
+        void push_back(T && t)
+        {
+            data->push_back(std::move(t));
+        }
+
+        void pop_back();
+
+        // element access
+        T & back();
+
+        T & operator[](size_type i); // defined in § 14.5 (p. 566)
+
+    private:
+        // throws msg if data[i] isn't valid
+        void check(size_type i, const std::string & msg) const;
+
+    private:
+        std::shared_ptr<std::vector<T>> data;
+    };
+    ```
+    - 实例化类模板
+        - 编译器**不能**为类模板推断模板参数类型，必须在 *显式模板实参* （explicit template argument）列表中指出
+        ```
+        Blob<int> ia;                     // empty Blob<int>
+        Blob<int> ia2 = {0, 1, 2, 3, 4};  // Blob<int> with five elements
+        ```
+        - 从这两个定义，编译器实例化出一个和下面的类等价的类
+        ```
+        template <> 
+        class Blob<int> 
+        {
+        public:
+            typedef typename std::vector<int>::size_type size_type;
+            
+            Blob();
+            Blob(std::initializer_list<int> il);
+            
+            // ...
+            
+            int & operator[](size_type i);
+        
+        private:
+            void check(size_type i, const std::string & msg) const;
+            
+        private:
+            std::shared_ptr<std::vector<int>> data;
+        };
+        ```
+        - 对于指定的 *每一种元素类型* ，编译器都生成 *一个不同的类* 
+            - 每一个类模板的每个实例都是一个独立的类，`Blob<std::string>`和其他`Blob`类没有任何关联，也不对这些类有特殊的访问权限
+        ```
+        // these definitions instantiate two distinct Blob types
+        Blob<std::string> names;  // Blob that holds strings
+        Blob<double> prices;      // different element type
+        ```
 - 模板参数
 - 成员模板
 - 控制实例化
