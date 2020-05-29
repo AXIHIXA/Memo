@@ -11365,6 +11365,38 @@ protected:
     compare<int>(lng, 1024);   // ok: instantiates compare(int, int)
     ```
 - 尾置返回类型与类型转换
+    - 希望用户确定返回类型时，用显式模板形参表示函数模板的返回类型很简单明了
+    - 但有时返回值类型无法用模板形参表示，比如返回所处理序列的元素类型，此时则需要 *尾置返回* `decltype(ret)`
+    ```
+    // a trailing return lets us declare the return type after the parameter list is seen
+    template <typename It>
+    auto fcn(It beg, It end) -> decltype(*beg)
+    {
+        // process the range
+        return *beg;  // return a reference to an element from the range
+    }
+    
+    std::vector<int> vi = {1, 2, 3, 4, 5};
+    Blob<std::string> ca = {"hi", "bye"};
+    auto & i = fcn(vi.begin(), vi.end());  // fcn should return int &
+    auto & s = fcn(ca.begin(), ca.end());  // fcn should return std::string &
+    ```
+- *类型转换模板* （type transformation template）
+    - [`<type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)
+        - 常用于 *模板元程序* 设计，包含
+            - [`std::remove_reference<T>::type`](https://en.cppreference.com/w/cpp/types/remove_reference)：若`T`为`X &`或`X &&`，则为`X`；否则，为`T`
+            - [`std::add_const<T>::type`](https://en.cppreference.com/w/cpp/types/add_const)：若`T`为`X &`，`X &&`或 *函数* ，则为`T`；否则，为`const T`
+            - [`std::add_lvalue_reference<T>::type`](https://en.cppreference.com/w/cpp/types/add_lvalue_reference)：若`T`为`X &`，则为`T`；若`T`为`X &&`，则为`X &`；否则，为`T &`
+            - [`std::add_rvalue_reference<T>::type`](https://en.cppreference.com/w/cpp/types/add_rvalue_reference)：若`T`为`X &`或`X &&`，则为`T`；否则，为`T &&`
+            - [`std::remove_pointer<T>::type`](https://en.cppreference.com/w/cpp/types/remove_pointer)：若`T`为`X *`，则为`X`；否则，为`T`
+            - [`std::add_pointer<T>::type`](https://en.cppreference.com/w/cpp/types/add_pointer)：若`T`为`X &`或`X &&`，则为`X *`；否则，为`T`
+            - [`std::make_signed<T>::type`](https://en.cppreference.com/w/cpp/types/make_signed)：若`T`为`unsigned X`，则为`X`；否则，为`T`
+            - [`std::make_unsigned<T>::type`](https://en.cppreference.com/w/cpp/types/make_unsigned)：若`T`为`X`，则为`unsigned X`；否则，为`T`
+            - [`std::remove_extent<T>::type`](https://en.cppreference.com/w/cpp/types/remove_extent)：若`T`为`X[n]`，则为`X`；否则，为`T`
+            - [`std::make_all_extents<T>::type`](https://en.cppreference.com/w/cpp/types/make_all_extents)：若`T`为`X[n1][n2]...`，则为`X`；否则，为`T`
+    - 无法直接获得所需要的返回类型时使用
+        - 例如，要求上面的`fcn(vi.begin(), vi.end());`返回`int`而不是`int &`
+            
 - 函数指针与实参推断
 - 模板实参推断与引用
 - [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
