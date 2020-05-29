@@ -52,6 +52,7 @@
         4. 使用智能指针的`get()`返回的内置指针时，记住当最后一个对应的智能指针被销毁后，这个内置指针就 *无效* 了
         5. 使用内置指针管理的资源而不是`new`出来的内存时，记住传递给它一个 *删除器*
     - 大多数应用都应该使用 *标准库容器* 而**不是**动态分配的数组。使用容器更为简单，更不容易出现内存管理错误，并且可能有更好的性能
+    - 一个特定文件所需要的 *所有模板声明* 通常 *一起放置在文件开始* 位置，出现于任何使用这些模板的代码之前 => 16.3
 - 跟类有关的一箩筐规则
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
@@ -11009,6 +11010,7 @@ protected:
         - 模板参数作用域起始于声明之后，终止于模板声明或定义结束之前
         - 会覆盖外层定义域中的同名实体
         - 模板内**不能**重用模板参数名
+            - 自然，一个参数在模板形参列表中只能出现一次
     ```
     typedef double A;
     template <typename A, typename B> void f(A a, B b)
@@ -11016,7 +11018,38 @@ protected:
         A tmp = a;    // tmp has same type as the template parameter A, not double
         double B;     // error: redeclares template parameter B
     }
+    
+    // error: illegal reuse of template parameter name V
+    template <typename V, typename V> // ...
     ```
+    - 模板声明
+        - 模板声明必须包含参数
+        - 与函数声明相同，模板声明中的模板参数名字不需与定义中相同
+            - 当然，生命和定义时模板参数的种类数量和顺序必须是一样的
+        - 一个特定文件所需要的 *所有模板声明* 通常 *一起放置在文件开始* 位置，出现于任何使用这些模板的代码之前 => 16.3
+    ```
+    // declares but does not define compare and Blob
+    template <typename T> int compare(const T &, const T &);
+    template <typename T> class Blob;
+    
+    // all three uses of calc refer to the same function template
+    template <typename T> T calc(const T &, const T &);  // declaration
+    template <typename U> U calc(const U &, const U &);  // declaration
+    
+    // definition of the template
+    template <typename Type>
+    Type calc(const Type & a, const Type & b) { /* . . . */ }
+    ```
+    - 在模板中使用 *类的类型成员* 
+        - 通常使用`T::mem`访问类的静态类型成员或者静态数据成员
+            - 例如`std::string::size_type`
+            - 对于确定的类`T`，编译器有`std::string`的定义，自然知道`mem`是类型成员还是数据成员
+            - 对于模板参数`T`，编译器直到模板实例化时才会知道`T`是什么，自然也直到那时才会知道`mem`究竟是类型成员还是数据成员
+                - 但为了处理模板，编译器必须在模板定义时就知道名字`mem`究竟是类型成员还是数据成员
+                ```
+                T::size_type * p;  // 编译器需要知道这是在定义指向 T::size_type 类型的指针
+                                   // 还是在用一个名为 T::size_type 的静态数据成员和 p 相乘
+                ```
 - 成员模板
 - 控制实例化
 - 效率与灵活性
