@@ -10870,6 +10870,7 @@ protected:
             - 类外定义类模板的静态成员时也需 *定义成模板* 
                 - 类的静态成员必须有且仅有一个定义
                 - 类的静态成员只能在类内声明`static`并在类外定义一次，且不能重复`static`
+            - 类似其他类模板成员函数，类模板静态成员函数也是只有在被用到时才进行实例化
         ```
         template <typename T> 
         class Foo 
@@ -10988,11 +10989,34 @@ protected:
     template <typename T> 
     using partNo = std::pair<T, unsigned>;
     
-    partNo<std::string> books;     // books is a std::pair<string, unsigned>
+    partNo<std::string> books;     // books is a std::pair<std::string, unsigned>
     partNo<Vehicle> cars;          // cars is a std::pair<Vehicle, unsigned>
     partNo<Student> kids;          // kids is a std::pair<Student, unsigned>
     ```
 - 模板参数
+    - 模板参数可以是任何名字
+        - 比如类型参数不一定非要是`T`
+    ```
+    template <typename Foo> 
+    Foo calc(const Foo & a, const Foo & b)
+    {
+        Foo tmp = a;  // tmp has the same type as the parameters and return type
+        // ...
+        return tmp;   // return type and parameters have the same type
+    }
+    ```
+    - 模板参数与作用域
+        - 模板参数作用域起始于声明之后，终止于模板声明或定义结束之前
+        - 会覆盖外层定义域中的同名实体
+        - 模板内**不能**重用模板参数名
+    ```
+    typedef double A;
+    template <typename A, typename B> void f(A a, B b)
+    {
+        A tmp = a;    // tmp has same type as the template parameter A, not double
+        double B;     // error: redeclares template parameter B
+    }
+    ```
 - 成员模板
 - 控制实例化
 - 效率与灵活性
