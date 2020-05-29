@@ -125,6 +125,8 @@
     - 对于 *用户代码* 中某个节点来说，当且仅当 *基类公有成员可访问* 时， *派生类向基类的类型转换可用* 
     - 友元**不能**传递、**不能**继承
     - 引用类或函数模板的 *一个特定实例* 之前 *必须前向声明模板自身* ；如果引用的是 *全部实例* ，则 *不需前向声明* 
+    - 默认情况下，`C++`语言假定通过作用域运算符访问的名字**不是**类型。希望使用模板类型参数的 *类型成员* 时，必须 *显示指明`typename`*
+    - 无论何时使用一个类模板，都必须在模板名后面接上尖括号`<>`。对于全默认实参的类模板，也要带一个空尖括号
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
@@ -11046,17 +11048,222 @@ protected:
             - 对于确定的类`T`，编译器有`std::string`的定义，自然知道`mem`是类型成员还是数据成员
             - 对于模板参数`T`，编译器直到模板实例化时才会知道`T`是什么，自然也直到那时才会知道`mem`究竟是类型成员还是数据成员
                 - 但为了处理模板，编译器必须在模板定义时就知道名字`mem`究竟是类型成员还是数据成员
-                ```
-                T::size_type * p;  // 编译器需要知道这是在定义指向 T::size_type 类型的指针
-                                   // 还是在用一个名为 T::size_type 的静态数据成员和 p 相乘
-                ```
-- 成员模板
+                - 例如遇到`T::size_type * p;`这一语句时，编译器必须立即知道这是在
+                    1. 定义指向`T::size_type`类型的指针，还是
+                    2. 在用一个名为`T::size_type`的静态数据成员和`p`相乘
+        - 默认情况下，`C++`语言假定通过作用域运算符访问的名字**不是**类型
+            - 希望使用模板类型参数的 *类型成员* 时，必须 *显示指明`typename`*
+                - 希望通知编译器一个名字表示类型时，必须使用关键字`typename`，**不能**使用`class`
+        ```
+        template <typename T>
+        typename T::value_type top(const T & c)
+        {
+            if (!c.empty())
+                return c.back();
+            else
+                return typename T::value_type();
+        }
+        ```
+    - *默认模板实参* （default template argument）
+        - 就像噶（函数）韭（默认）菜（实参）一样
+            - 可以提供给 *函数模板* 或 *类模板* 
+            - 对于一个模板参数，当且仅当右侧所有参数都有模板实参时，它才可以有默认模板实参
+        ```
+        // compare has a default template argument, less<T>
+        // and a default function argument, F()
+        template <typename T, typename F = std::less<T>>
+        int compare(const T & v1, const T & v2, F f = F())
+        {
+            if (f(v1, v2)) return -1;
+            if (f(v2, v1)) return 1;
+            return 0;
+        }
+        
+        bool i = compare(0, 42);  // uses f = std::less<int>(); i is -1
+        // result depends on the isbns in item1 and item2
+        SalesData item1(cin), item2(cin);
+        bool j = compare(item1, item2, compareIsbn);
+        ```
+        - 模板默认实参与类模板
+            - 无论何时使用一个类模板，都必须在模板名后面接上尖括号`<>`，尖括号中指出类必须从模板实例化而来
+            - 特别是，如果一个类模板为其所有模板参数都提供了默认实参，且我们希望使用这些模板实参，就必须在模板名之后跟一个空尖括号
+        ```
+        template <class T = int> 
+        class Numbers                            // by default T is int
+        { 
+        public:
+            Numbers(T v = 0): val(v) { }
+            // various operations on numbers
+            
+        private:
+            T val;
+        };
+        
+        Numbers<long double> lots_of_precision;
+        Numbers<> average_precision;             // empty <> says we want the default type
+        ```
+- *成员模板* （member template）
+    - 一个类（不论是普通类还是类模板）可以包含 *本身是模板的成员函数* ，这种成员函数被称作 *成员模板*
+    - 普通（非模板）类的成员模板
+        - `DebugDelete`类定义
+            - 此类类似`std::unique_ptr`所用的 *默认删除器* 类型
+        ```
+        // function-object class that calls delete on a given pointer
+        class DebugDelete 
+        {
+        public:
+            DebugDelete(std::ostream & os = std::cerr): cout(os) {}
+            
+            // as with any function template, the type of T is deduced by the compiler
+            template <typename T> 
+            void operator()(T * p) const
+            { 
+                cout << "deleting std::unique_ptr" << std::endl; 
+                delete p;
+            }
+            
+        private:
+            std::ostream & cout;
+        };
+        
+        double * p = new double{};
+        DebugDelete d;              // an object that can act like a delete expression
+        d(p);                       // calls DebugDelete::operator()(double *), which deletes p
+        
+        int * ip = new int{};
+        DebugDelete()(ip);          // calls operator()(int *) on a temporary DebugDelete object
+        
+        // destroying the the object to which p points
+        // instantiates DebugDelete::operator()<int>(int *)
+        std::unique_ptr<int, DebugDelete> p(new int, DebugDelete());
+        
+        // destroying the the object to which sp points
+        // instantiates DebugDelete::operator()<string>(string*)
+        std::unique_ptr<std::string, DebugDelete> sp(new string, DebugDelete());
+        ```
+    - 类模板的成员模板
+        - 类模板也可以定义成员模板
+            - 类模板和成员模板拥有 *各自的* 模板参数
+        ```
+        template <typename T> 
+        class Blob 
+        {
+            template <typename It> 
+            Blob(It b, It e);
+            // ...
+        };
+        ```
+        - 类模板外定义成员模板时，需要连续写两个`template`，类模板的在前，成员函数模板的在后
+        ```
+        template <typename T>   // type parameter for the class
+        template <typename It>  // type parameter for the constructor
+        Blob<T>::Blob(It b, It e): data(std::make_shared<std::vector<T>>(b, e)) 
+        {
+        }
+        ```
+    - 实例化与成员模板
+        - 实例化类模板的成员模板时，必须同时提供类模板和成员函数模板的实参
+    ```
+    int ia[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::vector<long> vi = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::list<const char *> w = {"now", "is", "the", "time"};
+    
+    // instantiates the Blob<int> class
+    // and the Blob<int> constructor that has two int * parameters
+    // Blob<int>::Blob(int *, int *);
+    Blob<int> a1(begin(ia), end(ia));
+    
+    // instantiates the Blob<int> constructor that has
+    // two vector<long>::iterator parameters
+    Blob<int> a2(vi.begin(), vi.end());
+    
+    // instantiates the Blob<string> class and the Blob<string>
+    // constructor that has two (std::list<const char *>::iterator parameters
+    Blob<std::string> a3(w.begin(), w.end());
+    ```
 - 控制实例化
-- 效率与灵活性
+    - *显式实例化* （explicit instantiation）
+        - 模板被实例化的相同实例可能出现在多个对象文件中，会造成严重的额外开销
+        - *显式实例化* 用于避免这种额外开销
+            - 编译器遇到 *显式模板声明* 时，不会再本文件中生成实例化代码
+            - 将一个实例化声明为`extern`就意味着承诺在程序的其他位置会有一个非`extern`声明（定义）
+            - 对于一个给定的实例化版本，可能会有多个`extern`声明，但必须 *有且仅有一个实例化定义* 
+        ```
+        extern template declaration;                            // instantiation declaration
+        template declaration;                                   // instantiation definition
+        ```
+        - `declaration`是类或函数声明，其中模板参数全部替换为模板实参
+        ```
+        // instantion declaration and definition
+        extern template class Blob<std::string>;                // declaration
+        template class Blob<std::string>;                       // definition
+        
+        extern template int compare(const int &, const int &);  // definition
+        template int compare(const int &, const int &);         // definition
+        ```
+        - 由于编译器在使用一个模板时自动对其初始化，因此`extern`声明必须出现在任何使用此实例化版本的代码 *之前* 
+        ```
+        // Application.cpp
+        
+        // these template types must be instantiated elsewhere in the program
+        extern template class Blob<std::string>;
+        extern template int compare(const int &, const int &);
+        
+        // instantiation will appear elsewhere
+        Blob<std::string> sa1, sa2;     
+        
+        // Blob<int> and its initializer_list constructor instantiated in this file
+        Blob<int> a1 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        Blob<int> a2(a1);               // copy constructor instantiated in this file
+        int i = compare(a1[0], a2[0]);  // instantiation will appear elsewhere
+        ```
+    - 类模板实例化定义会实例化所有成员
+        - 类模板实例化定义会实例化该模板的所有成员，包括 *内联* 的成员函数
+            - 编译器遇到类模板的实例化定义时，它不了解具体要用哪些成员，所以干脆全部实例化
+        - 因此，用来显式实例化一个类模板的类型必须能用于模板的全部成员
+- 案例分析：[`std::unique_ptr`](https://en.cppreference.com/w/cpp/memory/unique_ptr)
+    - 定义
+    ```
+    template <class T, class Deleter = std::default_delete<T>> 
+    class unique_ptr;
+    
+    template <class T, class Deleter> 
+    class unique_ptr<T[], Deleter>;
+    
+    template <class T> 
+    class shared_ptr;
+    ```
+    - 与`std::shared_ptr`的不同
+        1. 保存指针的策略
+            - 前者共享
+            - 后者独占
+        2. 允许用户重载 *默认删除器* 的方式
+            - 前者：定义或`reset`时作为函数参数传入
+            - 后者：定义时以显式模板实参传入
+    - 在 *运行时* 绑定删除器
+        - `std::shared_ptr`必须能够直接访问删除器
+            - 删除器保存为指针或封装了指针的类（如`std::function`）
+            - **不能**直接保存为成员，因为删除器的类型在运行期时刻会变，而成员的类型编译期确定后就不能变了
+        - 假定`std::shared_ptr`将删除器保存为名为`del`的 *指针* 中
+            - 则其析构函数中应有如下语句
+            - 由于删除器是 *间接* 保存的，因此调用时需要一次额外的 *跳转* 操作
+            ```
+            // value of del known only at run time; call through a pointer
+            del ? del(p) : delete p;  // del(p) requires run-time jump to del's location
+            ```
+    - 在 *编译时* 绑定删除器
+        - `std::unique_ptr`的删除器是类类型的一部分
+        - 删除器成员的类型在编译时就已知，且不会改变，可以直接保存为类成员
+        - 其析构函数中应有如下语句，避免了间接调用删除器的额外的运行时开销
+        ```
+        // del bound at compile time; direct call to the deleter is instantiated
+        del(p);                       // no run-time overhead
+        ```
 
 #### 模板实参推断
 
 - 类型转换与模板类型参数
+    - 
 - 函数模板显式实参
 - 尾置返回类型与类型转换
 - 函数指针与实参推断
