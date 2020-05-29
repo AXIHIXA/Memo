@@ -2426,6 +2426,7 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
                 4. 通过 *算数类型转换* 或 *指针转换* 实现匹配
                 5. 通过 *类类型转换* 实现匹配 => 14.9
             - 函数匹配和`const`实参
+                - 实参的 *顶层`const`* *被忽略*
                 - 如果重载函数的区别在于 *底层`const`* 
                     - *底层`const`* 
                         - 引用类型的形参是否引用了`const`
@@ -11153,7 +11154,7 @@ protected:
             // ...
         };
         ```
-        - 类模板外定义成员模板时，需要连续写两个`template`，类模板的在前，成员函数模板的在后
+        - 类模板外定义成员模板时，需要 *连续写两个`template`* ，类模板的在前，成员函数模板的在后
         ```
         template <typename T>   // type parameter for the class
         template <typename It>  // type parameter for the constructor
@@ -11260,11 +11261,109 @@ protected:
         del(p);                       // no run-time overhead
         ```
 
-#### 模板实参推断
+#### 模板实参推断（template argument deduction）
 
 - 类型转换与模板类型参数
-    - 
+    - 与非模板函数一样，传递给函数模板的实参被用来初始化函数的形参
+        - 如果函数形参类型使用了模板参数，那么它采用特殊的初始化规则
+        - 只有很有限的几种类型转换会自动地应用于这些实参
+        - 编译器通常**不是**对实参进行类型转换，而是生成一个新的实例
+    - 能在调用中应用于函数模板的类型转换有
+        - *顶层`const`* 不论是在形参中还是在实参中都会 *被忽略* 
+        - `const_cast`：可以添加 *底层`const`* ，将非`const`对象的引用或指针传递给一个`const`的引用或指针
+        - *数组或函数指针* 转换：如果函数形参**不是** *引用* 类型，则可以对数组或函数类型的实参应用正常的指针转换
+            - 一个数组实参可以转换为指向其首元素的指针
+            - 一个函数实参可以转换为指向该函数的函数指针
+        - 其他类型转换，如 *算数转换* ， *派生类向基类的转换* ， *用户定义的转换* ，都**不能**应用于函数模板
+        ```
+        template <typename T> T fobj(T, T);                  // arguments are copied
+        template <typename T> T fref(const T &, const T &);  // references
+        
+        std::string s1("a value");
+        const std::string s2("another value");
+        fobj(s1, s2);                                        // calls fobj(std::string, std::string); const is ignored
+        fref(s1, s2);                                        // calls fref(const std::string &, const std::string &)
+        
+        // uses premissible conversion to const on s1
+        int a[10], b[42];
+        fobj(a, b);                                          // calls f(int *, int *)
+        fref(a, b);                                          // error: array types don't match
+        ```
+    - 使用相同模板参数类型的函数形参
+        - 一个模板类型参数可以用作多个函数形参的类型，此时这些函数形参的类型 *必须精确匹配* 
+        ```
+        template <typename T> 
+        int compare(const T &, const T &);
+        
+        long lng;
+        compare(lng, 1024);                                  // error: cannot instantiate compare(long, int)
+        ```
+        - 如果希望允许对函数实参进行正常的类型转换，则应将函数模板定义成`2`个参数
+            - 此时`A`和`B`之间则必须 *兼容*
+        ```
+        // argument types can differ but must be compatible
+        template <typename A, typename B>
+        int flexibleCompare(const A & v1, const B & v2)
+        {
+            if (v1 < v2) return -1;
+            if (v2 < v1) return 1;
+            return 0;
+        }
+        
+        long lng;
+        flexibleCompare(lng, 1024);                          // ok: calls flexibleCompare(long, int)
+        ```
+   - 正常类型转换应用于普通函数实参
+        - 函数模板中，对于参数类型**不是**模板参数的形参，可以接受对实参的正常的类型转换
+    ```
+    template <typename T> 
+    ostream & print(ostream & cout, const T & obj)
+    {
+        return cout << obj;
+    }
+    
+    print(cout, 42);              // instantiates print(ostream &, int)
+    ofstream fout("output.txt");
+    print(f, 10);                 // uses print(ostream &, int); converts f to ostream &
+    fout.close();
+    ```
 - 函数模板显式实参
+    - 某些情况下，编译器无法推断出模板实参的类型
+    - 其他情况下，我们希望允许用户控制模板实例化
+    - 当函数返回类型与参数列表中任何类型都不相同时，这两种情况最常出现
+    - 我们可以定义表示返回类型的 *第三个* 模板参数，从而允许用户控制返回类型
+    - 本例中，没有任何函数实参的类型可用来推断`T1`的类型，每次`sum`调用时，调用者都必须为`T1`提供一个 *显式模板实参* 
+    ```
+    // T1 cannot be deduced: it doesn't appear in the function parameter list
+    template <typename T1, typename T2, typename T3>
+    T1 sum(T2, T3);
+    ```
+    - *显式模板实参* 在 *尖括号* 中给出，位于函数名之后、形参列表之前
+        - 与定义模板实例的方式相同
+    ```
+    // T1 is explicitly specified; T2 and T3 are inferred from the argument types
+    auto val3 = sum<long long>(i, lng);  // long long sum(int, long)
+    ```
+    - *显式模板实参* 按 *从左至右* 的顺序与对应的模板参数匹配，第一个模板实参与第一个模板参数匹配，第二个模板实参与第二个模板参数匹配，依次类推
+        - 只有 *最右* 参数的显式模板实参才可以忽略，且前提是能被推断出来
+    ```
+    // poor design: users must explicitly specify all three template parameters
+    template <typename T1, typename T2, typename T3>
+    T3 alternative_sum(T2, T1);
+
+    // error: can't infer initial template parameters
+    auto val3 = alternative_sum<long long>(i, lng);
+    
+    // ok: all three parameters are explicitly specified
+    auto val2 = alternative_sum<long long, int, long>(i, lng);
+    ```
+    - *正常类型转换* 用于 *显式指定的形参* 
+    ```
+    long lng;
+    compare(lng, 1024);        // error: template parameters don't match
+    compare<long>(lng, 1024);  // ok: instantiates compare(long, long)
+    compare<int>(lng, 1024);   // ok: instantiates compare(int, int)
+    ```
 - 尾置返回类型与类型转换
 - 函数指针与实参推断
 - 模板实参推断与引用
