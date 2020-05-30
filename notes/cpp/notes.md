@@ -53,6 +53,15 @@
         5. 使用内置指针管理的资源而不是`new`出来的内存时，记住传递给它一个 *删除器*
     - 大多数应用都应该使用 *标准库容器* 而**不是**动态分配的数组。使用容器更为简单，更不容易出现内存管理错误，并且可能有更好的性能
     - 一个特定文件所需要的 *所有模板声明* 通常 *一起放置在文件开始* 位置，出现于任何使用这些模板的代码之前 => 16.3
+    - *接受右值引用形参的函数模板* 使用守则
+        - 通常应用于如下场景
+            1. *转发* （forwarding） => 16.2.7
+            2. *模板重载* （template overloading）=> 16.3
+        - 通常使用如下方式重载 => 13.6.3
+        ```
+        template <typename T> void f(T &&);       // binds to nonconst rvalues
+        template <typename T> void f(const T &);  // lvalues and const rvalues
+        ```
 - 跟类有关的一箩筐规则
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
@@ -11398,7 +11407,7 @@ protected:
     func(compare<int>);  // passing compare(const int &, const int &)
     ```
 - 模板实参推断与引用
-    - 从 *非常量左值引用* 函数参数推断类型
+    - 从 *非常量左值引用形参* 推断类型
         - 传递规则
             1. 只能传递 *左值* 
             2. 实参可以是`const`类型，也可以不是。如果实参是`const`的，则`T`将被推断成`const`类型
@@ -11413,7 +11422,7 @@ protected:
     f1(ci);                              // ci is a const int; template parameter T is const int
     f1(5);                               // error: argument to a & parameter must be an lvalue
     ```
-    - 从 *常量左值引用* 函数参数推断类型
+    - 从 *常量左值引用形参* 推断类型
         - 传递规则
             1. 可以传递 *任何类型* 的实参：常量或非常量对象、临时量，字面值
             2. `T`**不会**被推断为`const`类型，不论提供的实参本身是不是`const`
@@ -11429,63 +11438,100 @@ protected:
     f2(ci);                                    // ci is a const int, but template parameter T is int
     f2(5);                                     // a const & parameter can be bound to an rvalue; T is int
     ```
-    - 从 *右值引用* 函数参数推断类型
+    - 从 *右值引用形参* 推断类型
         - 正常传递规则：可以传递 *右值* ，`T`推断为该右值实参的类型
             - 即`typename std::remove_reference<decltype(argument)>::type`
     ```
     template <typename T> void f3(T &&);
     f3(42);                                    // argument is an rvalue of type int; template parameter T is int
     ```
-    - *引用坍缩* 和右值引用参数（Reference Collapsing and Rvalue Reference Parameters）
+    - *引用坍缩* 和 *右值引用形参* （Reference Collapsing and Rvalue Reference Parameters）
         - 正常情况下， *右值引用* **不能**绑定到 *左值* 上，以下 *两种* 情况**例外**
             1. *右值引用的特殊类型推断* 
                 - 将 *左值实参* 传递给函数的 *指向模板参数的右值引用形参* （如`T &&`）时，编译器推断模板类型参数为 *实参的左值引用类型*
-                    - 即
-                    ```
-                    template <typename T> void fun(T &&);
-                    fun(argument);  // T is deducted to typename std::add_lvalue_reference<decltype(argument)>::type
-                    ```
+                ```
+                template <typename T> void f3(T &&);
+                f3(argument);  // T is deducted to typename std::add_lvalue_reference<decltype(argument)>::type
+                ```
                 - 影响右值引用参数的推断如何进行
             2. *引用坍缩* 
                 - 仅适用于 *间接创建引用的引用* 
                     - 比如通过`typedef`、 *类型别名* 或 *模板* 
                 - 除 *右值引用的右值引用* 坍缩为 *右值引用* 外， *其余组合* 均坍缩为 *左值引用* 
-        - 组合引用坍缩和右值引用的特殊类型推断规则，
+        - 组合引用坍缩和右值引用的特殊类型推断规则，意味着
+            - 如果 *函数形参* 是 *指向模板类型参数的右值引用* ，则它可以被绑定到一个 *左值* ，且
+            - 如果 *函数实参* 是 *左值* ，则推断出的 *模板实参类型* 将是 *左值引用* ，且 *函数形参* 将被实例化为 *普通左值引用参数* 
+        ```
+        f3(i);   // argument is an lvalue; template parameter T is int&
+        f3(ci);  // argument is an lvalue; template parameter T is const int&
+        
+        // invalid code, for illustration purposes only
+        void f3<int &>(int & &&);  // when T is int &, function parameter is int & &&, which collapses into int &
+        // actual function template instance for previous code
+        void f3<int &>(int &);     // when T is int &, function parameter collapses to int &
+        ```
+    - 编写 *接受右值引用形参的函数模板* 
+        - 考虑如下函数
+        ```
+        template <typename T> void f3(T && val)
+        {
+            T t = val;                   // copy or binding a reference?
+            t = fcn(t);                  // does the assignment change only t, or both val and t?
+            if (val == t) { /* ... */ }  // always true if T is a reference type
+        }
+        ```
+        - 情况很复杂，容易出事故
+            1. 传入 *右值* 时，例如 *字面值常量* `42`， 则
+                - `T`被推断为`int`
+                - 此时局部变量`t`被 *拷贝初始化* 
+                - 赋值`t`**不**改变`val`
+            2. 传入 *左值* 时，例如`int i = 0; f3(i);`， 则
+                - `T`被推断为`int &`
+                - 此时局部变量`t`被 *（左值）引用初始化* ，绑定到了`val`上
+                - 赋值`t` *会改变* `val`
+        - 实际应用时， *接受右值引用形参的函数模板* 通常只应用于
+            1. *转发* （forwarding） => 16.2.7
+            2. *模板重载* （template overloading）=> 16.3
+        - 使用 *接受右值引用形参的函数模板* 通常使用如下方式重载 => 13.6.3
+        ```
+        template <typename T> void f(T &&);       // binds to nonconst rvalues
+        template <typename T> void f(const T &);  // lvalues and const rvalues
+        ```
 - [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
     - `g++`的实现
     ```
     /// <type_traits>
     /// remove_reference
-    template <typename _Tp>
-    struct remove_reference
-    { 
-        typedef _Tp type; 
-    };
-
-    template <typename _Tp>
-    struct remove_reference<_Tp &>
-    { 
-        typedef _Tp type; 
-    };
-
-    template <typename _Tp>
-    struct remove_reference<_Tp &&>
-    { 
-        typedef _Tp type; 
-    };
+    template <typename T> struct remove_reference       { typedef T type; };
+    template <typename T> struct remove_reference<T &>  { typedef T type; };
+    template <typename T> struct remove_reference<T &&> { typedef T type; };
     
     /// <move.h>
-    /// @brief       Convert a value to an rvalue.
-    /// @param  __t  A thing of arbitrary type.
-    /// @return      The parameter cast to an rvalue-reference to allow moving it.
-    template <typename _Tp>
-    constexpr typename std::remove_reference<_Tp>::type &&
-    move(_Tp && __t) noexcept
+    /// @brief     Convert a value to an rvalue.
+    /// @param  t  A thing of arbitrary type.
+    /// @return    The parameter cast to an rvalue-reference to allow moving it.
+    template <typename T>
+    constexpr typename std::remove_reference<T>::type &&
+    move(Tp && t) noexcept
     { 
-        return static_cast<typename std::remove_reference<_Tp>::type &&>(__t); 
+        return static_cast<typename std::remove_reference<T>::type &&>(t); 
     }
     ```
-- 转发
+    - 通过 *引用坍缩* ，`std::move`的形参`T && t`可以与任何类型的实参匹配
+        - 可以传递 *左值* 
+        - 也可以传递 *右值* 
+    ```
+    std::string s1("hi!"), s2;
+    s2 = std::move(std::string("bye!"));  // ok: moving from an rvalue
+    s2 = std::move(s1);                   // ok: but after the assigment s1 has indeterminate value
+    ```
+    - 工作流程梳理
+        1. `s2 = std::move(std::string("bye!"));`：传入右值实参时
+            - 推断出`T = std::string`
+            - 返回值类型`std::remove_reference<std::string>::type &&`就是`std::string &&`
+            - 形参`t`的类型`T &&`为`std::string &&`
+            - 因此，此调用实例化`std::move<std::string>`，即`std::string && std::move(std::string &&)`
+- *转发* （forwarding）
 
 #### 重载与模板
 
