@@ -11799,35 +11799,60 @@ protected:
     template <typename T>
     ostream & print(ostream & os, const T & t)
     {
-        return os << t; // no separator after the last element in the pack
+        return os << t;              // no separator after the last element in the pack
     }
 
     // this version of print will be called for all but the last element in the pack
     template <typename T, typename ... Args>
     ostream & print(ostream & os, const T & t, const Args & ... rest)
     {
-        os << t << ", ";            // print the first argument
-        return print(os, rest...);  // recursive call; print the other arguments
+        os << t << ", ";             // print the first argument
+        return print(os, rest ...);  // recursive call; print the other arguments
     }
     ```
 - 包扩展（Pack Expansion）
     - 对于一个 *参数包* ，我们能对它做得唯一一件事就是 *扩展* 它
-    -  *扩展* 一个包时，我们还要提供用于每个扩展元素的 *模式* （pattern）
-    -  *扩展* 一个包就是把它分解为构成的元素，对每个元素应用 *模式* ，获得扩展后的列表
-    - 通过在 *模式* 右边放一个 *省略号* `...` 来触发 *扩展* 操作
-    - 比如，`print`包含 *两个扩展*
+        - *扩展* 一个包时，我们还要提供用于每个扩展元素的 *模式* （pattern）
+        - *扩展* 一个包就是把它分解为构成的元素，对每个元素应用 *模式* 指定的操作（比如 *类型转换* 或 *函数调用* 等等），获得扩展后的列表
+        - *扩展* 操作通过在 *模式* 右边放一个 *省略号* `...` 来触发 
+    - 比如，以下可变参数模板函数`print`中包含 *两个扩展*
         ```
         template <typename T, typename ... Args>
         ostream &
         print(ostream & os, const T & t, const Args & ... rest)  // expand Args
         {
             os << t << ", ";
-            return print(os, rest...);                           // expand rest
+            return print(os, rest ...);                          // expand rest
         }
         ```
         - 第一个扩展模板参数包`Args`，为`print`生成函数参数列表
-        - 第二个扩展发生于对`print`的调用，此 *模式* 为`print`生成函数参数列表
-        - 对`Args`的 *扩展* 中，编译器将 *模式* `const Arg &` 应用到模板参数包`Args`中的每个元素。因此
+            - 对`Args`的 *扩展* 中，编译器将 *模式* `const Arg &` 应用到模板参数包`Args`中的每个元素
+            - 因此，此模式的扩展结果是一个逗号分隔的零个或多个类型的列表，每个类型都形如`const Type &`，例如
+            ```
+            print(std::cout, i, s, 42);                          // 包中有 2 个参数
+            ```
+            - 最后两个实参的类型和模式一起确定了尾置参数的类型，此调用被实例化为
+            ```
+            ostream & print(ostream &, const int &, const string &, const int &);
+            ```
+        - 第二个扩展发生于对`print`的递归调用中， *模式* 是函数参数包的名字`rest`，为`print`生成函数参数列表
+            - 此模式扩展出一个由包中元素组成的、逗号分隔的列表
+            - 因此，这个调用等价于
+            ```
+            print(os, s, 42);
+            ```
+    - 理解包扩展
+        - 上述`print`函数的扩展仅仅将包扩展为其构成元素，`C++`语言还允许更复杂的扩展模式
+        - 例如，可以编写第二个`print`，对其每个实参调用`debug_dup`，然后调用`print`打印结果`std::string`
+        ```
+        // call debug_rep on each argument in the call to print
+        template <typename... Args>
+        ostream &errorMsg(ostream & os, const Args & ... rest)
+        {
+            // equivlent to: print(os, debug_rep(a1), debug_rep(a2), ..., debug_rep(an)
+            return print(os, debug_rep(rest) ...);
+        }
+        ```
 
 - 转发参数包
 
