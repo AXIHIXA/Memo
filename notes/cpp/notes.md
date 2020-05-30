@@ -11383,7 +11383,7 @@ protected:
     ```
 - *类型转换模板* （type transformation template）
     - [`<type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)
-        - 常用于 *模板元程序* 设计，包含
+        - 常用于 *模板元程序* 设计，常用的类型转换模板有
             - [`std::remove_reference<T>::type`](https://en.cppreference.com/w/cpp/types/remove_reference)：若`T`为`X &`或`X &&`，则为`X`；否则，为`T`
             - [`std::add_const<T>::type`](https://en.cppreference.com/w/cpp/types/add_const)：若`T`为`X &`，`X &&`或 *函数* ，则为`T`；否则，为`const T`
             - [`std::add_lvalue_reference<T>::type`](https://en.cppreference.com/w/cpp/types/add_lvalue_reference)：若`T`为`X &`，则为`T`；若`T`为`X &&`，则为`X &`；否则，为`T &`
@@ -11462,7 +11462,8 @@ protected:
     f2(5);                                     // a const & parameter can be bound to an rvalue; T is int
     ```
     - 从 *右值引用* 函数参数推断类型
-        - 正常传递规则：可以传递 *右值* ，`T`推断为该右值实参的类型`typename std::remove_reference<decltype(argument)>::type`
+        - 正常传递规则：可以传递 *右值* ，`T`推断为该右值实参的类型
+            - 即`typename std::remove_reference<decltype(argument)>::type`
     ```
     template <typename T> void f3(T &&);
     f3(42);                                    // argument is an rvalue of type int; template parameter T is int
