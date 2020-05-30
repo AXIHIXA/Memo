@@ -11394,7 +11394,7 @@ protected:
             - [`std::make_unsigned<T>::type`](https://en.cppreference.com/w/cpp/types/make_unsigned)：若`T`为`X`，则为`unsigned X`；否则，为`T`
             - [`std::remove_extent<T>::type`](https://en.cppreference.com/w/cpp/types/remove_extent)：若`T`为`X[n]`，则为`X`；否则，为`T`
             - [`std::make_all_extents<T>::type`](https://en.cppreference.com/w/cpp/types/make_all_extents)：若`T`为`X[n1][n2]...`，则为`X`；否则，为`T`
-            - [`std::enable_if`](https://en.cppreference.com/w/cpp/types/enable_if)：`template <bool B, class T = void> enable_if;`。若`B == true`，则`std::enable_if<B, T>`有一共有`typedef type T`；否则没有。`template <bool B, class T = void> using enable_if_t = typename enable_if<B,T>::type;` `(since C++14)`
+            - [`std::enable_if`](https://en.cppreference.com/w/cpp/types/enable_if)：`template <bool B, class T = void> enable_if;`。若`B == true`，则`std::enable_if<B, T>`有一共有`typedef type T`；否则没有。`using enable_if_t = typename enable_if<B, T>::type;` `(since C++14)`
         - 工作方式
         ```
         template <class T> struct remove_reference       { typedef T type; };
