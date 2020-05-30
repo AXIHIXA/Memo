@@ -11497,7 +11497,7 @@ protected:
         template <typename T> void f(T &&);       // binds to nonconst rvalues
         template <typename T> void f(const T &);  // lvalues and const rvalues
         ```
-- [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
+- 详解[`std::move`](https://en.cppreference.com/w/cpp/utility/move)
     - `g++`的实现
     ```
     /// <type_traits>
@@ -11512,7 +11512,7 @@ protected:
     /// @return    The parameter cast to an rvalue-reference to allow moving it.
     template <typename T>
     constexpr typename std::remove_reference<T>::type &&
-    move(Tp && t) noexcept
+    move(T && t) noexcept
     { 
         return static_cast<typename std::remove_reference<T>::type &&>(t); 
     }
@@ -11531,6 +11531,13 @@ protected:
             - 返回值类型`std::remove_reference<std::string>::type &&`就是`std::string &&`
             - 形参`t`的类型`T &&`为`std::string &&`
             - 因此，此调用实例化`std::move<std::string>`，即`std::string && std::move(std::string &&)`
+            - 返回`static_cast<std::string &&>(t)`，但`t`已是`std::string &&`，因此这步强制类型转换什么也不做
+        2. `std::move(s1);`：传入左值实参时
+            - 推断出`T = std::string &`
+            - 返回值类型`std::remove_reference<std::string>::type &&`仍然是`std::string &&`
+            - 形参`t`的类型`T &&` *坍缩* 为`std::string &`
+            - 因此，此调用实例化`std::move<std::string &>`，即`std::string && std::move(std::string &)`
+            - 返回`static_cast<std::string &&>(t)`，这步强制类型转换将`t`从`std::string &`转换为`std::string &&`
 - *转发* （forwarding）
 
 #### 重载与模板
