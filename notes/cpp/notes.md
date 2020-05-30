@@ -1559,7 +1559,7 @@ int & a[3];  // error
 int &* p;    // error
 int & &r;    // error
 ```
-- *引用坍缩* （Reference collapsing）
+- *引用坍缩* （Reference collapsing） => 16.2.5
     - 容许通过 *模板* 或 *`typedef`中的类型操作* 构成 *引用的引用* 
         - 这种情况下适用引用坍缩（reference coolapsing）规则
         - *右值引用的右值引用* 坍缩成 *右值引用* ， *所有其他组合* 均坍缩成 *左值引用* 
@@ -1669,7 +1669,7 @@ std::vector<int> v2(std::move(v));  // binds an rvalue reference to v
 assert(v.empty());
 ```
 
-#### 转发引用（Forwarding references）
+#### 转发引用（Forwarding references） => 16.2.7
 
 - 转发引用是一种特殊的引用，它保持函数实参的 *值类别* ，使得能利用`std::forward`转发实参
 - 转发引用是下列之一 
@@ -9050,39 +9050,7 @@ Entry & operator=(Entry rhs)
     int && rr3 = std::move(i3);
     ```
 - [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
-    - `g++`的实现
-    ```
-    /// <type_traits>
-    /// remove_reference
-    template <typename _Tp>
-    struct remove_reference
-    { 
-        typedef _Tp type; 
-    };
-
-    template <typename _Tp>
-    struct remove_reference<_Tp &>
-    { 
-        typedef _Tp type; 
-    };
-
-    template <typename _Tp>
-    struct remove_reference<_Tp &&>
-    { 
-        typedef _Tp type; 
-    };
-    
-    /// <move.h>
-    /// @brief  Convert a value to an rvalue.
-    /// @param  __t  A thing of arbitrary type.
-    /// @return The parameter cast to an rvalue-reference to allow moving it.
-    template<typename _Tp>
-    constexpr typename std::remove_reference<_Tp>::type &&
-    move(_Tp && __t) noexcept
-    { 
-        return static_cast<typename std::remove_reference<_Tp>::type &&>(__t); 
-    }
-    ```
+    - 具体实现 => 16.2.6
     - 告诉编译器：我们有一个左值，但我们希望像处理一个右值一样处理它
     - 调用`std::move(var)`就意味着承诺：除了对`var` *赋值* 或 *销毁* 它外，我们将不再使用它
         - 调用`std::move`之后，移后源对象的值 *未定义* ；可以被 *赋值* 或 *销毁* ，但**不能** *使用它的值* 
@@ -11394,7 +11362,6 @@ protected:
             - [`std::make_unsigned<T>::type`](https://en.cppreference.com/w/cpp/types/make_unsigned)：若`T`为`X`，则为`unsigned X`；否则，为`T`
             - [`std::remove_extent<T>::type`](https://en.cppreference.com/w/cpp/types/remove_extent)：若`T`为`X[n]`，则为`X`；否则，为`T`
             - [`std::make_all_extents<T>::type`](https://en.cppreference.com/w/cpp/types/make_all_extents)：若`T`为`X[n1][n2]...`，则为`X`；否则，为`T`
-            - [`std::enable_if<B, T>`](https://en.cppreference.com/w/cpp/types/enable_if)：若`B == true`，则`std::enable_if<B, T>`有一共有`typedef type T`；否则没有。`using enable_if_t = typename enable_if<B, T>::type; (since C++14)`
         - 工作方式
         ```
         template <class T> struct remove_reference       { typedef T type; };
@@ -11471,10 +11438,53 @@ protected:
     ```
     - *引用坍缩* 和右值引用参数（Reference Collapsing and Rvalue Reference Parameters）
         - 正常情况下， *右值引用* **不能**绑定到 *左值* 上，以下 *两种* 情况**例外**
-            1. 将 *左值实参* 传递给函数的 *指向模板参数的右值引用形参* （如`T &&`）时，编译器推断模板类型参数为 *实参的左值引用类型*
-                - 即`typename std::add_lvalue_reference<decltype(argument)>::type`
+            1. *右值引用的特殊类型推断* 
+                - 将 *左值实参* 传递给函数的 *指向模板参数的右值引用形参* （如`T &&`）时，编译器推断模板类型参数为 *实参的左值引用类型*
+                    - 即
+                    ```
+                    template <typename T> void fun(T &&);
+                    fun(argument);  // T is deducted to typename std::add_lvalue_reference<decltype(argument)>::type
+                    ```
                 - 影响右值引用参数的推断如何进行
+            2. *引用坍缩* 
+                - 仅适用于 *间接创建引用的引用* 
+                    - 比如通过`typedef`、 *类型别名* 或 *模板* 
+                - 除 *右值引用的右值引用* 坍缩为 *右值引用* 外， *其余组合* 均坍缩为 *左值引用* 
+        - 组合引用坍缩和右值引用的特殊类型推断规则，
 - [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
+    - `g++`的实现
+    ```
+    /// <type_traits>
+    /// remove_reference
+    template <typename _Tp>
+    struct remove_reference
+    { 
+        typedef _Tp type; 
+    };
+
+    template <typename _Tp>
+    struct remove_reference<_Tp &>
+    { 
+        typedef _Tp type; 
+    };
+
+    template <typename _Tp>
+    struct remove_reference<_Tp &&>
+    { 
+        typedef _Tp type; 
+    };
+    
+    /// <move.h>
+    /// @brief       Convert a value to an rvalue.
+    /// @param  __t  A thing of arbitrary type.
+    /// @return      The parameter cast to an rvalue-reference to allow moving it.
+    template <typename _Tp>
+    constexpr typename std::remove_reference<_Tp>::type &&
+    move(_Tp && __t) noexcept
+    { 
+        return static_cast<typename std::remove_reference<_Tp>::type &&>(__t); 
+    }
+    ```
 - 转发
 
 #### 重载与模板
