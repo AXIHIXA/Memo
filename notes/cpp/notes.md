@@ -11394,6 +11394,7 @@ protected:
             - [`std::make_unsigned<T>::type`](https://en.cppreference.com/w/cpp/types/make_unsigned)：若`T`为`X`，则为`unsigned X`；否则，为`T`
             - [`std::remove_extent<T>::type`](https://en.cppreference.com/w/cpp/types/remove_extent)：若`T`为`X[n]`，则为`X`；否则，为`T`
             - [`std::make_all_extents<T>::type`](https://en.cppreference.com/w/cpp/types/make_all_extents)：若`T`为`X[n1][n2]...`，则为`X`；否则，为`T`
+            - [`std::enable_if`](https://en.cppreference.com/w/cpp/types/enable_if)：`template <bool B, class T = void> enable_if;`。若`B == true`，则`std::enable_if<B, T>`有一共有`typedef type T`；否则没有。`template <bool B, class T = void> using enable_if_t = typename enable_if<B,T>::type;` `(since C++14)`
         - 工作方式
         ```
         template <class T> struct remove_reference       { typedef T type; };
@@ -11468,6 +11469,11 @@ protected:
     template <typename T> void f3(T &&);
     f3(42);                                    // argument is an rvalue of type int; template parameter T is int
     ```
+    - *引用坍缩* 和右值引用参数（Reference Collapsing and Rvalue Reference Parameters）
+        - 正常情况下， *右值引用* **不能**绑定到 *左值* 上，以下 *两种* 情况**例外**
+            1. 将 *左值实参* 传递给函数的 *指向模板参数的右值引用形参* （如`T &&`）时，编译器推断模板类型参数为 *实参的左值引用类型*
+                - 即`typename std::add_lvalue_reference<decltype(argument)>::type`
+                - 影响右值引用参数的推断如何进行
 - [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
 - 转发
 
