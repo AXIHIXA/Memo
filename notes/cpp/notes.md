@@ -11366,7 +11366,7 @@ protected:
     ```
 - 尾置返回类型与类型转换
     - 希望用户确定返回类型时，用显式模板形参表示函数模板的返回类型很简单明了
-    - 但有时返回值类型无法用模板形参表示，比如返回所处理序列的元素类型，此时则需要 *尾置返回* `decltype(ret)`
+    - 但有时返回值类型无法用模板形参表示，只能从返回对象直接获取，比如返回所处理序列的元素类型，此时则需要 *尾置返回* `decltype(ret)`
     ```
     // a trailing return lets us declare the return type after the parameter list is seen
     template <typename It>
@@ -11394,11 +11394,79 @@ protected:
             - [`std::make_unsigned<T>::type`](https://en.cppreference.com/w/cpp/types/make_unsigned)：若`T`为`X`，则为`unsigned X`；否则，为`T`
             - [`std::remove_extent<T>::type`](https://en.cppreference.com/w/cpp/types/remove_extent)：若`T`为`X[n]`，则为`X`；否则，为`T`
             - [`std::make_all_extents<T>::type`](https://en.cppreference.com/w/cpp/types/make_all_extents)：若`T`为`X[n1][n2]...`，则为`X`；否则，为`T`
-    - 无法直接获得所需要的返回类型时使用
+        - 工作方式
+        ```
+        template <class T> struct remove_reference       { typedef T type; };
+        template <class T> struct remove_reference<T &>  { typedef T type; };
+        template <class T> struct remove_reference<T &&> { typedef T type; };
+        ```
+    - 无法直接从模板参数以及返回对象获得所需要的返回类型时使用
         - 例如，要求上面的`fcn(vi.begin(), vi.end());`返回`int`而不是`int &`
-            
+        ```
+        // must use typename to use a type member of a template parameter
+        template <typename It>
+        auto fcn2(It beg, It end) -> typename remove_reference<decltype(*beg)>::type
+        {
+            // process the range
+            return *beg;  // return a copy of an element from the range
+        }
+        ```
 - 函数指针与实参推断
+    - 用函数模板初始化函数指针或为函数指针赋值时，编译器使用 *函数指针的类型* 推断模板实参
+        - 如果无法推断实参，则产生 *错误* 
+    ```
+    template <typename T> int compare(const T &, const T &);
+    // pf1 points to the instantiation int compare(const int &, const int &)
+    int (*pf1)(const int &, const int &) = compare;
+    ```
+    - 特别地，当 *参数* 是一个函数模板实例的地址时，程序上下文必须满足：对于每个模板参数，能唯一确定其类型或值
+    ```
+    // overloaded versions of func; each takes a different function pointer type
+    void func(int(*)(const std::string &, const std::string &));
+    void func(int(*)(const int &, const int &));
+    func(compare);       // error: which instantiation of compare?
+
+    // ok: explicitly specify which version of compare to instantiate
+    func(compare<int>);  // passing compare(const int &, const int &)
+    ```
 - 模板实参推断与引用
+    - 从 *非常量左值引用* 函数参数推断类型
+        - 传递规则
+            1. 只能传递 *左值* 
+            2. 实参可以是`const`类型，也可以不是。如果实参是`const`的，则`T`将被推断成`const`类型
+                - 编译器会应用正常的引用绑定规则：`const`是底层的，不是顶层的
+    ```
+    template <typename T> void f1(T &);  // argument must be an lvalue
+    
+    // calls to f1 use the referred-to type of the argument as the template parameter type
+    int i = 0;
+    const int ci = 0;
+    f1(i);                               // i is an int; template parameter T is int
+    f1(ci);                              // ci is a const int; template parameter T is const int
+    f1(5);                               // error: argument to a & parameter must be an lvalue
+    ```
+    - 从 *常量左值引用* 函数参数推断类型
+        - 传递规则
+            1. 可以传递 *任何类型* 的实参：常量或非常量对象、临时量，字面值
+            2. `T`**不会**被推断为`const`类型，不论提供的实参本身是不是`const`
+                - `const`已经是函数参数类型的一部分，因此不会是模板参数类型的一部分
+    ```
+    template <typename T> void f2(const T &);  // can take an rvalue
+    
+    // parameter in f2 is const &; const in the argument is irrelevant
+    // in each of these three calls, f2's function parameter is inferred as const int &
+    int i = 0;
+    const int ci = 0;
+    f2(i);                                     // i is an int; template parameter T is int
+    f2(ci);                                    // ci is a const int, but template parameter T is int
+    f2(5);                                     // a const & parameter can be bound to an rvalue; T is int
+    ```
+    - 从 *右值引用* 函数参数推断类型
+        - 正常传递规则：可以传递 *右值* ，`T`推断为该右值实参的类型`typename std::remove_reference<decltype(argument)>::type`
+    ```
+    template <typename T> void f3(T &&);
+    f3(42);                                    // argument is an rvalue of type int; template parameter T is int
+    ```
 - [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
 - 转发
 
