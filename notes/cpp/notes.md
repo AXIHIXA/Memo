@@ -11246,9 +11246,9 @@ protected:
         - 如果函数形参类型使用了模板参数，那么它采用特殊的初始化规则
         - 只有很有限的几种类型转换会自动地应用于这些实参
         - 编译器通常**不是**对实参进行类型转换，而是生成一个新的实例
-    - 能在调用中应用于函数模板的类型转换有
-        - *顶层`const`* 不论是在形参中还是在实参中都会 *被忽略* 
+    - 能在调用中应用于函数模板的 *类型转换* 有
         - `const_cast`：可以添加 *底层`const`* ，将非`const`对象的引用或指针传递给一个`const`的引用或指针
+            - *顶层`const`* 不论是在形参中还是在实参中都会 *被忽略* 
         - *数组或函数指针* 转换：如果函数形参**不是** *引用* 类型，则可以对数组或函数类型的实参应用正常的指针转换
             - 一个数组实参可以转换为指向其首元素的指针
             - 一个函数实参可以转换为指向该函数的函数指针
@@ -11614,9 +11614,96 @@ protected:
     - 传给`t2`右值`42`，推断出`T2 = int`，`T2 &&`就是`int &&`，原样转发 *右值* `int &&`
     - `f`能够改变`j`
 
-#### 重载与模板
+#### 重载模板（template overloading）
 
-#### 可变参数模板
+- 函数模板可以被另一模板或非模板函数重载
+- 名字相同的函数必须具有不一样的形参列表
+- 函数模板匹配规则
+    - 对于一个调用，其 *候选函数* 包括 *所有* 模板实参推断成功的模板实例
+    - 候选的函数模板总是 *可行的* ，因为模板实参会排除掉任何不可行的模板
+    - *可行函数* （模板的和非模板的）按 *类型转换* 来排序
+        - 可用于函数模板的类型转换很有限，只有`const_cast`，和数组、函数向指针的转换 => 16.2.1
+    - 如果恰有一个函数提供比任何其他函数都 *更好的匹配* ，则选择此函数；如有多个函数，则
+        1. 如果 *只有一个非模板函数* ，则选择之
+        2. 如果没有非模板函数 ，而 *全是函数模板* ，而一个模板比其他模板 *更特例化* （specialized），则选择之
+        3. 否则，报错 *二义性调用*
+    - 一句话：匹配，特例化（非模板才是最特例化的），完犊子
+- *重载模板* 案例分析
+    - `例1`
+        - 考虑如下调用
+        ```
+        // print any type we don't otherwise handle
+        template <typename T> std::string debug_rep(const T & t)
+        {
+            ostringstream ret;  // see § 8.3 (p. 321)
+            ret << t;           // uses T's output operator to print a representation of t
+            return ret.str();   // return a copy of the string to which ret is bound
+        }
+
+        // print pointers as their pointer value, followed by the object to which the pointer points
+        // NOTICE: this function will not work properly with char*; see § 16.3 (p. 698)
+        template <typename T> std::string debug_rep(T * p)
+        {
+            ostringstream ret;
+            ret << "pointer: " << p;          // print the pointer's own value
+            if (p)
+                ret << " " << debug_rep(*p);  // print the value to which p points
+            else
+                ret << " null pointer";       // or indicate that the p is null
+            return ret.str();                 // return a copy of the string to which ret is bound
+        }
+
+        std::string s("hi");
+        std::cout << debug_rep(s) << std::endl;
+        std::cout << debug_rep(&s) << std::endl;
+        ```
+        - 对于`debug_rep(s)`，只有第一个版本可行
+            - 第二个要指针，`std::string`对象又不是
+        - 对于`debug_rep(&s)`，只有两个版本都可行
+            - 各自实例化出
+                - `debug_rep(const string * &)`：第一个版本实例化而来，`T = std::string *`，需要指针的`const_cast`
+                - `debug_rep(string *)`：第二个版本实例化而来，`T = std::string`，是 *精确匹配* 
+            - 选择第二个
+    - `例2`：多个可行模板
+        - 考虑如下调用
+        ```
+        const string * sp = &s;
+        std::cout << debug_rep(sp) << std::endl;
+        ```
+        - 此例中两个版本都可行
+            - 各自实例化出
+                - `debug_rep(const string * &)`：第一个版本实例化而来，`T = std::string *`，是 *精确匹配* 
+                - `debug_rep(const string *)`：第二个版本实例化而来，`T = const std::string`，是 *精确匹配* ，更 *特例化* 
+            - 选择第二个
+                - 没有 *特例化* 这一条，将**无法**对 *`const`指针* 调用 *指针* 版本的`debug_rep`
+                - 问题在于`const T &`可以匹配 *任何类型* ，包括 *指针类型* ，是万金油
+                - 而`T *` *只能* 匹配 *指针* 
+    - `例3`：非模板和模板重载
+        - 考虑如下调用
+        ```
+        // print strings inside double quotes
+        string debug_rep(const string & s)
+        {
+            return '"' + s + '"';
+        }
+        
+        const string * sp = &s;
+        std::cout << debug_rep(sp) << std::endl;
+        ```
+        - 此例中第一个模板和上面的非模板版本都可行
+            - 实际调用
+                - `debug_rep(const string * &)`：第一个版本实例化而来，`T = std::string *`，是 *精确匹配* 
+                - `debug_rep(const string &)`：第二个版本，是 *精确匹配* 
+            - 选择 *非模板版本* 
+                - 非模板才是最特例化的嘛
+- 重载模板和类型转换
+
+
+
+
+
+
+#### 可变参数模板（）
 
 - 编写可变参数模板
 - 包扩展
