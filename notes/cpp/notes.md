@@ -63,6 +63,7 @@
         template <typename T> void f(const T &);  // lvalues and const rvalues
         ```
     - 将 *左值* `static_cast`成 *右值引用* 是允许的，但实际使用时应当使用封装好的`std::move`而**不是**`static_cast`
+    - 在定义任何函数之前，记得 *声明所有重载的函数版本* ，这样就不必担心编译器由于未遇到希望调用的版本而实例化并非所需的函数模板
 - 跟类有关的一箩筐规则
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
@@ -7218,7 +7219,7 @@ std::map<std::string, int>::mapped_type v5;  // int
                 - 定位`new`本质作用是在指定地点`new`个东西出来，配合`std::allocator<T>`用的
         ```
         // if allocation fails, new returns a null pointer
-        int * p1 = new int;            // if allocation fails, new throws std::bad_alloc
+        int * p1 = new int;                 // if allocation fails, new throws std::bad_alloc
         int * p2 = new (std::nothrow) int;  // if allocation fails, new returns a null pointer
         ```
     - 动态释放内存：[`delete`表达式](https://en.cppreference.com/w/cpp/language/delete)
@@ -11659,21 +11660,21 @@ protected:
         ```
         - 对于`debug_rep(s)`，只有第一个版本可行
             - 第二个要指针，`std::string`对象又不是
-        - 对于`debug_rep(&s)`，只有两个版本都可行
+        - 对于`debug_rep(&s)`，两个版本都可行
             - 各自实例化出
-                - `debug_rep(const string * &)`：第一个版本实例化而来，`T = std::string *`，需要指针的`const_cast`
-                - `debug_rep(string *)`：第二个版本实例化而来，`T = std::string`，是 *精确匹配* 
+                - `debug_rep(const std::string * &)`：第一个版本实例化而来，`T = std::string *`，需要指针的`const_cast`
+                - `debug_rep(std::string *)`：第二个版本实例化而来，`T = std::string`，是 *精确匹配* 
             - 选择第二个
     - `例2`：多个可行模板
         - 考虑如下调用
         ```
-        const string * sp = &s;
+        const std::string * sp = &s;
         std::cout << debug_rep(sp) << std::endl;
         ```
         - 此例中两个版本都可行
             - 各自实例化出
-                - `debug_rep(const string * &)`：第一个版本实例化而来，`T = std::string *`，是 *精确匹配* 
-                - `debug_rep(const string *)`：第二个版本实例化而来，`T = const std::string`，是 *精确匹配* ，更 *特例化* 
+                - `debug_rep(const std::string * &)`：第一个版本实例化而来，`T = std::string *`，是 *精确匹配* 
+                - `debug_rep(const std::string *)`：第二个版本实例化而来，`T = const std::string`，是 *精确匹配* ，更 *特例化* 
             - 选择第二个
                 - 没有 *特例化* 这一条，将**无法**对 *`const`指针* 调用 *指针* 版本的`debug_rep`
                 - 问题在于`const T &`可以匹配 *任何类型* ，包括 *指针类型* ，是万金油
@@ -11682,31 +11683,152 @@ protected:
         - 考虑如下调用
         ```
         // print strings inside double quotes
-        string debug_rep(const string & s)
+        std::string debug_rep(const std::string & s)
         {
             return '"' + s + '"';
         }
         
-        const string * sp = &s;
+        const std::string * sp = &s;
         std::cout << debug_rep(sp) << std::endl;
         ```
         - 此例中第一个模板和上面的非模板版本都可行
             - 实际调用
-                - `debug_rep(const string * &)`：第一个版本实例化而来，`T = std::string *`，是 *精确匹配* 
-                - `debug_rep(const string &)`：第二个版本，是 *精确匹配* 
+                - `debug_rep(const std::string * &)`：第一个模板实例化而来，`T = std::string *`，是 *精确匹配* 
+                - `debug_rep(const std::string &)`：非模板版本，是 *精确匹配* 
             - 选择 *非模板版本* 
                 - 非模板才是最特例化的嘛
-- 重载模板和类型转换
+    - `例4`：重载模板和类型转换
+        - 玩一玩`C`风格字符串指针和字符串字面常量
+        - 考虑如下调用
+        ```
+        std::cout << debug_rep("hi world!") << std::endl;  // calls debug_rep(T *)
+        ```
+        - 此例中三个函数都可行
+            - 实际调用
+                - `debug_rep(const T &)`：第一个模板实例化而来，`T = char[10]`，是 *精确匹配* 
+                - `debug_rep(T *)`：第二个模板实例化而来，`T = const char`，需要数组转指针，是 *精确匹配* 
+                - `debug_rep(const std::string &)`：非模板版本，需要`const char *`转`std::string`，是 *用户定义转换* 
+            - 首先`pass`掉非模板版本，然后两个精确匹配的模板里面选择更特例化的模板二
+        - 如果希望 *字符指针* 按照`std::string`处理，可以定义另外两个非模板重载版本
+        ```
+        // convert the character pointers to string and call the string version of debug_rep
+        std::string debug_rep(char * p)
+        {
+            return debug_rep(std::string(p));
+        }
+        
+        std::string debug_rep(const char * p)
+        {
+            return debug_rep(std::string(p));
+        }
+        ```
+        - 缺少 *声明* 可能导致程序行为异常
+            - 为了使上述`char *`版本正常工作，`debug_rep(const std::string &)` *必须在作用域中* 
+            - 否则，就会调用错误的版本，找到模板版本去
+        ```
+        template <typename T> std::string debug_rep(const T & t);
+        template <typename T> std::string debug_rep(T * p);
+        
+        // the following declaration must be in scope
+        // for the definition of debug_rep(char* ) to do the right thing
+        std::string debug_rep(const std::string &);
+        
+        std::string debug_rep(char * p)
+        {
+            // if the declaration for the version that takes a const string & is not in scope
+            // the return will call debug_rep(const T &) with T instantiated to std::string
+            return debug_rep(std::string(p));
+        }
+        ```
+        - 在定义任何函数之前，记得 *声明所有重载的函数版本* ，这样就不必担心编译器由于未遇到希望调用的版本而实例化并非所需的函数模板
 
+#### 可变参数模板（Variadic Templates）
 
+- *可变参数模板* 就是一个接受可变数目的参数的函数模板或类模板
+    - 可变数目的参数被称作 *参数包* （parameter packet），包括
+        - *模板参数包* （template parameter pack）：零或多个 *模板参数* 
+            - *模板形参列表* 中
+                - `class ...`和`typename ...`指出接下来的参数表示 *零或多个类型的列表* 
+                - 一个 *类型* 后面跟一个 *省略号* 表示 *零或多个给定类型的非类型参数的列表* 
+        - *函数参数包* （function parameter pack）：零或多个 *函数参数* 
+            - *函数形参列表* 中
+                - 如果一个形参的类型是一个 *模板参数包* ，则此参数也是一个 *函数参数包* 
+    - 例如
+        - 对于如下调用
+        ```
+        // Args is a template parameter pack; rest is a function parameter pack
+        // Args represents zero or more template type parameters
+        // rest represents zero or more function parameters
+        template <typename T, typename ... Args>
+        void foo(const T & t, const Args & ... rest);
 
+        int i = 0; 
+        double d = 3.14; 
+        std::string s = "how now brown cow";
 
+        foo(i, s, 42, d);  // three parameters in the pack
+        foo(s, 42, "hi");  // two parameters in the pack
+        foo(d, s);         // one parameter in the pack
+        foo("hi");         // empty pack
+        ```
+        - 编译器会为`foo`实例化出四个版本
+        ```
+        void foo(const int &, const string &, const int&, const double &);
+        void foo(const string &, const int &, const char[3] &);
+        void foo(const double &, const string &);
+        void foo(const char[3] &);
+        ```
+    - `sizeof...`运算符
+        - 当我们需要知道包中有多少元素时，可以使用`sizeof...`运算符
+        - 类似`sizeof`，`sizeof...`也返回 *常量表达式* ，而且**不会**对其实参求值
+    ```
+    template <typename ... Args> 
+    void g(Args ... args) 
+    {
+        std::cout << sizeof...(Args) << std::endl;  // number of type parameters
+        std::cout << sizeof...(args) << std::endl;  // number of function parameters
+    }
+    ```
+- 编写 *可变参数模板* 
+    - 可变参数函数通常是 *递归* 的
+        - 第一步调用处理包中的 *第一个实参* ，然后用剩下的实参包递归调用自己
+        - 为了 *终止递归* ，需要额外定义一个 *非可变参数* 版本
+    ```
+    // function to end the recursion and print the last element
+    // this function must be declared before the variadic version of print is defined
+    template <typename T>
+    ostream & print(ostream & os, const T & t)
+    {
+        return os << t; // no separator after the last element in the pack
+    }
 
+    // this version of print will be called for all but the last element in the pack
+    template <typename T, typename ... Args>
+    ostream & print(ostream & os, const T & t, const Args & ... rest)
+    {
+        os << t << ", ";            // print the first argument
+        return print(os, rest...);  // recursive call; print the other arguments
+    }
+    ```
+- 包扩展（Pack Expansion）
+    - 对于一个 *参数包* ，我们能对它做得唯一一件事就是 *扩展* 它
+    -  *扩展* 一个包时，我们还要提供用于每个扩展元素的 *模式* （pattern）
+    -  *扩展* 一个包就是把它分解为构成的元素，对每个元素应用 *模式* ，获得扩展后的列表
+    - 通过在 *模式* 右边放一个 *省略号* `...` 来触发 *扩展* 操作
+    - 比如，`print`包含 *两个扩展*
+        ```
+        template <typename T, typename ... Args>
+        ostream &
+        print(ostream & os, const T & t, const Args & ... rest)  // expand Args
+        {
+            os << t << ", ";
+            return print(os, rest...);                           // expand rest
+        }
+        ```
+        - 第一个扩展模板参数包`Args`，为`print`生成函数参数列表
+        - 第二个扩展发生于对`print`的调用，此 *模式* 为`print`生成函数参数列表
+        - 对`Args`的 *扩展* 中，编译器将 *模式* `const Arg &` 应用到模板参数包`Args`中的每个元素。因此
 
-#### 可变参数模板（）
-
-- 编写可变参数模板
-- 包扩展
 - 转发参数包
 
 #### 模板特例化
