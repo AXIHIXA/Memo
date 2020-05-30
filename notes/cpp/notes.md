@@ -62,6 +62,7 @@
         template <typename T> void f(T &&);       // binds to nonconst rvalues
         template <typename T> void f(const T &);  // lvalues and const rvalues
         ```
+    - 将 *左值* `static_cast`成 *右值引用* 是允许的，但实际使用时应当使用封装好的`std::move`而**不是**`static_cast`
 - 跟类有关的一箩筐规则
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
@@ -11448,7 +11449,8 @@ protected:
     - *引用坍缩* 和 *右值引用形参* （Reference Collapsing and Rvalue Reference Parameters）
         - 正常情况下， *右值引用* **不能**绑定到 *左值* 上，以下 *两种* 情况**例外**
             1. *右值引用的特殊类型推断* 
-                - 将 *左值实参* 传递给函数的 *指向模板参数的右值引用形参* （如`T &&`）时，编译器推断模板类型参数为 *实参的左值引用类型*
+                - 将 *左值实参* 传递给函数的 *指向模板参数的右值引用形参* （如`T &&`）时，编译器推断模板类型参数为 *实参的左值引用类型* 
+                    - *左值实参* 的 *底层`const`* 会被原样保留
                 ```
                 template <typename T> void f3(T &&);
                 f3(argument);  // T is deducted to typename std::add_lvalue_reference<decltype(argument)>::type
@@ -11526,7 +11528,7 @@ protected:
     s2 = std::move(s1);                   // ok: but after the assigment s1 has indeterminate value
     ```
     - 工作流程梳理
-        1. `s2 = std::move(std::string("bye!"));`：传入右值实参时
+        1. `std::move(std::string("bye!"));`：传入右值实参时
             - 推断出`T = std::string`
             - 返回值类型`std::remove_reference<std::string>::type &&`就是`std::string &&`
             - 形参`t`的类型`T &&`为`std::string &&`
@@ -11538,7 +11540,79 @@ protected:
             - 形参`t`的类型`T &&` *坍缩* 为`std::string &`
             - 因此，此调用实例化`std::move<std::string &>`，即`std::string && std::move(std::string &)`
             - 返回`static_cast<std::string &&>(t)`，这步强制类型转换将`t`从`std::string &`转换为`std::string &&`
+    - 将 *左值* `static_cast`成 *右值引用* 是允许的
+        - 但实际使用时应当使用封装好的`std::move`而**不是**`static_cast`
 - *转发* （forwarding）
+    - 某些函数需要将其一个或多个实参原封不动地 *转发* 给其他函数，具体需要保持实参的以下性质
+        1. *类型* ，包括底层`cv`限定（对于引用和指针）
+        2. *值类别* ，是左值还是右值
+    - *同时* 采取如下措施可以满足上述要求
+        1. 将函数形参定义为指向模板类型参数的右值引用就可以保持实参的所有 *类型信息* 
+            - 使用引用参数还可以保持`const`属性，因为引用中`const`是 *底层* 的
+        2. 在函数调用中使用[`std::forward`](https://en.cppreference.com/w/cpp/utility/forward)保持实参的 *值类别* 
+            - 签名
+            ```
+            template <class T>
+            constexpr T &&
+            forward(std::remove_reference_t<T> & t) noexcept;   (1)
+
+            template <class T>
+            constexpr T &&
+            forward(std::remove_reference_t<T> && t) noexcept;  (2)
+            ```
+            - 保持传入参数的 *值类别* 
+                1. 转发 *左值* 为 *左值或右值* ，依赖于`T`
+                    - 考虑如下例子
+                    ```
+                    template <class T>
+                    void wrapper(T && arg) 
+                    {
+                        // arg is always lvalue
+                        foo(std::forward<T>(arg));  // Forward as lvalue or as rvalue, depending on T
+                    }
+                    ```
+                    - 若对`wrapper`的调用传递 *右值* `std::string`，则推导`T = std::string`（非`std::string &`或`std::string &&`，且`std::forward`确保将 *右值引用* 传递给`foo`
+                    - 若对`wrapper`的调用传递 *`const`左值* `std::string`，则推导`T = const std::string &`，且`std::forward`确保将 *`const`左值引用* 传递给`foo`
+                    - 若对`wrapper`的调用传递 *非`const`左值* `std::string`，则推导`T = std::string &`，且`std::forward`确保将 *非`const`左值引用* 传递给 `foo`
+                2. 转发 *右值* 为 *右值* ，并 *禁止右值转发为左值* 
+                    - 此重载用于 *转发表达式的结果* （如 *函数调用* ），结果可以是 *右值* 或 *左值* ，值类别与实参的原始值相同
+                    - 考虑如下例子
+                    ```                
+                    // transforming wrapper 
+                    template <class T>
+                    void wrapper(T && arg)
+                    {
+                        foo(std::forward<decltype(std::forward<T>(arg).get())>(std::forward<T>(arg).get()));
+                    }
+                    
+                    struct Arg
+                    {
+                        int i = 1;
+                        int   get() && { return i; }  // call to this overload is rvalue
+                        int & get() &  { return i; }  // call to this overload is lvalue
+                    }; 
+                    ```
+                    - 试图转发右值为左值，例如通过以左值引用类型`T`实例化模板`(2)`，会产生 *编译错误*  
+            - 使用时指明`std::forward`，不使用`using`声明，和`std::move`类似，避免作用域问题
+    - 考虑如下例子
+    ```
+    template <typename F, typename T1, typename T2>
+    void flip(F f, T1 && t1, T2 && t2)
+    {
+        f(std::forward<T1>(t1), std::forward<T1>(t1));
+    }
+    
+    void f(int v1, int & v2)  // note v2 is a reference
+    {
+        std::cout << v1 << " " << ++v2 << std::endl;
+    }
+    
+    int j = 0;
+    filp(f, j, 42);          // now j == 1
+    ```
+    - 传给`t1`左值`j`，推断出`T1 = int &`，`T1 &&`坍缩为`int &`，原样转发 *左值* `int &`
+    - 传给`t2`右值`42`，推断出`T2 = int`，`T2 &&`就是`int &&`，原样转发 *右值* `int &&`
+    - `f`能够改变`j`
 
 #### 重载与模板
 
@@ -11621,6 +11695,11 @@ std::tuple<int, int, int> foo_tuple()
 - 格式化`I/O`
 - 未格式化的`I/O`操作
 - 流随机访问
+
+#### [日期和时间](https://en.cppreference.com/w/cpp/chrono)（Date and time utilities）
+
+- [`<chrono>`](https://en.cppreference.com/w/cpp/header/chrono)
+    - `PLACEHOLDER`
 
 
 
@@ -11717,9 +11796,15 @@ std::tuple<int, int, int> foo_tuple()
 
 #### 嵌套类
 
+- `PLACEHOLDER`
+
 #### `union`
 
+- `PLACEHOLDER`
+
 #### 局部类
+
+- `PLACEHOLDER`
 
 #### [位域](https://en.cppreference.com/w/cpp/language/bit_field)（Bit Field）
 
@@ -11833,7 +11918,7 @@ std::tuple<int, int, int> foo_tuple()
 
 #### 链接指示`extern "C"`
 
-
+- `PLACEHOLDER`
 
 
 
