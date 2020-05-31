@@ -12220,7 +12220,7 @@ class tuple;
 - 访问`std::tuple` 
     - `t1.swap(t2)`
     - `t1 == t2`
-    - `t1 != t2`，`t1 relop t2`：字典序比较 `(since C++20)`
+    - `t1 != t2`，`t1 relop t2`：字典序比较 `(removed in C++20)`
     - `t1 <=> t2`：字典序比较 `(since C++20)`
     - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
         - 可以传入`std::ignore`
