@@ -3594,15 +3594,15 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         ```
     - 数值转字符串（`<string>`）
     ```
-    std::string std::to_string(int value)                 (1)  // std::sprintf(buf, "%d", value)
-    std::string std::to_string(long value)                (2)  // std::sprintf(buf, "%ld", value)
-    std::string std::to_string(long long value)           (3)  // std::sprintf(buf, "%lld", value)
-    std::string std::to_string(unsigned value)            (4)  // std::sprintf(buf, "%u", value)
-    std::string std::to_string(unsigned long value)       (5)  // std::sprintf(buf, "%lu", value)
-    std::string std::to_string(unsigned long long value)  (6)  // std::sprintf(buf, "%llu", value)
-    std::string std::to_string(float value)               (7)  // std::sprintf(buf, "%f", value)
-    std::string std::to_string(double value)              (8)  // std::sprintf(buf, "%f", value)
-    std::string std::to_string(long double value)         (9)  // std::sprintf(buf, "%Lf", value)
+    std::string std::to_string(int value);                 (1)  // std::sprintf(buf, "%d", value)
+    std::string std::to_string(long value);                (2)  // std::sprintf(buf, "%ld", value)
+    std::string std::to_string(long long value);           (3)  // std::sprintf(buf, "%lld", value)
+    std::string std::to_string(unsigned value);            (4)  // std::sprintf(buf, "%u", value)
+    std::string std::to_string(unsigned long value);       (5)  // std::sprintf(buf, "%lu", value)
+    std::string std::to_string(unsigned long long value);  (6)  // std::sprintf(buf, "%llu", value)
+    std::string std::to_string(float value);               (7)  // std::sprintf(buf, "%f", value)
+    std::string std::to_string(double value);              (8)  // std::sprintf(buf, "%f", value)
+    std::string std::to_string(long double value);         (9)  // std::sprintf(buf, "%Lf", value)
     ```
 
 #### 用于`std::list`和`std::forward_list`的特定算法（容器成员函数）
@@ -9192,9 +9192,9 @@ Entry & operator=(Entry rhs)
         1. *移动右值，拷贝左值*
         ```
         StrVec v1, v2;
-        v1 = v2;                   // v2 is an lvalue; copy assignment
-        StrVec getVec(istream &);
-        v2 = getVec(cin);          // getVec(cin) is an rvalue; move assignment
+        v1 = v2;                        // v2 is an lvalue; copy assignment
+        StrVec getVec(std::istream &);
+        v2 = getVec(cin);               // getVec(cin) is an rvalue; move assignment
         ```
         2. 如果 *没有移动* 操作成员，则 *右值也被拷贝* 
         ```
@@ -9412,7 +9412,7 @@ data1.operator+=(data2);  // equivalent call to a member operator function that
 
 - `I/O`库分别使用`>>`和`<<`进行输入和输出操作，定义了对 *内置类型* 的版本，但对于自定义类类型则需人工重载
 - 重载输出流运算符`<<`
-    - 第一个形参是非常量`ostream`对象的引用
+    - 第一个形参是非常量`std::ostream`对象的引用
         - 非常量：因为输出会改变流对象的状态
         - 引用：流对象无法复制
     - 第二个形参是要输出的对象的常量引用
@@ -9422,14 +9422,14 @@ data1.operator+=(data2);  // equivalent call to a member operator function that
     - `I/O`运算符 *必须* 是 *非成员函数* 
         - 如果需要输出私有数据成员，会定义成 *友元函数*
 ```
-std::ostream & operator<<(ostream & cout, const Sales_data & item)
+std::ostream & operator<<(std::ostream & cout, const Sales_data & item)
 {
     cout << item.isbn() << " " << item.units_sold << " " << item.revenue << " " << item.avg_price();
     return cout;
 }
 ```
 - 重载输入流运算符`>>`
-    - 第一个形参是非常量`istream`对象的引用
+    - 第一个形参是非常量`std::istream`对象的引用
     - 第二个形参是要读入到的对象的非常量引用
     - 输入运算符 *必须* 处理 *输入失败* 的情况，而输出运算符不需要
 ```
@@ -11313,14 +11313,14 @@ protected:
         - 函数模板中，对于参数类型**不是**模板参数的形参，可以接受对实参的正常的类型转换
     ```
     template <typename T> 
-    ostream & print(ostream & cout, const T & obj)
+    std::ostream & print(std::ostream & cout, const T & obj)
     {
         return cout << obj;
     }
     
-    print(cout, 42);              // instantiates print(ostream &, int)
-    ofstream fout("output.txt");
-    print(f, 10);                 // uses print(ostream &, int); converts f to ostream &
+    print(cout, 42);                   // instantiates print(std::ostream &, int)
+    std::ofstream fout("output.txt");
+    print(f, 10);                      // uses print(std::ostream &, int); converts f to ostream &
     fout.close();
     ```
 - 函数模板显式实参
@@ -11653,16 +11653,16 @@ protected:
         // print any type we don't otherwise handle
         template <typename T> std::string debug_rep(const T & t)
         {
-            ostringstream ret;  // see § 8.3 (p. 321)
-            ret << t;           // uses T's output operator to print a representation of t
-            return ret.str();   // return a copy of the string to which ret is bound
+            std::ostringstream ret;  // see § 8.3 (p. 321)
+            ret << t;                // uses T's output operator to print a representation of t
+            return ret.str();        // return a copy of the string to which ret is bound
         }
 
         // print pointers as their pointer value, followed by the object to which the pointer points
         // NOTICE: this function will not work properly with char*; see § 16.3 (p. 698)
         template <typename T> std::string debug_rep(T * p)
         {
-            ostringstream ret;
+            std::ostringstream ret;
             ret << "pointer: " << p;          // print the pointer's own value
             if (p)
                 ret << " " << debug_rep(*p);  // print the value to which p points
@@ -12099,10 +12099,11 @@ protected:
     - 比如，以下可变参数模板函数`print`中包含 *两个扩展*
         ```
         template <typename T, typename ... Args>
-        ostream & print(ostream & os, const T & t, const Args & ... rest)  // expand Args
+        std::ostream & 
+        print(std::ostream & os, const T & t, const Args & ... rest)  // expand Args
         {
             os << t << ", ";
-            return print(os, rest ...);                                    // expand rest
+            return print(os, rest ...);                               // expand rest
         }
         ```
         - 第一个扩展模板参数包`Args`，为`print`生成函数参数列表
@@ -12113,7 +12114,7 @@ protected:
             ```
             - 最后两个实参的类型和模式一起确定了尾置参数的类型，此调用被实例化为
             ```
-            ostream & print(ostream &, const int &, const string &, const int &);
+            std::ostream & print(std::ostream &, const int &, const string &, const int &);
             ```
         - 第二个扩展发生于对`print`的递归调用中， *模式* 是函数参数包的名字`rest`，为`print`生成函数参数列表
             - 此模式扩展出一个由包中元素组成的、逗号分隔的列表
@@ -12127,7 +12128,7 @@ protected:
         ```
         // call debug_rep on each argument in the call to print
         template <typename ... Args>
-        ostream & errorMsg(ostream & os, const Args & ... rest)
+        std::ostream & errorMsg(std::ostream & os, const Args & ... rest)
         {
             // equivlent to: print(os, debug_rep(a1), debug_rep(a2), ..., debug_rep(an)
             return print(os, debug_rep(rest) ...);
@@ -12213,7 +12214,7 @@ template <class ... Types>
 class tuple;
 ```
 - `std::tuple`支持的操作
-    - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行值初始化
+    - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行 *值初始化* 
     - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值。此构造函数为`explicit`的
     - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
     - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
@@ -12242,8 +12243,13 @@ class tuple;
 - 定义和初始化
     - 定义`std::tuple`时需要指出每个成员的类型
     ```
-    std::tuple<size_t, size_t, size_t> threeD; // all three members set to 0
-    std::tuple<std::string, vector<double>, int, list<int>> someVal("constants", {3.14, 2.718}, 42, {0, 1, 2, 3, 4, 5});
+    std::tuple<size_t, size_t, size_t> threeD;         // all three members value initialized to 0
+    
+    std::tuple<std::string, std::vector<double>, int, std::list<int>> 
+    someVal("constants", {3.14, 2.718}, 42, {0, 1, 2, 3, 4, 5});
+    
+    tuple<size_t, size_t, size_t> threeD = {1, 2, 3};  // error: explicit tuple(Args && ... arg)
+    tuple<size_t, size_t, size_t> threeD {1, 2, 3};    // ok
     ```
 - 返回
 ```
