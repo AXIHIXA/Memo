@@ -52,7 +52,6 @@
         4. 使用智能指针的`get()`返回的内置指针时，记住当最后一个对应的智能指针被销毁后，这个内置指针就 *无效* 了
         5. 使用内置指针管理的资源而不是`new`出来的内存时，记住传递给它一个 *删除器*
     - 大多数应用都应该使用 *标准库容器* 而**不是**动态分配的数组。使用容器更为简单，更不容易出现内存管理错误，并且可能有更好的性能
-    - 一个特定文件所需要的 *所有模板声明* 通常 *一起放置在文件开始* 位置，出现于任何使用这些模板的代码之前 => 16.3
     - *接受右值引用形参的函数模板* 使用守则
         - 通常应用于如下场景
             1. *转发* （forwarding） => 16.2.7
@@ -64,6 +63,8 @@
         ```
     - 将 *左值* `static_cast`成 *右值引用* 是允许的，但实际使用时应当使用封装好的`std::move`而**不是**`static_cast`
     - 在定义任何函数之前，记得 *声明所有重载的函数版本* ，这样就不必担心编译器由于未遇到希望调用的版本而实例化并非所需的函数模板
+    - 一个特定文件所需要的 *所有模板声明* 通常 *一起放置在文件开始* 位置，出现于任何使用这些模板的代码之前 => 16.3
+    - *模板及其特例化版本* 应该 *声明在同一个头文件* 中，所有同名模板的声明应该放在前面，然后是这些模板的特例化版本
 - 跟类有关的一箩筐规则
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
@@ -135,9 +136,10 @@
     - 重载的 *箭头* 运算符必须返回 *类的指针* 或者 *自定义了箭头运算符的某个类的对象* 
     - 对于 *用户代码* 中某个节点来说，当且仅当 *基类公有成员可访问* 时， *派生类向基类的类型转换可用* 
     - 友元**不能**传递、**不能**继承
-    - 引用类或函数模板的 *一个特定实例* 之前 *必须前向声明模板自身* ；如果引用的是 *全部实例* ，则 *不需前向声明* 
     - 默认情况下，`C++`语言假定通过作用域运算符访问的名字**不是**类型。希望使用模板类型参数的 *类型成员* 时，必须 *显示指明`typename`*
+    - 引用类或函数模板的 *一个特定实例* 之前 *必须前向声明模板自身* ；如果引用的是 *全部实例* ，则 *不需前向声明* 
     - 无论何时使用一个类模板，都必须在模板名后面接上尖括号`<>`。对于全默认实参的类模板，也要带一个空尖括号
+    - 函数模板的匹配规则一句话：形参匹配，特例化（非模板才是最特例化的），完犊子
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
@@ -7734,7 +7736,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`
         - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。`p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。调用`a.deallocate(p, n)`之前，这块内存中的对象必须已经被析构
         - 初始化： *定位* `new` => 19.1.2
-        - 下面俩货已经被新时代抛弃了，就当他们不存在
+        - 下面俩货已经被新时代抛弃了，就当他们不存在，现在构造应使用 *定位`new`表达式* 和`std::destory`、`std::destory_at`和`std::destroy_n`
             - `a.construct(p, args)`：`p`必须是类型为`T *`的指针，指向一块原始内存；`arg`被传递给`T`的构造函数，用来在`p`指向的内存中构造一个对象`(deprecated in C++17)(removed in C++20)`
             - `a.destory(p)`：`p`为`T *`类型指针，此算法对`p`指向的对象执行析构函数`(deprecated in C++17)(removed in C++20)`
     - 标准库 *未初始化内存* 算法（`<memory>`）
@@ -8073,6 +8075,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         - [`std::destroy_at`](https://en.cppreference.com/w/cpp/memory/destroy_at) `(C++17)`
             - 可能的实现
             ```
+            // since C++20
             template <class T>
             constexpr void 
             destroy_at(T * p) 
@@ -8090,7 +8093,7 @@ std::map<std::string, int>::mapped_type v5;  // int
                 } 
             }
             
-            // C++17 version
+            // until C++17
             template <class T> 
             void 
             destroy_at(T * p) 
@@ -8148,6 +8151,19 @@ std::map<std::string, int>::mapped_type v5;  // int
         std::uninitialized_value_construct_n(q, vec.size());
         std::destroy_n(p, vec.size() * 3);
         a.deallocate(p, vec.size() * 3);
+        ```
+        - 或者
+        ```
+        std::allocator<std::string> alloc;    // object that can allocate strings
+        std::string * p = alloc.allocate(n);  // allocate n unconstructed strings
+        
+        std::string * q = p;                  // q will point to one past the last constructed element
+        new (q++) std::string;
+        new (q++) std::string(10, 'c');
+        new (q++) std::string("hi");
+        
+        std::destory(p, q);                   // destory the strings we actually allocated
+        alloc.deallocate(p, n);               // deallocate memory
         ```
         - 被抛弃的`C++11`用法，看看得了，**别用**
             - 使用`a.construct(p, args)`构造对象
@@ -9525,17 +9541,17 @@ public:
     const std::string & operator[](std::size_t n) const { return elements[n]; }
 
 private:
-    std::string *elements;  // pointer to the first element in the array
+    std::string * elements;  // pointer to the first element in the array
 };
 
 // assume svec is a StrVec
-const StrVec cvec = svec;   // copy elements from svec into cvec
+const StrVec cvec = svec;    // copy elements from svec into cvec
 
 // if svec has any elements, run the string empty function on the first one
 if (svec.size() && svec[0].empty()) 
 {
-    svec[0] = "zero";       // ok: subscript returns a reference to a string
-    cvec[0] = "Zip";        // error: subscripting cvec returns a reference to const
+    svec[0] = "zero";        // ok: subscript returns a reference to a string
+    cvec[0] = "Zip";         // error: subscripting cvec returns a reference to const
 }
 ```
 
@@ -11628,7 +11644,7 @@ protected:
         1. 如果 *只有一个非模板函数* ，则选择之
         2. 如果没有非模板函数 ，而 *全是函数模板* ，而一个模板比其他模板 *更特例化* （specialized），则选择之
         3. 否则，报错 *二义性调用*
-    - 一句话：匹配，特例化（非模板才是最特例化的），完犊子
+    - 一句话：形参匹配，特例化（非模板才是最特例化的），完犊子
 - *重载模板* 案例分析
     - `例1`
         - 考虑如下调用
@@ -11794,42 +11810,43 @@ protected:
         - 第一步调用处理包中的 *第一个实参* ，然后用剩下的实参包递归调用自己
         - 为了 *终止递归* ，需要额外定义一个 *非可变参数* 版本
     ```
-    // function to end the recursion and print the last element
-    // this function must be declared before the variadic version of print is defined
     template <typename T>
-    ostream & print(ostream & os, const T & t)
+    void variadic_template_recursion_expansion(std::ostream & cout, T && t)
     {
-        return os << t;              // no separator after the last element in the pack
+        cout << t << std::endl;
     }
 
-    // this version of print will be called for all but the last element in the pack
+
     template <typename T, typename ... Args>
-    ostream & print(ostream & os, const T & t, const Args & ... rest)
+    void variadic_template_recursion_expansion(std::ostream & cout, T && t, Args && ... args)
     {
-        os << t << ", ";             // print the first argument
-        return print(os, rest ...);  // recursive call; print the other arguments
+        cout << t << ", ";
+        variadic_template_recursion_expansion(cout, std::forward<T>(args) ...);
     }
+    
+    variadic_template_recursion_expansion(std::cout, 0, 1, 2, 3);  // 0, 1, 2, 3
     ```
+    - 
 - 包扩展（Pack Expansion）
     - 对于一个 *参数包* ，我们能对它做得唯一一件事就是 *扩展* 它
-        - *扩展* 一个包时，我们还要提供用于每个扩展元素的 *模式* （pattern）
-        - *扩展* 一个包就是把它分解为构成的元素，对每个元素应用 *模式* 指定的操作（比如 *类型转换* 或 *函数调用* 等等），获得扩展后的列表
+        - *扩展* 一个包时，我们还要提供 *模式* （pattern）
+            - *模式* 就是应用于一个元素的操作，例如 *类型转换* 或 *函数调用* 等等
+        - *扩展* 一个包就是把它分解为构成的元素， *对每个元素独立地应用模式* ，获得扩展后的列表
         - *扩展* 操作通过在 *模式* 右边放一个 *省略号* `...` 来触发 
     - 比如，以下可变参数模板函数`print`中包含 *两个扩展*
         ```
         template <typename T, typename ... Args>
-        ostream &
-        print(ostream & os, const T & t, const Args & ... rest)  // expand Args
+        ostream & print(ostream & os, const T & t, const Args & ... rest)  // expand Args
         {
             os << t << ", ";
-            return print(os, rest ...);                          // expand rest
+            return print(os, rest ...);                                    // expand rest
         }
         ```
         - 第一个扩展模板参数包`Args`，为`print`生成函数参数列表
             - 对`Args`的 *扩展* 中，编译器将 *模式* `const Arg &` 应用到模板参数包`Args`中的每个元素
             - 因此，此模式的扩展结果是一个逗号分隔的零个或多个类型的列表，每个类型都形如`const Type &`，例如
             ```
-            print(std::cout, i, s, 42);                          // 包中有 2 个参数
+            print(std::cout, i, s, 42);                                    // 包中有 2 个参数
             ```
             - 最后两个实参的类型和模式一起确定了尾置参数的类型，此调用被实例化为
             ```
@@ -11842,22 +11859,195 @@ protected:
             print(os, s, 42);
             ```
     - 理解包扩展
-        - 上述`print`函数的扩展仅仅将包扩展为其构成元素，`C++`语言还允许更复杂的扩展模式
+        - 上述`print`函数的扩展仅仅将包扩展为其构成元素，`C++`语言还允许 *更复杂的扩展模式* 
         - 例如，可以编写第二个`print`，对其每个实参调用`debug_dup`，然后调用`print`打印结果`std::string`
         ```
         // call debug_rep on each argument in the call to print
-        template <typename... Args>
-        ostream &errorMsg(ostream & os, const Args & ... rest)
+        template <typename ... Args>
+        ostream & errorMsg(ostream & os, const Args & ... rest)
         {
             // equivlent to: print(os, debug_rep(a1), debug_rep(a2), ..., debug_rep(an)
             return print(os, debug_rep(rest) ...);
         }
         ```
-
+        - 这个`print`使用了模式`debug_rep(rest)`
+            - 此模式表示我们希望对函数参数包`rest`中的每个元素调用`debug_rep`
+            - 扩展结果是一个逗号分隔的`debug_rep`调用列表，即如下调用
+            ```
+            errorMsg(std::cerr, fcnName, code.num(), otherData, "other", item);
+            ```
+            - 就好像我们这样编写代码一样
+            ```
+            print(std::cerr, debug_rep(fcnName), debug_rep(code.num()),
+                             debug_rep(otherData), debug_rep("otherData"),
+                             debug_rep(item));
+            ```
+            - 与之相对地，如下模式将会失败
+            ```
+            // passes the pack to debug_rep; print(os, debug_rep(a1, a2, ..., an))
+            print(os, debug_rep(rest...));  // error: no matching function to call
+            ```
+            - 其问题就是在`debug_rep`的 *调用之中* ，而不是 *之外* ，扩展了`rest`，它实际等价于
+            ```
+            print(cerr, debug_rep(fcnName, code.num(), otherData, "otherData", item));
+            ```
 - 转发参数包
+    - 可以组合使用`std::forward`和 *可变参数模板* 来编写函数
+        - 实现将其实参不变地传递给其他函数
+        - 标准库容器的`emplace_back`方法就是可变参数成员函数模板
+    - 以`StrVec::emplace_back`为例
+        - 代码
+        ```
+        class StrVec 
+        {
+        public:
+            template <class ... Args> void emplace_back(Args && ...);
+            // remaining members as in § 13.5 (p. 526)
+        };
 
-#### 模板特例化
+        template <class... Args>
+        inline void StrVec::emplace_back(Args && ... args)
+        {
+            chk_n_alloc(); // reallocates the StrVec if necessary
+            alloc.construct(first_free++, std::forward<Args>(args) ...);
+        }
+        ```
+        - `alloc.construct (since C++11)(deprecated in C++17)(removed in C++20)`调用的扩展为`std::forward<Args>(args) ...`
+            - 它既扩展了 *模板参数包* `Args`，又扩展了 *函数参数包* `args`
+            - 此 *模式* 生成如下形式的元素`std::forawrd<T_i>(t_i)`，例如
+                - `svec.emplace_back(10, 'c');`会被扩展为`std::forward<int>(10), std::forward<char>(c)`
+                - `svec.emplace_back(s1 + s2);`会被扩展为`std::forward<std::string>(std::string("the end"))`
+            - 这保证了如果`emplace_back`接受的是右值实参，则`construct`也会接受到右值实参
+- 建议：转发和可变参数模板
+    - 可变参数模板通常将它们的参数转发给其它函数。这种函数通常具有如下形式
+    ```
+    // fun has zero or more parameters each of which is
+    // an rvalue reference to a template parameter type
+    template <typename ... Args>
+    void fun(Args && ... args)  // expands Args as a list of rvalue references
+    {
+        // the argument to work expands both Args and args
+        work(std::forward<Args>(args) ...);
+    }
+    ```
+    - 这里我们希望将`fun`的所有实参转发给另一个名为`work`的函数，假定由它完成函数的实际工作
+    - 类似`emplace_back`对`construct`的调用，`work`调用中的扩展既扩展了模板参数包又扩展了函数参数包
+    - 由于`fun`的形参是右值引用，因此我们既可以传递左值又可以传递右值
+    - 由于`std::forward<Args>(args) ...`，`fun`所有实参的类型信息在调用`work`时都能得到保持
 
+#### 模板特例化（Template Specializations）
+
+- *函数模板* 特例化
+    - *模板特例化* 版本就是一个模板的独立定义，其中一个或多个模板参数被指定为特定的类型
+    - 特例化函数模板时，必须为原模板中的每个模板参数都提供实参
+        - 为了指出我们正在实例化一个模板，应使用关键字`template <>`指出我们将为原模板的所有模板参数提供实参
+            - 注意这与模板默认实参的`template <>`的区别在于后者是在实例化一个具体的模板类的对象
+        - 提供的模板参数实参必须与原模板的形参类型相匹配
+            - 例如下面的例子，`const char * const &`匹配`const T &`，其中`T = const char * const`
+    - 对于如下例子，特例化的第三个版本可以使得`char *`实参调用第三个，而不是第一个版本
+    ```
+    // first version; can compare any two types
+    template <typename T> 
+    int compare(const T &, const T &);
+
+    // second version to handle string literals
+    template<size_t N, size_t M>
+    int compare(const char (&)[N], const char (&)[M]);
+
+    // third version
+    // special version of compare to handle pointers to character arrays
+    template <>
+    int compare(const char * const & p1, const char * const & p2)  // reference of const pointer to const char
+    {
+        return strcmp(p1, p2);
+    }
+    ```
+- 函数重载与模板特例化
+    - *特例化* 的本质是 *实例化* 一个模板，**而非** *重载* 它。因此，特例化**不影响**函数匹配
+        - 特例化函数模板时，实际上相当于接管了编译器匹配到此函数模板之后的实例化工作
+    - 将一个特殊的函数定义为 *特例化函数模板* 还是 *普通函数* 则会影响函数匹配
+    - 普通作用域规则应用于特例化
+        - 特例化模板时，原模板声明必须在作用域中
+        - 任何使用模板实例的代码之前，特例化版本的声明也必须在作用域中
+        - 模板及其特例化版本应该声明在同一个头文件中，所有同名模板的声明应该放在前面，然后是这些模板的特例化版本
+            - 否则一旦声明不在域中，编译器不会报错，而是会错误地使用非特例化的模板，造成难以排查到的错误
+- *类模板* 特例化
+    - 举例：定义`template<> std::hash<Sales_data>`，用于 *无序关联容器* 对于`Sales_data`的散列
+    ```
+    namespace std 
+    {
+    template <>                            // we're defining a specialization with
+    struct hash<Sales_data>                // the template parameter of Sales_data
+    {
+        // the type used to hash an unordered container must define these types
+        typedef size_t result_type;
+        typedef Sales_data argument_type;  // by default, this type needs ==
+        
+        size_t operator()(const Sales_data & s) const;
+        
+        // our class uses synthesized copy control and default constructor
+    };
+    
+    size_t hash<Sales_data>::operator()(const Sales_data & s) const
+    {
+        return hash<string>()(s.bookNo) ^ hash<unsigned>()(s.units_sold) ^ hash<double>()(s.revenue);
+    }
+    }
+    
+    template <class T> class std::hash;  // needed for the friend declaration
+    
+    class Sales_data 
+    {
+        friend class std::hash<Sales_data>;
+        // other members as before
+    };
+    ```
+    - 类模板 *偏特化* （partial specialization）
+        - *偏特化* （又称 *部分实例化* ）只适用于类模板，**不**适用于函数模板
+            - *偏特化* 时 *不必* 提供全部模板实参
+        - 举例：`std::remove_reference`
+        ```
+        // original, most general template
+        template <class T> struct remove_reference       { typedef T type; };
+        
+        // partial specializations that will be used for lvalue and rvalue references
+        template <class T> struct remove_reference<T &>  { typedef T type; };
+        template <class T> struct remove_reference<T &&> { typedef T type; };
+        
+        int i;
+        
+        // decltype(42) is int, uses the original template
+        remove_reference<decltype(42)>::type a;
+        
+        // decltype(i) is int&, uses first (T &) partial specialization
+        remove_reference<decltype(i)>::type b;
+        
+        // decltype(std::move(i)) is int &&, uses second (i.e., T &&) partial specialization
+        remove_reference<decltype(std::move(i))>::type c;
+        ```
+    - 特例化 *成员* 而不是类
+        - 可以只特例化类模板的特定成员函数，而不特例化整个模板
+    ```
+    template <typename T> 
+    struct Foo 
+    {
+        Foo(const T & t = T()): mem(t) { }
+        void Bar() { /* ... */ }
+        T mem;
+        // other members of Foo
+    };
+    
+    template<>            // we're specializing a template
+    void Foo<int>::Bar()  // we're specializing the Bar member of Foo<int>
+    {
+        // do whatever specialized processing that applies to ints
+    }
+    
+    Foo<std::string> fs;  // instantiates Foo<string>::Foo()
+    fs.Bar();             // instantiates Foo<string>::Bar()
+    Foo<int> fi;          // instantiates Foo<int>::Foo()
+    fi.Bar();             // uses our specialization of Foo<int>::Bar()
+    ```
 
 
 
