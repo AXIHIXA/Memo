@@ -11758,6 +11758,120 @@ protected:
         ```
         - 在定义任何函数之前，记得 *声明所有重载的函数版本* ，这样就不必担心编译器由于未遇到希望调用的版本而实例化并非所需的函数模板
 
+#### 模板特例化（Template Specializations）
+
+- *模板特例化* 版本就是一个模板的独立定义，其中一个或多个模板参数被指定为特定的类型
+    - 特例化函数模板时，必须为原模板中的每个模板参数都提供实参
+    - 为了指出我们正在实例化一个模板，应使用关键字`template <>`指出我们将为原模板的所有模板参数提供实参
+        - 注意这与模板默认实参的`template <>`的区别在于后者是在实例化一个具体的模板类的对象
+- *函数模板* 特例化
+        - 提供的模板参数实参必须与原模板的形参类型相匹配
+            - 例如下面的例子，`const char * const &`匹配`const T &`，其中`T = const char * const`
+    - 对于如下例子，特例化的第三个版本可以使得`char *`实参调用第三个，而不是第一个版本
+    ```
+    // first version; can compare any two types
+    template <typename T> 
+    int compare(const T &, const T &);
+
+    // second version to handle string literals
+    template<size_t N, size_t M>
+    int compare(const char (&)[N], const char (&)[M]);
+
+    // third version
+    // special version of compare to handle pointers to character arrays
+    template <>
+    int compare(const char * const & p1, const char * const & p2)  // reference of const pointer to const char
+    {
+        return strcmp(p1, p2);
+    }
+    ```
+- 函数重载与模板特例化
+    - *特例化* 的本质是 *实例化* 一个模板，**而非** *重载* 它。因此，特例化**不影响**函数匹配
+        - 特例化函数模板时，实际上相当于接管了编译器匹配到此函数模板之后的实例化工作
+    - 将一个特殊的函数定义为 *特例化函数模板* 还是 *普通函数* 则会影响函数匹配
+    - 普通作用域规则应用于特例化
+        - 特例化模板时，原模板声明必须在作用域中
+        - 任何使用模板实例的代码之前，特例化版本的声明也必须在作用域中
+        - 模板及其特例化版本应该声明在同一个头文件中，所有同名模板的声明应该放在前面，然后是这些模板的特例化版本
+            - 否则一旦声明不在域中，编译器不会报错，而是会错误地使用非特例化的模板，造成难以排查到的错误
+- *类模板* 特例化
+    - 举例：定义`template<> std::hash<Sales_data>`，用于 *无序关联容器* 对于`Sales_data`的散列
+    ```
+    namespace std 
+    {
+    template <>                            // we're defining a specialization with
+    struct hash<Sales_data>                // the template parameter of Sales_data
+    {
+        // the type used to hash an unordered container must define these types
+        typedef size_t result_type;
+        typedef Sales_data argument_type;  // by default, this type needs ==
+        
+        size_t operator()(const Sales_data & s) const;
+        
+        // our class uses synthesized copy control and default constructor
+    };
+    
+    size_t hash<Sales_data>::operator()(const Sales_data & s) const
+    {
+        return hash<string>()(s.bookNo) ^ hash<unsigned>()(s.units_sold) ^ hash<double>()(s.revenue);
+    }
+    }
+    
+    template <class T> class std::hash;  // needed for the friend declaration
+    
+    class Sales_data 
+    {
+        friend class std::hash<Sales_data>;
+        // other members as before
+    };
+    ```
+    - 类模板 *偏特化* （partial specialization）
+        - *偏特化* （又称 *部分实例化* ）只适用于类模板，**不**适用于函数模板
+            - *偏特化* 时 *不必* 提供全部模板实参
+        - 举例：`std::remove_reference`
+        ```
+        // original, most general template
+        template <class T> struct remove_reference       { typedef T type; };
+        
+        // partial specializations that will be used for lvalue and rvalue references
+        template <class T> struct remove_reference<T &>  { typedef T type; };
+        template <class T> struct remove_reference<T &&> { typedef T type; };
+        
+        int i;
+        
+        // decltype(42) is int, uses the original template
+        remove_reference<decltype(42)>::type a;
+        
+        // decltype(i) is int&, uses first (T &) partial specialization
+        remove_reference<decltype(i)>::type b;
+        
+        // decltype(std::move(i)) is int &&, uses second (i.e., T &&) partial specialization
+        remove_reference<decltype(std::move(i))>::type c;
+        ```
+    - 特例化 *成员* 而不是类
+        - 可以只特例化类模板的特定成员函数，而不特例化整个模板
+    ```
+    template <typename T> 
+    struct Foo 
+    {
+        Foo(const T & t = T()): mem(t) { }
+        void Bar() { /* ... */ }
+        T mem;
+        // other members of Foo
+    };
+    
+    template<>            // we're specializing a template
+    void Foo<int>::Bar()  // we're specializing the Bar member of Foo<int>
+    {
+        // do whatever specialized processing that applies to ints
+    }
+    
+    Foo<std::string> fs;  // instantiates Foo<string>::Foo()
+    fs.Bar();             // instantiates Foo<string>::Bar()
+    Foo<int> fi;          // instantiates Foo<int>::Foo()
+    fi.Bar();             // uses our specialization of Foo<int>::Bar()
+    ```
+
 #### 可变参数模板（Variadic Templates）
 
 - *可变参数模板* 就是一个接受可变数目的参数的函数模板或类模板
@@ -11805,7 +11919,7 @@ protected:
         std::cout << sizeof...(args) << std::endl;  // number of function parameters
     }
     ```
-- 编写 *可变参数模板* 
+- 编写 *可变参数模板函数* 
     - *递归* 包扩展
         - 第一步调用处理包中的 *第一个实参* ，然后用剩下的实参包递归调用自己
             - 剩下的实参包一般也会 *转发* 
@@ -11817,7 +11931,6 @@ protected:
         cout << t << std::endl;
     }
 
-
     template <typename T, typename ... Args>
     void variadic_template_recursion_expansion(std::ostream & cout, T && t, Args && ... args)
     {
@@ -11825,7 +11938,7 @@ protected:
         variadic_template_recursion_expansion(cout, std::forward<T>(args) ...);
     }
     
-    variadic_template_recursion_expansion(std::cout, 0, 1, 2, 3);  // 0, 1, 2, 3
+    variadic_template_recursion_expansion(std::cout, 0, 1, 2, 3);    // 0, 1, 2, 3
     
     template <typename T>
     T sum(T && t)
@@ -11833,14 +11946,13 @@ protected:
         return t;
     }
 
-
     template <typename T, typename ... Args>
     T sum(T && t, Args && ... rest)
     {
         return t + sum(std::forward<T>(rest) ...);
     }
     
-    sum(0, 1, 2, 3)                                                // 6
+    sum(0, 1, 2, 3)                                                  // 6
     ```
     - *逗号表达式初始化列表* 包扩展
         - 扩展后`(printArg(args), 0) ...`会被替换成由 *逗号表达式* 组成、由逗号分隔的列表
@@ -11858,10 +11970,125 @@ protected:
         int arr[] = {(printArg(args), 0) ...};
     }
 
-    expand(0, 1, 2, 3);                                            // 0, 1, 2, 3, 
+    expand(0, 1, 2, 3);                                              // 0, 1, 2, 3, 
     ```
-    - 
-- *包扩展* （Pack Expansion）
+- 编写 *可变参数模板类*
+    - *模板偏特化递归* 包扩展
+        - 基本写法
+        ```
+        // 基本定义
+        template <typename T, typename ... Args>
+        struct Sum
+        {
+            enum
+            {
+                value = Sum<T>::value + Sum<Args ...>::value
+            };
+        };
+
+        // 偏特化，递归至只剩一个模板类型参数时终止
+        template <typename T>
+        struct Sum<T>
+        {
+            enum
+            {
+                value = sizeof(T)
+            };
+        };
+        
+        std::cout << Sum<char, short, int, double>::value << std::endl;  // 15
+        ```
+        - 递归终止类还可以有如下写法
+        ```
+        // 偏特化，递归至只剩两个模板类型参数时终止
+        template <typename First, typename Last>
+        struct sum<First, Last>
+        { 
+            enum
+            { 
+                value = sizeof(First) + sizeof(Last) 
+            };
+        };
+        
+        // 偏特化，递归至模板类型参数一个不剩时终止
+        template<>
+        struct sum<> 
+        { 
+            enum
+            { 
+                value = 0 
+            }; 
+        };
+        ```
+    - *继承* 包扩展
+        - 代码
+        ```
+        // 整型序列的定义
+        template <int ...>
+        struct IndexSeq
+        {
+        };
+
+        // 继承方式，开始展开参数包
+        template <int N, int ... Indexes>
+        struct MakeIndexes : MakeIndexes<N - 1, N - 1, Indexes ...>
+        {
+        };
+
+        // 模板特化，终止展开参数包的条件
+        template <int ... Indexes>
+        struct MakeIndexes<0, Indexes ...>
+        {
+            typedef IndexSeq<Indexes ...> type;
+        };
+        
+        #include <cxxabi.h>
+
+        std::string demangle(const char * name)
+        {
+            int status = -4;  // some arbitrary value to eliminate the compiler warning
+            std::unique_ptr<char> res = {abi::__cxa_demangle(name, nullptr, nullptr, &status)};
+            return status ? name : res.get();
+        }
+        
+        using T = MakeIndexes<3>::type;
+        std::cout << demangle(typeid(T).name()) << std::endl;
+        ```
+        - 其中`MakeIndexes`的作用是为了生成一个可变参数模板类的整数序列，最终输出的类型是：`struct IndexSeq<0, 1, 2>`
+            - `MakeIndexes`继承于自身的一个特化的模板类
+            - 这个特化的模板类同时也在展开参数包
+            - 这个展开过程是通过继承发起的，直到遇到特化的终止条件展开过程才结束
+            - `MakeIndexes<1, 2, 3>::type`的展开过程是这样的
+            ```
+            MakeIndexes<3> : MakeIndexes<2, 2>
+            {
+            }
+            
+            MakeIndexes<2, 2> : MakeIndexes<1, 1, 2>
+            {
+            }
+            
+            MakeIndexes<1, 1, 2> : MakeIndexes<0, 0, 1, 2>
+            {
+                typedef IndexSeq<0, 1, 2> type;
+            }
+            ```
+            - 通过不断的继承递归调用，最终得到整型序列`IndexSeq<0, 1, 2>`
+        - 如果不希望通过继承方式去生成整形序列，则可以通过下面的方式生成
+        ```
+        template <int N, int ... Indexes>
+        struct MakeIndexes3
+        {
+            using type = typename MakeIndexes3<N - 1, N - 1, Indexes ...>::type;
+        };
+
+        template <int... Indexes>
+        struct MakeIndexes3<0, Indexes ...>
+        {
+            typedef IndexSeq<Indexes ...> type;
+        };
+        ```
+- 理解 *包扩展* （Pack Expansion）
     - 对于一个 *参数包* ，我们能对它做得唯一一件事就是 *扩展* 它
         - *扩展* 一个包时，我们还要提供 *模式* （pattern）
             - *模式* 具体就是参数包中的一个元素的 *表达式* 也可以说是应用于一个元素的操作
@@ -11970,119 +12197,6 @@ protected:
     - 由于`fun`的形参是右值引用，因此我们既可以传递左值又可以传递右值
     - 由于`std::forward<Args>(args) ...`，`fun`所有实参的类型信息在调用`work`时都能得到保持
 
-#### 模板特例化（Template Specializations）
-
-- *函数模板* 特例化
-    - *模板特例化* 版本就是一个模板的独立定义，其中一个或多个模板参数被指定为特定的类型
-    - 特例化函数模板时，必须为原模板中的每个模板参数都提供实参
-        - 为了指出我们正在实例化一个模板，应使用关键字`template <>`指出我们将为原模板的所有模板参数提供实参
-            - 注意这与模板默认实参的`template <>`的区别在于后者是在实例化一个具体的模板类的对象
-        - 提供的模板参数实参必须与原模板的形参类型相匹配
-            - 例如下面的例子，`const char * const &`匹配`const T &`，其中`T = const char * const`
-    - 对于如下例子，特例化的第三个版本可以使得`char *`实参调用第三个，而不是第一个版本
-    ```
-    // first version; can compare any two types
-    template <typename T> 
-    int compare(const T &, const T &);
-
-    // second version to handle string literals
-    template<size_t N, size_t M>
-    int compare(const char (&)[N], const char (&)[M]);
-
-    // third version
-    // special version of compare to handle pointers to character arrays
-    template <>
-    int compare(const char * const & p1, const char * const & p2)  // reference of const pointer to const char
-    {
-        return strcmp(p1, p2);
-    }
-    ```
-- 函数重载与模板特例化
-    - *特例化* 的本质是 *实例化* 一个模板，**而非** *重载* 它。因此，特例化**不影响**函数匹配
-        - 特例化函数模板时，实际上相当于接管了编译器匹配到此函数模板之后的实例化工作
-    - 将一个特殊的函数定义为 *特例化函数模板* 还是 *普通函数* 则会影响函数匹配
-    - 普通作用域规则应用于特例化
-        - 特例化模板时，原模板声明必须在作用域中
-        - 任何使用模板实例的代码之前，特例化版本的声明也必须在作用域中
-        - 模板及其特例化版本应该声明在同一个头文件中，所有同名模板的声明应该放在前面，然后是这些模板的特例化版本
-            - 否则一旦声明不在域中，编译器不会报错，而是会错误地使用非特例化的模板，造成难以排查到的错误
-- *类模板* 特例化
-    - 举例：定义`template<> std::hash<Sales_data>`，用于 *无序关联容器* 对于`Sales_data`的散列
-    ```
-    namespace std 
-    {
-    template <>                            // we're defining a specialization with
-    struct hash<Sales_data>                // the template parameter of Sales_data
-    {
-        // the type used to hash an unordered container must define these types
-        typedef size_t result_type;
-        typedef Sales_data argument_type;  // by default, this type needs ==
-        
-        size_t operator()(const Sales_data & s) const;
-        
-        // our class uses synthesized copy control and default constructor
-    };
-    
-    size_t hash<Sales_data>::operator()(const Sales_data & s) const
-    {
-        return hash<string>()(s.bookNo) ^ hash<unsigned>()(s.units_sold) ^ hash<double>()(s.revenue);
-    }
-    }
-    
-    template <class T> class std::hash;  // needed for the friend declaration
-    
-    class Sales_data 
-    {
-        friend class std::hash<Sales_data>;
-        // other members as before
-    };
-    ```
-    - 类模板 *偏特化* （partial specialization）
-        - *偏特化* （又称 *部分实例化* ）只适用于类模板，**不**适用于函数模板
-            - *偏特化* 时 *不必* 提供全部模板实参
-        - 举例：`std::remove_reference`
-        ```
-        // original, most general template
-        template <class T> struct remove_reference       { typedef T type; };
-        
-        // partial specializations that will be used for lvalue and rvalue references
-        template <class T> struct remove_reference<T &>  { typedef T type; };
-        template <class T> struct remove_reference<T &&> { typedef T type; };
-        
-        int i;
-        
-        // decltype(42) is int, uses the original template
-        remove_reference<decltype(42)>::type a;
-        
-        // decltype(i) is int&, uses first (T &) partial specialization
-        remove_reference<decltype(i)>::type b;
-        
-        // decltype(std::move(i)) is int &&, uses second (i.e., T &&) partial specialization
-        remove_reference<decltype(std::move(i))>::type c;
-        ```
-    - 特例化 *成员* 而不是类
-        - 可以只特例化类模板的特定成员函数，而不特例化整个模板
-    ```
-    template <typename T> 
-    struct Foo 
-    {
-        Foo(const T & t = T()): mem(t) { }
-        void Bar() { /* ... */ }
-        T mem;
-        // other members of Foo
-    };
-    
-    template<>            // we're specializing a template
-    void Foo<int>::Bar()  // we're specializing the Bar member of Foo<int>
-    {
-        // do whatever specialized processing that applies to ints
-    }
-    
-    Foo<std::string> fs;  // instantiates Foo<string>::Foo()
-    fs.Bar();             // instantiates Foo<string>::Bar()
-    Foo<int> fi;          // instantiates Foo<int>::Foo()
-    fi.Bar();             // uses our specialization of Foo<int>::Bar()
-    ```
 
 
 
