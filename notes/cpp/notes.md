@@ -12212,31 +12212,31 @@ protected:
 template <class ... Types>
 class tuple;
 ```
-- 生成`std::tuple`
+- `std::tuple`支持的操作
     - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行值初始化
     - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值。此构造函数为`explicit`的
     - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
     - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
-- 访问`std::tuple` 
-    - `t1.swap(t2)`
-    - `t1 == t2`
+    - `t1 == t2`：字典序判等
     - `t1 != t2`，`t1 relop t2`：字典序比较 `(removed in C++20)`
     - `t1 <=> t2`：字典序比较 `(since C++20)`
-    - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
-        - 可以传入`std::ignore`
-    - `std::get<i>(t)`：获取`t`的第`i`个元素或元素类型为`i`的元素
+    - `std::get<i>(t)`：获取`t`的第`i`个数据成员的引用，`或元素类型为 i 的数据成员的引用 (since C++14)`
+        - 如果`t`为左值，则返回左值引用；否则，返回右值引用
     ```
     auto t = std::make_tuple(1, "Foo", 3.14);
     // index-based access
     std::cout << "(" << std::get<0>(t) << ", " << std::get<1>(t)
               << ", " << std::get<2>(t) << ")\n";
               
-    // type-based access (C++14 or later)
+    // type-based access (since C++14)
     std::cout << "(" << std::get<int>(t) << ", " << std::get<const char*>(t)
               << ", " << std::get<double>(t) << ")\n";
               
     // Note: std::tie and structured binding may also be used to decompose a tuple
     ```
+    - `t1.swap(t2)`
+    - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
+        - 可以传入`std::ignore`
 - 返回
 ```
 std::tuple<int, int, int> foo_tuple() 
