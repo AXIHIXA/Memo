@@ -12060,15 +12060,15 @@ protected:
             - 这个展开过程是通过继承发起的，直到遇到特化的终止条件展开过程才结束
             - `MakeIndexes<3>::type`的展开过程是这样的
             ```
-            MakeIndexes<3> : MakeIndexes<2, 2>
+            struct MakeIndexes<3> : MakeIndexes<2, 2>
             {
             }
             
-            MakeIndexes<2, 2> : MakeIndexes<1, 1, 2>
+            struct MakeIndexes<2, 2> : MakeIndexes<1, 1, 2>
             {
             }
             
-            MakeIndexes<1, 1, 2> : MakeIndexes<0, 0, 1, 2>
+            struct MakeIndexes<1, 1, 2> : MakeIndexes<0, 0, 1, 2>
             {
                 typedef IndexSeq<0, 1, 2> type;
             }
