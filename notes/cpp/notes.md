@@ -12239,6 +12239,12 @@ class tuple;
     - `t1.swap(t2)`：
     - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
         - 可以传入`std::ignore`
+- 定义和初始化
+    - 定义`std::tuple`时需要指出每个成员的类型
+    ```
+    std::tuple<size_t, size_t, size_t> threeD; // all three members set to 0
+    std::tuple<std::string, vector<double>, int, list<int>> someVal("constants", {3.14, 2.718}, 42, {0, 1, 2, 3, 4, 5});
+    ```
 - 返回
 ```
 std::tuple<int, int, int> foo_tuple() 
