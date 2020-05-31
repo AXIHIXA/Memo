@@ -12214,32 +12214,76 @@ template <class ... Types>
 class tuple;
 ```
 - `std::tuple`支持的操作
-    - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行 *值初始化* 
-    - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值。此构造函数为`explicit`的
-    - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
-    - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
-    - `t1 == t2`：字典序判等
-    - `t1 != t2`，`t1 relop t2`：字典序比较 `(removed in C++20)`
-    - `t1 <=> t2`：字典序比较 `(since C++20)`
-    - `std::get<i>(t)`：获取`t`的第`i`个数据成员的引用，`或元素类型为 i 的数据成员的引用 (since C++14)`
-        - 如果`t`为左值，则返回左值引用；否则，返回右值引用
-    ```
-    auto t = std::make_tuple(1, "Foo", 3.14);
-    // index-based access
-    std::cout << "(" << std::get<0>(t) << ", " << std::get<1>(t)
-              << ", " << std::get<2>(t) << ")\n";
-              
-    // type-based access (since C++14)
-    std::cout << "(" << std::get<int>(t) << ", " << std::get<const char*>(t)
-              << ", " << std::get<double>(t) << ")\n";
-              
-    // Note: std::tie and structured binding may also be used to decompose a tuple
-    ```
-    - `std::tuple_size<TupleType>::value`：类模板，通过一个`std::tuple`的类型来初始化。有一个名为`value`的`public constexpr static`数据成员，类型为`size_t`，表示给定`std::tuple`类型中成员的数量
-    - `std::tuple_element<i, TupleType>::type`：类模板，通过一个 *整形常量* 和一个`std::tuple`的类型来初始化。有一个名为`type`的`public typedef`，表示给定`std::tuple`类型中指定成员的类型
-    - `t1.swap(t2)`：
-    - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
-        - 可以传入`std::ignore`
+    - 定义和初始化
+        - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行 *值初始化* 
+        - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值。此构造函数为`explicit`的
+        - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
+        - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
+    - 关系运算
+        - `t1 == t2`：字典序判等
+        - `t1 != t2`，`t1 relop t2`：字典序比较 `(removed in C++20)`
+        - `t1 <=> t2`：字典序比较 `(since C++20)`
+    - 赋值和对换
+        - `operator =`：拷贝或移动赋值
+        - `swap`：对换`std::tuple`的内容
+        ```
+        std::tuple<int, std::string, float> p1, p2;
+        p1 = std::make_tuple(10, "test", 3.14);
+        p2.swap(p1);
+        printf("%d %s %f\n", std::get<0>(p2), std::get<1>(p2).c_str(), std::get<2>(p2));  // 10 test 3.14
+        ```
+        - `std::swap<TupleType>(t1, t2)`：`std::swap<T>`关于`std::tuple`类型的重载，相当于`t1.swap(t2)`
+    - 成员访问
+        - [`std::get<i>(t)`](https://en.cppreference.com/w/cpp/utility/tuple/get)：获取`t`的第`i`个数据成员的引用，`或元素类型为 i 的数据成员的引用 (since C++14)`
+            - 如果`t`为 *左值* ，则返回 *左值引用* ；否则，返回 *右值引用* 
+        ```
+        auto t = std::make_tuple(1, "Foo", 3.14);
+        // index-based access
+        std::cout << "(" << std::get<0>(t) << ", " << std::get<1>(t)
+                  << ", " << std::get<2>(t) << ")\n";
+                  
+        // type-based access (since C++14)
+        std::cout << "(" << std::get<int>(t) << ", " << std::get<const char*>(t)
+                  << ", " << std::get<double>(t) << ")\n";
+                  
+        // Note: std::tie and structured binding may also be used to decompose a tuple
+        ```
+        - [`std::tie`](https://en.cppreference.com/w/cpp/utility/tuple/tie)
+            - 可能的实现
+            ```
+            namespace detail 
+            {
+            struct ignore_t 
+            {
+                template <typename T>
+                const ignore_t & operator=(const T &) const { return *this; }
+            };
+            }
+            
+            const detail::ignore_t ignore;
+             
+            template <typename ... Args>
+            auto tie(Args & ... args) 
+            {
+                return std::tuple<Args & ...>(args ...);
+            }
+            ```
+            - 用其实参的 *左值引用* 创建一个`std::tuple`
+                - 常用于用指定的参数解包`std::tuple`或`std::pair`
+                - 可以传入`std::ignore`表示该位置元素不需解包
+            ```
+            std::tuple<int, std::string, double, double> 
+            tup {0, "pi", 3.14, 3.14159};
+            int a;
+            std::string s;
+            double pi;
+            std::tie(a, s, pi, std::ignore) = tup;
+            printf("%d, %s, %lf\n", a, s, pi);         // 0, pi, 3.14
+            ```
+    - 帮助类模板
+        - `std::tuple_size<TupleType>::value`：类模板，通过一个`std::tuple`的类型来初始化。有一个名为`value`的`public constexpr static`数据成员，类型为`size_t`，表示给定`std::tuple`类型中成员的数量
+        - `std::tuple_element<i, TupleType>::type`：类模板，通过一个 *整形常量* 和一个`std::tuple`的类型来初始化。有一个名为`type`的`public typedef`，表示给定`std::tuple`类型中指定成员的类型
+        - `std::ignore`：未指定类型的对象，任何值均可赋此对象，且无任何效果。用作`std::tie(a, b, c...)`解包`std::tuple`时的 *占位符* 
 - 定义和初始化
     - 定义`std::tuple`时需要指出每个成员的类型
     ```
@@ -12250,13 +12294,26 @@ class tuple;
     
     tuple<size_t, size_t, size_t> threeD = {1, 2, 3};  // error: explicit tuple(Args && ... arg)
     tuple<size_t, size_t, size_t> threeD {1, 2, 3};    // ok
+    
+    // tuple that represents a bookstore transaction: ISBN, count, price per book
+    auto item = std::make_tuple("0-999-78345-X", 3, 20.00);
+    ```
+- 成员访问
+    - `std::tuple`的成员一律为 *未命名* 的
+    - 使用`std::get<i>(tup)`
+    ```
+    auto book = get<0>(item);       // returns the first member of item
+    auto cnt = get<1>(item);        // returns the second member of item
+    auto price = get<2>(item)/cnt;  // returns the last member of item
+    get<2>(item) *= 0.8;            // apply 20% discount
     ```
 - 返回
 ```
-std::tuple<int, int, int> foo_tuple() 
+std::tuple<int, int> foo_tuple() 
 {
-    return {0, 1, -1};  
-    return std::make_tuple(0, 1, -1);
+    return {1, -1};
+    return std::tuple<int, int> {1, -1};
+    return std::make_tuple(1, -1);
 }
 ```
 
