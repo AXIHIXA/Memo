@@ -12218,7 +12218,7 @@ class tuple;
         - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行 *值初始化* 
         - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值。此构造函数为`explicit`的
         - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
-        - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
+        - [`std::make_tuple(v1, v2, v3...);`](https://en.cppreference.com/w/cpp/utility/tuple/make_tuple)：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
     - 关系运算
         - `t1 == t2`：字典序判等
         - `t1 != t2`，`t1 relop t2`：字典序比较 `(removed in C++20)`
@@ -12280,6 +12280,28 @@ class tuple;
             std::tie(a, s, pi, std::ignore) = tup;
             printf("%d, %s, %lf\n", a, s, pi);         // 0, pi, 3.14
             ```
+        - [`std::forward_as_tuple`](https://en.cppreference.com/w/cpp/utility/tuple/forward_as_tuple)
+            - 可能的实现
+            ```
+            template < class... Types >
+            tuple<Types && ...> 
+            forward_as_tuple(Types && ... args) noexcept
+            {
+                return std::tuple<Types && ...>(std::forward<Types>(args) ...);
+            }
+            ```
+            - 将接受的实参完美转发并用之构造一个`std::tuple`
+            ```
+            std::map<int, std::string> m;
+            m.emplace(std::forward_as_tuple(10), std::forward_as_tuple(20, 'a'));
+            std::cout << "m[10] = " << m[10] << std::endl;
+         
+            // The following is an error: it produces a
+            // std::tuple<int &&, char &&> holding two dangling references.
+            auto t = std::forward_as_tuple(20, 'a');                            // error: dangling reference
+            m.emplace(std::piecewise_construct, std::forward_as_tuple(10), t);  // error
+            ```
+        - [``]()
     - 帮助类模板
         - `std::tuple_size<TupleType>::value`：类模板，通过一个`std::tuple`的类型来初始化。有一个名为`value`的`public constexpr static`数据成员，类型为`size_t`，表示给定`std::tuple`类型中成员的数量
         - `std::tuple_element<i, TupleType>::type`：类模板，通过一个 *整形常量* 和一个`std::tuple`的类型来初始化。有一个名为`type`的`public typedef`，表示给定`std::tuple`类型中指定成员的类型
