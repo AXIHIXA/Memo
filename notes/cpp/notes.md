@@ -12047,18 +12047,18 @@ protected:
         std::string demangle(const char * name)
         {
             int status = -4;  // some arbitrary value to eliminate the compiler warning
-            std::unique_ptr<char> res = {abi::__cxa_demangle(name, nullptr, nullptr, &status)};
+            std::unique_ptr<char> res {abi::__cxa_demangle(name, nullptr, nullptr, &status)};
             return status ? name : res.get();
         }
         
         using T = MakeIndexes<3>::type;
-        std::cout << demangle(typeid(T).name()) << std::endl;
+        std::cout << demangle(typeid(T).name()) << std::endl;  // IndexSeq<0, 1, 2>
         ```
-        - 其中`MakeIndexes`的作用是为了生成一个可变参数模板类的整数序列，最终输出的类型是：`struct IndexSeq<0, 1, 2>`
+        - 其中`MakeIndexes`的作用是为了生成一个可变参数模板类的整数序列，最终输出的类型是：`IndexSeq<0, 1, 2>`
             - `MakeIndexes`继承于自身的一个特化的模板类
             - 这个特化的模板类同时也在展开参数包
             - 这个展开过程是通过继承发起的，直到遇到特化的终止条件展开过程才结束
-            - `MakeIndexes<1, 2, 3>::type`的展开过程是这样的
+            - `MakeIndexes<3>::type`的展开过程是这样的
             ```
             MakeIndexes<3> : MakeIndexes<2, 2>
             {
