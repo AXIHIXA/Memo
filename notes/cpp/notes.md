@@ -7774,7 +7774,7 @@ std::map<std::string, int>::mapped_type v5;  // int
             ```
             - 用来自范围`[first, last)`的元素，在始于`d_first`的 *未初始化内存* 中 *构造* 新元素 
                 - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
-                - 注意是 *构造* ，不是单纯的迭代器赋值，后者是`std::copy`
+                - 注意是 *构造* ，**不是**单纯的 *迭代器解引用赋值* ，后者是`std::copy`
             - 返回：指向最后复制的元素后一元素的迭代器
             - 复杂度：`Omega(last - first)`
         - [`std::uninitialized_copy_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_copy_n)
