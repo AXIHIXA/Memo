@@ -9,8 +9,8 @@
 - 基于`C++11`的内容提示，例如`(since C++11)`，一般不再明确标注
 - `(until C++11)`、即`C++11`中已经移除的内容，不予收录
 - 这玩意收录好多[`cppreference`](https://en.cppreference.com)上的内容，该部分内容是打算当字典看的，总体来讲似乎比`C++ Primer`还不适合初学者看了
-- `C++`标准库泛型算法速查：[`Algorithms library - cppreference.com`](https://en.cppreference.com/w/cpp/algorithm)
-
+    - `C++`标准库泛型算法速查：[`Algorithms library - cppreference.com`](https://en.cppreference.com/w/cpp/algorithm)
+    - `C++`标准库`<type_traits>`速查：[`Standard library header <type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)
 
 
 
@@ -7772,8 +7772,9 @@ std::map<std::string, int>::mapped_type v5;  // int
                 return current;
             }
             ```
-            - 复制来自范围`[first, last)`的元素到始于`d_first`的 *未初始化内存* 
+            - 用来自范围`[first, last)`的元素，在始于`d_first`的 *未初始化内存* 中 *构造* 新元素 
                 - 若期间抛出异常，则以 *未指定顺序* 销毁已构造的对象
+                - 注意是 *构造* ，不是单纯的迭代器赋值，后者是`std::copy`
             - 返回：指向最后复制的元素后一元素的迭代器
             - 复杂度：`Omega(last - first)`
         - [`std::uninitialized_copy_n`](https://en.cppreference.com/w/cpp/memory/uninitialized_copy_n)
