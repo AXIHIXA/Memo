@@ -12234,7 +12234,9 @@ class tuple;
               
     // Note: std::tie and structured binding may also be used to decompose a tuple
     ```
-    - `t1.swap(t2)`
+    - `std::tuple_size<TupleType>::value`：类模板，通过一个`std::tuple`的类型来初始化。有一个名为`value`的`public constexpr static`数据成员，类型为`size_t`，表示给定`std::tuple`类型中成员的数量
+    - `std::tuple_element<i, TupleType>::type`：类模板，通过一个 *整形常量* 和一个`std::tuple`的类型来初始化。有一个名为`type`的`public typedef`，表示给定`std::tuple`类型中指定成员的类型
+    - `t1.swap(t2)`：
     - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
         - 可以传入`std::ignore`
 - 返回
