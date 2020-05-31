@@ -11806,8 +11806,9 @@ protected:
     }
     ```
 - 编写 *可变参数模板* 
-    - 可变参数函数通常是 *递归* 的
+    - *递归* 包扩展
         - 第一步调用处理包中的 *第一个实参* ，然后用剩下的实参包递归调用自己
+            - 剩下的实参包一般也会 *转发* 
         - 为了 *终止递归* ，需要额外定义一个 *非可变参数* 版本
     ```
     template <typename T>
@@ -11825,13 +11826,47 @@ protected:
     }
     
     variadic_template_recursion_expansion(std::cout, 0, 1, 2, 3);  // 0, 1, 2, 3
+    
+    template <typename T>
+    T sum(T && t)
+    {
+        return t;
+    }
+
+
+    template <typename T, typename ... Args>
+    T sum(T && t, Args && ... rest)
+    {
+        return t + sum(std::forward<T>(rest) ...);
+    }
+    
+    sum(0, 1, 2, 3)                                                // 6
+    ```
+    - *逗号表达式初始化列表* 包扩展
+        - 扩展后`(printArg(args), 0) ...`会被替换成由 *逗号表达式* 组成、由逗号分隔的列表
+        - 和外面的花括号`{}`正好构成 *初始化列表*
+    ```
+    template <typename T>
+    void printArg(T && t)
+    {
+        std::cout << t << ", ";
+    }
+
+    template <typename ... Args>
+    void expand(Args && ... args)
+    {
+        int arr[] = {(printArg(args), 0) ...};
+    }
+
+    expand(0, 1, 2, 3);                                            // 0, 1, 2, 3, 
     ```
     - 
-- 包扩展（Pack Expansion）
+- *包扩展* （Pack Expansion）
     - 对于一个 *参数包* ，我们能对它做得唯一一件事就是 *扩展* 它
         - *扩展* 一个包时，我们还要提供 *模式* （pattern）
-            - *模式* 就是应用于一个元素的操作，例如 *类型转换* 或 *函数调用* 等等
-        - *扩展* 一个包就是把它分解为构成的元素， *对每个元素独立地应用模式* ，获得扩展后的列表
+            - *模式* 具体就是参数包中的一个元素的 *表达式* 也可以说是应用于一个元素的操作
+        - *扩展* 一个包就是把它分解为构成的元素， *对每个元素独立地应用模式* ，在源代码中用扩展后生成的列表替代扩展前的内容
+            - `C++`的模板实质就是 *宏* （macros） 
         - *扩展* 操作通过在 *模式* 右边放一个 *省略号* `...` 来触发 
     - 比如，以下可变参数模板函数`print`中包含 *两个扩展*
         ```
