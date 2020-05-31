@@ -12209,18 +12209,19 @@ protected:
 
 - 定义于`<utility>`中，是`std::pair`的推广
 ```
-template <class... Types>
+template <class ... Types>
 class tuple;
 ```
 - 生成`std::tuple`
     - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行值初始化
-    - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值
+    - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值。此构造函数为`explicit`的
     - `std::tuple<T1, T2，T3...> t = {v1, v2, v3...};`： *列表初始化* ，创建`std::tuple`，成员初始化为给定值
     - `std::make_tuple(v1, v2, v3...);`：创建`std::tuple`，元素类型由`v1`、`v2`、`v3`等自动推断。成员初始化为给定值
 - 访问`std::tuple` 
     - `t1.swap(t2)`
     - `t1 == t2`
-    - `t1 <=> t2`：字典序比较
+    - `t1 != t2`，`t1 relop t2`：字典序比较 `(since C++20)`
+    - `t1 <=> t2`：字典序比较 `(since C++20)`
     - `std::tie(a, b, c...)`：创建一个元素为`a`，`b`，`c`等等的 *左值引用* 的`std::tuple`
         - 可以传入`std::ignore`
     - `std::get<i>(t)`：获取`t`的第`i`个元素或元素类型为`i`的元素
@@ -12356,7 +12357,7 @@ std::tuple<int, int, int> foo_tuple()
 
 - `dynamic_cast`运算符
 - `typeid`运算符
-- `RTTI`
+- *运行时类型识别* `RTTI`（run-time type identification）
 - [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info)
 - [`<type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)支持更多运行时类型识别
 
