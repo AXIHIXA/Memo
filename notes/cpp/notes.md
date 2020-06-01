@@ -12450,6 +12450,24 @@ std::tuple<int, int> foo_tuple()
 
 - `dynamic_cast`运算符
 - `typeid`运算符
+    - `demangle`
+    ```
+    // typename demangle is needed for g++
+    // 1. $ sudo apt install boost-all-dev
+    // 2. CMakeList.txt: find_package(Boost REQUIRED)
+    // 3. enjoy! that it! 
+
+    #include <boost/core/demangle.hpp>
+    #include <bits/stdc++.h>
+
+    auto t0 = std::make_tuple(10, "hehe", 3.14);
+    std::cout << boost::core::demangle(typeid(typeof(t0)).name()) 
+              << std::endl;  // std::tuple<int, char const*, double>
+
+    auto t1 = std::forward_as_tuple(10, "hehe", 3.14);
+    std::cout << boost::core::demangle(typeid(typeof(t1)).name()) 
+              << std::endl;  // std::tuple<int&&, char const (&) [5], double&&>
+    ```
 - *运行时类型识别* `RTTI`（run-time type identification）
 - [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info)
 - [`<type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)支持更多运行时类型识别
