@@ -12453,20 +12453,51 @@ std::cout << "bits: " << bits << std::endl;  // print what we just read
 bool status;
 
 // version using bitwise operators
-unsigned long quizA = 0;       // this value is used as a collection of bits
-quizA |= 1UL << 27;            // indicate student number 27 passed
-status = quizA & (1UL << 27);  // check how student number 27 did
-quizA &= ~(1UL << 27);         // student number 27 failed
+unsigned long quizA = 0;          // this value is used as a collection of bits
+quizA |= 1UL << 27;               // indicate student number 27 passed
+status = quizA & (1UL << 27);     // check how student number 27 did
+quizA &= ~(1UL << 27);            // student number 27 failed
 
 // equivalent actions using the bitset library
-std::bitset<30> quizB;         // allocate one bit per student; all bits initialized to 0
-quizB.set(27);                 // indicate student number 27 passed
-status = quizB[27];            // check how student number 27 did
-quizB.reset(27);               // student number 27 failed
+std::bitset<30> quizB;            // allocate one bit per student; all bits initialized to 0
+quizB.set(27);                    // indicate student number 27 passed
+status = quizB[27];               // check how student number 27 did
+quizB.reset(27);                  // student number 27 failed
 ```
 
 #### [正则表达式](https://en.cppreference.com/w/cpp/regex)
 
+- `C++` *正则表达式* 标准库`<regex>`
+    - `std::regex`：表示有一个正则表达式的类
+    - `std::regex_match`：将一个字符序列与一个正则表达式相匹配
+    - `std::regex_search`：寻找第一个与正则表达式匹配的子序列
+    - `std::regex_replace`：使用给定格式替换一个正则表达式
+    - `std::sregex_iterator`：迭代器适配器，调用`regex_search`来遍历一个`std::string`中所有匹配的子串
+    - `std::smatch`：容器类，保存在`std::string`中搜索的结果
+    - `std::ssub_match`：`std::string`中匹配的子表达式的结果
+- `regex`函数的参数
+    - 这些函数都返回`bool`，指示是否找到了匹配，且都被重载了
+    - 其中一个版本接受一个类型为`smatch`的附加参数，用于保存匹配成功时的相关信息
+    - `std::regex_search`和`std::regex_match`的参数
+        - `(seq, m, r, mft)`
+        - `(seq, r, mft)`
+    - 在字符序列`seq`中查找`regex`对象`r`中的正则表达式
+        - `seq`可以是
+            - `std::string`
+            - 表示范围的一对迭代器
+            - 指向空字符结尾的字符数组的指针
+        - `m`是一个`match`对象，用来保存匹配结果的相关细节。`m`和`seq`必须具有兼容的类型
+        - `mft`是一个 *可选* 的`std::regex_constants::match_flag_type`值
+            - `match_default`
+            - `match_not_bol`
+            - `match_not_eol`
+            - `match_not_bow`
+            - `match_not_eow`
+            - `match_any`
+            - `match_not_null`
+            - `match_continuous`
+            - `match_prev_avail`
+            - ``
 - 使用
 - 匹配
 - [`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
