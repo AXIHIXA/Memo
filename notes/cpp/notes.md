@@ -12213,7 +12213,7 @@ protected:
 template <class ... Types>
 class tuple;
 ```
-- `std::tuple`支持的操作
+- 支持的操作
     - 定义和初始化
         - `std::tuple<T1, T2, T3...> t;`： *默认初始化* ，创建`std::tuple`，成员进行 *值初始化* 
         - `std::tuple<T1, T2, T3...> t(v1, v2, v3...);`： *显式构造* ，创建`std::tuple`，成员初始化为给定值。此构造函数为`explicit`的
@@ -12224,7 +12224,7 @@ class tuple;
         - `t1 != t2`，`t1 relop t2`：字典序比较 `(removed in C++20)`
         - `t1 <=> t2`：字典序比较 `(since C++20)`
     - 赋值和对换
-        - `operator =`：拷贝或移动赋值
+        - `operator=`：拷贝或移动赋值
         - `swap`：对换`std::tuple`的内容
         ```
         std::tuple<int, std::string, float> p1, p2;
@@ -12312,7 +12312,7 @@ class tuple;
             int n = 1;
             auto t = std::tuple_cat(std::make_tuple("Foo", "bar"), std::tie(n));  // ("Foo", "bar", 1)
             ```
-    - 帮助类模板
+    - *辅助模板类* （helper template classes）
         - `std::tuple_size<TupleType>::value`：类模板，通过一个`std::tuple`的类型来初始化。有一个名为`value`的`public constexpr static`数据成员，类型为`size_t`，表示给定`std::tuple`类型中成员的数量
         - `std::tuple_element<i, TupleType>::type`：类模板，通过一个 *整形常量* 和一个`std::tuple`的类型来初始化。有一个名为`type`的`public typedef`，表示给定`std::tuple`类型中指定成员的类型
         - `std::ignore`：未指定类型的对象，任何值均可赋此对象，且无任何效果。用作`std::tie(a, b, c...)`解包`std::tuple`时的 *占位符* 
@@ -12339,6 +12339,17 @@ class tuple;
     auto price = get<2>(item)/cnt;  // returns the last member of item
     get<2>(item) *= 0.8;            // apply 20% discount
     ```
+    - 不知道`std::tuple`的准确类型信息时，使用 *辅助模板类* 来查询成员数量和类型
+        - 使用`std::tuple_size`和`std::tuple_element`需要知道`std::tuple`的类型，可以使用`decltype(t)`
+    ```
+    typedef decltype(item) trans;                           // trans is the type of item
+    
+    // returns the number of members in object's of type trans
+    size_t sz = std::tuple_size<trans>::value;              // returns 3
+    
+    // cnt has the same type as the second member in item
+    std::tuple_element<1, trans>::type cnt = get<1>(item);  // cnt is an int
+    ```
 - 返回
 ```
 std::tuple<int, int> foo_tuple() 
@@ -12348,11 +12359,111 @@ std::tuple<int, int> foo_tuple()
     return std::make_tuple(1, -1);
 }
 ```
+- 答疑：为什么`std::tuple`**不**支持 *下标* ，而非要用`std::get<i>(t)`
+    - 因为`operator[]`是 *函数* ，函数的返回值类型必须在编译期确定
+    - 而`std::tuple`元素数量和类型偏偏都不确定，因此无法定义出函数，只能用带模板的`std::get<i>(t)`
 
 #### [`std::bitset`](https://en.cppreference.com/w/cpp/utility/bitset)
 
+- `std::bitset`
+    - 使得位运算的使用变得更容易
+    - 能够处理超过 *最长整形类型大小* （`unsigned long long`有`64 bit`）的位集合
+    - *下标* ： *最低位* 为`0`，以此开始向高位递增
 - 定义和初始化
-- 操作
+    - 签名
+    ```
+    template <std::size_t N>
+    class bitset;
+    ```
+    - 构造函数
+        - `std::bitset<n> b;`：`b`有`n bit`，每一位都是`0`。此构造函数是`constexpr`
+        - `std::bitset<n> b(u);`：`b`是`unsigned long long`类型值`u`的 *低`n`位* 的拷贝，若`n > 64`则多出的高位置为`0`。此构造函数是`constexpr`
+        - `std::bitset<n> b(s, pos = 0, m = std::string::npos, zero = '0', one = '1');`：`b`是`std::string`类型值`s`的 *从`pos`开始的`m`个字符* 的拷贝。`s` *只能* 包含 *字符* `zero`或`one`，否则抛出`std::invalid_argument`异常。此构造函数是`explicit`的
+        - `std::bitset<n> b(cp, pos = 0, m = std::string::npos, zero = '0', one = '1');`：`b`是 *指向`C`风格字符数组的指针* `cp`所指向的字符串的 *从`pos`开始的`m`个字符* 的拷贝。`cp` *只能* 包含 *字符* `zero`或`one`，否则抛出`std::invalid_argument`异常。此构造函数是`explicit`的
+    - 初始化`std::bitset`
+    ```
+    std::bitset<32> bitvec(1U);       // bits are 0000 0000 0000 0000 0000 0000 0000 0001
+    
+    // bitvec1 is smaller than the initializer; high-order bits from the initializer are discarded
+    std::bitset<13> bitvec1(0xbeef);  // bits are    1 1110 1110 1111
+    
+    // bitvec2 is larger than the initializer; high-order bits in bitvec2 are set to zero
+    std::bitset<20> bitvec2(0xbeef);  // bits are 0000 1011 1110 1110 1111
+    
+    // on machines with 64-bit long long 0ULL is 64 bits of 0, so ~0ULL is 64 ones
+    std::bitset<128> bitvec3(~0ULL);  // bits 0 ... 63 are one; 63 ... 127 are zero
+    
+    std::bitset<32> bitvec4("1100");  // bits are 0000 0000 0000 0000 0000 0000 0000 1100 
+    
+    std::string str("1111111000000011001101");
+    std::bitset<32> bitvec5(str, 5, 4);            // four bits starting at str[5], 1100
+    std::bitset<32> bitvec6(str, str.size() - 4);  // use last four characters
+    ```
+- 支持的操作
+    - `b.any()`：`b`中是否存在 *置位* 的二进制位
+    - `b.all()`：`b`中是否都是 *置位* 的二进制位
+    - `b.none()`：`b`中是否**没有** *置位* 的二进制位
+    - `b.count()`：`b`中 *置位* 的二进制位的个数
+    - `b.size()`：`b`中的位数，`constexpr`函数
+    - `b.test(pos)`：若`b`中`pos`是 *置位* 的，则返回`true`，否则返回`false`。若`pos`非法，则抛出`std::out_of_range`异常 
+    - `b.set(pos, v = true)`：将`b`中`pos`处设置为`bool`值`v`
+    - `b.set()`：将`b`中所有位全部 *置位* 
+    - `b.reset(pos)`：将`b`中`pos`处 *复位*
+    - `b.reset()`：将`b`中所有位全部 *复位* 
+    - `b.flip(pos)`：将`b`中`pos`处 *置反*
+    - `b.flip()`：将`b`中所有位全部 *置反* 
+    - `b[pos]`：返回`b`中第`pos`位的 *引用* 。如果`b`为`const`，则返回`true`或`false`。`pos`非法时 *行为未定义*
+    - `b.to_ulong()`：返回对应的`unsigned long`。如果放不下，抛出`std::overflow_error`异常
+    - `b.to_ullong()`：返回对应的`unsigned long long`。如果放不下，抛出`std::overflow_error`异常
+    - `b.to_string(zero = '0', one = '1')`：返回对应的`std::string`
+    - `std::cout << b`：相当于`std::cout << b.to_string();`
+    - `std::cin >> b`：读入到`b`，当下一个字符不是`'0'`或`'1'`时、或已经读入`b.size()`个位时，读取过程停止
+```
+std::bitset<32> bitvec(1U);       // 32 bits; low-order bit is 1, remaining bits are 0
+bool is_set = bitvec.any();       // true, one bit is set
+bool is_not_set = bitvec.none();  // false, one bit is set
+bool all_set = bitvec.all();      // false, only one bit is set
+size_t onBits = bitvec.count();   // returns 1
+size_t sz = bitvec.size();        // returns 32
+bitvec.flip();                    // reverses the value of all the bits in bitvec
+bitvec.reset();                   // sets all the bits to 0
+bitvec.set();                     // sets all the bits to 1
+
+bitvec.flip(0);                   // reverses the value of the first bit
+bitvec.set(bitvec.size() - 1);    // turns on the last bit
+bitvec.set(0, 0);                 // turns off the first bit
+bitvec.reset(i);                  // turns off the ith bit
+bitvec.test(0);                   // returns false because the first bit is off
+
+bitvec[0] = 0;                    // turn off the bit at position 0
+bitvec[31] = bitvec[0];           // set the last bit to the same value as the first bit
+bitvec[0].flip();                 // flip the value of the bit at position 0
+~bitvec[0];                       // equivalent operation; flips the bit at position 0
+bool b = bitvec[0];               // convert the value of bitvec[0] to bool
+
+unsigned long ulong = bitvec3.to_ulong();
+std::cout << "ulong = " << ulong << std::endl;
+
+std::bitset<16> bits;
+std::cin >> bits;                            // read up to 16 1 or 0 characters from cin
+std::cout << "bits: " << bits << std::endl;  // print what we just read
+```
+- 使用`std::bitset`
+```
+bool status;
+
+// version using bitwise operators
+unsigned long quizA = 0;       // this value is used as a collection of bits
+quizA |= 1UL << 27;            // indicate student number 27 passed
+status = quizA & (1UL << 27);  // check how student number 27 did
+quizA &= ~(1UL << 27);         // student number 27 failed
+
+// equivalent actions using the bitset library
+std::bitset<30> quizB;         // allocate one bit per student; all bits initialized to 0
+quizB.set(27);                 // indicate student number 27 passed
+status = quizB[27];            // check how student number 27 did
+quizB.reset(27);               // student number 27 failed
+```
 
 #### [正则表达式](https://en.cppreference.com/w/cpp/regex)
 
