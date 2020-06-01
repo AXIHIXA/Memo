@@ -12301,7 +12301,17 @@ class tuple;
             auto t = std::forward_as_tuple(20, 'a');                            // error: dangling reference
             m.emplace(std::piecewise_construct, std::forward_as_tuple(10), t);  // error
             ```
-        - [``]()
+        - [`std::tuple_cat`](https://en.cppreference.com/w/cpp/utility/tuple/tuple_cat)
+            - 签名
+            ```
+            template <class ... Tuples>
+            std::tuple<CTypes ...> tuple_cat(Tuples && ... args);
+            ```
+            - 用`args`中所有`std::tuple`中的元素创建一个大`std::tuple`
+            ```
+            int n = 1;
+            auto t = std::tuple_cat(std::make_tuple("Foo", "bar"), std::tie(n));  // ("Foo", "bar", 1)
+            ```
     - 帮助类模板
         - `std::tuple_size<TupleType>::value`：类模板，通过一个`std::tuple`的类型来初始化。有一个名为`value`的`public constexpr static`数据成员，类型为`size_t`，表示给定`std::tuple`类型中成员的数量
         - `std::tuple_element<i, TupleType>::type`：类模板，通过一个 *整形常量* 和一个`std::tuple`的类型来初始化。有一个名为`type`的`public typedef`，表示给定`std::tuple`类型中指定成员的类型
@@ -12459,8 +12469,8 @@ std::tuple<int, int> foo_tuple()
     //    ${Boost_INCLUDE_DIRS} => /usr/include
     //    ${Boost_LIBRARY_DIRS} => /usr/lib
 
-    #include <boost/core/demangle.hpp>
     #include <bits/stdc++.h>
+    #include <boost/core/demangle.hpp>
 
     auto t0 = std::make_tuple(10, "hehe", 3.14);
     std::cout << boost::core::demangle(typeid(typeof(t0)).name()) 
