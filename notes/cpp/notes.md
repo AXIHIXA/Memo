@@ -12455,7 +12455,9 @@ std::tuple<int, int> foo_tuple()
     // typename demangle is needed for g++
     // 1. $ sudo apt install boost-all-dev
     // 2. CMakeList.txt: find_package(Boost REQUIRED)
-    // 3. enjoy! that it! 
+    // 3. that's it! enjoy! because everything are in default place: 
+    //    ${Boost_INCLUDE_DIRS} => /usr/include
+    //    ${Boost_LIBRARY_DIRS} => /usr/lib
 
     #include <boost/core/demangle.hpp>
     #include <bits/stdc++.h>
