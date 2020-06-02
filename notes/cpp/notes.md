@@ -11829,26 +11829,40 @@ protected:
     - 类模板 *偏特化* （partial specialization）
         - *偏特化* （又称 *部分实例化* ）只适用于类模板，**不**适用于函数模板
             - *偏特化* 时 *不必* 提供全部模板实参
-        - 举例：`std::remove_reference`
-        ```
-        // original, most general template
-        template <class T> struct remove_reference       { typedef T type; };
-        
-        // partial specializations that will be used for lvalue and rvalue references
-        template <class T> struct remove_reference<T &>  { typedef T type; };
-        template <class T> struct remove_reference<T &&> { typedef T type; };
-        
-        int i;
-        
-        // decltype(42) is int, uses the original template
-        remove_reference<decltype(42)>::type a;
-        
-        // decltype(i) is int &, uses first (T &) partial specialization
-        remove_reference<decltype(i)>::type b;
-        
-        // decltype(std::move(i)) is int &&, uses second (i.e., T &&) partial specialization
-        remove_reference<decltype(std::move(i))>::type c;
-        ```
+            - 可以只指定一部分而非所有模板参数
+            - 或是参数的一部分而非全部特性
+        - 举例
+            - `std::remove_reference`的实现
+            ```
+            // original, most general template
+            template <class T> struct remove_reference       { typedef T type; };
+            
+            // partial specializations that will be used for lvalue and rvalue references
+            template <class T> struct remove_reference<T &>  { typedef T type; };
+            template <class T> struct remove_reference<T &&> { typedef T type; };
+            
+            int i;
+            
+            // decltype(42) is int, uses the original template
+            remove_reference<decltype(42)>::type a;
+            
+            // decltype(i) is int &, uses first (T &) partial specialization
+            remove_reference<decltype(i)>::type b;
+            
+            // decltype(std::move(i)) is int &&, uses second (i.e., T &&) partial specialization
+            remove_reference<decltype(std::move(i))>::type c;
+            ```
+            - 第一个模板定义了最通用的模板
+                - 它可以用 *任意类型* 实例化
+                - 将模板实参作为`type`成员的类型
+            - 与普通的特例化不一样，偏特化版本需要定义 *模板参数* 
+                - 普通特例化 *模板参数* 是空的，因为全都人工指定好了
+                - 对每个 *未完全确定类型* 的参数，在特例化版本的模板参数列表中都有一项与之对应
+                - 在类名之后，我们要为偏特化的模板参数指定实参，这些实参列于模板名之后的尖括号中
+                - 这些实参与原始模板中的参数 *按位置对应* 
+            - 偏特化版本的模板参数列表是原始模板的参数列表的一个子集（针对指定模板参数）、或一个特例化版本（针对指定参数特性）
+                - 本例中，偏特化版本的模板参数的数目与原始模板相同，但是类型不同
+                    - 两个偏特化版本分别用于 *左值引用* 和 *右值引用* 类型
     - 特例化 *成员* 而不是类
         - 可以只特例化类模板的特定成员函数，而不特例化整个模板
     ```
@@ -12498,30 +12512,38 @@ quizB.reset(27);                  // student number 27 failed
             - `match_not_null`：不匹配任何空序列
             - `match_continuous`：匹配必须从输入的首字符开始
             - `match_prev_avail`：输入序列包含
-            - `format_default`：用`ECMAScript`规则替换字符串
+            - `format_default`：用`ECMAScript`规则替换字符串。 *默认* 
             - `format_sed`：用`POSIX sed`规则替换字符串
             - `format_no_copy`：不输出输入序列中未匹配的部分
             - `format_first_only`：只替换子表达式的第一次出现
 - 使用正则表达式库
-    - 例子：查找拼写错误（违反规则 *除在`c`之后时以外，`i`必须在`e`之前* ）
-    ```
-    // find the characters ei that follow a character other than c
-    std::string pattern("[^c]ei");
-    
-    // we want the whole word in which our pattern appears
-    pattern = "[[:alpha:]]*" + pattern + "[[:alpha:]]*";
-    std::regex r(pattern);                        // construct a regex to find pattern
-    std::smatch results;                          // define an object to hold the results of a search
-    
-    // define a string that has text that does and doesn't match pattern
-    std::string test_str = "receipt freind theif receive";
-    
-    // use r to find a match to pattern in test_str
-    if (std::regex_search(test_str, results, r))  // if there is a match
-    {
-        std::cout << results.str() << std::endl;  // print the matching word
-    }  
-    ```
+    - 一个例子
+        - 查找拼写错误（违反规则 *除在`c`之后时以外，`i`必须在`e`之前* ）
+        ```
+        // find the characters ei that follow a character other than c
+        std::string pattern("[^c]ei");
+        
+        // we want the whole word in which our pattern appears
+        pattern = "[[:alpha:]]*" + pattern + "[[:alpha:]]*";
+        std::regex r(pattern);                        // construct a regex to find pattern
+        std::smatch results;                          // define an object to hold the results of a search
+        
+        // define a string that has text that does and doesn't match pattern
+        std::string test_str = "receipt freind theif receive";
+        
+        // use r to find a match to pattern in test_str
+        if (std::regex_search(test_str, results, r))  // if there is a match
+        {
+            std::cout << results.str() << std::endl;  // print the matching word
+        }  
+        ```
+        - 默认情况下使用的正则表达式语言是`ECMAScript`
+            - `[^c]`匹配 *任意不是`c`的字母*
+            - `[[:alpha:]]`匹配 *任意字母* 
+            - `+`匹配 *一或多个* 
+            - `*`匹配 *零或多个* 
+                - `[[:alpha:]]*`匹配 *零或多个字母* 
+        - 
 - 匹配
 - [`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
 - 子表达式
