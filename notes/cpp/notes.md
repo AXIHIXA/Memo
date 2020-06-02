@@ -11843,7 +11843,7 @@ protected:
         // decltype(42) is int, uses the original template
         remove_reference<decltype(42)>::type a;
         
-        // decltype(i) is int&, uses first (T &) partial specialization
+        // decltype(i) is int &, uses first (T &) partial specialization
         remove_reference<decltype(i)>::type b;
         
         // decltype(std::move(i)) is int &&, uses second (i.e., T &&) partial specialization
