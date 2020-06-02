@@ -467,7 +467,7 @@
     - [*类作用域*](https://en.cppreference.com/w/cpp/language/scope#Class_scope)（Class scope）
     - [*枚举作用域*](https://en.cppreference.com/w/cpp/language/scope#Enumeration_scope)（Enumeration scope）
     - [*模板形参作用域*](https://en.cppreference.com/w/cpp/language/scope#Template_parameter_scope)（Template parameter scope）
-- 作用域始于 *声明点* ，内部作用域（inner scope）的变量会 *覆盖* 外部作用域（outer scope）的 *同名变量* 
+- 作用域始于 *声明点* ，内部作用域（inner scope）的 *名字* 会 *覆盖* 外部作用域（outer scope）的 *同名实体* （变量、函数，等等）
 
 #### [块作用域](https://en.cppreference.com/w/cpp/language/scope#Block_scope)（Block scope）
 
