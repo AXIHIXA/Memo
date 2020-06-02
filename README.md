@@ -26,6 +26,7 @@
 
     - [debug.h](https://github.com/AXIHIXA/Memo/blob/master/code/debug.h)
     - [pipe_demo.c](https://github.com/AXIHIXA/Memo/blob/master/code/pipe_demo.c)
+    - [variadic.cpp](https://github.com/AXIHIXA/Memo/blob/master/code/variadic.cpp)
 
 - `python` Code
 
