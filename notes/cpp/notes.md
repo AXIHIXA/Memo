@@ -3107,15 +3107,25 @@ Entry e = {0, "Anna"};
             - 最后一行是否需要终止符`'\n'` *由具体实现定义* 
         - 为配合 *操作系统* 的文本格式，`I/O`时可能会添加、切换或删除个别字符
             - 特别地，`Windows`上的`C`流在输出时将`'\n'`转换为`'\r\n'`、输入时将`'\r\n'`转换为`'\n'`
+        - 仅当如下条件全部被满足时，从文件流中读入的数据与之前写入文件的数据相同
+            - 数据只含有 *可打印字符* 和 *控制字符* （`'\t'`及`'\n'`）
+            - `'\n'`的直接前驱字符**不是** *空格* ` `（`'\n'`前的空格在读入时可能消失）
+            - *尾字符* 是`'\n'`
+    - *二进制流* （binary stream）
+        - 有序字符序列，直接记录内部数据
+        - 从二进制流读入的数据永远与先前写入的数据相同
+            - 只可能在流末尾加入空字符`'\0'`
+    - `POSIX`**不辨别**文本与二进制流
+        - 无`'\n'`或任何其他字符的特殊映射 
 - 函数
     - 文件访问
-        - `fopen`
-        - `freopen`
-        - `fclose`
-        - `fflush`
-        - `fwide`
-        - `setbuf`
-        - `servbuf`
+        - [`fopen`](https://en.cppreference.com/w/cpp/io/c/fopen)：打开文件 
+        - [`freopen`](https://en.cppreference.com/w/cpp/io/c/freopen)：以不同名称打开既存流 
+        - [`fclose`](https://en.cppreference.com/w/cpp/io/c/fclose)：关闭文件 
+        - [`fflush`](https://en.cppreference.com/w/cpp/io/c/fflush)：将输出流与实际文件同步 
+        - [`fwide`](https://en.cppreference.com/w/cpp/io/c/fwide)：在宽字符`I/O`和窄字符`I/O`间切换文件流 
+        - [`setbuf`](https://en.cppreference.com/w/cpp/io/c/setbuf)：为文件流设置缓冲区 
+        - [`servbuf`](https://en.cppreference.com/w/cpp/io/c/setvbuf)： 	为文件流设置缓冲区与其大小 
     - 直接`I/O`
         - `fread`
         - `fwrite`
@@ -3139,7 +3149,32 @@ Entry e = {0, "Anna"};
             - `putwchar`
             - `ungetwc`
     - 有格式`I/O`
-    - [`printf`](https://en.cppreference.com/w/c/io/fprintf)
+        - 字节/多字节字符
+            - `scanf`，`fscanf`，`sscanf`
+            - `vscanf`，`vfscanf`，`vsscanf`
+            - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)
+            - `vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`
+        - 宽字符
+            - `wscanf`，`wfscanf`，`wsscanf`
+            - `vwscanf`，`vfwscanf`，`vswscanf`
+            - `wprintf`，`fwprintf`，`swprintf`
+            - `vwprintf`，`vfwprintf`，`vswprintf`
+    - 文件寻位
+        -  `ftell`
+        - `fgetpos`
+        - `fseek`
+        - `fsetpos`
+        - `rewind`
+    - 错误处理
+        - `clearerr`
+        - `feof`
+        - `ferror`
+        - `perror`
+    - 文件上的操作
+        - `remove`
+        - `rename`
+        - `tmpfile`
+        - `tmpnam`
 - 类型
     - `FILE`
     - `fpos_t`
@@ -3175,7 +3210,7 @@ Entry e = {0, "Anna"};
     - 例如：`std::wcin`、`std::wcout`和`std::wcerr`分别是`std::cin`、`std::cout`和`std::cerr`的宽字符版对象
     - 宽字符版本的类型和函数与其对应的普通`char`版本的定义于同一个文件中
 - `I/O`类型间的关系
-    - 
+    - 1
 
 #### 文件`I/O`
 
