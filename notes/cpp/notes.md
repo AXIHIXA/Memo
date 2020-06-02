@@ -12477,28 +12477,51 @@ quizB.reset(27);                  // student number 27 failed
     - `std::ssub_match`：`std::string`中匹配的子表达式的结果
 - `regex`函数的参数
     - 这些函数都返回`bool`，指示是否找到了匹配，且都被重载了
-    - 其中一个版本接受一个类型为`smatch`的附加参数，用于保存匹配成功时的相关信息
+    - 其中一个版本接受一个类型为`smatch`的 *附加参数* ，用于保存匹配成功时的相关信息
     - `std::regex_search`和`std::regex_match`的参数
-        - `(seq, m, r, mft)`
-        - `(seq, r, mft)`
-    - 在字符序列`seq`中查找`regex`对象`r`中的正则表达式
+        - 形参列表格式
+            - `(seq, m, r, mft)`
+            - `(seq, r, mft)`
+        - 在字符序列`seq`中查找`regex`对象`r`中的正则表达式，具体参数列表为
         - `seq`可以是
             - `std::string`
             - 表示范围的一对迭代器
             - 指向空字符结尾的字符数组的指针
         - `m`是一个`match`对象，用来保存匹配结果的相关细节。`m`和`seq`必须具有兼容的类型
         - `mft`是一个 *可选* 的`std::regex_constants::match_flag_type`值
-            - `match_default`
-            - `match_not_bol`
-            - `match_not_eol`
-            - `match_not_bow`
-            - `match_not_eow`
-            - `match_any`
-            - `match_not_null`
-            - `match_continuous`
-            - `match_prev_avail`
-            - ``
-- 使用
+            - `match_default`：等价于`format_default`
+            - `match_not_bol`：不将首字符作为行首处理
+            - `match_not_eol`：不将尾字符作为行尾处理
+            - `match_not_bow`：不将首字符作为词首处理
+            - `match_not_eow`：不将首字符作为词尾处理
+            - `match_any`：如果存在多个匹配，则可返回任意一个匹配
+            - `match_not_null`：不匹配任何空序列
+            - `match_continuous`：匹配必须从输入的首字符开始
+            - `match_prev_avail`：输入序列包含
+            - `format_default`：用`ECMAScript`规则替换字符串
+            - `format_sed`：用`POSIX sed`规则替换字符串
+            - `format_no_copy`：不输出输入序列中未匹配的部分
+            - `format_first_only`：只替换子表达式的第一次出现
+- 使用正则表达式库
+    - 例子：查找拼写错误（违反规则 *除在`c`之后时以外，`i`必须在`e`之前* ）
+    ```
+    // find the characters ei that follow a character other than c
+    std::string pattern("[^c]ei");
+    
+    // we want the whole word in which our pattern appears
+    pattern = "[[:alpha:]]*" + pattern + "[[:alpha:]]*";
+    std::regex r(pattern);                        // construct a regex to find pattern
+    std::smatch results;                          // define an object to hold the results of a search
+    
+    // define a string that has text that does and doesn't match pattern
+    std::string test_str = "receipt freind theif receive";
+    
+    // use r to find a match to pattern in test_str
+    if (std::regex_search(test_str, results, r))  // if there is a match
+    {
+        std::cout << results.str() << std::endl;  // print the matching word
+    }  
+    ```
 - 匹配
 - [`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
 - 子表达式
