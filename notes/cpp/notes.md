@@ -3199,18 +3199,18 @@ Entry e = {0, "Anna"};
 #### `I/O`类
 
 - `I/O`库头文件和类
-    - `<iostream>`
-        - `std::istream`，`std::wistream`：从流读取数据
-        - `std::ostream`，`std::wostream`：向流写入数据
-        - `std::iostream`，`std::wiostream`：读写流
-    - `<fstream>`
-        - `std::ifstream`，`std::wifstream`：从文件读取数据
-        - `std::ofstream`，`std::wofstream`：向文件写入数据
-        - `std::fstream`，`std::wfstream`：读写文件
-    - `<sstream>`
-        - `std::istringstream`、`std::wistringstream`：从`std::string`读取数据
-        - `std::ostringstream`、`std::wostringstream`：从`std::string`写入数据
-        - `std::stringstream`、`std::wstringstream`：读写`std::string`
+    - [`<iostream>`](https://en.cppreference.com/w/cpp/header/iostream)
+        - [`std::istream`，`std::wistream`](https://en.cppreference.com/w/cpp/io/basic_istream)：从流读取数据
+        - [`std::ostream`，`std::wostream`](https://zh.cppreference.com/w/cpp/io/basic_ostream)：向流写入数据
+        - [`std::iostream`，`std::wiostream`](https://en.cppreference.com/w/cpp/io/basic_iostream)：读写流
+    - [`<fstream>`](https://en.cppreference.com/w/cpp/header/fstream)
+        - [`std::ifstream`，`std::wifstream`](https://en.cppreference.com/w/cpp/io/basic_ifstream)：从文件读取数据
+        - [`std::ofstream`，`std::wofstream`](https://en.cppreference.com/w/cpp/io/basic_ofstream)：向文件写入数据
+        - [`std::fstream`，`std::wfstream`](https://en.cppreference.com/w/cpp/io/basic_fstream)：读写文件
+    - [`<sstream>`](https://en.cppreference.com/w/cpp/header/sstream)
+        - [`std::istringstream`、`std::wistringstream`](https://en.cppreference.com/w/cpp/io/basic_istringstream)：从`std::string`读取数据
+        - [`std::ostringstream`、`std::wostringstream`](https://en.cppreference.com/w/cpp/io/basic_ostringstream)：从`std::string`写入数据
+        - [`std::stringstream`、`std::wstringstream`](https://en.cppreference.com/w/cpp/io/basic_stringstream)：读写`std::string`
 - 为了支持使用 *宽字符* 的语言，标准库定义了一组类型和对象来操纵`wchar_t`类型的数据
     - 宽字符版本的类型和函数的名字以一个`w`开始
     - 例如：`std::wcin`、`std::wcout`和`std::wcerr`分别是`std::cin`、`std::cout`和`std::cerr`的宽字符版对象
