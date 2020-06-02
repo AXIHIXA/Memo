@@ -36,6 +36,7 @@
     - 现代`C++`**不应**使用旧式的强制类型转换，应当明确调用对应的`xx_cast<T>(expr)`
     - 除非必须，**不要**使用自增自减运算符的后置版本（会造成性能浪费）
     - **不在**内部作用域声明函数（内部作用域生命的东西会覆盖外部作用域的同名东西，可能会影响函数重载的使用）
+    - 在对诸如`std::string`、`std::vector`等`C++`容器进行 *索引* 操作时，正确的类型是该容器的成员`typedef size_type`，而该类型通常被定义为与 `std::size_t`相同
     - 不需要写访问时，应当使用`const_iterator`
     - 改变容器 *大小* 之后，则 *所有* 指向此容器的迭代器、引用和指针都 *可能* 失效，所以一律更新一波才是 *坠吼的* 。此外，永远**不要缓存**尾后迭代器（这玩意常年变来变去），现用现制，用后即弃
     - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`
@@ -3125,66 +3126,71 @@ Entry e = {0, "Anna"};
         - [`fflush`](https://en.cppreference.com/w/cpp/io/c/fflush)：将输出流与实际文件同步 
         - [`fwide`](https://en.cppreference.com/w/cpp/io/c/fwide)：在宽字符`I/O`和窄字符`I/O`间切换文件流 
         - [`setbuf`](https://en.cppreference.com/w/cpp/io/c/setbuf)：为文件流设置缓冲区 
-        - [`servbuf`](https://en.cppreference.com/w/cpp/io/c/setvbuf)： 	为文件流设置缓冲区与其大小 
+        - [`servbuf`](https://en.cppreference.com/w/cpp/io/c/setvbuf)：为文件流设置缓冲区与其大小
     - 直接`I/O`
-        - `fread`
-        - `fwrite`
+        - [`fread`](https://en.cppreference.com/w/cpp/io/c/fread)：从文件读取 
+        - [`fwrite`](https://en.cppreference.com/w/cpp/io/c/fwrite)：写入文件 
     - 无格式`I/O`
         - 字节/多字节字符
-            - `fgetc`，`getc`
-            - `fgets`
-            - `fputc`，`putc`
-            - `fputs`
-            - `getchar`
-            - [`gets`](https://zh.cppreference.com/w/cpp/io/c/gets) `(deprecated in C++11)(removed in C++14)`
-            - `putchar`
-            - `puts`
-            - `ungetc`
+            - [`fgetc`，`getc`](https://en.cppreference.com/w/cpp/io/c/fgetc)：从文件流获取字符 
+            - [`fgets`](https://en.cppreference.com/w/cpp/io/c/fgets)：从文件流获取字符串 
+            - [`fputc`，`putc`](https://en.cppreference.com/w/cpp/io/c/fputc)：写字符到文件流 
+            - [`fputs`](https://en.cppreference.com/w/cpp/io/c/fputs)：写字符串到文件流 
+            - [`getchar`](https://en.cppreference.com/w/cpp/io/c/getchar)：从`stdin`读取字符 
+            - [`gets`](https://en.cppreference.com/w/cpp/io/c/gets)：从`stdin`读取字符串 `(deprecated in C++11)(removed in C++14)`
+                - 此函数不检测避免缓冲区溢出。应使用`std::fgets`替代
+            - [`putchar`](https://en.cppreference.com/w/cpp/io/c/putchar)：写字符到`stdout`
+            - [`puts`](https://en.cppreference.com/w/cpp/io/c/puts)：写字符串到`stdout`
+            - [`ungetc`](https://en.cppreference.com/w/cpp/io/c/ungetc)：把字符放回文件流 
         - 宽字符
-            - `fgetwc`，`getwc`
-            - `fgetws`
-            - `fputwc`，`putwc`
-            - `fputws`
-            - `getwchar`
-            - `putwchar`
-            - `ungetwc`
+            - [`fgetwc`，`getwc`](https://en.cppreference.com/w/cpp/io/c/fgetwc)：从文件流获取宽字符 
+            - [`fgetws`](https://en.cppreference.com/w/cpp/io/c/fgetws)：从文件流获取宽字符串 
+            - [`fputwc`，`putwc`](https://en.cppreference.com/w/cpp/io/c/fputwc)：写宽字符到文件流 
+            - [`fputws`](https://en.cppreference.com/w/cpp/io/c/fputws)：写宽字符串到文件流 
+            - [`getwchar`](https://en.cppreference.com/w/cpp/io/c/getwchar)：从`stdin`读取宽字符 
+            - [`putwchar`](https://en.cppreference.com/w/cpp/io/c/putwchar)：写宽字符到`stdout`
+            - [`ungetwc`](https://en.cppreference.com/w/cpp/io/c/ungetwc)：把宽字符放回文件流 
     - 有格式`I/O`
         - 字节/多字节字符
-            - `scanf`，`fscanf`，`sscanf`
-            - `vscanf`，`vfscanf`，`vsscanf`
-            - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)
-            - `vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`
+            - [`scanf`，`fscanf`，`sscanf`](https://en.cppreference.com/w/cpp/io/c/fscanf)：从`stdin`、文件流或缓冲区读取有格式输入
+            - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* 
+从`stdin`、文件流或缓冲区读取有格式输入 
+            - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 stdout、文件流或缓冲区 
+            - [`vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`](https://en.cppreference.com/w/cpp/io/c/vfprintf)：使用 *可变实参列表* 
+打印有格式输出到`stdout`、文件流或缓冲区 
         - 宽字符
-            - `wscanf`，`wfscanf`，`wsscanf`
-            - `vwscanf`，`vfwscanf`，`vswscanf`
-            - `wprintf`，`fwprintf`，`swprintf`
-            - `vwprintf`，`vfwprintf`，`vswprintf`
+            - [`wscanf`，`wfscanf`，`wsscanf`](https://en.cppreference.com/w/cpp/io/c/fwscanf)：从`stdin`、文件流或缓冲区读取有格式宽字符输入 
+            - [`vwscanf`，`vfwscanf`，`vswscanf`](https://en.cppreference.com/w/cpp/io/c/vfwscanf)：使用 *可变实参列表* 
+从`stdin`、文件流或缓冲区读取有格式宽字符输入 
+            - [`wprintf`，`fwprintf`，`swprintf`](https://en.cppreference.com/w/cpp/io/c/fwprintf)：打印有格式宽字符输出到`stdout`、文件流或缓冲区 
+            - [`vwprintf`，`vfwprintf`，`vswprintf`](https://en.cppreference.com/w/cpp/io/c/vfwprintf)：使用 *可变实参列表* 打印
+有格式宽字符输出到`stdout`、文件流或缓冲区 
     - 文件寻位
-        -  `ftell`
-        - `fgetpos`
-        - `fseek`
-        - `fsetpos`
-        - `rewind`
+        - [`ftell`](https://en.cppreference.com/w/cpp/io/c/ftell)：返回当前文件位置指示器 
+        - [`fgetpos`](https://en.cppreference.com/w/cpp/io/c/fgetpos)：获取文件位置指示器 
+        - [`fseek`](https://en.cppreference.com/w/cpp/io/c/fseek)：移动文件位置指示器到文件中的指定位置 
+        - [`fsetpos`](https://en.cppreference.com/w/cpp/io/c/fsetpos)：移动文件位置指示器到文件中的指定位置 
+        - [`rewind`](https://en.cppreference.com/w/cpp/io/c/rewind)：移动文件位置指示器到文件起始 
     - 错误处理
-        - `clearerr`
-        - `feof`
-        - `ferror`
-        - `perror`
+        - [`clearerr`](https://en.cppreference.com/w/cpp/io/c/clearerr)：清除错误 
+        - [`feof`](https://en.cppreference.com/w/cpp/io/c/feof)：检查文件尾 
+        - [`ferror`](https://en.cppreference.com/w/cpp/io/c/ferror)：检查文件错误 
+        - [`perror`](https://en.cppreference.com/w/cpp/io/c/perror)：显示对应当前错误的字符串于`stderr`
     - 文件上的操作
-        - `remove`
-        - `rename`
-        - `tmpfile`
-        - `tmpnam`
+        - [`remove`](https://en.cppreference.com/w/cpp/io/c/remove)：删除文件 
+        - [`rename`](https://en.cppreference.com/w/cpp/io/c/rename)：重命名文件 
+        - [`tmpfile`](https://en.cppreference.com/w/cpp/io/c/tmpfile)：创建并打开一个临时、自动移除的文件
+        - [`tmpnam`](https://en.cppreference.com/w/cpp/io/c/tmpnam)：返回一个唯一独有的文件名 
 - 类型
-    - `FILE`
-    - `fpos_t`
-    - `size_t`：`typedef unsigned long size_t;`
+    - `FILE`：对象类型，足以保有控制`C I/O`流所需的全部信息
+    - `fpos_t`：完整非数组对象类型，足以唯一指定文件中的位置，包含其多字节解析状态
+    - [`size_t`](https://en.cppreference.com/w/cpp/types/size_t)：`g++`实现为`typedef unsigned long size_t;`
 - 宏常量
-    - `stdin`，`stdout`，`stderr`
-    - `EOF`
-    - `FOPEN_MAX`
-    - `FILENAME_MAX`
-    - `BUFSIZ`
+    - `stdin`，`stdout`，`stderr`：`FILE *`类型表达式，分别与 *标准输入流* 、 *标准输出流* 和 *标准错误流* 关联
+    - `EOF`：拥有`int`类型和负值的整数常量表达式 
+    - `FOPEN_MAX`：能同时打开的文件数 
+    - `FILENAME_MAX`：要保有最长受支持文件名的字符数组所需的长度 
+    - `BUFSIZ`：`std::setbuf`所用的缓冲区大小 
     - `_IOFBF`，`_IOLBF`，`_IONBF`：给`std::setbuf`的参数，分别指示 *全缓冲* 、 *行缓冲* 和 *无缓冲* `I/O`
     - `SEEK_SET`，`SEEK_CUR`，`SEEK_END`：给`std::fseek`的参数，分别指示从 *文件起始* 、 *当前文件位置* 和 *文件尾* 寻位
     - `TMP_MAX`：`std::tmpnam`所能生成的唯一文件名的最大数量 
@@ -11775,7 +11781,7 @@ protected:
     - 传给`t2`右值`42`，推断出`T2 = int`，`T2 &&`就是`int &&`，原样转发 *右值* `int &&`
     - `f`能够改变`j`
 
-#### 重载模板（template overloading）
+#### 模板重载（template overloading）
 
 - 函数模板可以被另一模板或非模板函数重载
 - 名字相同的函数必须具有不一样的形参列表
@@ -11789,7 +11795,7 @@ protected:
         2. 如果没有非模板函数 ，而 *全是函数模板* ，而一个模板比其他模板 *更特例化* （specialized），则选择之
         3. 否则，报错 *二义性调用*
     - 一句话：形参匹配，特例化（非模板才是最特例化的），完犊子
-- *重载模板* 案例分析
+- *模板重载* 案例分析
     - `例1`
         - 考虑如下调用
         ```
