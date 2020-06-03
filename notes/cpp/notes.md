@@ -3241,7 +3241,8 @@ out2 = print(out2);             // error: cannot copy stream objects
             - 每个输出操作之后，我们可以使用操作符`unitbuf`设置流的内部状态，来清空缓冲区
                 - 默认情况下，对`std::cerr`的设置时`unitbuf`的，即：通过`std::cerr`写入到`stderr`的内容都是立即刷新的
         - 一个输出流可能 *被关联到* 另一个流。此时，读写 *被关联* 的流时， *关联到* 的流的缓冲区会被刷新
-            - 例如，默认情况下，`std::cin`和`std::cerr`都被关联到`std::cout`。此时，读`std::cin`或写`std::cerr`都会导致`std::cout`的缓冲区被刷新
+            - 例如，默认情况下，`std::cin`和`std::cerr`都被关联到`std::cout`
+            - 此时，读`std::cin`或写`std::cerr`都会导致`std::cout`的缓冲区被刷新
     - 警告：程序崩溃时，输出缓冲区**不会**刷新
     - 刷新输出缓冲区
         - `std::endl`：输出一个 *换行符* `'\n'`，并刷新缓冲区
