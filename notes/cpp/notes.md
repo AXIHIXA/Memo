@@ -77,7 +77,7 @@
     - 类的类型成员（`typedef`以及`using`声明）应该放在类定义**刚开始**的地方的`public`区域
     - 最好令构造函数初始化列表的顺序与成员声明的顺序**保持一致**；**避免**用某些成员初始化其他成员，用构造函数的参数作为初始值
     - 应把 *静态数据成员* 的定义与其他 *非内联函数* 的定义放在类外、和类的定义**同一个头文件**中
-    - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）
+    - 既使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）
     - *拷贝赋值运算符* 的要求
         - 赋值运算符应该返回一个指向其左侧运算对象的 *引用* 
         - 必须正确处理 *自赋值* （ *拷贝并交换赋值运算符* 则自动能处理自赋值）
@@ -87,11 +87,12 @@
     - 还有一句： *拷贝并交换赋值运算符* 好哇，天生异常安全、不怕自赋值，还同时能充当拷贝和移动两种运算符
     - 一般情况下**不应该**重载、 *逻辑与* 、 *逻辑或* 、 *逗号* 和 *取地址* 运算符
     - `operator->()` 一般**不执行任何操作**，而是调用`operator*()`并返回其结果的 *地址* （即返回 *类的指针* ）
+    - `operator bool()`一般定义成`explicit`的
     - 基类除了只需要虚析构函数时以外，亦**必须遵守** *三五法则* 
     - 派生类覆盖基类虚函数时必须保证函数签名与基类版本完全一致、**必须**显式加上`override`或`final`（此时不必再加`virtual`）
     - 如果虚函数使用 *默认实参* ，**必须**和基类中的定义一致
     - 除了继承来的 *虚函数* ，派生类**不应该**重用那些定义在其基类中的名字
-    - 基类的拷贝控制成员中， *析构函数* **必须**是虚函数（即使这个函数不执行任何操作也是如此）；除 *析构函数之外* ，均**不应**定义为虚函数
+    - 基类的拷贝控制成员中， *析构函数* **必须**是虚函数（既使这个函数不执行任何操作也是如此）；除 *析构函数之外* ，均**不应**定义为虚函数
         - `delete`非虚析构函数基类的指针是 *未定义行为*
         - 解引用基类指针并赋值是**不好**的
     - 派生类 *拷贝控制成员* 应首先 *首先调用基类对应成员* 处理基类部分，再处理自己的部分
@@ -116,7 +117,7 @@
     - 使用`struct`或`class`定义类的**唯一区别**就是默认访问权限
         - `struct`成员默认 *公有* ，继承时默认 *公有继承*
         - `class`成员默认 *私有* ，继承时默认 *私有继承*
-    - 每个类定义了**唯一**的类型；两个类即使内容完全一样，它们也是不同的类型，**不能**自动相互转化
+    - 每个类定义了**唯一**的类型；两个类既使内容完全一样，它们也是不同的类型，**不能**自动相互转化
     - 如果一个构造函数为每一个参数都提供了默认实参，则它实际上也定义了默认构造函数
     - 能通过一个实参调用的构造函数定义了一条从构造函数的参数类型向类类型隐式转换的规则
     - *非`constexpr`静态成员* 只能在**类外**初始化
@@ -402,7 +403,7 @@
             - 模板的 `(since C++14)`
             - `inline`的 `(since C++17)`
         3. *匿名联合体* 的数据成员
-        4. 声明于 *无名命名空间* 或 *无名命名空间内的命名空间* 中名字，即使是显式声明为`extern`者，均拥有 *内部链接* 
+        4. 声明于 *无名命名空间* 或 *无名命名空间内的命名空间* 中名字，既使是显式声明为`extern`者，均拥有 *内部链接* 
     - `const`常量不论是声明还是定义都添加`extern`修饰符
         - 默认状态下，`const`对象为文件作用域（即：仅在文件内有效）
         - 如果想在多个文件之间共享`const`对象，则必须在定义的对象之前添加`extern`关键字
@@ -1184,7 +1185,7 @@ assert(pxe == py);                      // 测试两个指针是否表示相同�
                                         // 这条 assert 可能被触发，也可能不被触发
                                         // 至少 g++ version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04) 上实测没有触发
  
-*pxe = 1;                               // 即使上面的 assert 未被触发，亦为未定义行为
+*pxe = 1;                               // 既使上面的 assert 未被触发，亦为未定义行为
 ```
 
 #### 对象指针
@@ -1372,7 +1373,7 @@ std::cout << d.*dp << ' ' << d.*bp << std::endl;   // 打印 1 1
 ```
 - *派生类的数据成员指针* 转回无二义 *非虚基类的数据成员指针*
     - *必须* `static_cast` 或 *显式强转* 
-    - 即使 *基类* *并无该成员* （但当用该指针访问时，最终派生类中有）亦可
+    - 既使 *基类* *并无该成员* （但当用该指针访问时，最终派生类中有）亦可
         - 此时用基类对象访问此指针是 *未定义行为*
 ```
 struct Base {};
@@ -1456,7 +1457,7 @@ Derived d;
 ```
 - *派生类的成员函数指针* 转回无二义 *基类的成员函数指针*
     - *必须* `static_cast` 或 *显式强转* 
-    - 即使 *基类* *并无该成员* （但当用该指针访问时，最终派生类中有）亦可
+    - 既使 *基类* *并无该成员* （但当用该指针访问时，最终派生类中有）亦可
         - 此时用基类对象访问此指针是 *未定义行为*
 ```
 struct Base {};
@@ -1936,7 +1937,7 @@ sizeof expr   // 返回表达式 结果类型 大小
 - *左值* `lvalue`
     - 包括（看看就得了，当字典用的）
         1. 变量、函数、`模板形参对象 (since C++20)`或数据成员之名，不论其类型，例如`std::cin`或`std::endl`
-            - 即使变量的类型是 *右值引用* ，由其名字构成的表达式仍是左值表达式
+            - 既使变量的类型是 *右值引用* ，由其名字构成的表达式仍是左值表达式
         2. 返回类型为左值引用的函数调用或重载运算符表达式，例如`std::getline(std::cin, str)`、`std::cout << 1`、`str1 = str2`或`++it`
         3. `a = b`，`a += b`，`a %= b`，以及所有其他内建的赋值及复合赋值表达式
         4. `++a`和`--a`，内建的前置自增与前置自减表达式
@@ -2785,7 +2786,7 @@ item.combine(std::cin);                                  // 错误，对应构�
 
 - 可用于更改`const`对象的成员
     - `const`对象只能调用`const`成员函数
-    - 可变数据成员永远不会是`const`，即使它是`const`对象的成员
+    - 可变数据成员永远不会是`const`，既使它是`const`对象的成员
     - 任何成员函数，包括`const`成员函数，都可以改变可变数据成员
 ```
 class Screen 
@@ -2985,7 +2986,7 @@ Entry e = {0, "Anna"};
         ```
         double Account::interestRate = initRate();
         ```
-        - 即使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）
+        - 既使一个`constexpr`静态成员在类内部被初始化了，也应该在类外定义一下该成员（此时**不能**再指定初始值）
         ```
         // Account.h 
         
@@ -3072,7 +3073,7 @@ Entry e = {0, "Anna"};
 
 
 
-### 🌱 [Chap 8] 输入/输出
+### 🌱 [Chap 8] `I/O`库
 
 #### `I/O`类
 
@@ -3103,35 +3104,90 @@ std::ofstream print(ofstream);  // error: can't initialize the ofstream paramete
 out2 = print(out2);             // error: cannot copy stream objects
 ```
 - *条件状态* （conditional states）
-    - 错误是任何语言任何`I/O`操作的特色，不能不品尝
-    - `C++ I/O`库定义了如下标志和函数，用于访问和操纵流对象的 *条件状态* 
-        - `stream::iostate`：`stream`是一种`I/O`类型，`iostate`是一种机器相关的类型，提供了表达条件状态的完整功能
-        - `stream::badbit`：用来指出流已崩溃
-        - `stream::failbit`：用来指出一个`I/O`操作失败了
-        - `stream::eofbit`：用来指出流到达了文件结束
-        - `stream::goodbit`：用来指出流未处于错误状态，此值保证为`0`
+    - `C++ I/O`库定义了`4`个与机器无关的`stream::iostate`类型的`constexpr`值，代表流对象的 *条件状态* 
+        - 可以通过位运算获取对应的状态位的值
+        ```
+        // <bits/ios_base.h>
+        // class ios_base
+        
+        public: 
+            enum _Ios_Iostate
+            { 
+                _S_goodbit         = 0,
+                _S_badbit          = 1L << 0,
+                _S_eofbit          = 1L << 1,
+                _S_failbit         = 1L << 2,
+                _S_ios_iostate_end = 1L << 16,
+                _S_ios_iostate_max = __INT_MAX__,
+                _S_ios_iostate_min = ~__INT_MAX__
+            };
+            
+            typedef _Ios_Iostate iostate;
+            static const iostate badbit  = _S_badbit;
+            static const iostate eofbit  = _S_eofbit;
+            static const iostate failbit = _S_failbit;
+            static const iostate goodbit = _S_goodbit;
+        
+        protected: 
+            iostate _M_exception;
+            iostate _M_streambuf_state;
+        ```
+        - 其中
+            - `stream::iostate`：`stream`是一种`I/O`类型，`iostate`是一种机器相关的类型，提供了表达条件状态的完整功能
+            - `stream::badbit`： *系统级错误* ，如不可恢复的读写错误
+                - 通常情况下，一旦`badbit`被置位，就意味着流已经彻底崩溃、无法再使用了
+            - `stream::failbit`： *可恢复的错误* ，如期望读取数值缺读到了字符，或已到达文件末尾
+                - 通常可以修正，流还可以继续使用
+            - `stream::eofbit`： *已到达文件末尾* ，此时`eofbit`和`failbit`都会被置位
+            - `stream::goodbit`： *流有效* ，`badbit`、`failbit`和`eofbit`都**未**被置位
+    - 查询条件状态
+        - `s.rdstate()`：返回流`s`当前的条件状态，返回值类型为`stream::iostate`
+        - `s.good()`：若流`s`处于 *有效状态* ，即所有错误位均**未**置位时，则返回`true`
         - `s.eof()`：若流`s`的`eofbit`置位，则返回`true`
-        - `s.fail()`：若流`s`的`failbit`或`badbit`置位，则返回`true`
+        - `s.fail()`：若流`s`处于 *无效状态* ，即`badbit`或`failbit`置位时，则返回`true`
         - `s.bad()`：若流`s`的`badbit`置位，则返回`true`
-        - `s.good()`：若流`s`处于有效状态，则返回`true`
+        - 把流作为 *条件* 使用时，如果`badbit`、`failbit`都**未**被置位，则返回`true`；否则，返回`false`
+            - **例外**：表达式被用作 *条件* 时， *类型转换运算符* 既使是`explicit`的，仍会被 *隐式应用* 
+        ```
+        // <bits/basic_ios.h>
+        // class basic_ios : public ios_base
+        
+        public:
+            explicit operator bool() const { return !this->fail(); }
+            bool     operator!()     const { return this->fail(); }
+            
+            iostate rdstate() const { return _M_streambuf_state; }
+            bool    good()    const { return this->rdstate() == 0; }
+            bool    eof()     const { return (this->rdstate() & eofbit) != 0; }
+            bool    fail()    const { return (this->rdstate() & (badbit | failbit)) != 0; }
+            bool    bad()     const { return (this->rdstate() & badbit) != 0; }
+        ```
+    - 管理条件状态
         - `s.clear()`：将流`s`中所有条件状态位 *复位* ，将流的状态设置为有效，返回`void`
         - `s.clear(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *复位* 。`flags`的类型为`stream::iostate`
         - `s.setstate(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *置位* 。`flags`的类型为`stream::iostate`
-        - `s.rdstate()`：返回流`s`当前的条件状态，返回值类型为`stream::iostate`
-    - 如下是一个`I/O`错误的例子
-        - 考虑如下代码
+        
+    - `I/O`错误案例分析
+        - 错误是任何语言任何`I/O`操作的特色，不能不品尝。考虑如下代码
         ```
         int ival;
         std::cin >> ival;
         ```
         - 在标准输入中键入`Boo`，读操作就会失败
-            - `std::cin::operator>>`期待一个`int`，却得到了`char`（`'B'`）
+            - `std::cin::operator>>`期待一个`int`，却得到了`char 'B'`
             - 此时`std::cin`就会进入 *错误状态* 
             - 类似地，键入 *文件结束标识* ，也会导致`std::cin`进入错误状态
         - 一旦一个流发生错误，其上后续的所有`I/O`操作都会失败
             - 只有当一个流处于 *无错状态* 时，才可以从它读取或写入数据
-            - 
-    
+            - 由于流可能处于错误状态，因此代码应该在使用流之前检查它是否处于良好状态
+            - 确认一个流对象状态的最好办法就是将它作为一个 *条件* 来使用
+                - 如果`I/O`操作成功，则流保持有效状态，则条件为`true`
+            ```
+            while (std::cin >> word)
+            {
+                // ok: read operation successful...
+            }
+            ```
 
 
 
@@ -7657,7 +7713,7 @@ std::map<std::string, int>::mapped_type v5;  // int
     int foo = *p;                         // undefined; the memory to which p points was freed
     ```
 - 智能指针和异常
-    - 即使程序出现异常、过早结束，智能指针也能确保内存被释放
+    - 既使程序出现异常、过早结束，智能指针也能确保内存被释放
         - 与之相对的，直接管理的内存不会被释放
     - *删除器* （deleter）
         - 用于自定义析构智能指针管理的对象的方法
@@ -7752,7 +7808,7 @@ std::map<std::string, int>::mapped_type v5;  // int
 - `std::weak_ptr`
     - `std::weak_ptr`指向`std::shared_ptr`管理的对象，但**不影响**`std::shared_ptr`的 *引用计数*
         - `std::weak_ptr` 不控制被管理对象的生存期
-        - 一旦该对象最后一个`std::shared_ptr`被销毁，即使还有`std::weak_ptr`指向该对象，该对象还是会被销毁
+        - 一旦该对象最后一个`std::shared_ptr`被销毁，既使还有`std::weak_ptr`指向该对象，该对象还是会被销毁
         - *弱* 共享对象
     - 创建`std::weak_ptr`时，要用`std::shared_ptr`初始化
     ```
@@ -8614,7 +8670,7 @@ private:
         f(std::vector<int>(10));   // ok: directly construct a temporary vector from an int
         ```
         - 编译器 *可以* 但 *不是必须* 绕过拷贝构造函数，直接创建对象
-            - 但即使绕过了，拷贝构造函数仍必须 *存在* 且 *可访问* （如，不能是`= delete;`或`private`）
+            - 但既使绕过了，拷贝构造函数仍必须 *存在* 且 *可访问* （如，不能是`= delete;`或`private`）
         ```
         std::string nullBook = "9-999-99999-9";  // copy initialization
         
@@ -8912,7 +8968,7 @@ private:
         2. *非强制消除* (Non-mandatory elision) `(since C++11)`
             - 编译器被 *允许* 省略拷贝和移动构造函数，哪怕它们还有其它效果（side effects，比如输出语句等）
             - 对象会被 *一步到位地直接构造* 于它们本来会被 *拷贝* 或 *移动* 的存储位置中
-            - 这是优化：即使没有调用拷贝构造函数和移动构造函数，它们也 *必须* 需要可见可访问
+            - 这是优化：既使没有调用拷贝构造函数和移动构造函数，它们也 *必须* 需要可见可访问
             - 可以连锁多次复制消除，以消除多次复制
             - 具体发生于如下情景
                 1. *具名返回值优化* （Named Return Value Optimization，`NRVO`）
@@ -9244,7 +9300,7 @@ Entry & operator=(Entry rhs)
     - 通过`&&`来获得
     - 可以自由地将一个右值的资源 *移动* ，或者说， *窃取* 到别处去
         - 反正没人要，不拿白不拿
-        - 变量都是 *左值* ， *左值* 不能直接绑定到 *右值引用* 上，即使这个变量自己也是 *右值引用* 类型也不行
+        - 变量都是 *左值* ， *左值* 不能直接绑定到 *右值引用* 上，既使这个变量自己也是 *右值引用* 类型也不行
             - 搞不懂这句话的人都是把 *（值的）类型* （type）和 *值类别* （value category）这俩货给搞混了
             - 比如`T && a;`， *（值的类型）是右值引用* 说的是`T &&`， *（值类别）是左值* 说的是`a`，压根不是一回事儿
     ```
@@ -9960,7 +10016,7 @@ struct greater
         - **不能**转换成 *数组* 或 *函数* ，但可以转换成这俩的 *指针* 或 *引用* 
     - *显式类型转换运算符* 
         - 告诉编译器**不能**用此运算符进行 *隐式类型转换*   
-        - 一个例外：表达式被用作 *条件* 时，仍会 *隐式应用* *显式类型转换运算符* 
+        - 一个**例外**：表达式被用作 *条件* 时，类型转换运算符既使是`explicit`的，仍会被 *隐式应用* **例外**：表达式被用作 *条件* 时，类型转换运算符既使是`explicit`的，仍会被 *隐式应用* 
             - `if`，`while`，`do while`语句的条件部分
             - `for`语句头的条件表达式
             - 逻辑非运算符`!`、逻辑与运算符`&&`、逻辑或运算符`&&`的运算对象
@@ -10050,7 +10106,7 @@ struct greater
         std::string bookNo;          // ISBN number of this item
     };
     ```
-    - 基类通常应该定义一个 *虚析构函数* ，即使这个函数不执行任何操作也是如此
+    - 基类通常应该定义一个 *虚析构函数* ，既使这个函数不执行任何操作也是如此
         - 为了`delete base_ptr`时能正确调用到派生类的析构函数
     - 成员函数和继承
         - 派生类可以 *覆盖* （override）基类函数
@@ -10491,7 +10547,7 @@ protected:
     - *名字查找* 先于 *类型匹配* 
         - *函数重载* 一节中已经强调过，不同的作用域中**无法**重载函数
         - 同理，派生类中无法重载基类的函数，如果函数同名，将在其作用域内 *隐藏* **而不是**重载该基类成员 
-            - 即使形参列表不一样，也仍旧是隐藏而不是重载
+            - 既使形参列表不一样，也仍旧是隐藏而不是重载
         - 仍然可以通过 *作用域运算符* 显式指定访问哪个版本
         ```
         struct Base 
@@ -12775,7 +12831,7 @@ quizB.reset(27);                  // student number 27 failed
 [[nodiscard]]                     (since C++17)
 [[nodiscard(string_literal)]]     (since C++20)
 
-[[deprecated]]	                  (since C++14)
+[[deprecated]]                    (since C++14)
 [[deprecated(string-literal)]]    (since C++14)
 ```
 
