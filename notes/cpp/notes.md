@@ -36,6 +36,7 @@
     - 现代`C++`**不应**使用旧式的强制类型转换，应当明确调用对应的`xx_cast<T>(expr)`
     - 除非必须，**不要**使用自增自减运算符的后置版本（会造成性能浪费）
     - **不在**内部作用域声明函数（内部作用域生命的东西会覆盖外部作用域的同名东西，可能会影响函数重载的使用）
+    - *交互式* 系统通常应该 *关联输入流和输出流* ，这意味着所有输出，包括用户提示信息，都会在读操作之前被打印出来
     - 在对诸如`std::string`、`std::vector`等`C++`容器进行 *索引* 操作时，正确的类型是该容器的成员`typedef size_type`，而该类型通常被定义为与 `std::size_t`相同
     - 不需要写访问时，应当使用`const_iterator`
     - 改变容器 *大小* 之后，则 *所有* 指向此容器的迭代器、引用和指针都 *可能* 失效，所以一律更新一波才是 *坠吼的* 。此外，永远**不要缓存**尾后迭代器（这玩意常年变来变去），现用现制，用后即弃
@@ -3228,8 +3229,61 @@ out2 = print(out2);             // error: cannot copy stream objects
     - 每个输出流都管理一个 *缓冲区* （buffer），用来保存程序读写的数据
         - 例如，执行`std::cout << "Hello World!\n";`时，文本串可能立即被打印出来，也可能被操作系统保存于 *缓冲区* 中，随后再打印
         - 便于操作系统可以将程序的多个输出组合成单一的系统级`I/O`操作，可以提升性能
-    - 导致 *缓冲刷新*
-
+    - 导致 *缓冲刷新* （buffer flushing，即数据真正被写到输出设备或文件）的原因有很多
+        - 程序正常结束
+            - 作为主函数的返回操作的一部分，缓冲区被刷新
+        - 缓冲区满
+            - 需要刷新缓冲区，之后新数据才能继续被写入缓冲区
+        - 显式刷新
+            - 使用`std::endl`
+            - 每个输出操作之后，我们可以使用操作符`unitbuf`设置流的内部状态，来清空缓冲区
+                - 默认情况下，对`std::cerr`的设置时`unitbuf`的，即：通过`std::cerr`写入到`stderr`的内容都是立即刷新的
+        - 一个输出流可能 *被关联到* 另一个流。此时，读写 *被关联* 的流时， *关联到* 的流的缓冲区会被刷新
+            - 例如，默认情况下，`std::cin`和`std::cerr`都被关联到`std::cout`。此时，读`std::cin`或写`std::cerr`都会导致`std::cout`的缓冲区被刷新
+    - 警告：程序崩溃时，输出缓冲区**不会**刷新
+    - 刷新输出缓冲区
+        - `std::endl`：输出一个 *换行符* `'\n'`，并刷新缓冲区
+        - `std::flush`：**不**输出任何额外字符，刷新缓冲区
+        - `std::ends`：输出一个 *空字符* ，并刷新缓冲区
+    ```
+    std::cout << "hi!" << std::endl;   // writes hi and a newline, then flushes the buffer
+    std::cout << "hi!" << std::flush;  // writes hi, then flushes the buffer; adds no data
+    std::cout << "hi!" << std::ends;   // writes hi and a null, then flushes the buffer
+    ```
+    - `unitbuf`操纵符（`unitbuf` Manipulator）
+        - 如果想每次输出操作之后都立即刷新缓冲区，可以使用`unitbuf`操纵符
+        - 它告诉流对象：接下来每次写操作之后都进行一次`flush`操作
+        - 而`nounitbuf`则重置流对象，使其恢复使用正常的系统管理的缓冲区刷新机制
+    ```
+    std::cout << unitbuf;              // all writes will be flushed immediately
+    // any output is flushed immediately, no buffering
+    std::cout << nounitbuf;            // returns to normal buffering
+    ```
+    - *关联* 输入和输出流（Tying Input and Output Streams Together）
+        - 当一个 *输入或输出流* *被关联到* 一个 *输出流* 时，任何试图 *读写被关联的流* 操作都会 *先刷新关联的输出流* 
+            - 既可以将一个`std::istream`对象关联到另一个`std::ostream`上，也可以将一个`std::ostream`对象关联到另一个`std::ostream`上
+        - 标准库将`std::cin` *关联到* `std::cout`上
+            - 即`std::cin >> ival;`将导致`std::cout`
+        - *交互式* 系统通常应该 *关联输入流和输出流* ，这意味着所有输出，包括用户提示信息，都会在读操作之前被打印出来
+        - `s.tie`有 *两个* 重载的版本
+            1. 不带参数，返回指向输出流的指针
+                - 如果本对象当前被关联到一个输出流，则返回的就是指向这个流的指针
+                - 如果未关联到流，则返回 *空指针* 
+            2. 接受一个指向`std::ostream`的指针，将自己关联到此`ostream`上
+                - 即`x.tie(&o)`将流`x`关联到输出流`o`上
+        ```
+        // illustration only: 
+        // the library ties std::cin and std::cout for us
+        std::cin.tie(&std::cout);                       
+        
+        // old_tie points to the stream (if any) currently tied to std::cin
+        std::ostream * old_tie = std::cin.tie(nullptr);  // std::cin is no longer tied
+        
+        // ties cin and cerr; 
+        // not a good idea because cin should be tied to cout
+        std::cin.tie(&std::cerr);                        // reading std::cin flushes cerr, not std::cout
+        std::cin.tie(old_tie);                           // reestablish normal tie between std::cin and std::cout
+        ```
 
 #### 文件`I/O`
 
