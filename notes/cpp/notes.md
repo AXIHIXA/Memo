@@ -3165,7 +3165,7 @@ out2 = print(out2);             // error: cannot copy stream objects
         ```
     - 管理条件状态
         - `s.clear()`：将流`s`中所有条件状态位 *复位* ，将流的状态设置为有效，返回`void`
-        - `s.clear(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *置`1`* 。`flags`的类型为`stream::iostate`
+        - `s.clear(flags)`：将流`s`中对应条件状态位设置为`flags`。`flags`的类型为`stream::iostate`
         ```
         void clear(std::ios_base::iostate flags = std::ios_base::goodbit);
         {
@@ -3188,7 +3188,7 @@ out2 = print(out2);             // error: cannot copy stream objects
             }
         }
         ```
-        - `s.setstate(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *置`1`* 。`flags`的类型为`stream::iostate`
+        - `s.setstate(flags)`：根据给定的`flags`中的`1`，将流`s`中对应条件状态位 *置位* 。`flags`的类型为`stream::iostate`
         ```
         void setstate(iostate flags) { this->clear(this->rdstate() | flags); }
         ```
@@ -3225,7 +3225,10 @@ out2 = print(out2);             // error: cannot copy stream objects
             }
             ```
 - 管理 *输出缓冲* （Managing the Output Buffer）
-    - 每个输出流都管理一个 *缓冲区* （buffer）
+    - 每个输出流都管理一个 *缓冲区* （buffer），用来保存程序读写的数据
+        - 例如，执行`std::cout << "Hello World!\n";`时，文本串可能立即被打印出来，也可能被操作系统保存于 *缓冲区* 中，随后再打印
+        - 便于操作系统可以将程序的多个输出组合成单一的系统级`I/O`操作，可以提升性能
+    - 导致 *缓冲刷新*
 
 
 #### 文件`I/O`
