@@ -3166,7 +3166,6 @@ out2 = print(out2);             // error: cannot copy stream objects
         - `s.clear()`：将流`s`中所有条件状态位 *复位* ，将流的状态设置为有效，返回`void`
         - `s.clear(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *复位* 。`flags`的类型为`stream::iostate`
         - `s.setstate(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *置位* 。`flags`的类型为`stream::iostate`
-        
     - `I/O`错误案例分析
         - 错误是任何语言任何`I/O`操作的特色，不能不品尝。考虑如下代码
         ```
