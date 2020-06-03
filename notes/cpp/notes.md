@@ -3227,7 +3227,9 @@ out2 = print(out2);             // error: cannot copy stream objects
             ```
 - 管理 *输出缓冲* （Managing the Output Buffer）
     - 每个输出流都管理一个 *缓冲区* （buffer），用来保存程序读写的数据
-        - 例如，执行`std::cout << "Hello World!\n";`时，文本串可能立即被打印出来，也可能被操作系统保存于 *缓冲区* 中，随后再打印
+        - 例如，执行`std::cout << "Hello World!\n";`时，文本串
+            - 可能 *立即被打印* 出来
+            - 也可能被操作系统保存于 *缓冲区* 中， *随后再打印* 
         - 便于操作系统可以将程序的多个输出组合成单一的系统级`I/O`操作，可以提升性能
     - 导致 *缓冲刷新* （buffer flushing，即数据真正被写到输出设备或文件）的原因有很多
         - 程序正常结束
@@ -3261,7 +3263,8 @@ out2 = print(out2);             // error: cannot copy stream objects
     ```
     - *关联* 输入和输出流（Tying Input and Output Streams Together）
         - 当一个 *输入或输出流* *被关联到* 一个 *输出流* 时，任何试图 *读写被关联的流* 操作都会 *先刷新关联的输出流* 
-            - 既可以将一个`std::istream`对象关联到另一个`std::ostream`上，也可以将一个`std::ostream`对象关联到另一个`std::ostream`上
+            - 既可以将一个`std::istream`对象关联到另一个`std::ostream`上
+            - 也可以将一个`std::ostream`对象关联到另一个`std::ostream`上
         - 标准库将`std::cin` *关联到* `std::cout`上
             - 即`std::cin >> ival;`将导致`std::cout`
         - *交互式* 系统通常应该 *关联输入流和输出流* ，这意味着所有输出，包括用户提示信息，都会在读操作之前被打印出来
