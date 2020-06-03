@@ -3074,8 +3074,80 @@ Entry e = {0, "Anna"};
 
 ### 🌱 [Chap 8] 输入/输出
 
+#### `I/O`类
+
+- `I/O`库头文件和类
+    - [`<iostream>`](https://en.cppreference.com/w/cpp/header/iostream)
+        - [`std::istream`，`std::wistream`](https://en.cppreference.com/w/cpp/io/basic_istream)：从流读取数据
+        - [`std::ostream`，`std::wostream`](https://zh.cppreference.com/w/cpp/io/basic_ostream)：向流写入数据
+        - [`std::iostream`，`std::wiostream`](https://en.cppreference.com/w/cpp/io/basic_iostream)：读写流
+    - [`<fstream>`](https://en.cppreference.com/w/cpp/header/fstream)
+        - [`std::ifstream`，`std::wifstream`](https://en.cppreference.com/w/cpp/io/basic_ifstream)：从文件读取数据
+        - [`std::ofstream`，`std::wofstream`](https://en.cppreference.com/w/cpp/io/basic_ofstream)：向文件写入数据
+        - [`std::fstream`，`std::wfstream`](https://en.cppreference.com/w/cpp/io/basic_fstream)：读写文件
+    - [`<sstream>`](https://en.cppreference.com/w/cpp/header/sstream)
+        - [`std::istringstream`、`std::wistringstream`](https://en.cppreference.com/w/cpp/io/basic_istringstream)：从`std::string`读取数据
+        - [`std::ostringstream`、`std::wostringstream`](https://en.cppreference.com/w/cpp/io/basic_ostringstream)：从`std::string`写入数据
+        - [`std::stringstream`、`std::wstringstream`](https://en.cppreference.com/w/cpp/io/basic_stringstream)：读写`std::string`
+- 为了支持使用 *宽字符* 的语言，标准库定义了一组类型和对象来操纵`wchar_t`类型的数据
+    - 宽字符版本的类型和函数的名字以一个`w`开始
+    - 例如：`std::wcin`、`std::wcout`和`std::wcerr`分别是`std::cin`、`std::cout`和`std::cerr`的宽字符版对象
+    - 宽字符版本的类型和函数与其对应的普通`char`版本的定义于同一个文件中
+- `I/O`对象**无** *拷贝* 或 *赋值*
+    - **不能** *拷贝* 或 *赋值* `I/O`对象
+    - `I/O`对象**不能**被设为函数 *形参类型* 或 *返回值类型* 
+```
+std::ofstream out1, out2;
+out1 = out2;                    // error: cannot assign stream objects
+std::ofstream print(ofstream);  // error: can't initialize the ofstream parameter
+out2 = print(out2);             // error: cannot copy stream objects
+```
+- *条件状态* （conditional states）
+    - 错误是任何语言任何`I/O`操作的特色，不能不品尝
+    - `C++ I/O`库定义了如下标志和函数，用于访问和操纵流对象的 *条件状态* 
+        - `stream::iostate`：`stream`是一种`I/O`类型，`iostate`是一种机器相关的类型，提供了表达条件状态的完整功能
+        - `stream::badbit`：用来指出流已崩溃
+        - `stream::failbit`：用来指出一个`I/O`操作失败了
+        - `stream::eofbit`：用来指出流到达了文件结束
+        - `stream::goodbit`：用来指出流未处于错误状态，此值保证为`0`
+        - `s.eof()`：若流`s`的`eofbit`置位，则返回`true`
+        - `s.fail()`：若流`s`的`failbit`或`badbit`置位，则返回`true`
+        - `s.bad()`：若流`s`的`badbit`置位，则返回`true`
+        - `s.good()`：若流`s`处于有效状态，则返回`true`
+        - `s.clear()`：将流`s`中所有条件状态位 *复位* ，将流的状态设置为有效，返回`void`
+        - `s.clear(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *复位* 。`flags`的类型为`stream::iostate`
+        - `s.setstate(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *置位* 。`flags`的类型为`stream::iostate`
+        - `s.rdstate()`：返回流`s`当前的条件状态，返回值类型为`stream::iostate`
+    - 如下是一个`I/O`错误的例子
+        - 考虑如下代码
+        ```
+        int ival;
+        std::cin >> ival;
+        ```
+        - 在标准输入中键入`Boo`，读操作就会失败
+            - `std::cin::operator>>`期待一个`int`，却得到了`char`（`'B'`）
+            - 此时`std::cin`就会进入 *错误状态* 
+            - 类似地，键入 *文件结束标识* ，也会导致`std::cin`进入错误状态
+        - 一旦一个流发生错误，其上后续的所有`I/O`操作都会失败
+            - 只有当一个流处于 *无错状态* 时，才可以从它读取或写入数据
+            - 
+    
+
+
+
+#### 文件`I/O`
+
+
+
+
+#### `string`流
+
+
+
+
 #### [`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c) （C-style file input/output）
 
+- 摘抄内容，当字典看看得了
 - `C++`标准库的`C I/O`子集实现`C`风格流输入/输出操作
     - `<cstdio>`头文件提供通用文件支持并提供有窄和多字节字符输入/输出能力的函数
     - `<cwchar>`头文件提供有宽字符输入/输出能力的函数
@@ -3195,36 +3267,6 @@ Entry e = {0, "Anna"};
     - `SEEK_SET`，`SEEK_CUR`，`SEEK_END`：给`std::fseek`的参数，分别指示从 *文件起始* 、 *当前文件位置* 和 *文件尾* 寻位
     - `TMP_MAX`：`std::tmpnam`所能生成的唯一文件名的最大数量 
     - `L_tmpnam`：保有`std::tmpnam`结果的字符数组所需的大小 
-
-#### `I/O`类
-
-- `I/O`库头文件和类
-    - [`<iostream>`](https://en.cppreference.com/w/cpp/header/iostream)
-        - [`std::istream`，`std::wistream`](https://en.cppreference.com/w/cpp/io/basic_istream)：从流读取数据
-        - [`std::ostream`，`std::wostream`](https://zh.cppreference.com/w/cpp/io/basic_ostream)：向流写入数据
-        - [`std::iostream`，`std::wiostream`](https://en.cppreference.com/w/cpp/io/basic_iostream)：读写流
-    - [`<fstream>`](https://en.cppreference.com/w/cpp/header/fstream)
-        - [`std::ifstream`，`std::wifstream`](https://en.cppreference.com/w/cpp/io/basic_ifstream)：从文件读取数据
-        - [`std::ofstream`，`std::wofstream`](https://en.cppreference.com/w/cpp/io/basic_ofstream)：向文件写入数据
-        - [`std::fstream`，`std::wfstream`](https://en.cppreference.com/w/cpp/io/basic_fstream)：读写文件
-    - [`<sstream>`](https://en.cppreference.com/w/cpp/header/sstream)
-        - [`std::istringstream`、`std::wistringstream`](https://en.cppreference.com/w/cpp/io/basic_istringstream)：从`std::string`读取数据
-        - [`std::ostringstream`、`std::wostringstream`](https://en.cppreference.com/w/cpp/io/basic_ostringstream)：从`std::string`写入数据
-        - [`std::stringstream`、`std::wstringstream`](https://en.cppreference.com/w/cpp/io/basic_stringstream)：读写`std::string`
-- 为了支持使用 *宽字符* 的语言，标准库定义了一组类型和对象来操纵`wchar_t`类型的数据
-    - 宽字符版本的类型和函数的名字以一个`w`开始
-    - 例如：`std::wcin`、`std::wcout`和`std::wcerr`分别是`std::cin`、`std::cout`和`std::cerr`的宽字符版对象
-    - 宽字符版本的类型和函数与其对应的普通`char`版本的定义于同一个文件中
-- `I/O`类型间的关系
-    - 1
-
-#### 文件`I/O`
-
-
-#### `string`流
-
-
-
 
 
 
