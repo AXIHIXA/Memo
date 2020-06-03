@@ -136,6 +136,7 @@
     - 重载的运算符如果是 *成员函数* ，则第一个（左侧）运算对象绑定到隐式的`this`指针上，只需指定右侧运算符（如有）。成员运算符函数的（显式）参数数量比运算符的运算对象总数 *少一个* 
     - 重载的运算符要么是 *类成员* ，要么含有 *至少一个类类型参数*
     - 重载的 *箭头* 运算符必须返回 *类的指针* 或者 *自定义了箭头运算符的某个类的对象* 
+    - 表达式被用作 *条件* 时， *类型转换运算符* 既使是`explicit`的，仍会被 *隐式应用* 
     - 对于 *用户代码* 中某个节点来说，当且仅当 *基类公有成员可访问* 时， *派生类向基类的类型转换可用* 
     - 友元**不能**传递、**不能**继承
     - 默认情况下，`C++`语言假定通过作用域运算符访问的名字**不是**类型。希望使用模板类型参数的 *类型成员* 时，必须 *显示指明`typename`*
@@ -3105,7 +3106,7 @@ out2 = print(out2);             // error: cannot copy stream objects
 ```
 - *条件状态* （conditional states）
     - `C++ I/O`库定义了`4`个与机器无关的`stream::iostate`类型的`constexpr`值，代表流对象的 *条件状态* 
-        - 可以通过位运算获取对应的状态位的值
+        - `g++`实现
         ```
         // <bits/ios_base.h>
         // class ios_base
@@ -3147,7 +3148,7 @@ out2 = print(out2);             // error: cannot copy stream objects
         - `s.fail()`：若流`s`处于 *无效状态* ，即`badbit`或`failbit`置位时，则返回`true`
         - `s.bad()`：若流`s`的`badbit`置位，则返回`true`
         - 把流作为 *条件* 使用时，如果`badbit`、`failbit`都**未**被置位，则返回`true`；否则，返回`false`
-            - **例外**：表达式被用作 *条件* 时， *类型转换运算符* 既使是`explicit`的，仍会被 *隐式应用* 
+            - 表达式被用作 *条件* 时， *类型转换运算符* 既使是`explicit`的，仍会被 *隐式应用* => 14.9.1
         ```
         // <bits/basic_ios.h>
         // class basic_ios : public ios_base
@@ -3164,8 +3165,44 @@ out2 = print(out2);             // error: cannot copy stream objects
         ```
     - 管理条件状态
         - `s.clear()`：将流`s`中所有条件状态位 *复位* ，将流的状态设置为有效，返回`void`
-        - `s.clear(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *复位* 。`flags`的类型为`stream::iostate`
-        - `s.setstate(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *置位* 。`flags`的类型为`stream::iostate`
+        - `s.clear(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *置`1`* 。`flags`的类型为`stream::iostate`
+        ```
+        void clear(std::ios_base::iostate flags = std::ios_base::goodbit);
+        {
+            // By default, assigns std::ios_base::goodbit 
+            // which has the effect of clearing all error state flags. 
+        
+            if (this->rdbuf())
+            {
+                _M_streambuf_state = flags;
+            } 
+            else
+            {
+                // there is no associated stream buffer
+                _M_streambuf_state = flags | badbit;
+            }
+                
+            if (this->exceptions() & this->rdstate())
+            {
+                __throw_ios_failure("basic_ios::clear");
+            }
+        }
+        ```
+        - `s.setstate(flags)`：根据给定的`flags`标志位，将流`s`中对应条件状态位 *置`1`* 。`flags`的类型为`stream::iostate`
+        ```
+        void setstate(iostate flags) { this->clear(this->rdstate() | flags); }
+        ```
+        - 使用示例
+        ```
+        // remember the current state of cin
+        std::istream::iostate old_state = std::cin.rdstate();  // remember the current state of std::cin
+        std::cin.clear();                                      // make std::cin valid
+        process_input(std::cin);                               // use std::cin
+        std::cin.setstate(old_state);                          // now reset std::cin to its old state
+
+        // turns off failbit and badbit but all other bits unchanged
+        std::cin.clear(std::cin.rdstate() & ~std::cin.failbit & ~std::cin.badbit);
+        ```
     - `I/O`错误案例分析
         - 错误是任何语言任何`I/O`操作的特色，不能不品尝。考虑如下代码
         ```
@@ -3187,7 +3224,8 @@ out2 = print(out2);             // error: cannot copy stream objects
                 // ok: read operation successful...
             }
             ```
-
+- 管理 *输出缓冲* （Managing the Output Buffer）
+    - 每个输出流都管理一个 *缓冲区* （buffer）
 
 
 #### 文件`I/O`
