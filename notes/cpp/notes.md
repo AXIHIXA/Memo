@@ -3402,12 +3402,109 @@ out2 = print(out2);             // error: cannot copy stream objects
                 - *同时指定* `app`模式，这样只会将数据追加写到文件末尾；或
                 - *同时指定* 指定`in`模式，即打开文件同时进行 *读写* 操作 => 17.5.3
         - `ate`和`binary`模式可用于 *任何* 类型的文件流对象，且可以与其他任何文件模式组合使用
+    - 以`out`模式打开文件会丢弃已有数据
+        - 默认情况下，当我们打开一个`std::ostream`时，文件的内容会被 *丢弃* 
+        - 阻止一个`std::ostream`清空给定文件内容的方法是同时指定`app`模式
+    ```
+    // file1 is truncated in each of these cases
+    std::ofstream fout1("file1");                                   // out and trunc are implicit
+    std::ofstream fout2("file1", ofstream::out);                    // trunc is implicit
+    std::ofstream fout3("file1", ofstream::out | ofstream::trunc);
+    
+    // to preserve the file's contents, we must explicitly specify app mode
+    std::ofstream fapp1("file2", ofstream::app);                    // out is implicit
+    std::ofstream fapp2("file2", ofstream::out | ofstream::app);
+    ```
+    - 每次调用`open`时都会确定文件模式
+        - 可能是显式设置的，也可能是隐式的默认值
+        - 对于一个给定流，每当打开文件时，都可以改变其文件模式
+        ```
+        std::ofstream fout;                         // no file mode is set
+        fout.open("scratchpad");                    // mode implicitly out and trunc
+        fout.close();                               // close out so we can use it for a different file
+        fout.open("precious", std::ofstream::app);  // mode is out and app
+        fout.close();
+        ```
 
+#### 内存`I/O`
 
-#### `string`流
+- 头文件`<sstream>`中定义了三个类型类支持 *内存`I/O`* 
+    - 这些类型可以读写`std::string`，就像是`std::string`的一个输入输出流一样
+    - `std::istringstream`：从`std::string`读取数据
+    - `std::ostringstream`：向`std::string`写入数据
+    - `std::stringstream`：读写`std::string`
+- `std::stringstream`特有的操作
+    - `std::stringstream ss;`：`ss`是一个 *未绑定* 的`std::stringstream`对象
+    - `std::stringstream ss(s);`：`ss`是一个`std::stringstream`对象，保存`std::string s`的一个拷贝。此构造函数是`explicit`的
+    - `ss.str()`：返回`ss`所保存的`std::string`的拷贝
+    - `ss.str(s)`：将`std::string s`拷贝到`ss`中。返回`void`
+- 使用`std::istringstream`
+```
+Input: 
+morgan 2015552368 8625550123
+drew 9735550130
+lee 6095550132 2015550175 8005550000
+...
 
+struct PersonInfo 
+{
+    std::string              name;
+    std::vector<std::string> phones;
+};
 
+std::string line, word;               // will hold a line and word from input, respectively
+std::vector<PersonInfo> people;       // will hold all the records from the input
 
+// read the input a line at a time until cin hits end-of-file (or another error)
+while (std::getline(std::cin, line)) 
+{
+    PersonInfo info;                  // create an object to hold this record's data
+    std::istringstream sin(line);     // bind record to the line we just read
+    sin >> info.name;                 // read the name
+    
+    while (sin >> word)               // read the phone numbers
+    {
+        info.phones.push_back(word);  // and store them
+    }
+    
+    people.emplace_back(info);        // append this record to people
+}
+```
+- 使用`std::ostream`
+```
+for (const PersonInfo & entry : people) 
+{ 
+    // for each entry in people
+    std::ostringstream formatted, badNums;  // objects created on each loop
+
+    for (const std::string & nums : entry.phones) 
+    { 
+        // for each number
+        
+        if (!valid(nums)) 
+        {
+            // string in badNums
+            badNums << " " << nums;  
+        } 
+        else
+        {
+            // ''writes'' to formatted's string
+            formatted << " " << format(nums);
+        }
+    }
+
+    if (badNums.str().empty())  // there were no bad numbers
+    {
+        std::cout << entry.name << " "              // print the name
+                  << formatted.str() << std::endl;  // and reformatted numbers
+    } 
+    else  // otherwise, print the name and bad numbers
+    {
+        std::cerr << "input error: " << entry.name
+                  << " invalid number(s) " << badNums.str() << std::endl;
+    }
+}
+```
 
 #### [`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c) （C-style file input/output）
 
