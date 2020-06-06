@@ -3337,18 +3337,71 @@ out2 = print(out2);             // error: cannot copy stream objects
     - `std::fstream`对象会被自动析构，被销毁时，`close`也会被自动调用
 - *文件模式* （file mode）
     - 每个流都有一个关联的 *文件模式* ，用来指出如何使用文件
-        - `in`：以读方式打开
-        - `out`：以写方式打开
-        - `app`：每次写操作前均定位到文件末尾
-        - `ate`：打开文件后立即定位到文件末尾
-        - `trunc`：截断文件
-        - `binary`：以二进制方式进行`I/O`
+        - 实现
+        ```
+        // <bits/ios_base.h>
+        // class ios_base
+        
+        public:
+            enum _Ios_Openmode 
+            { 
+                _S_app              = 1L << 0,
+                _S_ate              = 1L << 1,
+                _S_bin              = 1L << 2,
+                _S_in               = 1L << 3,
+                _S_out              = 1L << 4,
+                _S_trunc            = 1L << 5,
+                _S_ios_openmode_end = 1L << 16,
+                _S_ios_openmode_max = __INT_MAX__,
+                _S_ios_openmode_min = ~__INT_MAX__
+            };
+        
+        // <fstream>
+        // class fstream
+        
+        public:
+            typedef _Ios_Openmode openmode;
+
+            /// Seek to end before each write.
+            static const openmode app    = _S_app;
+
+            /// Open and seek to end immediately after opening.
+            static const openmode ate    = _S_ate;
+
+            /// Perform input and output in binary mode (as opposed to text mode).
+            /// This is probably not what you think it is; see
+            /// https://gcc.gnu.org/onlinedocs/libstdc++/manual/fstreams.html#std.io.filestreams.binary
+            static const openmode binary = _S_bin;
+
+            /// Open for input.  Default for @c ifstream and fstream.
+            static const openmode in     = _S_in;
+
+            /// Open for output.  Default for @c ofstream and fstream.
+            static const openmode out    = _S_out;
+
+            /// Open for input.  Default for @c ofstream.
+            static const openmode trunc  = _S_trunc;
+        ```
+        - 其中
+            1. `std::fstream::app`： *每次写操作* 前均定位到文件末尾
+            2. `std::fstream::ate`： *打开文件* 后立即定位到文件末尾
+            3. `std::fstream::binary`：以二进制方式进行`I/O`
+            4. `std::fstream::in`：以读方式打开。`std::ifstream`和`std::fstream`的默认选项
+            5. `std::fstream::out`：以写方式打开。`std::ofstream`和`std::fstream`的默认选项
+            6. `std::fstream::trunc`：截断文件。`std::fstream`的默认选项
     - 不论用哪种方式打开文件，我们都可以指定文件模式
         - `fs.open(file, mode);`：显式打开文件
         - `std::fstream fs(file, mode);`：隐式打开文件
     - 指定文件模式有如下限制
-
-
+        - 只有`std::ofstream`和`std::fstream`对象可以被设定为`out`模式
+        - 只有`std::ifstream`和`std::fstream`对象可以被设定为`in`模式
+        - 只有当`out`被设定时才可设定`trunc`模式
+        - 只要`trunc`没有被设定，就可以设定`app`模式。在`app`模式下，即使没有显示指定`out`，文件也总是以 *写方式* 被打开
+        - 默认情况下，即使我们没有指定`trunc`，以`out`方式打开的文件也会 *被截断* 
+            - 为了保留以`out`模式打开的文件的内容，我们 *必须* 
+                - *同时指定* `app`模式，这样只会将数据追加写到文件末尾；或
+                - *同时指定* 指定`in`模式，即打开文件同时进行 *读写* 操作 => 17.5.3
+        - `ate`和`binary`模式可用于 *任何* 类型的文件流对象，且可以与其他任何文件模式组合使用
 
 
 #### `string`流
