@@ -25,7 +25,7 @@ set(ALL_LIBS
         ${GLUT_LIBRARY}
         ${OPENGL_LIBRARY}
         ${OpenCV_LIBS}
-        
+        )
 
 add_definitions(-DST_COLOR -DST_VERBOSE)
 

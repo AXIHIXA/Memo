@@ -3244,7 +3244,7 @@ out2 = print(out2);             // error: cannot copy stream objects
         - 一个输出流可能 *被关联到* 另一个流。此时，读写 *被关联* 的流时， *关联到* 的流的缓冲区会被刷新
             - 例如，默认情况下，`std::cin`和`std::cerr`都被关联到`std::cout`
             - 此时，读`std::cin`或写`std::cerr`都会导致`std::cout`的缓冲区被刷新
-    - 警告：程序崩溃时，输出缓冲区**不会**刷新
+    - *警告* ：程序崩溃时，输出缓冲区**不会**刷新
     - 刷新输出缓冲区
         - `std::endl`：输出一个 *换行符* `'\n'`，并刷新缓冲区
         - `std::flush`：**不**输出任何额外字符，刷新缓冲区
@@ -3254,9 +3254,9 @@ out2 = print(out2);             // error: cannot copy stream objects
     std::cout << "hi!" << std::flush;  // writes hi, then flushes the buffer; adds no data
     std::cout << "hi!" << std::ends;   // writes hi and a null, then flushes the buffer
     ```
-    - `unitbuf`操纵符（`unitbuf` Manipulator）
+    - `unitbuf`和`nounitbuf`操纵符（`unitbuf` & `nounitbuf`Manipulator）
         - 如果想每次输出操作之后都立即刷新缓冲区，可以使用`unitbuf`操纵符
-        - 它告诉流对象：接下来每次写操作之后都进行一次`flush`操作
+            - 它告诉流对象：接下来每次写操作之后都进行一次`flush`操作
         - 而`nounitbuf`则重置流对象，使其恢复使用正常的系统管理的缓冲区刷新机制
     ```
     std::cout << unitbuf;              // all writes will be flushed immediately
@@ -3291,6 +3291,62 @@ out2 = print(out2);             // error: cannot copy stream objects
         ```
 
 #### 文件`I/O`
+
+- 头文件`<fstream>`定义了三个 *文件流* 类型来支持文件`I/O`
+    - `std::ifstream`从一个给定文件读取数据
+    - `std::ofstream`向一个给定文件写入数据
+    - `std::fstream`可以读写给定文件
+- `std::fstream`特有的操作
+    - `std::fstream fs;`：创建一个 *未绑定* 的 *文件流对象*
+    - `std::fstream fs(file);`：创建文件流对象`fs`并绑定到文件`file`上。`file`可以是`std::string`或`C`风格字符串。默认 *文件模式* 依赖于`std::fstream`的类型。此构造函数为`explicit`的
+    - `std::fstream fs(file, mode);`：创建文件流对象`fs`并以`mode`指定的方式打开文件`file`。`file`可以是`std::string`或`C`风格字符串。此构造函数为`explicit`的
+    - `fs.open(file);`：打开文件`file`并将之与`fs`绑定。`file`可以是`std::string`或`C`风格字符串。默认 *文件模式* 依赖于`std::fstream`的类型。返回`void`
+    - `fs.close();`：关闭与`fs`绑定的文件，返回`void`
+    - `fs.is_open();`：返回一个`bool`，指出与`fs`关联的文件是否成功打开且尚未关闭
+- 使用 *文件流对象* 
+    - `std::fstream`继承自`std::iostream`，派生类对象可以作为基类使用
+    - 创建文件流对象时，可以提供 *文件名* （可选）
+        - 如提供，则`open`自动被调用
+        ```
+        std::ifstream fin(ifile);    // construct an ifstream and open the given file
+        std::ofstream fout;          // output file stream that is not associated with any file
+        ```
+        - 如不提供，可以随后调用`fs.open(file)`将它与文件关联起来
+        ```
+        std::ifstream fin(ifile);    // construct an ifstreamand open the given file
+        std::ofstream fout;          // output file stream that is not associated with any file
+        fout.open(ifile + ".copy");  // open the specified file
+        ```
+        - 如果`open` *成功* ，则流状态会被设置为`fs.good() == true`
+        - 如果`open`调用 *失败* ，则`failbit`会被置位
+            - 随后的读写操作均会失败
+            - 由于调用`open`可能会失败，应该进行检测
+            ```
+            if (fout)  // check that the open succeeded
+            {
+                // the open succeeded, so we can use the file
+            }
+            ```
+    - 一旦一个文件流已经打开，它就保持与对应文件的关联
+        - 为了将文件流关联到另外一个文件，必须首先关闭已经关联的文件
+        - 一旦文件成功关闭，我们可以打开新文件
+        ```
+        fin.close();                 // close the file
+        fin.open(ifile + "2");       // open another file
+        ```
+    - `std::fstream`对象会被自动析构，被销毁时，`close`也会被自动调用
+- *文件模式* （file mode）
+    - 每个流都有一个关联的 *文件模式* ，用来指出如何使用文件
+        - `in`：以读方式打开
+        - `out`：以写方式打开
+        - `app`：每次写操作前均定位到文件末尾
+        - `ate`：打开文件后立即定位到文件末尾
+        - `trunc`：截断文件
+        - `binary`：以二进制方式进行`I/O`
+    - 不论用哪种方式打开文件，我们都可以指定文件模式
+        - `fs.open(file, mode);`：显式打开文件
+        - `std::fstream fs(file, mode);`：隐式打开文件
+    - 指定文件模式有如下限制
 
 
 
