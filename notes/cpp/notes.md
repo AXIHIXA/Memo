@@ -3428,7 +3428,7 @@ out2 = print(out2);             // error: cannot copy stream objects
 
 #### 内存`I/O`
 
-- 头文件`<sstream>`中定义了三个类型类支持 *内存`I/O`* 
+- 头文件`<sstream>`中定义了三个类型来支持 *内存`I/O`* 
     - 这些类型可以读写`std::string`，就像是`std::string`的一个输入输出流一样
     - `std::istringstream`：从`std::string`读取数据
     - `std::ostringstream`：向`std::string`写入数据
@@ -3480,7 +3480,6 @@ for (const PersonInfo & entry : people)
     for (const std::string & nums : entry.phones) 
     { 
         // for each number
-        
         if (!valid(nums)) 
         {
             // string in badNums
@@ -3506,6 +3505,58 @@ for (const PersonInfo & entry : people)
 }
 ```
 
+#### 格式化`I/O`
+
+- 除了 *条件状态* 之外，每个`std::iostream`对象还维护一个 *格式状态* （format state）来控制`I/O`如何控制格式化的细节
+- 标准库定义了一组 *操纵符* （manipulator）来修改流的格式状态
+    - 基础操纵符，定义于头文件`<iostream>`中
+        - 独立操纵符（打开）
+            - `std::boolalpha`：将`bool`输出为`true`和`false`
+            - `std::showbase`：对整形值，输出表示进制的前缀
+            - `std::showpoint`：对浮点值，总是输出小数点
+            - `std::showpos`：对非负数，总是输出`+`
+            - `std::uppercase`：在十六进制值中输出`0X`，在科学计数法中输出`E`
+        - 独立操纵符（关闭）
+            - `std::noboolalpha`：将`bool`输出为`1`和`0`。 *默认状态* 
+            - `std::noshowbase`：对整形值， *不* 输出表示进制的前缀。 *默认状态* 
+            - `std::noshowpoint`：对浮点值，当且仅当 *包含小数部分时，才输出* 小数点。 *默认状态* 
+            - `std::noshowpos`：对非负数， *不* 输出`+`。 *默认状态* 
+            - `std::nouppercase`：在十六进制值中输出`0x`，在科学计数法中输出`e`。 *默认状态*  
+        - 整形进制操纵符
+            - `std::dec`：整型值输出为十进制。 *默认状态*  
+            - `std::hex`：整型值输出为十六进制
+            - `std::oct`：整型值输出为八进制
+        - 浮点格式操纵符
+            - `std::fixed`：浮点值输出为定点十进制
+            - `std::scitenific`：浮点值输出为科学计数法
+            - `std::hexfloat`：浮点值输出为十六进制
+            - `std::defaultfloat`： *重置* 浮点值输出为定点十进制
+        - 对齐格式操纵符
+            - `std::left`：在值的右侧添加填充字符，使输出格式为左对齐
+            - `std::right`：在值的左侧添加填充字符，使输出格式为右对齐
+            - `std::internal`：在值的两侧添加填充字符，使输出格式为中间对齐
+        - 输入操纵符
+            - `std::skipws`：输入运算符跳过空白符， *默认状态*
+            - `std::noskipws`：输入运算符**不**跳过空白符， *默认状态*
+        - 输出操纵符
+            - `std::unitbuf`：每次输出操作后立即刷新缓冲区
+            - `std::nounitbuf`：恢复正常的缓冲区刷新方式， *默认状态*
+            - `std::flush`：刷新`std::ostream`缓冲区
+            - `std::ends`：插入 *空字符* ，并刷新`std::ostream`缓冲区
+            - `std::endl`：插入 *换行符* `'\n'`，并刷新`std::ostream`缓冲区
+    - 带参数操纵符，定义于头文件`<iomanip>`中
+        - `std::setiosflags()`
+        - `std::resetiosflags()`
+        - `std::setbase(b)`：将整数输出为`b`进制
+        - `std::setfill(c)`：用`c`填充空白
+        - `std::setprecision(n)`：将浮点精度设置为`n`
+        - `std::setw(w)`：读或写值的宽度为`w`个字符
+        - `std::get_money()`：
+        - `std::put_money()`：
+        - `std::get_time()`：
+        - `std::put_time()`：
+        - `std::quoted()`： `(since C++14)`
+        
 #### [`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c) （C-style file input/output）
 
 - 摘抄内容，当字典看看得了
