@@ -3101,7 +3101,7 @@ Entry e = {0, "Anna"};
         - [`std::istringstream`、`std::wistringstream`](https://en.cppreference.com/w/cpp/io/basic_istringstream)：从`std::string`读取数据
         - [`std::ostringstream`、`std::wostringstream`](https://en.cppreference.com/w/cpp/io/basic_ostringstream)：从`std::string`写入数据
         - [`std::stringstream`、`std::wstringstream`](https://en.cppreference.com/w/cpp/io/basic_stringstream)：读写`std::string`
-    - ![继承关系](http://upload.cppreference.com/mwiki/images/0/06/std-io-complete-inheritance.svg)
+![继承关系](http://upload.cppreference.com/mwiki/images/0/06/std-io-complete-inheritance.svg)
 - 为了支持使用 *宽字符* 的语言，标准库定义了一组类型和对象来操纵`wchar_t`类型的数据
     - 宽字符版本的类型和函数的名字以一个`w`开始
     - 例如：`std::wcin`、`std::wcout`和`std::wcerr`分别是`std::cin`、`std::cout`和`std::cerr`的宽字符版对象
