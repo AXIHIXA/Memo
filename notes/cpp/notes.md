@@ -3101,6 +3101,7 @@ Entry e = {0, "Anna"};
         - [`std::istringstream`、`std::wistringstream`](https://en.cppreference.com/w/cpp/io/basic_istringstream)：从`std::string`读取数据
         - [`std::ostringstream`、`std::wostringstream`](https://en.cppreference.com/w/cpp/io/basic_ostringstream)：从`std::string`写入数据
         - [`std::stringstream`、`std::wstringstream`](https://en.cppreference.com/w/cpp/io/basic_stringstream)：读写`std::string`
+    - ![继承关系](http://upload.cppreference.com/mwiki/images/0/06/std-io-complete-inheritance.svg)
 - 为了支持使用 *宽字符* 的语言，标准库定义了一组类型和对象来操纵`wchar_t`类型的数据
     - 宽字符版本的类型和函数的名字以一个`w`开始
     - 例如：`std::wcin`、`std::wcout`和`std::wcerr`分别是`std::cin`、`std::cout`和`std::cerr`的宽字符版对象
@@ -3114,6 +3115,8 @@ out1 = out2;                    // error: cannot assign stream objects
 std::ofstream print(ofstream);  // error: can't initialize the ofstream parameter
 out2 = print(out2);             // error: cannot copy stream objects
 ```
+- `I/O`类和`I/O`函数
+    - `std::getline`
 - *条件状态* （conditional states）
     - `C++ I/O`库定义了`4`个与机器无关的`stream::iostate`类型的`constexpr`值，代表流对象的 *条件状态* 
         - `g++`实现
@@ -3234,7 +3237,7 @@ out2 = print(out2);             // error: cannot copy stream objects
                 // ok: read operation successful...
             }
             ```
-- 管理 *输出缓冲* （Managing the Output Buffer）
+- *输出缓冲* （Output Buffer）
     - 每个输出流都管理一个 *缓冲区* （buffer），用来保存程序读写的数据
         - 例如，执行`std::cout << "Hello World!\n";`时，文本串
             - 可能 *立即被打印* 出来
@@ -3758,7 +3761,7 @@ std::cout << std::setfill('#')
           << "d: " << std::setw(12) << d << "next col" << std::endl   // d: #####3.14159next col
           << std::setfill(' ');  // restore the normal pad character
 ```
-
+- 控制输入格式
 
 
 
