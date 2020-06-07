@@ -3733,24 +3733,24 @@ int i = -16;
 double d = 3.14159;
 
 // pad the first column to use a minimum of 12 positions in the output
-std::cout << "i: " << std::setw(12) << i << "next col" << std::endl   // i: -16next col
-          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d: 3.14159next col
+std::cout << "i: " << std::setw(12) << i << "next col" << std::endl   // i:          -16next col
+          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d:      3.14159next col
 
 // pad the first column and left-justify all columns
 std::cout << std::left
-          << "i: " << setw(12) << i << "next col" << std::endl        // i: -16 next col
-          << "d: " << setw(12) << d << "next col" << std::endl;       // d: 3.14159 next col
+          << "i: " << std::setw(12) << i << "next col" << std::endl   // i: -16         next col
+          << "d: " << std::setw(12) << d << "next col" << std::endl   // d: 3.14159     next col
           << std::right;  // restore normal justification
 
-// pad the first column and right-justify all columns
+// pad the first column and right-justify (as default) all columns 
 std::cout << std::right
-          << "i: " << std::setw(12) << i << "next col" << std::endl   // i: -16next col
-          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d: 3.14159next col
+          << "i: " << std::setw(12) << i << "next col" << std::endl   // i:          -16next col
+          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d:      3.14159next col
 
 // pad the first column but put the padding internal to the field
 std::cout << std::internal
-          << "i: " << std::setw(12) << i << "next col" << std::endl   // i: - 16next col
-          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d: 3.14159next col
+          << "i: " << std::setw(12) << i << "next col" << std::endl   // i: -         16next col
+          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d:      3.14159next col
 
 // pad the first column, using # as the pad character
 std::cout << std::setfill('#')
@@ -3758,6 +3758,8 @@ std::cout << std::setfill('#')
           << "d: " << std::setw(12) << d << "next col" << std::endl   // d: #####3.14159next col
           << std::setfill(' ');  // restore the normal pad character
 ```
+
+
 
 
 
