@@ -100,6 +100,7 @@
     - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* ， *析构函数* **除外**：顺序和构造是反的，且编译器会自动调用基类析构函数
     - 派生类拷贝或移动构造函数**必须**显式调用基类对应构造函数，否则基类部分将被 *默认初始化* ，产生 *未定义值* 
 - 一些小知识
+    - 给`char a`和`unsigned char b`加上 *加号* `+a`，`+b`就把它们提升成了`int`和`unsigned int`，可以用于`std::cout`
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
     - 指针解引用的结果是其指向对象的**左值**引用
@@ -173,10 +174,10 @@
 
 
 
-### 🌱 字面值（literal）
+### 🌱 字面量（literal）
 
 - *整数* 
-    - 可以写作十进制、八进制（以`0`开头）或十六进制（以`0x`或`0X`开头）形式
+    - 可以写作十进制、八进制（以`0`开头）、十六进制（以`0x`或`0X`开头）`或二进制 (since C++14)`形式
     ```
     20              // dec，int
     -42             // dec，int
@@ -184,6 +185,7 @@
     024             // oct，int
     0x1a            // hex，int
     0X1A            // hex，int
+    0b11            // bin, int
     ```
     - 默认（无后缀）情况下
         - 十进制字面值为`int`、`long`和`long long`中能容纳该数值的尺寸最小者
@@ -2064,7 +2066,7 @@ sizeof expr   // 返回表达式 结果类型 大小
 ### 🌱 类型转换（Conversions）
 
 - 所有`cast<T>`的结果的 *值类别* （value category）是
-    - *左值* ，如果`T`为 *左值引用* 或 *函数类型的右值引用* ，则结果为 
+    - *左值* ，如果`T`为 *左值引用* 或 *函数类型的右值引用*  
     - *将亡值* ，如果`T`为 *对象类型的右值引用*
     - *纯右值* ，其他情况
 
@@ -2173,12 +2175,15 @@ char * cp = (char *) ip;  // 相当于reinterpret_cast<char *>(ip);
 
 #### [用户定义转换](https://en.cppreference.com/w/cpp/language/cast_operator) => 14.9
 
+- 表达式被用作 *条件* 时， *类型转换运算符* 既使是`explicit`的，仍会被 *隐式应用* => 14.9.1
 ```
-operator conversion-type-id             (1)  // 声明用户定义的转换函数，它参与所有隐式和显式转换
-explicit operator conversion-type-id    (2)  // 声明用户定义的转换函数，它仅参与直接初始化和显式转换 (since C++11)
+operator conversion-type-id             (1)  // 声明用户定义的类型转换运算符，它参与所有隐式和显式转换
+explicit operator conversion-type-id    (2)  // 声明用户定义的类型转换运算符，它仅参与直接初始化和显式转换 (since C++11)
 
 struct X 
 {
+    explicit operator bool() const { return true; }     // 显式转换，但用作条件时仍可隐式调用
+    
     operator int() const { return 7; }                  // 隐式转换
     explicit operator int*() const { return nullptr; }  // 显式转换
     operator int(*)[3]() const { return nullptr; }      // 错误：转换类型标识中不允许出现数组运算符
@@ -2192,13 +2197,15 @@ X x;
 int n = static_cast<int>(x);                            // OK：设 n 为 7
 int m = x;                                              // OK：设 m 为 7
 
-int* p = static_cast<int*>(x);                          // OK：设 p 为 null
-int* q = x;                                             // 错误：无隐式转换
+int * p = static_cast<int *>(x);                        // OK：设 p 为 null
+int * q = x;                                            // 错误：无隐式转换
+
+if (x) printf("x\n");                                   // OK
 ```
 
-#### [标准转换](https://en.cppreference.com/w/cpp/language/implicit_conversion)（隐式类型转换）
+#### [隐式类型转换](https://en.cppreference.com/w/cpp/language/implicit_conversion)（）
 
-- *标准转换* 就是从一个类型到另一类型的 *隐式转换* ，由 *编译器自动完成* 
+- *隐式类型转换* 就是由 *编译器自动完成* 的类型转换
 - 凡是在语境中使用了某种表达式类型`T1`，但语境不接受该类型，而接受另一类型`T2`的时候，会进行 *隐式转换* ，具体是
     1. 调用以`T2`为形参声明的函数时，以该表达式为实参
     2. 运算符期待`T2`，而以该表达式为操作数
@@ -2209,17 +2216,19 @@ int* q = x;                                             // 错误：无隐式转
 - *隐式转换序列* 由下列内容依照这个顺序所构成
     1. 零或一个 *标准转换序列* 
         1. 下列三者中的零或一个：
-            - 左值到右值转换
-            - 数组到指针转换
-            - 函数到指针转换
-        2. 零或一个数值提升或数值转换
-        3. 零或一个函数指针转换 `(since C++17)`
-        4. 零或一个限定调整
+            - *左值到右值* 转换
+            - *数组头到指针* 转换
+            - *函数头到指针* 转换
+        2. 零或一个 *数值提升* 或 *数值转换* 
+        3. 零或一个 *函数指针转换* `(since C++17)`
+        4. 零或一个 *`cv`限定调整* 
     2. 零或一个 *用户定义转换* 
         - 零或一个非`explicit`单实参构造函数或非`explicit`转换函数的调用构成
+        - 表达式被用作 *条件* 时， *类型转换运算符* 既使是`explicit`的，仍会被 *隐式应用* => 14.9.1
     3. 零或一个 *标准转换序列* 
-        - 当考虑构造函数或用户定义转换函数的实参时， *只允许一个* 标准转换序列（否则将实际上可以将用户定义转换串连起来）
-        - 从一个内建类型转换到另一内建类型时， *只允许一个* 标准转换序列
+        - 当考虑用户定义的 *构造函数* 或 *类型转换运算符* 时， *只允许一个* 标准转换序列
+            - 否则将实际上可以将用户定义转换串连起来
+        - 从一个 *内建类型* 转换到另一内建类型时， *只允许一个* 标准转换序列
 
 
 
@@ -2252,11 +2261,11 @@ __DATE__
 ```
 std::string foo(const std::string & word)
 {
-    return word;  // 生成一个word的副本（copy），返回之。这里有一次拷贝的性能损失 => 使用右值引用可以避免
+    return word;  // 生成一个word的副本（copy），返回之。这里有一次拷贝的性能损失
 }
 ```
 
-- 不要返回局部对象的引用或者指针
+- **不要**返回局部对象的引用（左值右值都不行）或者指针
 - 调用一个返回引用的函数获得左值，否则获得右值
 - 列表初始化返回值
     - 如果返回的是内置类型，则大括号内只能有1个值；如果是类，由类定义初始值如何被使用
@@ -3508,8 +3517,62 @@ for (const PersonInfo & entry : people)
 #### 格式化`I/O`
 
 - 除了 *条件状态* 之外，每个`std::iostream`对象还维护一个 *格式状态* （format state）来控制`I/O`如何控制格式化的细节
-- 标准库定义了一组 *操纵符* （manipulator）来修改流的格式状态
-    - 基础操纵符，定义于头文件`<iostream>`中
+    - `g++`实现为[`std::ios_base::fmtflags`](https://en.cppreference.com/w/cpp/io/ios_base/fmtflags)
+    ```
+    // <bits/ios_base.h>
+    // class ios_base
+    
+    public: 
+        enum _Ios_Fmtflags 
+        { 
+            _S_boolalpha        = 1L << 0,
+            _S_dec              = 1L << 1,
+            _S_fixed            = 1L << 2,
+            _S_hex              = 1L << 3,
+            _S_internal         = 1L << 4,
+            _S_left             = 1L << 5,
+            _S_oct              = 1L << 6,
+            _S_right            = 1L << 7,
+            _S_scientific       = 1L << 8,
+            _S_showbase         = 1L << 9,
+            _S_showpoint        = 1L << 10,
+            _S_showpos          = 1L << 11,
+            _S_skipws           = 1L << 12,
+            _S_unitbuf          = 1L << 13,
+            _S_uppercase        = 1L << 14,
+            _S_adjustfield      = _S_left | _S_right | _S_internal,
+            _S_basefield        = _S_dec | _S_oct | _S_hex,
+            _S_floatfield       = _S_scientific | _S_fixed,
+            _S_ios_fmtflags_end = 1L << 16,
+            _S_ios_fmtflags_max = __INT_MAX__,
+            _S_ios_fmtflags_min = ~__INT_MAX__
+        };
+        
+        typedef _Ios_Fmtflags fmtflags;
+        static const fmtflags boolalpha   = _S_boolalpha;
+        static const fmtflags dec         = _S_dec;
+        static const fmtflags fixed       = _S_fixed;
+        static const fmtflags hex         = _S_hex;
+        static const fmtflags internal    = _S_internal;
+        static const fmtflags left        = _S_left;
+        static const fmtflags oct         = _S_oct;
+        static const fmtflags right       = _S_right;
+        static const fmtflags scientific  = _S_scientific;
+        static const fmtflags showbase    = _S_showbase;
+        static const fmtflags showpoint   = _S_showpoint;
+        static const fmtflags showpos     = _S_showpos;
+        static const fmtflags skipws      = _S_skipws;
+        static const fmtflags unitbuf     = _S_unitbuf;
+        static const fmtflags uppercase   = _S_uppercase;
+        static const fmtflags adjustfield = _S_adjustfield;
+        static const fmtflags basefield   = _S_basefield;
+        static const fmtflags floatfield  = _S_floatfield;
+        
+    protected:
+        fmtflags _M_flags;
+    ```
+- 标准库定义了一组 *操纵符* （manipulator），来 *修改* 流的格式状态
+    - *基础操纵符* ，定义于头文件`<iostream>`中
         - 独立操纵符（打开）
             - `std::boolalpha`：将`bool`输出为`true`和`false`
             - `std::showbase`：对整形值，输出表示进制的前缀
@@ -3544,19 +3607,80 @@ for (const PersonInfo & entry : people)
             - `std::flush`：刷新`std::ostream`缓冲区
             - `std::ends`：插入 *空字符* ，并刷新`std::ostream`缓冲区
             - `std::endl`：插入 *换行符* `'\n'`，并刷新`std::ostream`缓冲区
-    - 带参数操纵符，定义于头文件`<iomanip>`中
-        - `std::setiosflags()`
-        - `std::resetiosflags()`
+    - *带参数操纵符* ，定义于头文件`<iomanip>`中
+        - `std::setiosflags(mask)`：将`std::ios_base::fmtflags mask`中的`1`在流对象格式标志中的对应位置全部置`1`
+            - 注意这里要用`std::ios_base::fmtflags`本身，而**不是**上面那些的操纵符
+            - `std::ios`继承了`std::ios_base`，域指定为`std::ios`能短点儿
+        - `std::resetiosflags(mask)`：将`std::ios_base::fmtflags mask`中的`1`在流对象格式标志中的对应位置全部置`0`
+            - 注意这里要用`ios_base::fmtflags`本身，而**不是**上面那些的操纵符
+            - `std::ios`继承了`std::ios_base`，域指定为`std::ios`能短点儿，例如
+            ```
+            std::cout << std::hex;
+            std::cout << std::setiosflags(std::ios::showbase | std::ios::uppercase);
+            std::cout << 100 << std::endl;  // 0X64
+            std::cout << std::resetiosflags(std::hex | std::ios::showbase | std::ios::uppercase);
+            std::cout << 100 << std::endl;  // 100
+            ```
         - `std::setbase(b)`：将整数输出为`b`进制
         - `std::setfill(c)`：用`c`填充空白
         - `std::setprecision(n)`：将浮点精度设置为`n`
         - `std::setw(w)`：读或写值的宽度为`w`个字符
-        - `std::get_money()`：
-        - `std::put_money()`：
-        - `std::get_time()`：
-        - `std::put_time()`：
-        - `std::quoted()`： `(since C++14)`
-        
+- 很多操纵符改变格式状态
+    - 操纵符用于两大类输出控制
+        - 数值的输出形式
+        - 补白的数量和位置
+    - 大多数改变格式状态的操纵符都是设置、复原成对的
+        - 一个用于设置新格式
+        - 一个用于复原成正常的默认格式
+    - 当操纵符改变流的格式状态时，通常改变后的状态对 *所有* 后续`I/O`都生效
+        - 最好在不再需要特殊格式时将流恢复到默认状态
+- 控制`bool`的格式
+```
+// default bool values: 1 0
+std::cout << "default bool values: " << true << " " << false << std::endl
+
+// alpha bool values: true false
+std::cout << "alpha bool values: " << boolalpha << true << " " << false << std::endl;
+
+bool bool_val = get_status();
+std::cout << boolalpha     // sets the internal state of cout
+          << bool_val
+          << noboolalpha;  // resets the internal state to default formatting
+```
+- 指定整形的进制
+    - 操纵符`std::oct`、`std::hex`和`std::dec` *只* 影响整形运算对象，浮点值的表示**不**受影响
+```
+std::cout << "default: " << 20 << " " << 1024 << std::endl;                 // default: 20 1024
+std::cout << "octal: " << std::oct << 20 << " " << 1024 << std::endl;       // octal: 24 2000
+std::cout << "hex: " << std::hex << 20 << " " << 1024 << std::endl;         // hex: 14 400
+std::cout << "decimal: " << std::dec << 20 << " " << 1024 << std::endl;     // decimal: 20 1024
+```
+- 输出中指出进制
+```
+std::cout << std::showbase;    // show the base when printing integral values
+std::cout << "default: " << 20 << " " << 1024 << std::endl;                 // default: 20 1024
+std::cout << "in octal: " << std::oct << 20 << " " << 1024 << std::endl;    // in octal: 024 02000
+std::cout << "in hex: " << std::hex << 20 << " " << 1024 << std::endl;      // in hex: 0x14 0x400
+std::cout << "in decimal: " << std::dec << 20 << " " << 1024 << std::endl;  // in decimal: 20 1024
+std::cout << std::noshowbase;  // reset the state of the stream
+
+std::cout << std::uppercase << std::showbase << std::hex 
+          << "printed in hexadecimal: " << 20 << " " << 1024                // printed in hexadecimal: 0X14 0X400
+          << std::nouppercase << std::noshowbase << std::dec << std::endl;
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 #### [`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c) （C-style file input/output）
 
 - 摘抄内容，当字典看看得了
