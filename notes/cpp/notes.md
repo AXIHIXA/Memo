@@ -3595,18 +3595,18 @@ for (const PersonInfo & entry : people)
             - `std::hexfloat`：浮点值输出为十六进制
             - `std::defaultfloat`： *重置* 浮点值输出为定点十进制
         - 对齐格式操纵符
-            - `std::left`：在值的右侧添加填充字符，使输出格式为左对齐
-            - `std::right`：在值的左侧添加填充字符，使输出格式为右对齐
-            - `std::internal`：在值的两侧添加填充字符，使输出格式为中间对齐
+            - `std::left`：左对齐输出。在值的右侧添加填充字符
+            - `std::right`：右对齐输出。在值的左侧添加填充字符。 *默认格式* 
+            - `std::internal`：两侧对齐输出，符号左对齐、值右对齐，在中间添加填充字符
         - 输入操纵符
             - `std::skipws`：输入运算符跳过空白符， *默认状态*
             - `std::noskipws`：输入运算符**不**跳过空白符， *默认状态*
         - 输出操纵符
             - `std::unitbuf`：每次输出操作后立即刷新缓冲区
             - `std::nounitbuf`：恢复正常的缓冲区刷新方式， *默认状态*
-            - `std::flush`：刷新`std::ostream`缓冲区
-            - `std::ends`：插入 *空字符* ，并刷新`std::ostream`缓冲区
-            - `std::endl`：插入 *换行符* `'\n'`，并刷新`std::ostream`缓冲区
+            - `std::flush`：刷新`std::ostream`缓冲区。**不**改变流的状态， *只影响下一次输出* 
+            - `std::ends`：插入 *空字符* ，并刷新`std::ostream`缓冲区。**不**改变流的状态， *只影响下一次输出* 
+            - `std::endl`：插入 *换行符* `'\n'`，并刷新`std::ostream`缓冲区。**不**改变流的状态， *只影响下一次输出* 
     - *带参数操纵符* ，定义于头文件`<iomanip>`中
         - `std::setiosflags(mask)`：将`std::ios_base::fmtflags mask`中的`1`在流对象格式标志中的对应位置全部置`1`
             - 注意这里要用`std::ios_base::fmtflags`本身，而**不是**上面那些的操纵符
@@ -3622,9 +3622,9 @@ for (const PersonInfo & entry : people)
             std::cout << 100 << std::endl;  // 100
             ```
         - `std::setbase(b)`：将整数输出为`b`进制
-        - `std::setfill(c)`：用`c`填充空白
         - `std::setprecision(n)`：将浮点精度设置为`n`
-        - `std::setw(w)`：读或写值的宽度为`w`个字符
+        - `std::setw(w)`：下一次`I/O`读或写值的宽度为`w`个字符。**不**改变流的状态， *只影响下一次`I/O`* 
+        - `std::setfill(c)`：下一次输出用`c`填充空白。**不**改变流的状态， *只影响下一次输出* 
 - 很多操纵符改变格式状态
     - 操纵符用于两大类输出控制
         - 数值的输出形式
@@ -3632,7 +3632,13 @@ for (const PersonInfo & entry : people)
     - 大多数改变格式状态的操纵符都是设置、复原成对的
         - 一个用于设置新格式
         - 一个用于复原成正常的默认格式
-    - 当操纵符改变流的格式状态时，通常改变后的状态对 *所有* 后续`I/O`都生效
+    - 当操纵符改变流的格式状态时， *通常* 改变后的状态对 *所有* 后续`I/O`都生效
+        - 当然有一些就不改变流的状态，只对下一次`I/O`生效，比如
+            - `std::flush`
+            - `std::ends`
+            - `std::endl`
+            - `std::setw(w)`
+            - `std::setfill(c)`
         - 最好在不再需要特殊格式时将流恢复到默认状态
 - 控制`bool`的格式
 ```
@@ -3699,14 +3705,32 @@ std::cout << std::uppercase << std::showbase << std::hex
     - 指定计数法
         - 除非真正需要显式控制浮点数的计数法（例如按列打印数据或打印表示金额或百分比的数据），否则由标准库选择计数法时坠吼的
     ```
-    std::cout << "default format: " << 100 * std::sqrt(2.0) << std::endl;                     // default format: 141.421
-    std::cout << "scientific: " << std::scientific << 100 * std::sqrt(2.0) << std::endl;      // scientific: 1.414214e+002
-    std::cout << "fixed decimal: " << std::fixed << 100 * std::sqrt(2.0) << std::endl;        // fixed decimal: 141.421356
-    std::cout << "hexadecimal: " << std::hexfloat << 100 * std::sqrt(2.0) << std::endl;       // hexadecimal: 0x1.1ad7bcp+7
-    std::cout << "use defaults: " << std::defaultfloat << 100 * std::sqrt(2.0) << std::endl;  // use defaults: 141.421
+    std::cout << "default format: " 
+              << 100 * std::sqrt(2.0) << std::endl;     // default format: 141.421
+    std::cout << "scientific: " << std::scientific 
+              << 100 * std::sqrt(2.0) << std::endl;     // scientific: 1.414214e+002
+    std::cout << "fixed decimal: " << std::fixed 
+              << 100 * std::sqrt(2.0) << std::endl;     // fixed decimal: 141.421356
+    std::cout << "hexadecimal: " << std::hexfloat 
+              << 100 * std::sqrt(2.0) << std::endl;     // hexadecimal: 0x1.1ad7bcp+7
+    std::cout << "use defaults: " << std::defaultfloat 
+              << 100 * std::sqrt(2.0) << std::endl;     // use defaults: 141.421
     ```
+    - 打印小数点
+    ```
+    std::cout << 10.0 << std::endl;             // 10
+    std::cout << std::showpoint << 10.0         // 10.0000
+              << std::noshowpoint << std::endl; // revert to default format for the decimal point
+    ```
+- 数值输出补白（对齐格式）
+    - `std::setw(w)`：指定 *下一个* 数字或字符串的 *最小空间* 
+        - 
+    - `std::left`：左对齐输出
+    - `std::right`：右对齐输出， *默认格式* 
+    - `std::internal`：控制负数的符号的位置，它是左对齐符号、右对齐值，用空格填满所有中间空间
+```
 
-
+```
 
 
 
