@@ -3747,7 +3747,7 @@ std::cout << std::setfill('#')
         - 例如，如下循环当给定如下序列时，循环会执行 *四次* ，读取字符`'a'`、`'b'`、`'c'`和`'d'`，跳过中间的空格以及可能的制表符和换行符，输出`abcd`
         ```
         // INPUT: 
-        // a b          c
+        // a b c
         // d
         
         for (char ch; std::cin >> ch;)
@@ -3837,9 +3837,127 @@ std::cout << std::setfill('#')
 
 #### 流随机访问
 
+- *定位标记*
+    - `g++`实现
+    ```
+    // <bits/base_ios.h>
+    // class base_ios
+    
+    public:
+        enum _Ios_Seekdir 
+        { 
+            _S_beg = 0,
+            _S_cur = _GLIBCXX_STDIO_SEEK_CUR,  // 1
+            _S_end = _GLIBCXX_STDIO_SEEK_END,  // 2
+            _S_ios_seekdir_end = 1L << 16 
+        };
+        
+        typedef _Ios_Seekdir seekdir;
+        /// Request a seek relative to the beginning of the stream.
+        static const seekdir beg = _S_beg;
+        /// Request a seek relative to the current position within the sequence.
+        static const seekdir cur = _S_cur;
+        /// Request a seek relative to the current end of the sequence.
+        static const seekdir end = _S_end;
+    ```
+- 重定位流使之跳过一些数据
+    - 定位（seek）到流中给定的位置
+    - 告诉（tell）我们当前的位置
+- 虽然标准库为所有的流类型都定义了`seek`和`tell`函数，但它们是否有意义取决于流绑定到了什么设备
+    - 大多数系统中，绑定到`std::cin`、`std::cout`、`std::cerr`以及`std::clog`的流都**不**支持随机访问
+        - 对这些流调用`seek`和`tell`会 *运行时错误* ，并将流置于一个 *无效状态* 
+    - `std::fstream`和`std::stringstream`对象一般支持随机访问
+    - 分别有 *获得* `g`版本（读取数据，用于`std::istream`）以及 *放置* `p`版本（写入数据，用于`std::ostream`）
+        - `std::fstream`以及`std::stringstream`自然两个版本都能用
+- `seek`和`tell`函数
+    - `is.tellg()`：返回`std::istream is`中标记的当前位置
+    - `os.tellp()`：返回`std::ostream os`中标记的当前位置
+    - `is.seekg(pos)`：在`std::istream is`中将标记重定位到给定的绝对地址，`pos`通常是前一个`tellg`的返回值
+    - `os.seekp(pos)`：在`std::ostream os`中将标记重定位到给定的绝对地址，`pos`通常是前一个`tellp`的返回值
+    - `is.seekg(off, from)`：在一个`std::istream is`中将标记定位到`from`之前或之后`off`个字符的位置，`from`可以是
+        1. `std::ios_base::beg`：偏移量相对于流开始位置
+        2. `std::ios_base::cur`：偏移量相对于流当前位置
+        3. `std::ios_base::end`：偏移量相对于流结束位置
+    - `os.seekp(off, from)`：在一个`std::ostream os`中将标记定位到`from`之前或之后`off`个字符的位置，`from`和前者相同
+- 只有一个标记
+    - 一个流中只存在单一的标记，并**不**存在独立的读标记和写标记
+    - 由于只有单一的标记，因此只要我们在读写操作间切换，就必须通过`seek`操作来重定位标记
+- 重定位标记
+    - `is.seekg(pos)`，`os.seekp(pos)`中，`pos`类型为`std::istream::pos_type`或`std::ostream::pos_type`，具体机器相关
+        - 表示一个文件位置，
+    - `is.seekg(off, from)`，`os.seekp(off, from)`：`off`类型为`std::istream::off_type`或`std::ostream::off_type`，具体机器相关
+        - 表示距当前位置的偏移量，可正可负，即又能向前偏移，又能向后偏移
+- 访问标记
+```
+// remember the current write position in mark
+std::ostringstream writeStr;  // output stringstream
+std::ostringstream::pos_type mark = writeStr.tellp();
+// ...
+if (cancelEntry)
+{
+    // return to the remembered position
+    writeStr.seekp(mark);
+}
+```
+- 读写同一个文件
+    - 例：给定要读取的文件，要在此文件的末尾写入新的一行，这一行包含文件中每行的相对起始位置，例如
+    ```
+    INPUT: 
+    abcd
+    efg
+    hi
+    j
 
-
-
+    OUTPUT:
+    abcd
+    efg
+    hi
+    j
+    5 9 12 14
+    ```
+    - 程序如下
+    ```
+    int main()
+    {
+        // open for input and output and preposition file pointers to end-of-file
+        // file mode argument see § 8.4 (p. 319)
+        fstream inOut("copyOut", fstream::ate | fstream::in | fstream::out);
+        if (!inOut) 
+        {
+            cerr << "Unable to open file!" << endl;
+            return EXIT_FAILURE;           // EXIT_FAILURE see § 6.3.2 (p. 227)
+        }
+        
+        // inOut is opened in ate mode, so it starts out positioned at the end
+        auto end_mark = inOut.tellg();     // remember original end-of-file position
+        inOut.seekg(0, fstream::beg);      // reposition to the start of the file
+        size_t cnt = 0;                    // accumulator for the byte count
+        string line;                       // hold each line of input
+        
+        // while we haven't hit an error and are still reading the original data
+        while (inOut && inOut.tellg() != end_mark && getline(inOut, line)) 
+        { 
+            // and can get another line of input
+            cnt += line.size() + 1;        // add 1 to account for the newline
+            auto mark = inOut.tellg();     // remember the read position
+            inOut.seekp(0, fstream::end);  // set the write marker to the end
+            inOut << cnt;                  // write the accumulated length
+            
+            // print a separator if this is not the last line
+            if (mark != end_mark) 
+            {
+                inOut << " ";
+            }
+            
+            inOut.seekg(mark);         // restore the read position
+        }
+        
+        inOut.seekp(0, fstream::end);  // seek to the end
+        inOut << "\n";  // write a newline at end-offile
+        
+        return 0;
+    }
+    ```
 
 #### [`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c) （C-style file input/output）
 
