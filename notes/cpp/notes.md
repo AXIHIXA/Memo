@@ -3624,7 +3624,7 @@ for (const PersonInfo & entry : people)
         - `std::setbase(b)`：将整数输出为`b`进制
         - `std::setprecision(n)`：将浮点精度设置为`n`
         - `std::setw(w)`：下一次`I/O`读或写值的宽度为`w`个字符。**不**改变流的状态， *只影响下一次`I/O`* 
-        - `std::setfill(c)`：下一次输出用`c`填充空白。**不**改变流的状态， *只影响下一次输出* 
+        - `std::setfill(c)`：下一次输出用`c`填充空白。默认是 *空格* ` `。**不**改变流的状态， *只影响下一次输出* 
 - 很多操纵符改变格式状态
     - 操纵符用于两大类输出控制
         - 数值的输出形式
@@ -3724,13 +3724,44 @@ std::cout << std::uppercase << std::showbase << std::hex
     ```
 - 数值输出补白（对齐格式）
     - `std::setw(w)`：指定 *下一个* 数字或字符串的 *最小空间* 
-        - 
+        - **不**改变流的状态， *只影响下一次`I/O`* 
     - `std::left`：左对齐输出
     - `std::right`：右对齐输出， *默认格式* 
     - `std::internal`：控制负数的符号的位置，它是左对齐符号、右对齐值，用空格填满所有中间空间
 ```
+int i = -16;
+double d = 3.14159;
 
+// pad the first column to use a minimum of 12 positions in the output
+std::cout << "i: " << std::setw(12) << i << "next col" << std::endl   // i: -16next col
+          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d: 3.14159next col
+
+// pad the first column and left-justify all columns
+std::cout << std::left
+          << "i: " << setw(12) << i << "next col" << std::endl        // i: -16 next col
+          << "d: " << setw(12) << d << "next col" << std::endl;       // d: 3.14159 next col
+          << std::right;  // restore normal justification
+
+// pad the first column and right-justify all columns
+std::cout << std::right
+          << "i: " << std::setw(12) << i << "next col" << std::endl   // i: -16next col
+          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d: 3.14159next col
+
+// pad the first column but put the padding internal to the field
+std::cout << std::internal
+          << "i: " << std::setw(12) << i << "next col" << std::endl   // i: - 16next col
+          << "d: " << std::setw(12) << d << "next col" << std::endl;  // d: 3.14159next col
+
+// pad the first column, using # as the pad character
+std::cout << std::setfill('#')
+          << "i: " << std::setw(12) << i << "next col" << std::endl   // i: -#########16next col
+          << "d: " << std::setw(12) << d << "next col" << std::endl   // d: #####3.14159next col
+          << std::setfill(' ');  // restore the normal pad character
 ```
+
+
+
+
 
 
 
