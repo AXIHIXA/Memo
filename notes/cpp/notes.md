@@ -3091,7 +3091,7 @@ Entry e = {0, "Anna"};
 - `I/O`库头文件和类
     - [`<iostream>`](https://en.cppreference.com/w/cpp/header/iostream)
         - [`std::istream`，`std::wistream`](https://en.cppreference.com/w/cpp/io/basic_istream)：从流读取数据
-        - [`std::ostream`，`std::wostream`](https://zh.cppreference.com/w/cpp/io/basic_ostream)：向流写入数据
+        - [`std::ostream`，`std::wostream`](https://en.cppreference.com/w/cpp/io/basic_ostream)：向流写入数据
         - [`std::iostream`，`std::wiostream`](https://en.cppreference.com/w/cpp/io/basic_iostream)：读写流
     - [`<fstream>`](https://en.cppreference.com/w/cpp/header/fstream)
         - [`std::ifstream`，`std::wifstream`](https://en.cppreference.com/w/cpp/io/basic_ifstream)：从文件读取数据
@@ -3116,8 +3116,6 @@ out1 = out2;                    // error: cannot assign stream objects
 std::ofstream print(ofstream);  // error: can't initialize the ofstream parameter
 out2 = print(out2);             // error: cannot copy stream objects
 ```
-- `I/O`类和`I/O`函数
-    - `std::getline`
 - *条件状态* （conditional states）
     - `C++ I/O`库定义了`4`个与机器无关的`stream::iostate`类型的`constexpr`值，代表流对象的 *条件状态* 
         - `g++`实现
@@ -3453,35 +3451,17 @@ out2 = print(out2);             // error: cannot copy stream objects
     - `ss.str(s)`：将`std::string s`拷贝到`ss`中。返回`void`
 - 使用`std::istringstream`
 ```
-Input: 
-morgan 2015552368 8625550123
-drew 9735550130
-lee 6095550132 2015550175 8005550000
-...
-
-struct PersonInfo 
+// read file line by line
+std::istringstream sin;
+sin.str("1\n2\n3\n4\n5\n6\n7\n");
+int sum = 0;
+std::string line;
+while (std::getline(sin, line, '\n')) 
 {
-    std::string              name;
-    std::vector<std::string> phones;
-};
-
-std::string line, word;               // will hold a line and word from input, respectively
-std::vector<PersonInfo> people;       // will hold all the records from the input
-
-// read the input a line at a time until cin hits end-of-file (or another error)
-while (std::getline(std::cin, line)) 
-{
-    PersonInfo info;                  // create an object to hold this record's data
-    std::istringstream sin(line);     // bind record to the line we just read
-    sin >> info.name;                 // read the name
-    
-    while (sin >> word)               // read the phone numbers
-    {
-        info.phones.push_back(word);  // and store them
-    }
-    
-    people.emplace_back(info);        // append this record to people
+    sum += std::stoi(line);
 }
+std::cout << "\nThe sum is: " << sum << std::endl;  // The sum is 28
+
 ```
 - 使用`std::ostream`
 ```
@@ -3518,7 +3498,7 @@ for (const PersonInfo & entry : people)
 }
 ```
 
-#### 格式化`I/O`
+#### 格式化`I/O`（formatted `I/O`）
 
 - 除了 *条件状态* 之外，每个`std::iostream`对象还维护一个 *格式状态* （format state）来控制`I/O`如何控制格式化的细节
     - `g++`实现为[`std::ios_base::fmtflags`](https://en.cppreference.com/w/cpp/io/ios_base/fmtflags)
@@ -3763,15 +3743,99 @@ std::cout << std::setfill('#')
           << std::setfill(' ');  // restore the normal pad character
 ```
 - 控制输入格式
+    - 默认情况下，输入运算符会 *忽略空白字符* （ *空格* 、 *制表符* 、 *换行* 、 *换纸* 和 *回车* ）
+        - 例如，如下循环当给定如下序列时，循环会执行 *四次* ，读取字符`'a'`、`'b'`、`'c'`和`'d'`，跳过中间的空格以及可能的制表符和换行符，输出`abcd`
+        ```
+        // INPUT: 
+        // a b          c
+        // d
+        
+        for (char ch; std::cin >> ch;)
+        {
+            std::cout << ch;
+        }
+        
+        // OUTPUT:
+        // abcd
+        ```
+    - 操纵符`std::noskipws`会令输入运算符读取空白符
+        - 例如，如下循环还是给定上面的序列时，循环会执行 *七次* 
+        ```
+        std::cin >> noskipws;  // set cin so that it reads whitespace
+        
+        for (char ch; std::cin >> ch;)
+        {
+            std::cout << ch;
+        }
+        
+        std::cin >> skipws;    // reset cin to the default state so that it discards whitespace
+        ```
 
+#### 未格式化`I/O`（unformatted `I/O`）
 
+- 单字节低层`I/O`操作
+    - `is.get(ch);`：从`std::istream is`读取 *下一个字节* 存入字符`ch`中，返回`is`的引用
+    - `os.put(ch);`：将字符`ch`输出到`std::ostream os`中，返回`os`的引用
+    - `is.get();`：将`is`的 *下一个字节* 作为`int`返回
+    - `is.putback(ch);`：将刚才读取的 *最近一个字符* （必须和`ch`相同）放回`is`，返回`is`的引用
+    - `is.unget();`：将`is` *回退一个字节* ，返回`is`的引用
+    - `is.peek();`：将`is`的 *下一个字节* 作为`int`返回，但**不**将其从流中删除
+- 将字符放回输入流
+    - `is.peek()`：返回输入流中下一个字符的副本，但不会将其从流中删除；`is.peek()`返回的值仍旧留在流中
+    - `is.unget()`：使得流向后移动，从而最后读取的值又回到流中。即使我们不知道最后从流中读取什么值，仍然可以调用`is.unget()`
+    - `is.putback(ch)`：更特殊版本的`is.unget()`。它退回从流中读取的最后一个值，但它接受一个参数，此参数必须与最后读取的值相同
+    - 标准库只保证在读取下一个值之前能回退 *一个值* 
+        - 即，标准库**不**保证在中间不进行读取操作的情况下能连续调用`is.putback()`或`is.unget()`
+- 从输入操作返回的`int`值
+    - `is.peek()`和无参数版本的`is.get()`都以`int`类型从输入流返回一个字符
+        - 返回`int`而不是`char`的原因是，可以返回 *文件尾标记* 
+        - 使用`char`范围中的每个值来表示一个真实字符，因此`char`没有额外的值用于表示 *文件尾* 
+    - 返回`int`的函数将它们要返回的字符首先转换为`unsigned char`，然后再将结果 *提升* 为`int`
+        - 因此，即使字符集中有字符映射到负值，这些操作返回的`int`也是 *正值* 
+        - 而标准库用 *负值* 表示 *文件尾* ，这就可以保证与任何合法字符的值都不同
+        - 我们可以用`EOF`来检测从`is.get()`返回的值是否是文件尾，而不必记忆文件尾的实际数值
+        ```
+        // <cstdio>
+        
+        #ifndef EOF
+        #define EOF (-1)
+        #endif
+        ```
+    - *必须* 使用`int`，而**不是**`char`来接收返回值
+        - 正确
+        ```
+        int ch;   // use an int, not a char to hold the return from get()
+        
+        // loop to read and write all the data in the input
+        while ((ch = std::cin.get()) != EOF)
+        {
+            std::cout.put(ch);
+        }
+        ```
+        - 死循环：在`char`被实现为`unsigned char`的机器上，接收到的`EOF`会被转换成`unsigned char`，和`EOF`不再相等
+        ```
+        char ch;  // using a char here invites disaster!
+        
+        // the return from cin.get is converted to char and then compared to an int
+        // result of comparasion of constant (-1) with expression of type unsigned char is always false! 
+        while ((ch = std::cin.get()) != EOF)
+        {
+            std::cout.put(ch);
+        }
+        ```
+- 多字节低层`I/O`操作
+    - `is.get(sink, size, delim);`：从`std::istream is`中读取最多`size`个字节，并存入字符数组`sink`中。读取过程直至遇到字符`delim`或读取了`size`个字节或遇到文件尾为止。如果遇到了`delim`，则将其留在流中，**不**读取出来放入`sink`
+        - 一个常见错误是本想从流中删除分隔符，但却忘了做
+    - `is.getline(sink, size, delim);`：与前者相似，但会读取并丢弃`delim`。`delim`默认值为`'\n'`
+    - `is.read(sink, size);`：读取最多`size`个字节，存入字符数组`sink`中，返回`is`的引用
+    - `is.gcount();`：返回上一个未格式化读取操作从`is`读取的字节数
+    - `is.ignore(size, delim);`：读取并忽略最多`size`个字符，包括`delim`。`size`默认值为`1`，`delim`默认值为 *文件尾* 
+    - `os.write(source, size);`：将字符数组`source`中的`size`个字节写入`std::ostream os`，返回`os`的引用
+- 确定读取了多少个字符
+    - 应在任何后续的非格式化输入操作之前调用`is.gcount`，特别地，`is.peek()`、`is.putback(ch)`或`is.unget()`也是非格式化输入操作
+    - 如果在`is.gcount()`之前调用了`is.peek()`、`is.putback(ch)`或`is.unget()`，则`is.gcount()`返回`0`
 
-
-
-
-
-
-
+#### 流随机访问
 
 
 
@@ -4922,7 +4986,94 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
             std::copy(d.begin(), d.end(), std::inserter(l, std::next(l.begin())));  // 1 100 200 300 2 3 4 5
             ```
 - *流迭代器* （stream iterator）
-    - 没意思，不看了
+    - 虽然`std::iostream`类型不是容器，但标准库定义了可以用于这些`I/O`类型对象的迭代器
+        - [`std::istream_iterator`](https://en.cppreference.com/w/cpp/iterator/istream_iterator)：读取输入流
+        - [`std::ostream_iterator`](https://en.cppreference.com/w/cpp/iterator/ostream_iterator)：向输出流写数据
+    - 这些迭代器将它们对应的流当做一个特定类型的元素序列来处理
+        - 通过使用 *流迭代器* ，我们可以使用泛型算法从流对象读取数据或向其写入数据
+    - `std::istream_iterator`操作
+        - `std::istream_iterator<T> in(is);`：`in`从输入流`is`读取类型为`T`的值
+        - `std::istream_iterator<T> end;`：默认初始化，生成读取类型为`T`的值的`std::istream_iterator`，表示 *尾后位置* 
+        - `in1 == in2`，`in1 != in2`：`in1`和`in2`必须读取相同的类型，如果它们都是 *尾后迭代器* ，或绑定到相同的输入，则它们相等
+        - `*in`：返回从流中读取的值
+        - `in->mem`：与`(*in).mem`相同
+        - `++in`，`in++`：使用元素类型定义的`>>`运算符从输入流中读取下一个值。与以往相同，前置版本返回一个指向递增后迭代器的引用，后置版本返回旧值
+    ```
+    std::ifstream fin("afile");
+    std::istream_iterator<std::string> str_it(fin);  // reads strings from "afile"
+    
+    
+    // build vector from std::cin
+    std::istream_iterator<int> in_iter(std::cin);    // read ints from std::cin
+    std::istream_iterator<int> eof_iter;             // istream ''end'' iterator
+    std::vector<int> vec;
+
+    while (in_iter != eof_iter)                      // while there's valid input to read
+    {
+        // postfix increment reads the stream and returns the old value of the iterator
+        // we dereference that iterator to get the previous value read from the stream
+        vec.push_back(*in_iter++);
+    }
+    
+    // equivalent method to build vector from std::cin
+    std::istream_iterator<int> in_iter(std::cin);    // read ints from std::cin
+    std::istream_iterator<int> eof_iter;             // istream ''end'' iterator
+    std::vector<int> vec(in_iter, eof_iter);         // construct vec from an iterator range
+    ```
+    - 使用算法操作流迭代器
+        - 部分泛型算法可以用于流迭代器
+    ```
+    istream_iterator<int> in_it(std::cin), eof_it;
+    std::cout << std::accumulate(in_it, eof_it, 0) << std::endl;
+    ```
+    - `std::istream_iterator`允许使用 *懒惰求值* 
+        - `std::istream_iterator`绑定到输入流对象时，标准库并**不**保证迭代器立即从流读取数据
+            - 具体实现可以推迟从流读取数据，直到我们使用迭代器时才真正读取
+            - 标准库实现只保证在第一次解引用迭代器之前，从流中读取数据的操作已经完成了
+        - 如果创建`std::istream_iterator`但没有使用就销毁了，或从两个不同的对象同步读取同一个流，那么何时读取就很重要了
+    - `std::ostream_iterator`操作
+        - `std::ostream_iterator<T> out(os);`：`out`将类型为`T`的值写入到`std::ostream os`中
+        - `std::ostream_iterator<T> out(os, d);`：`out`将类型为`T`的值写入到`std::ostream os`中，每个值后面都输出一个`d`，`d`指向`C`风格字符串
+        - `out = val;`：用`operator<<`将`val`写入`out`所绑定的`std::ostream`中，`val`的类型必须与`out`可写的类型兼容。 *赋值时可以忽略解引用和递增运算*
+        - `*out`，`++out`，`out++`：这些运算符存在，但**不**做任何事，直接返回`out`
+    ```
+    std::ostream_iterator<int> out_iter(std::cout, " ");
+    
+    for (int e : vec)
+        *out_iter++ = e;     // the assignment writes this element to cout
+    std::cout << std::endl;
+
+    for (int e : vec)
+        out_iter = e;        // the assignment writes this element to cout
+    std::cout << std::endl;
+
+    copy(vec.begin(), vec.end(), out_iter);
+    std::cout << std::endl;
+    ```
+    - 使用流迭代器处理类类型
+    ```
+    std::istream_iterator<Sales_item> item_iter(std::cin), eof;
+    std::ostream_iterator<Sales_item> out_iter(std::cout, "\n");
+    
+    // store the first transaction in sum and read the next record
+    Sales_item sum = *item_iter++;
+    
+    while (item_iter != eof)
+    {
+        // if the current transaction (which is stored in item_iter) has the same ISBN
+        if (item_iter->isbn() == sum.isbn())
+        {
+            sum += *item_iter++; // add it to sum and read the next transaction
+        }
+        else 
+        {
+            out_iter = sum;      // write the current sum
+            sum = *item_iter++;  // read the next transaction
+        }
+    }
+    
+    out_iter = sum;              // remember to print the last set of records
+    ```
 - [*反向迭代器*](https://en.cppreference.com/w/cpp/iterator/reverse_iterator)（reverse iterator）
     - 从容器尾元素向首元素移动的迭代器，递增递减语义颠倒
         - `++rit`会移动至前一个元素，`--rit`会移动至后一个
@@ -13572,7 +13723,7 @@ quizB.reset(27);                  // student number 27 failed
     - 位域的 *类型* 由声明语法的 *声明说明符序列* 引入
         - *标识符* ：被声明的位域名
             - 名字是可选的， *无名位域* 引入指定数量的填充位
-        - [*属性说明符序列*](https://zh.cppreference.com/w/cpp/language/attributes) ：可选的任何数量属性的序列
+        - [*属性说明符序列*](https://en.cppreference.com/w/cpp/language/attributes) ：可选的任何数量属性的序列
         - *大小* ： *非负整型* 常量表达式
             - 大于零时，这是位域将占有的位数
             - *只有* *无名位域* 的大小能等于零，用于钦定自己 *后面* 的那个位域 *对齐下一个字节*
