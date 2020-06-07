@@ -3345,7 +3345,7 @@ out2 = print(out2);             // error: cannot copy stream objects
         fin.close();                 // close the file
         fin.open(ifile + "2");       // open another file
         ```
-    - `std::fstream`对象会被自动析构，被销毁时，`close`也会被自动调用
+    - `std::fstream`对象会被 *自动析构* ，析构时会 *自动调用`close`* 
 - *文件模式* （file mode）
     - 每个流都有一个关联的 *文件模式* ，用来指出如何使用文件
         - 实现
@@ -3394,12 +3394,12 @@ out2 = print(out2);             // error: cannot copy stream objects
             static const openmode trunc  = _S_trunc;
         ```
         - 其中
-            1. `std::fstream::app`： *每次写操作* 前均定位到文件末尾
-            2. `std::fstream::ate`： *打开文件* 后立即定位到文件末尾
-            3. `std::fstream::binary`：以二进制方式进行`I/O`
-            4. `std::fstream::in`：以读方式打开。`std::ifstream`和`std::fstream`的默认选项
-            5. `std::fstream::out`：以写方式打开。`std::ofstream`和`std::fstream`的默认选项
-            6. `std::fstream::trunc`：截断文件。`std::fstream`的默认选项
+            1. `std::fstream::app`： *每次写操作* 前均 *定位到文件末尾* 
+            2. `std::fstream::ate`： *打开文件* 后立即 *定位到文件末尾* 
+            3. `std::fstream::binary`：以 *二进制 式* 进行`I/O`
+            4. `std::fstream::in`：以 *读* 方式打开。`std::ifstream`和`std::fstream`的默认选项
+            5. `std::fstream::out`：以 *写* 方式打开。`std::ofstream`和`std::fstream`的默认选项
+            6. `std::fstream::trunc`： *截断* 文件。`std::fstream`的默认选项
     - 不论用哪种方式打开文件，我们都可以指定文件模式
         - `fs.open(file, mode);`：显式打开文件
         - `std::fstream fs(file, mode);`：隐式打开文件
@@ -3596,7 +3596,7 @@ for (const PersonInfo & entry : people)
             - 注意这里要用`std::ios_base::fmtflags`本身，而**不是**上面那些的操纵符
             - `std::ios`继承了`std::ios_base`，域指定为`std::ios`能短点儿
         - `std::resetiosflags(mask)`：将`std::ios_base::fmtflags mask`中的`1`在流对象格式标志中的对应位置全部置`0`
-            - 注意这里要用`ios_base::fmtflags`本身，而**不是**上面那些的操纵符
+            - 注意这里要用`std::ios_base::fmtflags`本身，而**不是**上面那些的操纵符
             - `std::ios`继承了`std::ios_base`，域指定为`std::ios`能短点儿，例如
             ```
             std::cout << std::hex;
@@ -3965,8 +3965,8 @@ if (cancelEntry)
 - `C++`标准库的`C I/O`子集实现`C`风格流输入/输出操作
     - `<cstdio>`头文件提供通用文件支持并提供有窄和多字节字符输入/输出能力的函数
     - `<cwchar>`头文件提供有宽字符输入/输出能力的函数
-- `C`流是`std::FILE`类型对象，只能通过`std::FILE *`类型指针访问及操作
-    - 通过解引用`std::FILE *`创建`std::FILE`类型对象的本地拷贝是可以的，但使用这种本地拷贝是 *未定义行为*
+- `C`流是`FILE`类型对象，只能通过`FILE *`类型指针访问及操作
+    - 通过解引用`FILE *`创建`FILE`类型对象的本地拷贝是可以的，但使用这种本地拷贝是 *未定义行为*
     - 每个`C`流与外部物理设备（文件、标准输入流、打印机、序列端口等）关联
 - 除了访问设备所必须的系统限定信息（例如`POSIX`文件描述符），每个`C`流对象保有以下内容
     1. *字符宽度* （Character width）
@@ -3981,7 +3981,7 @@ if (cancelEntry)
     4. *`I/O`模式* （`I/O` mode）
         - 输入
         - 输出
-        - 更新（兼具输入与输出）
+        - 更新（输入与输出）
     5. *二进制/文本模式指示器* （Binary/text mode indicator）
     6. *文件尾指示器* （End-of-file status indicator）
     7. *错误状态指示器* （Error status indicator）
@@ -4004,53 +4004,174 @@ if (cancelEntry)
             - 只可能在流末尾加入空字符`'\0'`
     - `POSIX`**不辨别**文本与二进制流
         - 无`'\n'`或任何其他字符的特殊映射 
-- 函数
+- 函数（不含宽字符版本）
     - 文件访问
-        - [`fopen`](https://en.cppreference.com/w/cpp/io/c/fopen)：打开文件 
+        - [`fopen`](https://en.cppreference.com/w/cpp/io/c/fopen)：打开文件
+            - 签名
+            ```
+            FILE * fopen(const char * filename, const char * mode);
+            ```
+            - 打开`filename`所指示的文件并返回与该文件关联的流，用`mode`确定 *文件访问模式* 
+            - 可能的文件访问模式
+                - `"r"`： *只读* ，为读取打开文件。若文件已存在，则从起始位置读取；否则，打开失败
+                - `"w"`： *只写* ，为写入创建文件。若文件已存在，则截断文件；否则，创建新文件
+                - `"a"`： *追加* ，追加到文件。若文件已存在，则追加写入到文件的末尾；否则，创建新文件
+                    - 在 *追加* 模式中，写入数据到文件尾，忽略文件位置指示器的当前位置
+                - `"r+"`： *扩展读* ，为读写打开文件。若文件已存在，则从起始位置读取；否则，打开失败
+                - `"w+"`： *扩展写* ，为读写创建文件。若文件已存在，则截断文件；否则，创建新文件
+                - `"a+"`： *扩展追加* ，为读写打开文件。若文件已存在，则追加写入到文件的末尾；否则，创建新文件
+                    - 在 *追加* 模式中，写入数据到文件尾，忽略文件位置指示器的当前位置
+                - 注意
+                    - 文件访问标志`"b"`为 *可选* 的，用于指定用 *二进制模式* 打开文件。此标志在`POSIX`系统上无效果，但例如在`Windows`上，它禁用`'\n'`和`'\x1A'`的特殊处理
+                    - 文件访问标志`"x"`能 *可选* 地追加到`"w"`或`"w+"`指定符，强制函数在文件已存在时 *失败* ，**而非**截断文件 `(since C++17)`
+                    - 若模式不是以上字符串之一，则 *行为未定义* 
+            - 返回值
+                - 成功，则返回指向控制打开的文件流的对象的指针，并清除文件尾和错误位。流为 *完全缓冲* 的，除非`filename`指代交互式设备
+                - 错误，返回 *空指针* ，并设置[`errno`](https://en.cppreference.com/w/cpp/error/errno)
+            - 使用示例
+            ```
+            #include <cstdlib>
+            #include <cstdio>
+            
+            int main()
+            {
+                FILE * fp = fopen("test.txt", "r");
+                
+                if (!fp) 
+                {
+                    std::perror("File opening failed");
+                    return EXIT_FAILURE;
+                }
+             
+                int c; // note: int, not char, required to handle EOF
+                
+                while ((c = std::fgetc(fp)) != EOF) 
+                { 
+                    // standard C I/O file reading loop
+                    putchar(c);
+                }
+             
+                if (ferror(fp))
+                {
+                    puts("I/O error when reading");
+                }
+                else if (std::feof(fp))
+                {
+                    puts("End of file reached successfully");
+                }
+                    
+                fclose(fp);
+                
+                return EXIT_SUCCESS;
+            }
+            ```
         - [`freopen`](https://en.cppreference.com/w/cpp/io/c/freopen)：以不同名称打开既存流 
+            - 签名
+            ```
+            FILE * freopen(const char * filename, const char * mode, FILE * stream);
+            ```
+            - 首先，试图关闭与`stream`关联的文件，忽略任何错误；然后，若`filename`非空，则用`mode`打开`filename`所指定的文件，然后将该文件与`stream`所指向的文件流关联；若`filename`为空指针，则函数试图重打开已与`stream`关联的文件（此情况下是否允许模式改变是实现定义的）
+            - 返回值
+                - 成功时：`stream`
+                - 失败时：`NULL` 
         - [`fclose`](https://en.cppreference.com/w/cpp/io/c/fclose)：关闭文件 
+            - 签名
+            ```
+            int fclose(FILE * stream);
+            ```
+            - 刷新缓冲区，然后关闭给定的文件流。任何未读取的缓冲数据将被舍弃
+                - 无论操作是否成功，流都不再关联到文件。且由`setbuf`或`setvbuf`分配的缓冲区若存在，则亦被解除关联，并且若使用自动分配则被解分配
+                - 若在`fclose`返回后使用`stream`，则 *行为未定义*  
+            - 返回值
+                - 成功时：`0`
+                - 失败时：`EOF` 
         - [`fflush`](https://en.cppreference.com/w/cpp/io/c/fflush)：将输出流与实际文件同步 
-        - [`fwide`](https://en.cppreference.com/w/cpp/io/c/fwide)：在宽字符`I/O`和窄字符`I/O`间切换文件流 
+            - 签名
+            ```
+            int fflush(FILE * stream);
+            ```
+            - 刷新输出流`stream`的缓冲区
+                - 对于输出流（和最近操作为输出的更新流），将来自`stream`缓冲区的未写入数据写入关联的输出设备
+                - 对于输入流（和最近操作为输入的更新流）， *行为未定义* 
+                - 若`stream`为 *空指针* ，则刷新 *所有* 输出流（和最近操作为输出的更新流），包含程序不能直接访问的流 
+            - 返回值
+                - 成功时：`0`
+                - 失败时：`EOF`
         - [`setbuf`](https://en.cppreference.com/w/cpp/io/c/setbuf)：为文件流设置缓冲区 
+            - 签名
+            ```
+            void setbuf(FILE * stream, char * buffer);
+            ```
+            - 为`C`流`stream`上进行的`I/O`操作设置内部缓冲区
+                - 若`buffer`**非**空，则等价于`setvbuf(stream, buffer, _IOFBF, BUFSIZ)` 。
+                - 若`buffer`为 *空* ，则等价于`setvbuf(stream, NULL, _IONBF, 0) `，这会 *关闭缓冲* 
+            - 注意
+                - `setbuf`所用的缓冲区大小为宏定义常量`BUFSIZ`。若`BUFSIZ`不是适合的缓冲区大小，则能用`setvbuf`更改它
+                - `setvbuf`亦应当用于 *检测错误* 
+                    - 因为`setbuf`**不**指示成功或失败
+                    - 此函数仅可在已将`stream`关联到打开的文件后，但要在任何其他操作（除了对 std::setbuf/std::setvbuf 的失败调用）前使用
+                - 一个 *常见错误* 是设置`stdin`或`stdout`的缓冲区为生存期在程序终止前结束的数组
+                ```
+                int main() 
+                {
+                    char buf[BUFSIZ];
+                    std::setbuf(stdin, buf);
+                } // buf 的生存期结束，未定义行为
+                ```
+            - 使用示例
+            ```
+            #include <chrono>
+            #include <cstdio>
+            #include <thread>
+             
+            int main()
+            {
+                using namespace std::chrono_literals;
+             
+                std::setbuf(stdout, NULL);        // 无缓冲的 stdout
+                std::putchar('a');                // 在无缓冲的流上立即显现
+                std::this_thread::sleep_for(1s);
+                std::putchar('b');
+            }
+            ```
         - [`servbuf`](https://en.cppreference.com/w/cpp/io/c/setvbuf)：为文件流设置缓冲区与其大小
+            - 签名
+            ```
+            int setvbuf(FILE * stream, char * buffer, int mode, size_t size);
+            ```
+            - 以`mode`所指示值更改给定文件流`stream`的缓冲模式
+                - 若`buffer`为 *空指针* ，则 *重设* 内部缓冲区大小为`size`
+                - 若`buffer`**不**是空指针，则指示流使用始于`buffer`而大小为`size`的用户提供缓冲区
+                    - 必须在`buffer`所指向的数组的生存期结束前用`fclose`关闭流
+                    - 成功调用`setvbuf`后，`buffer`内容 *不确定* ，使用它是 *未定义行为* 
+                - `mode`可以是
+                    1. `_IOFBF`， *全缓冲* ：当缓冲区为空时，从流读入数据。或者当缓冲区满时，向流写入数据。
+                    2. `_IOLBF`， *行缓冲* ：每次从流中读入一行数据或向流中写入一行数据。
+                    3. `_IONBF`， *无缓冲* ：直接从流中读入数据或直接向流中写入数据，缓冲设置无效。
+
+ 
+            - 
     - 直接`I/O`
         - [`fread`](https://en.cppreference.com/w/cpp/io/c/fread)：从文件读取 
         - [`fwrite`](https://en.cppreference.com/w/cpp/io/c/fwrite)：写入文件 
     - 无格式`I/O`
-        - 字节/多字节字符
-            - [`fgetc`，`getc`](https://en.cppreference.com/w/cpp/io/c/fgetc)：从文件流获取字符 
-            - [`fgets`](https://en.cppreference.com/w/cpp/io/c/fgets)：从文件流获取字符串 
-            - [`fputc`，`putc`](https://en.cppreference.com/w/cpp/io/c/fputc)：写字符到文件流 
-            - [`fputs`](https://en.cppreference.com/w/cpp/io/c/fputs)：写字符串到文件流 
-            - [`getchar`](https://en.cppreference.com/w/cpp/io/c/getchar)：从`stdin`读取字符 
-            - [`gets`](https://en.cppreference.com/w/cpp/io/c/gets)：从`stdin`读取字符串 `(deprecated in C++11)(removed in C++14)`
-                - 此函数不检测避免缓冲区溢出。应使用`std::fgets`替代
-            - [`putchar`](https://en.cppreference.com/w/cpp/io/c/putchar)：写字符到`stdout`
-            - [`puts`](https://en.cppreference.com/w/cpp/io/c/puts)：写字符串到`stdout`
-            - [`ungetc`](https://en.cppreference.com/w/cpp/io/c/ungetc)：把字符放回文件流 
-        - 宽字符
-            - [`fgetwc`，`getwc`](https://en.cppreference.com/w/cpp/io/c/fgetwc)：从文件流获取宽字符 
-            - [`fgetws`](https://en.cppreference.com/w/cpp/io/c/fgetws)：从文件流获取宽字符串 
-            - [`fputwc`，`putwc`](https://en.cppreference.com/w/cpp/io/c/fputwc)：写宽字符到文件流 
-            - [`fputws`](https://en.cppreference.com/w/cpp/io/c/fputws)：写宽字符串到文件流 
-            - [`getwchar`](https://en.cppreference.com/w/cpp/io/c/getwchar)：从`stdin`读取宽字符 
-            - [`putwchar`](https://en.cppreference.com/w/cpp/io/c/putwchar)：写宽字符到`stdout`
-            - [`ungetwc`](https://en.cppreference.com/w/cpp/io/c/ungetwc)：把宽字符放回文件流 
+        - [`fgetc`，`getc`](https://en.cppreference.com/w/cpp/io/c/fgetc)：从文件流获取字符 
+        - [`fgets`](https://en.cppreference.com/w/cpp/io/c/fgets)：从文件流获取字符串 
+        - [`fputc`，`putc`](https://en.cppreference.com/w/cpp/io/c/fputc)：写字符到文件流 
+        - [`fputs`](https://en.cppreference.com/w/cpp/io/c/fputs)：写字符串到文件流 
+        - [`getchar`](https://en.cppreference.com/w/cpp/io/c/getchar)：从`stdin`读取字符 
+        - [`gets`](https://en.cppreference.com/w/cpp/io/c/gets)：从`stdin`读取字符串 `(deprecated in C++11)(removed in C++14)`
+            - 此函数不检测避免缓冲区溢出。应使用`std::fgets`替代
+        - [`putchar`](https://en.cppreference.com/w/cpp/io/c/putchar)：写字符到`stdout`
+        - [`puts`](https://en.cppreference.com/w/cpp/io/c/puts)：写字符串到`stdout`
+        - [`ungetc`](https://en.cppreference.com/w/cpp/io/c/ungetc)：把字符放回文件流 
     - 有格式`I/O`
-        - 字节/多字节字符
-            - [`scanf`，`fscanf`，`sscanf`](https://en.cppreference.com/w/cpp/io/c/fscanf)：从`stdin`、文件流或缓冲区读取有格式输入
-            - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* 
+        - [`scanf`，`fscanf`，`sscanf`](https://en.cppreference.com/w/cpp/io/c/fscanf)：从`stdin`、文件流或缓冲区读取有格式输入
+        - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* 
 从`stdin`、文件流或缓冲区读取有格式输入 
-            - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 stdout、文件流或缓冲区 
-            - [`vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`](https://en.cppreference.com/w/cpp/io/c/vfprintf)：使用 *可变实参列表* 
+        - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 stdout、文件流或缓冲区 
+        - [`vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`](https://en.cppreference.com/w/cpp/io/c/vfprintf)：使用 *可变实参列表* 
 打印有格式输出到`stdout`、文件流或缓冲区 
-        - 宽字符
-            - [`wscanf`，`wfscanf`，`wsscanf`](https://en.cppreference.com/w/cpp/io/c/fwscanf)：从`stdin`、文件流或缓冲区读取有格式宽字符输入 
-            - [`vwscanf`，`vfwscanf`，`vswscanf`](https://en.cppreference.com/w/cpp/io/c/vfwscanf)：使用 *可变实参列表* 
-从`stdin`、文件流或缓冲区读取有格式宽字符输入 
-            - [`wprintf`，`fwprintf`，`swprintf`](https://en.cppreference.com/w/cpp/io/c/fwprintf)：打印有格式宽字符输出到`stdout`、文件流或缓冲区 
-            - [`vwprintf`，`vfwprintf`，`vswprintf`](https://en.cppreference.com/w/cpp/io/c/vfwprintf)：使用 *可变实参列表* 打印
-有格式宽字符输出到`stdout`、文件流或缓冲区 
     - 文件寻位
         - [`ftell`](https://en.cppreference.com/w/cpp/io/c/ftell)：返回当前文件位置指示器 
         - [`fgetpos`](https://en.cppreference.com/w/cpp/io/c/fgetpos)：获取文件位置指示器 
@@ -4071,16 +4192,84 @@ if (cancelEntry)
     - `FILE`：对象类型，足以保有控制`C I/O`流所需的全部信息
     - `fpos_t`：完整非数组对象类型，足以唯一指定文件中的位置，包含其多字节解析状态
     - [`size_t`](https://en.cppreference.com/w/cpp/types/size_t)：`g++`实现为`typedef unsigned long size_t;`
-- 宏常量
+- 宏常量的`g++`实现
     - `stdin`，`stdout`，`stderr`：`FILE *`类型表达式，分别与 *标准输入流* 、 *标准输出流* 和 *标准错误流* 关联
+    ```
+    // <stdio.h>
+    /* Standard streams.  */
+    extern struct _IO_FILE * stdin;   /* Standard input stream.  */
+    extern struct _IO_FILE * stdout;  /* Standard output stream.  */
+    extern struct _IO_FILE * stderr;  /* Standard error output stream.  */
+    /* C89/C99 say they're macros.  Make them happy.  */
+    #define stdin stdin
+    #define stdout stdout
+    #define stderr stderr
+    ```
     - `EOF`：拥有`int`类型和负值的整数常量表达式 
-    - `FOPEN_MAX`：能同时打开的文件数 
+    ```
+    // <libio.h>
+    #ifndef EOF
+    #define EOF (-1)
+    #endif
+    ```
+    - `FOPEN_MAX`：能同时打开的文件数
+    ```
+    // <stdio_lim.h>
+    #undef  FOPEN_MAX
+    #define FOPEN_MAX 16
+    ```    
     - `FILENAME_MAX`：要保有最长受支持文件名的字符数组所需的长度 
-    - `BUFSIZ`：`std::setbuf`所用的缓冲区大小 
-    - `_IOFBF`，`_IOLBF`，`_IONBF`：给`std::setbuf`的参数，分别指示 *全缓冲* 、 *行缓冲* 和 *无缓冲* `I/O`
-    - `SEEK_SET`，`SEEK_CUR`，`SEEK_END`：给`std::fseek`的参数，分别指示从 *文件起始* 、 *当前文件位置* 和 *文件尾* 寻位
-    - `TMP_MAX`：`std::tmpnam`所能生成的唯一文件名的最大数量 
+    ```
+    // <stdio_lim.h>
+    #define FILENAME_MAX 4096
+    ```
+    - `BUFSIZ`：`setbuf`所用的缓冲区大小 
+    ```
+    // <stdio.h>
+    /* Default buffer size.  */
+    #ifndef BUFSIZ
+    # efine BUFSIZ _IO_BUFSIZ
+    #endif
+    
+    // <libio.h>
+    #define _IO_BUFSIZ _G_BUFSIZ
+    
+    // <_G_config.h>
+    #define _G_BUFSIZ 8192
+    ```
+    - `_IOFBF`，`_IOLBF`，`_IONBF`：给`setvbuf`的参数，分别指示 *全缓冲* 、 *行缓冲* 和 *无缓冲* `I/O`
+    ```
+    // <stdio.h>
+    /* The possibilities for the third argument to `setvbuf'.  */
+    #define _IOFBF 0    /* Fully buffered.  */
+    #define _IOLBF 1    /* Line buffered.  */
+    #define _IONBF 2    /* No buffering.  */
+    ```
+    - `SEEK_SET`，`SEEK_CUR`，`SEEK_END`：给`fseek`的参数，分别指示从 *文件起始* 、 *当前文件位置* 和 *文件尾* 寻位
+    ```
+    // <stdio.h>
+    /* The possibilities for the third argument to `fseek'.
+       These values should not be changed.  */
+    #define SEEK_SET   0    /* Seek from beginning of file.  */
+    #define SEEK_CUR   1    /* Seek from current position.  */
+    #define SEEK_END   2    /* Seek from end of file.  */
+    #ifdef __USE_GNU
+    # define SEEK_DATA 3    /* Seek to next data.  */
+    # define SEEK_HOLE 4    /* Seek to next hole.  */
+    #endif
+    ```
+    - `TMP_MAX`：`tmpnam`所能生成的唯一文件名的最大数量 
+    ```
+    // <stdio_lim.h>
+    #define TMP_MAX 238328
+    ```
     - `L_tmpnam`：保有`std::tmpnam`结果的字符数组所需的大小 
+    ```
+    // <stdio_lim.h>
+    #define L_tmpnam 20
+    ```
+
+
 
 
 
