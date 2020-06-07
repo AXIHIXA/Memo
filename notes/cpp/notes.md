@@ -3668,7 +3668,34 @@ std::cout << std::uppercase << std::showbase << std::hex
           << "printed in hexadecimal: " << 20 << " " << 1024                // printed in hexadecimal: 0X14 0X400
           << std::nouppercase << std::noshowbase << std::dec << std::endl;
 ```
-
+- 控制浮点数格式
+    - 可以控制的三种格式
+        1. 以多高精度（多少位有效数字）输出
+        2. 输出为十六进制、十进制还是科学计数法形式
+        3. 对于没有小数部分的浮点值是否还输出小数点
+    - 默认情况下
+        1. 六位精度
+        2. 非常大或小的数输出为科学计数法形式，其他输出为十进制形式
+        3. 对于没有小数部分的浮点值，**不**输出小数点
+    - 指定精度
+        1. 使用`std::cout::precision(n)`
+            - `precision`是重载的，一个不接受参数，返回当前精度；另一个接受要设定的精度
+        2. 使用`std::cout << std::setprecision(n);`
+        ```
+        // std::cout.precision reports the current precision value
+        // Precision: 6, Value: 1.41421
+        std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
+        
+        // cout.precision(12) asks that 12 digits of precision be printed
+        // Precision: 12, Value: 1.41421356237
+        std::cout.precision(12);
+        std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
+        
+        // alternative way to set precision using the setprecision manipulator
+        // Precision: 3, Value: 1.41
+        std::cout << std::setprecision(3);
+        std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
+        ```
 
 
 
