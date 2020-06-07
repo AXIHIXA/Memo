@@ -4204,6 +4204,10 @@ if (cancelEntry)
     #define stdin stdin
     #define stdout stdout
     #define stderr stderr
+    
+    // <FILE.h>
+    /* The opaque type of streams.  This is the definition used elsewhere.  */
+    typedef struct _IO_FILE FILE;
     ```
     - `EOF`：拥有`int`类型和负值的整数常量表达式 
     ```
