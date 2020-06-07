@@ -3771,7 +3771,7 @@ std::cout << std::setfill('#')
         std::cin >> skipws;    // reset cin to the default state so that it discards whitespace
         ```
 
-#### 未格式化`I/O`（unformatted `I/O`）
+#### 非格式化`I/O`（unformatted `I/O`）
 
 - 单字节低层`I/O`操作
     - `is.get(ch);`：从`std::istream is`读取 *下一个字节* 存入字符`ch`中，返回`is`的引用
@@ -3801,7 +3801,7 @@ std::cout << std::setfill('#')
         #define EOF (-1)
         #endif
         ```
-    - *必须* 使用`int`，而**不是**`char`来接收返回值
+    - *警告* ： *必须* 使用`int`，而**不是**`char`来接收返回值
         - 正确
         ```
         int ch;   // use an int, not a char to hold the return from get()
@@ -3831,9 +3831,59 @@ std::cout << std::setfill('#')
     - `is.gcount();`：返回上一个未格式化读取操作从`is`读取的字节数
     - `is.ignore(size, delim);`：读取并忽略最多`size`个字符，包括`delim`。`size`默认值为`1`，`delim`默认值为 *文件尾* 
     - `os.write(source, size);`：将字符数组`source`中的`size`个字节写入`std::ostream os`，返回`os`的引用
+    - `std::getline(is, buf, delim)`：定义于`<string>`中的按行读入的函数。`delim`默认值为`'\n'`。将读取到的每行存入存入`std::string buf`中，会读取并丢弃`delim`。**不**影响`is.gcount()`。返回`is`的引用
 - 确定读取了多少个字符
     - 应在任何后续的非格式化输入操作之前调用`is.gcount`，特别地，`is.peek()`、`is.putback(ch)`或`is.unget()`也是非格式化输入操作
     - 如果在`is.gcount()`之前调用了`is.peek()`、`is.putback(ch)`或`is.unget()`，则`is.gcount()`返回`0`
+- 处理空白字符
+    - 对于 *空白分隔* 的读入操作（例如`int n; std::cin >> n;`）时，任何后随的 *空白符* ，包括 *换行符* 都会被留在流中
+    - 然后当切换到面向行的输入时，以`getline`取得的首行只会是 *该空白符* 
+    - 多数情况下这是不想要的行为，可能的解法包括
+        1. 对`getline`的显式的额外初始调用
+        2. 以`std::cin >> std::ws`移除额外的空白符
+            - 可以直接`std::getline(std::cin >> std::ws, buf, delim)`
+        3. 以`std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');`忽略输入行上剩下的全部字符 
+
+#### `C++`风格按行读文件
+
+- 推荐的方法：`std::getline(is, buf, delim)`。都`C++`了读入的东西还存字符数组里干啥，要折腾字符数组`fgets`它不香吗
+    - `std::getline`会 *读入并丢弃* 行尾的换行符（或指定的分隔符`delim`），比起`is.get`又不知道高到哪儿去了
+    - `fstream`对象会自动析构，析构时自动调用`close`，
+        - 所以放进`if`里面列表初始化（`if`**不**支持圆括号初始化），这样就既起到了判断流合法的作用，又保证了自动释放加自动关闭文件
+        - 有没有点`python`里面`with open("input.txt", "r") as fin`的感觉了？
+```
+if (std::ifstream fin {"input.txt", std::ifstream::in})
+{
+    for (std::string line; std::getline(fin, line, '\n');)
+    {
+        std::cout << line << std::endl;
+    }
+}
+```
+
+#### `C++`段子：`std::cout`真比`printf`慢吗
+
+- 你要是乱用`std::endl`天天刷缓冲区玩，那肯定真是慢死了
+    - 你看看谁家每个`printf`后面都跟个`fflush`的？
+- 一般如果不要求线程安全的话，`std::ios::sync_with_stdio(false)`的话还是很快的
+    - 但这个要求就**不能**混用`std::cout`和`printf`了
+```
+#include <cstdio>
+#include <iostream>
+ 
+int main()
+{
+    std::ios::sync_with_stdio(false);
+    std::cout << "a\n";
+    std::printf("b\n");
+    std::cout << "c\n";
+}
+
+// POSSIBLE OUTPUT: 
+b
+a
+c
+```
 
 #### 流随机访问
 
@@ -3961,34 +4011,117 @@ if (cancelEntry)
 
 #### [`C`风格`I/O`](https://en.cppreference.com/w/cpp/io/c) （C-style file input/output）
 
-- 摘抄内容，当字典看看得了
 - `C++`标准库的`C I/O`子集实现`C`风格流输入/输出操作
-    - `<cstdio>`头文件提供通用文件支持并提供有窄和多字节字符输入/输出能力的函数
-    - `<cwchar>`头文件提供有宽字符输入/输出能力的函数
+    - `<cstdio>`头文件提供通用文件支持并提供有窄和多字节字符`I/O`能力的函数
+        - 类型
+            - `FILE`：对象类型，足以保有控制`C I/O`流所需的全部信息
+            - `fpos_t`：完整非数组对象类型，足以唯一指定文件中的位置，包含其多字节解析状态
+            - [`size_t`](https://en.cppreference.com/w/cpp/types/size_t)：`typedef unsigned long size_t;`
+        - 宏常量
+            - `stdin`，`stdout`，`stderr`：`FILE *`类型表达式，分别与 *标准输入流* 、 *标准输出流* 和 *标准错误流* 关联
+            ```
+            // <stdio.h>
+            /* Standard streams.  */
+            extern struct _IO_FILE * stdin;     /* Standard input stream.  */
+            extern struct _IO_FILE * stdout;    /* Standard output stream.  */
+            extern struct _IO_FILE * stderr;    /* Standard error output stream.  */
+            /* C89/C99 say they're macros.  Make them happy.  */
+            #define stdin  stdin
+            #define stdout stdout
+            #define stderr stderr
+            
+            // <FILE.h>
+            /* The opaque type of streams.  This is the definition used elsewhere.  */
+            typedef struct _IO_FILE FILE;
+            ```
+            - `EOF`：拥有`int`类型和负值的整数常量表达式 
+            ```
+            // <libio.h>
+            #ifndef EOF
+            #define EOF (-1)
+            #endif
+            ```
+            - `FOPEN_MAX`：能同时打开的文件数
+            ```
+            // <stdio_lim.h>
+            #undef  FOPEN_MAX
+            #define FOPEN_MAX 16
+            ```    
+            - `FILENAME_MAX`：要保有最长受支持文件名的字符数组所需的长度 
+            ```
+            // <stdio_lim.h>
+            #define FILENAME_MAX 4096
+            ```
+            - `BUFSIZ`：`setbuf`所用的缓冲区大小 
+            ```
+            // <stdio.h>
+            /* Default buffer size.  */
+            #ifndef BUFSIZ
+            # efine BUFSIZ _IO_BUFSIZ
+            #endif
+            
+            // <libio.h>
+            #define _IO_BUFSIZ _G_BUFSIZ
+            
+            // <_G_config.h>
+            #define _G_BUFSIZ 8192
+            ```
+            - `_IOFBF`，`_IOLBF`，`_IONBF`：给`setvbuf`的参数，分别指示 *全缓冲* 、 *行缓冲* 和 *无缓冲* `I/O`
+            ```
+            // <stdio.h>
+            /* The possibilities for the third argument to `setvbuf'.  */
+            #define _IOFBF 0    /* Fully buffered.  */
+            #define _IOLBF 1    /* Line buffered.  */
+            #define _IONBF 2    /* No buffering.  */
+            ```
+            - `SEEK_SET`，`SEEK_CUR`，`SEEK_END`：给`fseek`的参数，分别指示从 *文件起始* 、 *当前文件位置* 和 *文件尾* 寻位
+            ```
+            // <stdio.h>
+            /* The possibilities for the third argument to `fseek'.
+               These values should not be changed.  */
+            #define SEEK_SET   0    /* Seek from beginning of file.  */
+            #define SEEK_CUR   1    /* Seek from current position.  */
+            #define SEEK_END   2    /* Seek from end of file.  */
+            #ifdef __USE_GNU
+            # define SEEK_DATA 3    /* Seek to next data.  */
+            # define SEEK_HOLE 4    /* Seek to next hole.  */
+            #endif
+            ```
+            - `TMP_MAX`：`tmpnam`所能生成的唯一文件名的最大数量 
+            ```
+            // <stdio_lim.h>
+            #define TMP_MAX 238328
+            ```
+            - `L_tmpnam`：保有`std::tmpnam`结果的字符数组所需的大小 
+            ```
+            // <stdio_lim.h>
+            #define L_tmpnam 20
+            ```
+    - `<cwchar>`头文件提供有宽字符`I/O`能力的函数（不搞外语，就不看了）
 - `C`流是`FILE`类型对象，只能通过`FILE *`类型指针访问及操作
     - 通过解引用`FILE *`创建`FILE`类型对象的本地拷贝是可以的，但使用这种本地拷贝是 *未定义行为*
     - 每个`C`流与外部物理设备（文件、标准输入流、打印机、序列端口等）关联
-- 除了访问设备所必须的系统限定信息（例如`POSIX`文件描述符），每个`C`流对象保有以下内容
-    1. *字符宽度* （Character width）
-        - 未设置
-        - 窄
-        - 宽
-    2. *缓冲状态* （Buffering state）
-        - 无缓冲
-        - 行缓冲
-        - 全缓冲
-    3. *缓冲区* （buffer），可为外部的用户提供缓冲区所替换
-    4. *`I/O`模式* （`I/O` mode）
-        - 输入
-        - 输出
-        - 更新（输入与输出）
-    5. *二进制/文本模式指示器* （Binary/text mode indicator）
-    6. *文件尾指示器* （End-of-file status indicator）
-    7. *错误状态指示器* （Error status indicator）
-    8. *文件位置指示器* （File position indicator），是一个`std::fpos_t`类型对象
-        - 对于宽字符流，还包含 *解析状态* （parse state， `std::mbstate_t`类型对象）
-    9. *再入锁* （Reentrant lock），用于在多个线程读、写、寻位或查询流时避免数据竞争（data races） `(since C++17)`
-- 二进制/文本模式
+    - 除了访问设备所必须的系统限定信息（例如`POSIX`文件描述符），每个`C`流对象保有以下内容
+        1. *字符宽度* （Character width）
+            - 未设置
+            - 窄
+            - 宽
+        2. *缓冲状态* （Buffering state）
+            - 无缓冲
+            - 行缓冲
+            - 全缓冲
+        3. *缓冲区* （buffer），可为外部的用户提供缓冲区所替换
+        4. *`I/O`模式* （`I/O` mode）
+            - 输入
+            - 输出
+            - 更新（输入与输出）
+        5. *二进制/文本模式指示器* （Binary/text mode indicator）
+        6. *文件尾指示器* （End-of-file status indicator）
+        7. *错误状态指示器* （Error status indicator）
+        8. *文件位置指示器* （File position indicator），是一个`std::fpos_t`类型对象
+            - 对于宽字符流，还包含 *解析状态* （parse state，`std::mbstate_t`类型对象）
+        9. *再入锁* （Reentrant lock），用于在多个线程读、写、寻位或查询流时避免数据竞争（data races） `(since C++17)`
+- *文本模式* 和 *二进制模式* 
     - *文本流* （text stream）
         - 由 *行* 组成，每行都是 *有序字符序列* 加上 *终止符* `'\n'`
             - 最后一行是否需要终止符`'\n'` *由具体实现定义* 
@@ -4004,274 +4137,336 @@ if (cancelEntry)
             - 只可能在流末尾加入空字符`'\0'`
     - `POSIX`**不辨别**文本与二进制流
         - 无`'\n'`或任何其他字符的特殊映射 
-- 函数（不含宽字符版本）
-    - 文件访问
-        - [`fopen`](https://en.cppreference.com/w/cpp/io/c/fopen)：打开文件
-            - 签名
-            ```
-            FILE * fopen(const char * filename, const char * mode);
-            ```
-            - 打开`filename`所指示的文件并返回与该文件关联的流，用`mode`确定 *文件访问模式* 
-            - 可能的文件访问模式
-                - `"r"`： *只读* ，为读取打开文件。若文件已存在，则从起始位置读取；否则，打开失败
-                - `"w"`： *只写* ，为写入创建文件。若文件已存在，则截断文件；否则，创建新文件
-                - `"a"`： *追加* ，追加到文件。若文件已存在，则追加写入到文件的末尾；否则，创建新文件
-                    - 在 *追加* 模式中，写入数据到文件尾，忽略文件位置指示器的当前位置
-                - `"r+"`： *扩展读* ，为读写打开文件。若文件已存在，则从起始位置读取；否则，打开失败
-                - `"w+"`： *扩展写* ，为读写创建文件。若文件已存在，则截断文件；否则，创建新文件
-                - `"a+"`： *扩展追加* ，为读写打开文件。若文件已存在，则追加写入到文件的末尾；否则，创建新文件
-                    - 在 *追加* 模式中，写入数据到文件尾，忽略文件位置指示器的当前位置
-                - 注意
-                    - 文件访问标志`"b"`为 *可选* 的，用于指定用 *二进制模式* 打开文件。此标志在`POSIX`系统上无效果，但例如在`Windows`上，它禁用`'\n'`和`'\x1A'`的特殊处理
-                    - 文件访问标志`"x"`能 *可选* 地追加到`"w"`或`"w+"`指定符，强制函数在文件已存在时 *失败* ，**而非**截断文件 `(since C++17)`
-                    - 若模式不是以上字符串之一，则 *行为未定义* 
-            - 返回值
-                - 成功，则返回指向控制打开的文件流的对象的指针，并清除文件尾和错误位。流为 *完全缓冲* 的，除非`filename`指代交互式设备
-                - 错误，返回 *空指针* ，并设置[`errno`](https://en.cppreference.com/w/cpp/error/errno)
-            - 使用示例
-            ```
-            #include <cstdlib>
-            #include <cstdio>
-            
-            int main()
-            {
-                FILE * fp = fopen("test.txt", "r");
-                
-                if (!fp) 
-                {
-                    std::perror("File opening failed");
-                    return EXIT_FAILURE;
-                }
-             
-                int c; // note: int, not char, required to handle EOF
-                
-                while ((c = std::fgetc(fp)) != EOF) 
-                { 
-                    // standard C I/O file reading loop
-                    putchar(c);
-                }
-             
-                if (ferror(fp))
-                {
-                    puts("I/O error when reading");
-                }
-                else if (std::feof(fp))
-                {
-                    puts("End of file reached successfully");
-                }
-                    
-                fclose(fp);
-                
-                return EXIT_SUCCESS;
-            }
-            ```
-        - [`freopen`](https://en.cppreference.com/w/cpp/io/c/freopen)：以不同名称打开既存流 
-            - 签名
-            ```
-            FILE * freopen(const char * filename, const char * mode, FILE * stream);
-            ```
-            - 首先，试图关闭与`stream`关联的文件，忽略任何错误；然后，若`filename`非空，则用`mode`打开`filename`所指定的文件，然后将该文件与`stream`所指向的文件流关联；若`filename`为空指针，则函数试图重打开已与`stream`关联的文件（此情况下是否允许模式改变是实现定义的）
-            - 返回值
-                - 成功时：`stream`
-                - 失败时：`NULL` 
-        - [`fclose`](https://en.cppreference.com/w/cpp/io/c/fclose)：关闭文件 
-            - 签名
-            ```
-            int fclose(FILE * stream);
-            ```
-            - 刷新缓冲区，然后关闭给定的文件流。任何未读取的缓冲数据将被舍弃
-                - 无论操作是否成功，流都不再关联到文件。且由`setbuf`或`setvbuf`分配的缓冲区若存在，则亦被解除关联，并且若使用自动分配则被解分配
-                - 若在`fclose`返回后使用`stream`，则 *行为未定义*  
-            - 返回值
-                - 成功时：`0`
-                - 失败时：`EOF` 
-        - [`fflush`](https://en.cppreference.com/w/cpp/io/c/fflush)：将输出流与实际文件同步 
-            - 签名
-            ```
-            int fflush(FILE * stream);
-            ```
-            - 刷新输出流`stream`的缓冲区
-                - 对于输出流（和最近操作为输出的更新流），将来自`stream`缓冲区的未写入数据写入关联的输出设备
-                - 对于输入流（和最近操作为输入的更新流）， *行为未定义* 
-                - 若`stream`为 *空指针* ，则刷新 *所有* 输出流（和最近操作为输出的更新流），包含程序不能直接访问的流 
-            - 返回值
-                - 成功时：`0`
-                - 失败时：`EOF`
-        - [`setbuf`](https://en.cppreference.com/w/cpp/io/c/setbuf)：为文件流设置缓冲区 
-            - 签名
-            ```
-            void setbuf(FILE * stream, char * buffer);
-            ```
-            - 为`C`流`stream`上进行的`I/O`操作设置内部缓冲区
-                - 若`buffer`**非**空，则等价于`setvbuf(stream, buffer, _IOFBF, BUFSIZ)` 。
-                - 若`buffer`为 *空* ，则等价于`setvbuf(stream, NULL, _IONBF, 0) `，这会 *关闭缓冲* 
+- `C`风格文件访问
+    - [`fopen`](https://en.cppreference.com/w/cpp/io/c/fopen)：打开文件
+        - 签名
+        ```
+        FILE * fopen(const char * filename, const char * mode);
+        ```
+        - 打开`filename`所指示的文件并返回与该文件关联的流，用`mode`确定 *文件访问模式* 
+        - 可能的文件访问模式
+            - `"r"`： *只读* ，为读取打开文件。若文件已存在，则从起始位置读取；否则，打开失败
+            - `"w"`： *只写* ，为写入创建文件。若文件已存在，则截断文件；否则，创建新文件
+            - `"a"`： *追加* ，追加到文件。若文件已存在，则追加写入到文件的末尾；否则，创建新文件
+                - 在 *追加* 模式中，写入数据到文件尾，忽略文件位置指示器的当前位置
+            - `"r+"`： *扩展读* ，为读写打开文件。若文件已存在，则从起始位置读取；否则，打开失败
+            - `"w+"`： *扩展写* ，为读写创建文件。若文件已存在，则截断文件；否则，创建新文件
+            - `"a+"`： *扩展追加* ，为读写打开文件。若文件已存在，则追加写入到文件的末尾；否则，创建新文件
+                - 在 *追加* 模式中，写入数据到文件尾，忽略文件位置指示器的当前位置
             - 注意
-                - `setbuf`所用的缓冲区大小为宏定义常量`BUFSIZ`。若`BUFSIZ`不是适合的缓冲区大小，则能用`setvbuf`更改它
-                - `setvbuf`亦应当用于 *检测错误* 
-                    - 因为`setbuf`**不**指示成功或失败
-                    - 此函数仅可在已将`stream`关联到打开的文件后，但要在任何其他操作（除了对 std::setbuf/std::setvbuf 的失败调用）前使用
-                - 一个 *常见错误* 是设置`stdin`或`stdout`的缓冲区为生存期在程序终止前结束的数组
-                ```
-                int main() 
-                {
-                    char buf[BUFSIZ];
-                    std::setbuf(stdin, buf);
-                } // buf 的生存期结束，未定义行为
-                ```
-            - 使用示例
-            ```
-            #include <chrono>
-            #include <cstdio>
-            #include <thread>
-             
-            int main()
+                - 文件访问标志`"b"`为 *可选* 的，用于指定用 *二进制模式* 打开文件。此标志在`POSIX`系统上无效果，但例如在`Windows`上，它禁用`'\n'`和`'\x1A'`的特殊处理
+                - 文件访问标志`"x"`能 *可选* 地追加到`"w"`或`"w+"`指定符，强制函数在文件已存在时 *失败* ，**而非**截断文件 `(since C++17)`
+                - 若模式不是以上字符串之一，则 *行为未定义* 
+        - 返回值
+            - 成功，则返回指向控制打开的文件流的对象的指针，并清除文件尾和错误位。流为 *完全缓冲* 的，除非`filename`指代交互式设备
+            - 错误，返回 *空指针* ，并设置[`errno`](https://en.cppreference.com/w/cpp/error/errno)
+        - 使用示例
+        ```
+        #include <cstdlib>
+        #include <cstdio>
+        
+        int main()
+        {
+            FILE * fp = fopen("test.txt", "r");
+            
+            if (!fp) 
             {
-                using namespace std::chrono_literals;
-             
-                std::setbuf(stdout, NULL);        // 无缓冲的 stdout
-                std::putchar('a');                // 在无缓冲的流上立即显现
-                std::this_thread::sleep_for(1s);
-                std::putchar('b');
+                std::perror("File opening failed");
+                return EXIT_FAILURE;
+            }
+         
+            int c; // note: int, not char, required to handle EOF
+            
+            while ((c = std::fgetc(fp)) != EOF) 
+            { 
+                // standard C I/O file reading loop
+                putchar(c);
+            }
+         
+            if (ferror(fp))
+            {
+                puts("I/O error when reading");
+            }
+            else if (std::feof(fp))
+            {
+                puts("End of file reached successfully");
+            }
+                
+            fclose(fp);
+            
+            return EXIT_SUCCESS;
+        }
+        ```
+    - [`freopen`](https://en.cppreference.com/w/cpp/io/c/freopen)：以不同名称打开既存流 
+        - 签名
+        ```
+        FILE * freopen(const char * filename, const char * mode, FILE * stream);
+        ```
+        - 首先，试图关闭与`stream`关联的文件，忽略任何错误；然后，若`filename`非空，则用`mode`打开`filename`所指定的文件，然后将该文件与`stream`所指向的文件流关联；若`filename`为空指针，则函数试图重打开已与`stream`关联的文件（此情况下是否允许模式改变是实现定义的）
+        - 返回值
+            - 成功时：`stream`
+            - 失败时：`NULL` 
+    - [`fclose`](https://en.cppreference.com/w/cpp/io/c/fclose)：关闭文件 
+        - 签名
+        ```
+        int fclose(FILE * stream);
+        ```
+        - 刷新缓冲区，然后关闭给定的文件流。任何未读取的缓冲数据将被舍弃
+            - 无论操作是否成功，流都不再关联到文件。且由`setbuf`或`setvbuf`分配的缓冲区若存在，则亦被解除关联，并且若使用自动分配则被解分配
+            - 若在`fclose`返回后使用`stream`，则 *行为未定义*  
+        - 返回值
+            - 成功时：`0`
+            - 失败时：`EOF` 
+    - [`fflush`](https://en.cppreference.com/w/cpp/io/c/fflush)：将输出流与实际文件同步 
+        - 签名
+        ```
+        int fflush(FILE * stream);
+        ```
+        - 刷新输出流`stream`的缓冲区
+            - 对于输出流（和最近操作为输出的更新流），将来自`stream`缓冲区的未写入数据写入关联的输出设备
+            - 对于输入流（和最近操作为输入的更新流）， *行为未定义* 
+            - 若`stream`为 *空指针* ，则刷新 *所有* 输出流（和最近操作为输出的更新流），包含程序不能直接访问的流 
+        - 返回值
+            - 成功时：`0`
+            - 失败时：`EOF`
+    - [`setbuf`](https://en.cppreference.com/w/cpp/io/c/setbuf)：为文件流设置缓冲区 
+        - 签名
+        ```
+        void setbuf(FILE * stream, char * buffer);
+        ```
+        - 为`C`流`stream`上进行的`I/O`操作设置内部缓冲区
+            - 若`buffer`**非**空，则等价于`setvbuf(stream, buffer, _IOFBF, BUFSIZ)` 。
+            - 若`buffer`为 *空* ，则等价于`setvbuf(stream, NULL, _IONBF, 0) `，这会 *关闭缓冲* 
+        - 注意
+            - `setbuf`所用的缓冲区大小为宏定义常量`BUFSIZ`。若`BUFSIZ`不是适合的缓冲区大小，则能用`setvbuf`更改它
+            - `setbuf`**不**指示成功或失败，因此应当使用`setvbuf` *检测错误* 
+            - 此函数仅可在已将`stream`关联到打开的文件后，但要在任何其他操作（除对`setbuf`或`setvbuf`的失败调用以外）前使用
+            - 一个 *常见错误* 是设置`stdin`或`stdout`的缓冲区为生存期在程序终止前结束的数组
+            ```
+            int main() 
+            {
+                char buf[BUFSIZ];
+                std::setbuf(stdin, buf);
+            } // buf 的生存期结束，未定义行为
+            ```
+        - 使用示例
+        ```
+        #include <chrono>
+        #include <cstdio>
+        #include <thread>
+         
+        int main()
+        {
+            using namespace std::chrono_literals;
+         
+            std::setbuf(stdout, NULL);        // 无缓冲的 stdout
+            std::putchar('a');                // 在无缓冲的流上立即显现
+            std::this_thread::sleep_for(1s);
+            std::putchar('b');
+        }
+        ```
+    - [`servbuf`](https://en.cppreference.com/w/cpp/io/c/setvbuf)：为文件流设置缓冲区与其大小
+        - 签名
+        ```
+        int setvbuf(FILE * stream, char * buffer, int mode, size_t size);
+        ```
+        - 以`mode`所指示值更改给定文件流`stream`的缓冲模式
+            - 若`buffer`为 *空指针* ，则 *重设* 内部缓冲区大小为`size`
+            - 若`buffer`**不**是空指针，则指示流使用始于`buffer`而大小为`size`的用户提供缓冲区
+                - 必须在`buffer`所指向的数组的生存期结束前用`fclose`关闭流
+                - 成功调用`setvbuf`后，`buffer`内容 *不确定* ，使用它是 *未定义行为* 
+            - `mode`可以是
+                1. `_IOFBF`， *全缓冲* ：当缓冲区为空时，从流读入数据。或者当缓冲区满时，向流写入数据
+                2. `_IOLBF`， *行缓冲* ：每次从流中读入一行数据或向流中写入一行数据
+                3. `_IONBF`， *无缓冲* ：直接从流中读入数据或直接向流中写入数据，缓冲设置无效
+        - 注意
+            - 此函数仅可在已将`stream`关联到打开的文件后，但要在任何其他操作（除对`setbuf`或`setvbuf`的失败调用以外）前使用
+            - 不是所有`size`字节都需要用于缓冲：实际缓冲区大小通常向下取整到`2`的倍数、页面大小的倍数等
+            - 多数实现上，行缓冲仅对 *终端输入流* 可用
+            - 一个 *常见错误* 是设置`stdin`或`stdout`的缓冲区为生存期在程序终止前结束的数组
+            ```
+            int main() 
+            {
+                char buf[BUFSIZ];
+                std::setbuf(stdin, buf);
+            } // buf 的生存期结束，未定义行为
+            ```
+        - 返回值
+            - 成功时：`0`
+            - 失败时：非零
+- `C`风格直接`I/O`
+    - [`fread`](https://en.cppreference.com/w/cpp/io/c/fread)：从文件读取 
+        - 签名
+        ```
+        size_t fread(void * buffer, size_t size, size_t count, FILE * stream);
+        ```
+        - 从给定输入流`stream`读取至多`count`个大小为`size`的对象到数组`buffer`中
+            - 如同对每个对象调用`size`次`fgetc`，依次将结果存储到`reinterpret_cast`为`unsigned char *`的`buffer`中
+            - 流的文件位置指示器将前进读取的字符数
+            - 若对象**不** *可平凡复制* （TriviallyCopyable），则 *行为未定义* 
+            - 若出现 *错误* ，则流的文件位置指示器的结果值 *不确定* 
+                - 若此时只读入了某个元素的部分内容，则元素的值亦不确定 
+        - 返回值
+            - 成功时：成功读取的对象数
+            - 出现错误或文件尾：实际读取的对象数，可能小于`count`
+            - 若`size`或`count`为 *零* ，则`fread` *返回零* 且**不**进行其他动作
+        - 使用示例
+        ```
+        #include <cstdio>
+        #include <fstream>
+        #include <iostream>
+        #include <vector>
+        
+        int main()
+        {
+            // 准备文件
+            std::ofstream("test.txt") << 1 << ' ' << 2 << std::endl;
+           
+            if (FILE * fp = fopen("test.txt", "r"))
+            {
+                // char 可平凡复制
+                std::vector<char> buf1(4); 
+                std::fread(&buf1[0], sizeof buf1[0], buf1.size(), fp);
+                fclose(fp);
+            }
+         
+            for (char n : buf1)
+            {
+                std::cout << n << std::endl;
+            }
+         
+            // std::string 不可平凡复制
+            // 用 fread 读入 std::string 是未定义行为
+            std::vector<std::string> buf2(4);  
+            fread(&buf2[0], sizeof buf2[0], buf2.size(), fp);
+        }
+        ```
+    - [`fwrite`](https://en.cppreference.com/w/cpp/io/c/fwrite)：写入文件 
+        - 签名
+        ```
+        size_t fwrite(const void * buffer, size_t size, size_t count, FILE * stream);
+        ```
+        - 向输出流`stream`中写入数组`buffer`中的前`count`个对象
+            - 如同将每个对象`reinterpret_cast`为`unsigned char *`，然后依次对每个对象调用`size`次`fputc`
+            - 流的文件位置指示器将前进写入的字符数
+            - 若对象**不** *可平凡复制* （TriviallyCopyable），则 *行为未定义* 
+            - 若出现 *错误* ，则流的文件位置指示器的结果值 *不确定* 
+        - 返回值
+            - 成功时：成功写入的对象数
+            - 出现错误或文件尾：实际写入的对象数，可能小于`count`
+            - 若`size`或`count`为 *零* ，则`fwrite` *返回零* 且**不**进行其他动作
+        - 使用示例
+        ```
+        #include <array>
+        #include <cstdio>
+        #include <vector>
+         
+        int main ()
+        {
+            // 写缓冲区到文件
+            if (FILE * fp1 = fopen("file.bin", "wb")) 
+            {
+                std::array<int, 3> v {42, -1, 7};  // std::array 的底层存储为数组
+                fwrite(v.data(), sizeof v[0], v.size(), fp1);
+                fclose(fp1);
+            }
+         
+            // 读取同一数据并打印它到标准输出
+            if (FILE * fp2 = fopen("file.bin", "rb")) 
+            {
+                std::vector<int> rbuf(10);         // std::vector 的底层存储亦为数组
+                size_t sz = fread(rbuf.data(), sizeof rbuf[0], rbuf.size(), fp2);
+                fclose(fp2);
+                
+                for (size_t n = 0; n < sz; ++n) 
+                {
+                    printf("%d\n", rbuf[n]);
+                }
+            }
+        }
+        ```
+- `C`风格非格式化`I/O`
+    - [`fgetc`，`getc`](https://en.cppreference.com/w/cpp/io/c/fgetc)：从文件流获取字符 
+        - 签名
+        ```
+        int fgetc(FILE * stream);
+        int getc(FILE * stream);
+        ```
+        - 读取来自给定输入流`stream`的下个字符
+        - *警告* ： *必须* 使用`int`，而**不是**`char`来接收返回值
+            - 正确
+            ```
+            int ch;   // use an int, not a char to hold the return from get()
+            
+            // loop to read and write all the data in the input
+            while ((ch = getc()) != EOF)
+            {
+                putchar(ch);
             }
             ```
-        - [`servbuf`](https://en.cppreference.com/w/cpp/io/c/setvbuf)：为文件流设置缓冲区与其大小
-            - 签名
+            - 死循环：在`char`被实现为`unsigned char`的机器上，接收到的`EOF`会被转换成`unsigned char`，和`EOF`不再相等
             ```
-            int setvbuf(FILE * stream, char * buffer, int mode, size_t size);
+            char ch;  // using a char here invites disaster!
+            
+            // the return from getc is converted to char and then compared to an int
+            // result of comparasion of constant (-1) with expression of type unsigned char is always false! 
+            while ((ch = getc()) != EOF)
+            {
+                putchar(ch);
+            }
             ```
-            - 以`mode`所指示值更改给定文件流`stream`的缓冲模式
-                - 若`buffer`为 *空指针* ，则 *重设* 内部缓冲区大小为`size`
-                - 若`buffer`**不**是空指针，则指示流使用始于`buffer`而大小为`size`的用户提供缓冲区
-                    - 必须在`buffer`所指向的数组的生存期结束前用`fclose`关闭流
-                    - 成功调用`setvbuf`后，`buffer`内容 *不确定* ，使用它是 *未定义行为* 
-                - `mode`可以是
-                    1. `_IOFBF`， *全缓冲* ：当缓冲区为空时，从流读入数据。或者当缓冲区满时，向流写入数据。
-                    2. `_IOLBF`， *行缓冲* ：每次从流中读入一行数据或向流中写入一行数据。
-                    3. `_IONBF`， *无缓冲* ：直接从流中读入数据或直接向流中写入数据，缓冲设置无效。
-
- 
-            - 
-    - 直接`I/O`
-        - [`fread`](https://en.cppreference.com/w/cpp/io/c/fread)：从文件读取 
-        - [`fwrite`](https://en.cppreference.com/w/cpp/io/c/fwrite)：写入文件 
-    - 无格式`I/O`
-        - [`fgetc`，`getc`](https://en.cppreference.com/w/cpp/io/c/fgetc)：从文件流获取字符 
-        - [`fgets`](https://en.cppreference.com/w/cpp/io/c/fgets)：从文件流获取字符串 
-        - [`fputc`，`putc`](https://en.cppreference.com/w/cpp/io/c/fputc)：写字符到文件流 
-        - [`fputs`](https://en.cppreference.com/w/cpp/io/c/fputs)：写字符串到文件流 
-        - [`getchar`](https://en.cppreference.com/w/cpp/io/c/getchar)：从`stdin`读取字符 
-        - [`gets`](https://en.cppreference.com/w/cpp/io/c/gets)：从`stdin`读取字符串 `(deprecated in C++11)(removed in C++14)`
-            - 此函数不检测避免缓冲区溢出。应使用`std::fgets`替代
-        - [`putchar`](https://en.cppreference.com/w/cpp/io/c/putchar)：写字符到`stdout`
-        - [`puts`](https://en.cppreference.com/w/cpp/io/c/puts)：写字符串到`stdout`
-        - [`ungetc`](https://en.cppreference.com/w/cpp/io/c/ungetc)：把字符放回文件流 
-    - 有格式`I/O`
-        - [`scanf`，`fscanf`，`sscanf`](https://en.cppreference.com/w/cpp/io/c/fscanf)：从`stdin`、文件流或缓冲区读取有格式输入
-        - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* 
+        - 返回值
+            - 成功时，为 *获得的字符* 
+            - 失败时，为`EOF`
+                - 若 *文件尾条件* 导致失败，则另外设置文件尾指示器（`feof()`）
+                - 若 *其他错误* 导致失败，则另外设置错误指示器（`ferror()`）
+    - [`fgets`](https://en.cppreference.com/w/cpp/io/c/fgets)：从文件流获取字符串 
+        - 签名
+        ```
+        char * fgets(char * str, int count, FILE * stream);
+        ```
+        - 从给定流`stream`读取最多`count - 1`个字符并将它们存储于`str`所指向的字符数组
+            - 若 *文件尾* 出现或发现 *换行符* ，则终止分析，后一情况下`str`将 *包含换行符* 
+            - 成功读入且无错误发生时，`str`结尾将被写入`'\0'`结尾
+        - 返回值
+            - 成功时，为`str`
+            - 失败时，为 *空指针* 
+                - 若 *文件尾条件* 导致失败，则另外设置文件尾指示器（`feof()`））
+                    - 这仅若它导致未读取字符才是失败，该情况下返回空指针且不改变 str 所指向数组的内容（即不以空字符覆写首字节）。
+                - 若 *其他错误* 导致失败，则另外设置错误指示器（`ferror()`）
+                    - 此时`str`所指向的数组内容是 *不确定的* （甚至可以**不**是 *空终止* 的）
+    - [`fputc`，`putc`](https://en.cppreference.com/w/cpp/io/c/fputc)：写字符到文件流 
+    - [`fputs`](https://en.cppreference.com/w/cpp/io/c/fputs)：写字符串到文件流 
+    - [`getchar`](https://en.cppreference.com/w/cpp/io/c/getchar)：从`stdin`读取字符 
+    - [`gets`](https://en.cppreference.com/w/cpp/io/c/gets)：从`stdin`读取字符串 `(deprecated in C++11)(removed in C++14)`
+        - 此函数**不**检测避免缓冲区溢出。应使用`std::fgets`替代
+    - [`putchar`](https://en.cppreference.com/w/cpp/io/c/putchar)：写字符到`stdout`
+    - [`puts`](https://en.cppreference.com/w/cpp/io/c/puts)：写字符串到`stdout`
+    - [`ungetc`](https://en.cppreference.com/w/cpp/io/c/ungetc)：把字符放回文件流 
+- `C`风格格式化`I/O`
+    - [`scanf`，`fscanf`，`sscanf`](https://en.cppreference.com/w/cpp/io/c/fscanf)：从`stdin`、文件流或缓冲区读取有格式输入
+    - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* 
 从`stdin`、文件流或缓冲区读取有格式输入 
-        - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 stdout、文件流或缓冲区 
-        - [`vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`](https://en.cppreference.com/w/cpp/io/c/vfprintf)：使用 *可变实参列表* 
+    - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 stdout、文件流或缓冲区 
+    - [`vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`](https://en.cppreference.com/w/cpp/io/c/vfprintf)：使用 *可变实参列表* 
 打印有格式输出到`stdout`、文件流或缓冲区 
-    - 文件寻位
-        - [`ftell`](https://en.cppreference.com/w/cpp/io/c/ftell)：返回当前文件位置指示器 
-        - [`fgetpos`](https://en.cppreference.com/w/cpp/io/c/fgetpos)：获取文件位置指示器 
-        - [`fseek`](https://en.cppreference.com/w/cpp/io/c/fseek)：移动文件位置指示器到文件中的指定位置 
-        - [`fsetpos`](https://en.cppreference.com/w/cpp/io/c/fsetpos)：移动文件位置指示器到文件中的指定位置 
-        - [`rewind`](https://en.cppreference.com/w/cpp/io/c/rewind)：移动文件位置指示器到文件起始 
-    - 错误处理
-        - [`clearerr`](https://en.cppreference.com/w/cpp/io/c/clearerr)：清除错误 
-        - [`feof`](https://en.cppreference.com/w/cpp/io/c/feof)：检查文件尾 
-        - [`ferror`](https://en.cppreference.com/w/cpp/io/c/ferror)：检查文件错误 
-        - [`perror`](https://en.cppreference.com/w/cpp/io/c/perror)：显示对应当前错误的字符串于`stderr`
-    - 文件上的操作
-        - [`remove`](https://en.cppreference.com/w/cpp/io/c/remove)：删除文件 
-        - [`rename`](https://en.cppreference.com/w/cpp/io/c/rename)：重命名文件 
-        - [`tmpfile`](https://en.cppreference.com/w/cpp/io/c/tmpfile)：创建并打开一个临时、自动移除的文件
-        - [`tmpnam`](https://en.cppreference.com/w/cpp/io/c/tmpnam)：返回一个唯一独有的文件名 
-- 类型
-    - `FILE`：对象类型，足以保有控制`C I/O`流所需的全部信息
-    - `fpos_t`：完整非数组对象类型，足以唯一指定文件中的位置，包含其多字节解析状态
-    - [`size_t`](https://en.cppreference.com/w/cpp/types/size_t)：`g++`实现为`typedef unsigned long size_t;`
-- 宏常量的`g++`实现
-    - `stdin`，`stdout`，`stderr`：`FILE *`类型表达式，分别与 *标准输入流* 、 *标准输出流* 和 *标准错误流* 关联
-    ```
-    // <stdio.h>
-    /* Standard streams.  */
-    extern struct _IO_FILE * stdin;   /* Standard input stream.  */
-    extern struct _IO_FILE * stdout;  /* Standard output stream.  */
-    extern struct _IO_FILE * stderr;  /* Standard error output stream.  */
-    /* C89/C99 say they're macros.  Make them happy.  */
-    #define stdin stdin
-    #define stdout stdout
-    #define stderr stderr
-    
-    // <FILE.h>
-    /* The opaque type of streams.  This is the definition used elsewhere.  */
-    typedef struct _IO_FILE FILE;
-    ```
-    - `EOF`：拥有`int`类型和负值的整数常量表达式 
-    ```
-    // <libio.h>
-    #ifndef EOF
-    #define EOF (-1)
-    #endif
-    ```
-    - `FOPEN_MAX`：能同时打开的文件数
-    ```
-    // <stdio_lim.h>
-    #undef  FOPEN_MAX
-    #define FOPEN_MAX 16
-    ```    
-    - `FILENAME_MAX`：要保有最长受支持文件名的字符数组所需的长度 
-    ```
-    // <stdio_lim.h>
-    #define FILENAME_MAX 4096
-    ```
-    - `BUFSIZ`：`setbuf`所用的缓冲区大小 
-    ```
-    // <stdio.h>
-    /* Default buffer size.  */
-    #ifndef BUFSIZ
-    # efine BUFSIZ _IO_BUFSIZ
-    #endif
-    
-    // <libio.h>
-    #define _IO_BUFSIZ _G_BUFSIZ
-    
-    // <_G_config.h>
-    #define _G_BUFSIZ 8192
-    ```
-    - `_IOFBF`，`_IOLBF`，`_IONBF`：给`setvbuf`的参数，分别指示 *全缓冲* 、 *行缓冲* 和 *无缓冲* `I/O`
-    ```
-    // <stdio.h>
-    /* The possibilities for the third argument to `setvbuf'.  */
-    #define _IOFBF 0    /* Fully buffered.  */
-    #define _IOLBF 1    /* Line buffered.  */
-    #define _IONBF 2    /* No buffering.  */
-    ```
-    - `SEEK_SET`，`SEEK_CUR`，`SEEK_END`：给`fseek`的参数，分别指示从 *文件起始* 、 *当前文件位置* 和 *文件尾* 寻位
-    ```
-    // <stdio.h>
-    /* The possibilities for the third argument to `fseek'.
-       These values should not be changed.  */
-    #define SEEK_SET   0    /* Seek from beginning of file.  */
-    #define SEEK_CUR   1    /* Seek from current position.  */
-    #define SEEK_END   2    /* Seek from end of file.  */
-    #ifdef __USE_GNU
-    # define SEEK_DATA 3    /* Seek to next data.  */
-    # define SEEK_HOLE 4    /* Seek to next hole.  */
-    #endif
-    ```
-    - `TMP_MAX`：`tmpnam`所能生成的唯一文件名的最大数量 
-    ```
-    // <stdio_lim.h>
-    #define TMP_MAX 238328
-    ```
-    - `L_tmpnam`：保有`std::tmpnam`结果的字符数组所需的大小 
-    ```
-    // <stdio_lim.h>
-    #define L_tmpnam 20
-    ```
+- `C`风格文件寻位
+    - [`ftell`](https://en.cppreference.com/w/cpp/io/c/ftell)：返回当前文件位置指示器 
+    - [`fgetpos`](https://en.cppreference.com/w/cpp/io/c/fgetpos)：获取文件位置指示器 
+    - [`fseek`](https://en.cppreference.com/w/cpp/io/c/fseek)：移动文件位置指示器到文件中的指定位置 
+    - [`fsetpos`](https://en.cppreference.com/w/cpp/io/c/fsetpos)：移动文件位置指示器到文件中的指定位置 
+    - [`rewind`](https://en.cppreference.com/w/cpp/io/c/rewind)：移动文件位置指示器到文件起始 
+- `C`风格`I/O`错误处理
+    - [`clearerr`](https://en.cppreference.com/w/cpp/io/c/clearerr)：清除错误 
+    - [`feof`](https://en.cppreference.com/w/cpp/io/c/feof)：检查文件尾 
+    - [`ferror`](https://en.cppreference.com/w/cpp/io/c/ferror)：检查文件错误 
+    - [`perror`](https://en.cppreference.com/w/cpp/io/c/perror)：显示对应当前错误的字符串于`stderr`
+- `C`风格文件上的操作
+    - [`remove`](https://en.cppreference.com/w/cpp/io/c/remove)：删除文件 
+    - [`rename`](https://en.cppreference.com/w/cpp/io/c/rename)：重命名文件 
+    - [`tmpfile`](https://en.cppreference.com/w/cpp/io/c/tmpfile)：创建并打开一个临时、自动移除的文件
+    - [`tmpnam`](https://en.cppreference.com/w/cpp/io/c/tmpnam)：返回一个唯一独有的文件名 
+
 
 
 
@@ -4587,6 +4782,26 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         - 对 *空容器* 使用`front()`或者`back()`就像下标越界一样，是一种严重的程序设计**错误**
         - `at()`和 *下标* 操作**只**适用于`std::string`，`std::vector`，`std::deque`以及`std::array`
         - `back()`**不**适用于`std::foward_list`
+    - `c.data()`：返回指向作为元素存储工作的底层数组的指针
+        - 指针满足范围`[data(), data() + size())`始终是合法范围
+        - 若容器为空，则`data()`可能或可能不返回 *空指针* （但不论如何，该情况下`data()`**不可**解引用）
+    ```
+    // 准备文件
+    std::ofstream("test.txt") << 1 << ' ' << 2 << std::endl;
+   
+    if (FILE * fp = fopen("test.txt", "r"))
+    {
+        // char 可平凡复制
+        std::vector<char> buf1(4); 
+        std::fread(&buf1[0], sizeof buf1[0], buf1.size(), fp);
+        fclose(fp);
+    }
+ 
+    for (char n : buf1)
+    {
+        std::cout << n << std::endl;
+    }
+    ```
 - 删除元素
     - `c.pop_back()`：删除`c`的尾元素。若`c`为空，则函数行为 *未定义* 。返回`void`
     - `c.pop_front()`：删除`c`的首元素。若`c`为空，则函数行为 *未定义* 。返回`void`
