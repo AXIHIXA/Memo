@@ -3851,6 +3851,7 @@ std::cout << std::setfill('#')
     - `fstream`对象会自动析构，析构时自动调用`close`，
         - 所以放进`if`里面列表初始化（`if`**不**支持圆括号初始化），这样就既起到了判断流合法的作用，又保证了自动释放加自动关闭文件
         - 有没有点`python`里面`with open("input.txt", "r") as fin`的感觉了？
+    - 另外`line`这个临时变量要是写`while`的话还得放外面，作用域大了容易跟别人撞车，写成`for`的循环变量就真是美汁汁
 ```
 if (std::ifstream fin {"input.txt", std::ifstream::in})
 {
