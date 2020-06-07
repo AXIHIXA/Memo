@@ -3681,22 +3681,30 @@ std::cout << std::uppercase << std::showbase << std::hex
         1. 使用`std::cout::precision(n)`
             - `precision`是重载的，一个不接受参数，返回当前精度；另一个接受要设定的精度
         2. 使用`std::cout << std::setprecision(n);`
-        ```
-        // std::cout.precision reports the current precision value
-        // Precision: 6, Value: 1.41421
-        std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
-        
-        // cout.precision(12) asks that 12 digits of precision be printed
-        // Precision: 12, Value: 1.41421356237
-        std::cout.precision(12);
-        std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
-        
-        // alternative way to set precision using the setprecision manipulator
-        // Precision: 3, Value: 1.41
-        std::cout << std::setprecision(3);
-        std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
-        ```
-
+    ```
+    // std::cout.precision reports the current precision value
+    // Precision: 6, Value: 1.41421
+    std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
+    
+    // cout.precision(12) asks that 12 digits of precision be printed
+    // Precision: 12, Value: 1.41421356237
+    std::cout.precision(12);
+    std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
+    
+    // alternative way to set precision using the setprecision manipulator
+    // Precision: 3, Value: 1.41
+    std::cout << std::setprecision(3);
+    std::cout << "Precision: " << std::cout.precision() << ", Value: " << std::sqrt(2.0) << endl;
+    ```
+    - 指定计数法
+        - 除非真正需要显式控制浮点数的计数法（例如按列打印数据或打印表示金额或百分比的数据），否则由标准库选择计数法时坠吼的
+    ```
+    std::cout << "default format: " << 100 * std::sqrt(2.0) << std::endl;                     // default format: 141.421
+    std::cout << "scientific: " << std::scientific << 100 * std::sqrt(2.0) << std::endl;      // scientific: 1.414214e+002
+    std::cout << "fixed decimal: " << std::fixed << 100 * std::sqrt(2.0) << std::endl;        // fixed decimal: 141.421356
+    std::cout << "hexadecimal: " << std::hexfloat << 100 * std::sqrt(2.0) << std::endl;       // hexadecimal: 0x1.1ad7bcp+7
+    std::cout << "use defaults: " << std::defaultfloat << 100 * std::sqrt(2.0) << std::endl;  // use defaults: 141.421
+    ```
 
 
 
