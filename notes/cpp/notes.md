@@ -4561,9 +4561,9 @@ if (cancelEntry)
         int sscanf(const char * buffer, const char * format, ... );    (3) 
         ```
         - 从各种源读取数据，按照`format`转译并存储结果于给定位置
-        - *格式字符串* `format`由下列内容组成
-            - 除 *百分号* `'%'`和 *空白字符* 以外的字符：精确匹配输入中的 *这个字符* ，否则失败
-            - *空白字符* `' '`：匹配输入中的 *任意长度连续空白字符* ，注意`format`中`'\n'`、`' '`、`'\t\t'`或其他空白字符都是等价的 
+        - *格式字符串* （format string）`format`由下列内容组成
+            - 除 *百分号* `%`和 *空白字符* 以外的字符：精确匹配输入中的 *这个字符* ，否则失败
+            - *空白字符* （whitespace characters）：匹配输入中的 *任意长度连续空白字符* ，注意`format`中`\n`、` `、`\t\t`或 *其他空白字符* 都是等价的 
                 - 空白字符由`isspace(c)`定义
                     - 包括
                         1. *空格* （space，`0x20`，`' '`）
@@ -4571,12 +4571,122 @@ if (cancelEntry)
                         3. *换行* （line feed，`0x0a`，`'\n'`）
                         4. *回车* （carriage return，`0x0d`，`'\r'`）
                         5. *水平制表符* （horizontal tab，`0x09`，`'\t'`）
-                        6. *垂直制表符* （vertical tab，`0x0b`，`'\v'`） 
+                        6. *垂直制表符* （vertical tab，`0x0b`，`'\v'`）
                     - 如果`ch`的值**不能**表示为`unsigned char`，并且**不等于**`EOF`，则函数 *行为未定义* 
-    - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* 
-从`stdin`、文件流或缓冲区读取有格式输入 
+            - *转换说明* （conversion specifications），并可以包含如下 *可选* 内容
+                - *赋值抑制字符* （assignment-suppressing character）`*`：丢弃此项对应的结果
+                - *转换格式说明符* （conversion format specifier）
+                    - 格式
+                        - 每个转换说明都以 *百分号* `%`打头
+                        - `% width_specifier length_modifier choice`，如`%10ls`
+                    - 包括如下选项
+                        - `%`：匹配字面`%`
+                        - `c`：匹配一个 *字符* 
+                            - *宽度说明符* （width specifier）
+                                - 若使用了宽度说明符，则匹配准确的宽度个字符（该参数必须是指向有充足空间的数组的指针）
+                                - 不同于`%s`和`%[`，它**不会**在数组后 *附加空字符*  
+                            - *长度修饰符* （length modifier）
+                                - `c`：期待参数类型`char *`
+                                - `lc`：期待参数类型`wchar_t *`
+                        - `s`：匹配一个 *字符串* 
+                            - 宽度说明符
+                                - 若使用宽度说明符，则至多匹配宽度个字符，或匹配到首个提前出现的空白符前
+                                - 总是在匹配的字符后存储一个空字符（故参数数组长度至少比宽度多一）
+                            - 长度说明符
+                                - `c`：期待参数类型`char *`
+                                - `ls`：期待参数类型`wchar_t *`
+                        - `[set]`：匹配一个由来自 *集合* `[set]`的字符组成的 *字符串* 
+                            - 集合
+                                - 若集合的首字符是`^`，则匹配所有**不在**集合中的字符。
+                                - 若集合以`]`或`^]`开始，则`]`字符亦被包含入集合。
+                                - 在扫描集合的非最初位置的字符`-`是否可以指示范围，如 [0-9] ，是 *实现定义* 的
+                            - 宽度说明符
+                                - 若使用宽度说明符，则最多匹配到宽度
+                                - 总是在匹配的字符后存储一个空字符（故参数数组长度至少比宽度多一）
+                            - 长度说明符
+                                - `c`：期待参数类型`char *`
+                                - `lc`：期待参数类型`wchar_t *`
+                        - `d`：匹配一个 *十进制整数* 
+                            - 长度说明符
+                                - `hhd`：期待参数类型`signed char *`或`unsigned char *`
+                                - `hd`：期待参数类型`signed short *`或`unsigned short *`
+                                - `d`：期待参数类型`signed int *`或`unsigned int *`
+                                - `ld`：期待参数类型`signed long *`或`unsigned long *`
+                                - `lld`：期待参数类型`signed long long *`或`unsigned long long *`
+                                - `jd`：期待参数类型`intmax_t *`或`uintmax_t *`
+                                - `zd`：期待参数类型`size_t *`
+                                - `td`：期待参数类型`ptrdiff_t *`
+                        - `i`：匹配一个 *整数* 
+                            - 长度说明符
+                                - `hhi`：期待参数类型`signed char *`或`unsigned char *`
+                                - `hi`：期待参数类型`signed short *`或`unsigned short *`
+                                - `i`：期待参数类型`signed int *`或`unsigned int *`
+                                - `li`：期待参数类型`signed long *`或`unsigned long *`
+                                - `lli`：期待参数类型`signed long long *`或`unsigned long long *`
+                                - `ji`：期待参数类型`intmax_t *`或`uintmax_t *`
+                                - `zi`：期待参数类型`size_t *`
+                                - `ti`：期待参数类型`ptrdiff_t *`
+                        - `u`：匹配一个 *无符号十进制整数* 
+                            - 长度说明符
+                                - `hhu`：期待参数类型`signed char *`或`unsigned char *`
+                                - `hu`：期待参数类型`signed short *`或`unsigned short *`
+                                - `u`：期待参数类型`signed int *`或`unsigned int *`
+                                - `lu`：期待参数类型`signed long *`或`unsigned long *`
+                                - `llu`：期待参数类型`signed long long *`或`unsigned long long *`
+                                - `ju`：期待参数类型`intmax_t *`或`uintmax_t *`
+                                - `zu`：期待参数类型`size_t *`
+                                - `tu`：期待参数类型`ptrdiff_t *`
+                        - `o`：匹配一个 *无符号八进制整数* 
+                            - 长度说明符
+                                - `hho`：期待参数类型`signed char *`或`unsigned char *`
+                                - `ho`：期待参数类型`signed short *`或`unsigned short *`
+                                - `o`：期待参数类型`signed int *`或`unsigned int *`
+                                - `lo`：期待参数类型`signed long *`或`unsigned long *`
+                                - `llo`：期待参数类型`signed long long *`或`unsigned long long *`
+                                - `jo`：期待参数类型`intmax_t *`或`uintmax_t *`
+                                - `zo`：期待参数类型`size_t *`
+                                - `to`：期待参数类型`ptrdiff_t *`
+                        - `x`，`X`：匹配一个 *无符号十六进制整数* 
+                            - 长度说明符
+                                - `hhx`：期待参数类型`signed char *`或`unsigned char *`
+                                - `hx`：期待参数类型`signed short *`或`unsigned short *`
+                                - `x`：期待参数类型`signed int *`或`unsigned int *`
+                                - `lx`：期待参数类型`signed long *`或`unsigned long *`
+                                - `llx`：期待参数类型`signed long long *`或`unsigned long long *`
+                                - `jx`：期待参数类型`intmax_t *`或`uintmax_t *`
+                                - `zx`：期待参数类型`size_t *`
+                                - `tx`：期待参数类型`ptrdiff_t *`
+                        - `n`： *返回* *迄今读取的字符数* 
+                            - **不**消耗输出
+                            - **不**增加赋值计数
+                            - 若此说明符拥有 *赋值抑制运算符* ，则 *行为未定义* 
+                            - 长度说明符
+                                - `hhn`：期待参数类型`signed char *`或`unsigned char *`
+                                - `hn`：期待参数类型`signed short *`或`unsigned short *`
+                                - `n`：期待参数类型`signed int *`或`unsigned int *`
+                                - `ln`：期待参数类型`signed long *`或`unsigned long *`
+                                - `lln`：期待参数类型`signed long long *`或`unsigned long long *`
+                                - `jn`：期待参数类型`intmax_t *`或`uintmax_t *`
+                                - `zn`：期待参数类型`size_t *`
+                                - `tn`：期待参数类型`ptrdiff_t *`
+                        - `a`，`A`，`e`，`E`，`f`，`F`，`g`，`G`：匹配一个 *浮点数* 
+                            - 长度说明符
+                                - `f`：期待参数类型`float *`
+                                - `lf`：期待参数类型`double *`
+                                - `Lf`：期待参数类型`long double *`
+                        - `p`：匹配一个 *指针* ，具体 *格式由实现定义* ，应和`printf("%p")`产生的字符串格式相同
+                            - 长度说明符
+                                - `p`：期待参数类型`void *`
+                    - 注解
+                        - 所有异于`[`、`c`和`n`的转换说明符，在尝试分析输入前消耗并 *舍弃所有前导空白字符* 
+                        - 这些被消耗的字符**不计入**指定的 *最大域宽*  
+        - 返回值
+            - 成功赋值的参数的数量（在首个参数赋值前发生匹配失败的情况下可为零）
+            - 若在赋值首个接收的参数前输入失败，则为`EOF`
     - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 stdout、文件流或缓冲区 
-    - [`vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`](https://en.cppreference.com/w/cpp/io/c/vfprintf)：使用 *可变实参列表* 
+    - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* `va_list`
+从`stdin`、文件流或缓冲区读取有格式输入 
+    - [`vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`](https://en.cppreference.com/w/cpp/io/c/vfprintf)：使用 *可变实参列表* `va_list`
 打印有格式输出到`stdout`、文件流或缓冲区 
 - `C`风格文件寻位
     - [`ftell`](https://en.cppreference.com/w/cpp/io/c/ftell)：返回当前文件位置指示器 
