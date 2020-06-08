@@ -14637,6 +14637,8 @@ quizB.reset(27);                  // student number 27 failed
 - *文件系统库* 提供在文件系统与其组件，例如路径、常规文件与目录上进行操作的设施
     - 文件系统库原作为`boost.filesystem`开发，并最终从`C++17`开始并入`ISO C++`
     - 定义于头文件`<filesystem>`、命名空间`std::filesystem`
+        - `ubuntu 18.04 LTS`默认的`g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0`干脆还不支持这东西，就先放这儿当花瓶好了
+        - 实测直接用`boost`的`<boost/filesystem.hpp>`倒不是不行，但怎么用`boost`就是另外一个故事了
     - 使用此库可能要求额外的 *编译器/链接器选项* 
         - `GNU < 9.1`实现要求用`-lstdc++fs`链接
         - `LLVM < 9.0`实现要求用`-lc++fs`链接 
