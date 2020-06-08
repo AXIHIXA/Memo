@@ -3851,7 +3851,7 @@ std::cout << std::setfill('#')
     - `fstream`对象会自动析构，析构时自动调用`close`，
         - 所以放进`if`里面列表初始化（`if`**不**支持圆括号初始化），这样就既起到了判断流合法的作用，又保证了自动释放加自动关闭文件
         - 有没有点`python`里面`with open("input.txt", "r") as fin`的感觉了？
-    - 另外`line`这个临时变量要是写`while`的话还得放外面，作用域大了容易跟别人撞车，写成`for`的循环变量就真是美汁汁
+    - 另外`line`这个临时变量要是写`while`的话还得放外面，作用域大了容易跟别人撞车，写成`for`的循环变量就真是美汁儿汁儿
 ```
 if (std::ifstream fin {"input.txt", std::ifstream::in})
 {
@@ -4394,56 +4394,164 @@ if (cancelEntry)
         int getc(FILE * stream);
         ```
         - 读取来自给定输入流`stream`的下个字符
-        - *警告* ： *必须* 使用`int`，而**不是**`char`来接收返回值
-            - 正确
-            ```
-            int ch;   // use an int, not a char to hold the return from get()
-            
-            // loop to read and write all the data in the input
-            while ((ch = getc()) != EOF)
-            {
-                putchar(ch);
-            }
-            ```
-            - 死循环：在`char`被实现为`unsigned char`的机器上，接收到的`EOF`会被转换成`unsigned char`，和`EOF`不再相等
-            ```
-            char ch;  // using a char here invites disaster!
-            
-            // the return from getc is converted to char and then compared to an int
-            // result of comparasion of constant (-1) with expression of type unsigned char is always false! 
-            while ((ch = getc()) != EOF)
-            {
-                putchar(ch);
-            }
-            ```
+            - [`getchar`](https://en.cppreference.com/w/cpp/io/c/getchar)：`int getchar();`等价于`getc(stdin);`
+            - *警告* ： *必须* 使用`int`，而**不是**`char`来接收返回值
+                - 正确
+                ```
+                int ch;   // use an int, not a char to hold the return from get()
+                
+                // loop to read and write all the data in the input
+                while ((ch = getc()) != EOF)
+                {
+                    putchar(ch);
+                }
+                ```
+                - 死循环：在`char`被实现为`unsigned char`的机器上，接收到的`EOF`会被转换成`unsigned char`，和`EOF`不再相等
+                ```
+                char ch;  // using a char here invites disaster!
+                
+                // the return from getc is converted to char and then compared to an int
+                // result of comparasion of constant (-1) with expression of type unsigned char is always false! 
+                while ((ch = getc()) != EOF)
+                {
+                    putchar(ch);
+                }
+                ```
         - 返回值
             - 成功时，为 *获得的字符* 
             - 失败时，为`EOF`
                 - 若 *文件尾条件* 导致失败，则另外设置文件尾指示器（`feof()`）
                 - 若 *其他错误* 导致失败，则另外设置错误指示器（`ferror()`）
-    - [`fgets`](https://en.cppreference.com/w/cpp/io/c/fgets)：从文件流获取字符串 
+    - [`fgets`, `gets`](https://en.cppreference.com/w/cpp/io/c/fgets)：从文件流获取字符串 
         - 签名
         ```
         char * fgets(char * str, int count, FILE * stream);
         ```
         - 从给定流`stream`读取最多`count - 1`个字符并将它们存储于`str`所指向的字符数组
-            - 若 *文件尾* 出现或发现 *换行符* ，则终止分析，后一情况下`str`将 *包含换行符* 
-            - 成功读入且无错误发生时，`str`结尾将被写入`'\0'`结尾
+            - 若 *文件尾* 出现或发现 *换行符* ，则终止分析
+                - 后一情况下`str`将 *包含换行符* 
+                - 成功读入且无错误发生时，`str`结尾将被写入`'\0'`结尾
+            - 尽管标准规范在`count <= 1`的情况下不明，常见的实现
+                - 若`count < 1`，则**不**做任何事并报告错误
+                - 若`count == 1`，则 
+                    - 某些实现**不**做任何事并报告错误
+                    - 其他实现**不**读内容，存储零于`str[0]`并报告成功 
+            - [`gets`](https://en.cppreference.com/w/cpp/io/c/gets) `(deprecated in C++11)(removed in C++14)` **不**能避免 *缓冲区溢出* 。应使用`std::fgets`替代 
         - 返回值
             - 成功时，为`str`
             - 失败时，为 *空指针* 
-                - 若 *文件尾条件* 导致失败，则另外设置文件尾指示器（`feof()`））
-                    - 这仅若它导致未读取字符才是失败，该情况下返回空指针且不改变 str 所指向数组的内容（即不以空字符覆写首字节）。
-                - 若 *其他错误* 导致失败，则另外设置错误指示器（`ferror()`）
+                - 若 *文件尾条件* 导致失败，则另外设置`stream`的 *文件尾指示器* （`feof()`））
+                    - 该情况下**不**改变`str`所指向数组的内容（即**不**以 *空字符* 覆写首字节）
+                - 若 *其他错误* 导致失败，则另外设置`stream`的 *错误指示器* （`ferror()`）
                     - 此时`str`所指向的数组内容是 *不确定的* （甚至可以**不**是 *空终止* 的）
+                    - `POSIX`额外要求若`fgets`遇到异于文件尾条件的失败，则设置`errno`
+        - 使用示例
+        ```
+        if (FILE * tmpf = tmpfile())
+        {
+            fputs("Alan Turing\n", tmpf);
+            fputs("John von Neumann\n", tmpf);
+            fputs("Alonzo Church\n", tmpf);
+            rewind(tmpf);
+
+            for (char buf[BUFSIZ]; fgets(buf, sizeof buf, tmpf);)
+            {
+                // fgets will accept '\n' at end of line, rather than drop it
+                // fgets will also append a '\0' at buf's end
+                // delete '\n' manually
+                buf[strlen(buf) - 1] = '\0';
+                printf("\"%s\"\n", buf);
+            }
+
+            fclose(tmpf);
+        }
+        ```
     - [`fputc`，`putc`](https://en.cppreference.com/w/cpp/io/c/fputc)：写字符到文件流 
+        - 签名
+        ```
+        int fputc(int ch, FILE * stream);
+        int putc(int ch, FILE * stream);
+        ```
+        - 向输出流`stream`中写入字符`ch`
+            - 在内部，在 *写入前将字符转换为`unsigned char`* 
+            - `C`中，`putc`可以实现为宏，而这在`C++`中被禁止。从而，`fputc`和`putc`始终拥有相同效果
+            - [`putchar`](https://en.cppreference.com/w/cpp/io/c/putchar)：`int putchar(int ch);`等价于`putc(ch, stdin);`
+        - 返回值
+            - 成功时，返回 *被写入字符* 
+                - `fputc`、`putc`以及`putchar`的返回值在 *`ch`为负* 时**不**等于`ch`
+                ```
+                int ch = -3;
+                int ret = putchar(ch);
+                printf("%d %d\n", ret, ch);    // 253 -3
+                ```
+            - 失败时，返回 *EOF* ，并设置 *错误指示器* （`ferror()`） 
     - [`fputs`](https://en.cppreference.com/w/cpp/io/c/fputs)：写字符串到文件流 
-    - [`getchar`](https://en.cppreference.com/w/cpp/io/c/getchar)：从`stdin`读取字符 
-    - [`gets`](https://en.cppreference.com/w/cpp/io/c/gets)：从`stdin`读取字符串 `(deprecated in C++11)(removed in C++14)`
-        - 此函数**不**检测避免缓冲区溢出。应使用`std::fgets`替代
-    - [`putchar`](https://en.cppreference.com/w/cpp/io/c/putchar)：写字符到`stdout`
+        - 签名
+        ```
+        int fputs(const char * str, FILE * stream);
+        ```
+        - 向`stream`写入`str`的每个字符
+            - 如同重复执行`fputc`
+            - **不**写入`str`的终止空字符 
+            - 与`puts`（后附新换行符）不同，`fputs`则写入 *不修改的字符串* 
+        - 返回值
+            - 成功时，返回 *非负值*
+                - 不同的实现返回不同的非负数
+                    - 一些返回最后写入的字符
+                    - 一些返回写入的字符数（或若字符串长于`INT_MAX`则为该值）
+                    - 一些简单地非负常量，例如零
+            - 失败时，返回`EOF`，并设置 *错误指示器* （`ferror()`） 
+        - 使用示例
+        ```
+        if ((int rc = std::fputs("Hello World", stdout)) == EOF)
+        {
+            std::perror("fputs()");  // POSIX 要求设置 errno
+        }
+        ```
     - [`puts`](https://en.cppreference.com/w/cpp/io/c/puts)：写字符串到`stdout`
+        - 签名
+        ```
+        int puts(const char * str);
+        ```
+        - 向`stdout`写入`str`，附带一个 *换行符* `'\n'`
+            - 如同重复执行`putc`
+            - **不**写入`str`的终止空字符
+            - 与`fputs`（**不**附加 *换行符* ）不同，`puts`则多写入一个 *换行符*
+        - 返回值
+            - 成功时，返回 *非负值*
+                - 不同的实现返回不同的非负数
+                    - 一些返回最后写入的字符
+                    - 一些返回写入的字符数（或若字符串长于`INT_MAX`则为该值）
+                    - 一些简单地非负常量，例如零
+            - 失败时，返回`EOF`，并设置 *错误指示器* （`ferror()`） 
+                - 在重定向`stdout`到文件时，导致`puts`失败的典型原因是 *用尽了文件系统的空间* 
+        - 使用示例
+        ```
+        #include <cstdio>
+ 
+        int main()
+        {
+            int rc = std::puts("Hello World");
+         
+            if (rc == EOF)
+            {
+                perror("puts()");    // POSIX 要求设置 errno
+            }
+        }
+        ```
     - [`ungetc`](https://en.cppreference.com/w/cpp/io/c/ungetc)：把字符放回文件流 
+        - 签名
+        ```
+        int ungetc(int ch, FILE * stream);
+        ```
+        - 若`ch != EOF`，则将字符`ch` `reinterpret_cast`为`unsigned char`后，写入到`stream`的输入缓冲区
+        - 若`ch == EOF`，则 *操作失败* 而**不**影响流
+        - 对`ungetc`的成功调用清除文件尾状态标志`feof`
+        - 在 *二进制流* 上对`ungetc`的成功调用将流位置指示器 *减少一* （若流位置指示器为零，则 *行为未定义* ）
+        - 在 *文本流* 上对`ungetc`的成功调用以 *未定义方式* 修改流位置指示器，但保证在以读取操作取得所有回退的字符后，流位置指示器等于其在`ungetc`之前的值
+        - 返回值
+            - 成功时。返回`ch`
+            - 失败时。返回`EOF`，而给定的流保持不变 
 - `C`风格格式化`I/O`
     - [`scanf`，`fscanf`，`sscanf`](https://en.cppreference.com/w/cpp/io/c/fscanf)：从`stdin`、文件流或缓冲区读取有格式输入
     - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* 
