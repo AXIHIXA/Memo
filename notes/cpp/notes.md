@@ -14632,14 +14632,93 @@ quizB.reset(27);                  // student number 27 failed
 - [`<chrono>`](https://en.cppreference.com/w/cpp/header/chrono)
     - `PLACEHOLDER`
 
-#### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem library）
+#### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem library） `(since C++17)`
 
 - *文件系统库* 提供在文件系统与其组件，例如路径、常规文件与目录上进行操作的设施
     - 文件系统库原作为`boost.filesystem`开发，并最终从`C++17`开始并入`ISO C++`
-- 兼容性
-    - 若层级文件系统不能为实现所访问，或若它不提供必要的兼容性，则文件系统库设施可能不可用
-    - 若底层文件系统不支持，则一些特性可能不可用（例如`FAT`文件系统缺少 *符号链接* 并禁止 *多重硬链接* ）
-    - 若对此库的函数的调用引入文件系统竞争，即多个线程、进程或计算机交错地访问并修改文件系统中的同一对象，则 *行为未定义*  
+    - 定义于头文件`<filesystem>`、命名空间`std::filesystem`
+    - 使用此库可能要求额外的 *编译器/链接器选项* 
+        - `GNU < 9.1`实现要求用`-lstdc++fs`链接
+        - `LLVM < 9.0`实现要求用`-lc++fs`链接 
+    - 兼容性
+        - 若层级文件系统不能为实现所访问，或若它不提供必要的兼容性，则文件系统库设施可能不可用
+        - 若底层文件系统不支持，则一些特性可能不可用（例如`FAT`文件系统缺少 *符号链接* 并禁止 *多重硬链接* ）
+        - 若对此库的函数的调用引入文件系统竞争，即多个线程、进程或计算机交错地访问并修改文件系统中的同一对象，则 *行为未定义*  
+- 定义
+    - *文件* （file）
+        - 持有数据的文件系统对象，能被写入或读取，或二者皆可。文件拥有 *文件名* 及 *文件属性* 
+        - *文件类型* （file type）是 *文件属性* 之一，可以是如下 *四种* 之一 
+            - *目录* （directory）
+            - *硬链接* （hard link）
+            - *符号链接* （symbolic link）
+            - *常规文件* （regular file）
+    - *文件名* （file name）
+        - 命名一个文件的字符串。容许字符、大小写区别、最大长度以及被禁止名称 *由实现定义* 
+        - `"."`和`".."`有特殊含义
+    - *路径* （path）
+        - 标识一个文件的元素序列
+            - 以可选的 *根名* （root name，例如`Windows`上的`"C:"`或`"//server"`）开始
+            - 后随可选的 *根目录* （root directory，例如`Unix`上的`/`）
+            - 后随零或更多个 *文件名* （file name，除了最后一个都必须是 *目录* 或 *到目录的链接* ）的序列 
+        - 路径可以分为以下 *三种*
+            - *绝对路径* ：无歧义地标识一个文件位置的路径
+            - *规范路径* ：**不**含 *符号链接* 、`"."`或`".."`元素的绝对路径
+            - *相对路径* ：标识相对于文件系统中某位置的文件位置的路径。特殊路径名`"."`（当前目录）和`".."` （父目录）是相对路径 
+- 类
+    - [`path`](https://en.cppreference.com/w/cpp/filesystem/path)：表示一个路径
+    - [`filesystem_error`](https://en.cppreference.com/w/cpp/filesystem/filesystem_error)：文件系统错误时抛出的异常
+    - [`directory_entry`](https://en.cppreference.com/w/cpp/filesystem/directory_entry)：目录条目
+    - [`directory_iterator`](https://en.cppreference.com/w/cpp/filesystem/directory_iterator)：指向目录内容的迭代器
+    - [`recursive_directory_iterator`](https://en.cppreference.com/w/cpp/filesystem/recursive_directory_iterator)：指向一个目录及其子目录的内容的迭代器
+    - [`file_status`](https://en.cppreference.com/w/cpp/filesystem/file_status)：表示文件类型及权限
+    - [`space_info`](https://en.cppreference.com/w/cpp/filesystem/space_info)：关于文件系统上空闲及可用空间的信息
+- 枚举
+    - [`file_type`](https://en.cppreference.com/w/cpp/filesystem/file_type)：文件的类型
+    - [`perms`](https://en.cppreference.com/w/cpp/filesystem/perms)：标识文件系统权限
+    - [`perm_options`](https://en.cppreference.com/w/cpp/filesystem/perm_options)：指定权限操作的语义
+    - [`copy_options`](https://en.cppreference.com/w/cpp/filesystem/copy_options)：指定复制操作的语义
+    - [`directory_options`](https://en.cppreference.com/w/cpp/filesystem/directory_options)：用于迭代目录内容的选项
+- `typedef`
+    - [`file_time_type`](https://en.cppreference.com/w/cpp/filesystem/file_time_type)：表示文件时间值
+- 非成员函数
+    - [`absolute`](https://en.cppreference.com/w/cpp/filesystem/)：组成一个绝对路径
+    - [`canonicalweakly_canonical`](https://en.cppreference.com/w/cpp/filesystem/)：组成一个规范路径
+    - [`relativeproximate`](https://en.cppreference.com/w/cpp/filesystem/)：组成一个相对路径
+    - [`copy`](https://en.cppreference.com/w/cpp/filesystem/)：复制文件或目录
+    - [`copy_file`](https://en.cppreference.com/w/cpp/filesystem/)：复制文件内容
+    - [`copy_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：复制一个符号链接
+    - [`create_directory`](https://en.cppreference.com/w/cpp/filesystem/)：创建新目录
+    - [`create_directories`](https://en.cppreference.com/w/cpp/filesystem/)：创建新目录
+    - [`create_hard_link`](https://en.cppreference.com/w/cpp/filesystem/)：创建一个硬链接
+    - [`create_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：创建一个符号链接
+    - [`create_directory_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：创建一个符号链接
+    - [`current_path`](https://en.cppreference.com/w/cpp/filesystem/)：返回或设置当前工作目录
+    - [`exists`](https://en.cppreference.com/w/cpp/filesystem/)：检查路径是否指代既存的文件系统对象
+    - [`equivalent`](https://en.cppreference.com/w/cpp/filesystem/)：检查两个路径是否指代同一文件系统对象
+    - [`file_size`](https://en.cppreference.com/w/cpp/filesystem/)：返回文件的大小
+    - [`hard_link_count`](https://en.cppreference.com/w/cpp/filesystem/)：返回指代特定文件的硬链接数
+    - [`last_write_time`](https://en.cppreference.com/w/cpp/filesystem/)：获取或设置最近一次数据修改的时间
+    - [`permissions`](https://en.cppreference.com/w/cpp/filesystem/)：修改文件访问权限
+    - [`read_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：获得符号链接的目标
+    - [`remove`](https://en.cppreference.com/w/cpp/filesystem/)：移除一个文件或空目录
+    - [`remove_all`](https://en.cppreference.com/w/cpp/filesystem/)：移除一个文件或递归地移除一个目录及其所有内容
+    - [`rename`](https://en.cppreference.com/w/cpp/filesystem/rename)：移动或重命名一个文件或目录
+    - [`resize_file`](https://en.cppreference.com/w/cpp/filesystem/resize_file)：以截断或填充零更改一个常规文件的大小
+    - [`space`](https://en.cppreference.com/w/cpp/filesystem/space)：确定文件系统上的可用空闲空间
+    - [`status`](https://en.cppreference.com/w/cpp/filesystem/status)：确定文件属性
+    - [`symlink_status`](https://en.cppreference.com/w/cpp/filesystem/symlink_status)：确定文件属性，检查符号链接目标
+    - [`temp_directory_path`](https://en.cppreference.com/w/cpp/filesystem/temp_directory_path)：返回一个适用于临时文件的目录
+- 文件类型判断
+    - [`is_block_file`](https://en.cppreference.com/w/cpp/filesystem/is_block_file)：检查给定的路径是否表示块设备
+    - [`is_character_file`](https://en.cppreference.com/w/cpp/filesystem/is_character_file)：检查给定的路径是否表示字符设备
+    - [`is_directory`](https://en.cppreference.com/w/cpp/filesystem/is_directory)：检查给定的路径是否表示一个目录
+    - [`is_empty`](https://en.cppreference.com/w/cpp/filesystem/is_empty)：检查给定的路径是否表示一个空文件或空目录
+    - [`is_fifo`](https://en.cppreference.com/w/cpp/filesystem/is_fifo)：检查给定的路径是否表示一个命名管道
+    - [`is_other`](https://en.cppreference.com/w/cpp/filesystem/is_other)：检查参数是否表示一个其他文件
+    - [`is_regular_file`](https://en.cppreference.com/w/cpp/filesystem/is_regular_file)：检查参数是否表示一个常规文件
+    - [`is_socket`](https://en.cppreference.com/w/cpp/filesystem/is_socket)：检查参数是否表示一个具名`IPC socket`
+    - [`is_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：检查参数是否表示一个符号链接
+    - [`status_known`](https://en.cppreference.com/w/cpp/filesystem/status_known)：检查文件状态是否已知
 - `PLACEHOLDER`
 
 
