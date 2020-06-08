@@ -4573,19 +4573,20 @@ if (cancelEntry)
                         5. *水平制表符* （horizontal tab，`0x09`，`'\t'`）
                         6. *垂直制表符* （vertical tab，`0x0b`，`'\v'`）
                     - 如果`ch`的值**不能**表示为`unsigned char`，并且**不等于**`EOF`，则函数 *行为未定义* 
-            - *转换说明* （conversion specifications），并可以包含如下 *可选* 内容
-                - *赋值抑制字符* （assignment-suppressing character）`*`：丢弃此项对应的结果
+            - *转换说明* （conversion specifications），并可以依序包含如下内容
+                - 打头的 *百分号* `%`
+                - *赋值抑制字符* （assignment-suppressing character）`*`：丢弃此项对应的结果， *可选*
+                - *最大域宽说明符* （max field width specifier）： *正整数* ，进行在当前转换说明所指定的转换时允许处理的最大字符数， *可选*
+                    - 注意若不提供宽度，则`%s`和`%[`可能导致 *缓冲区溢出* 
+                - *长度修饰符* （length modifier）：具体可选内容见下表，用于指明此处匹配的期待参数类型， *可选*
                 - *转换格式说明符* （conversion format specifier）
-                    - 格式
-                        - 每个转换说明都以 *百分号* `%`打头
-                        - `% width_specifier length_modifier choice`，如`%10ls`
                     - 包括如下选项
                         - `%`：匹配字面`%`
                         - `c`：匹配一个 *字符* 
-                            - *宽度说明符* （width specifier）
+                            - *最大域宽说明符* 
                                 - 若使用了宽度说明符，则匹配准确的宽度个字符（该参数必须是指向有充足空间的数组的指针）
                                 - 不同于`%s`和`%[`，它**不会**在数组后 *附加空字符*  
-                            - *长度修饰符* （length modifier）
+                            - *长度修饰符* 
                                 - `c`：期待参数类型`char *`
                                 - `lc`：期待参数类型`wchar_t *`
                         - `s`：匹配一个 *字符串* 
@@ -4600,7 +4601,7 @@ if (cancelEntry)
                                 - 若集合的首字符是`^`，则匹配所有**不在**集合中的字符。
                                 - 若集合以`]`或`^]`开始，则`]`字符亦被包含入集合。
                                 - 在扫描集合的非最初位置的字符`-`是否可以指示范围，如 [0-9] ，是 *实现定义* 的
-                            - 宽度说明符
+                            - 最大域宽说明符
                                 - 若使用宽度说明符，则最多匹配到宽度
                                 - 总是在匹配的字符后存储一个空字符（故参数数组长度至少比宽度多一）
                             - 长度说明符
@@ -4683,7 +4684,44 @@ if (cancelEntry)
         - 返回值
             - 成功赋值的参数的数量（在首个参数赋值前发生匹配失败的情况下可为零）
             - 若在赋值首个接收的参数前输入失败，则为`EOF`
-    - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 stdout、文件流或缓冲区 
+    - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 `stdout`、文件流或缓冲区 
+        - 签名
+        ```
+        int printf(const char * format, ... );                                      (1) 	
+        int fprintf(FILE * stream, const char * format, ... );                      (2) 	
+        int sprintf(char * buffer, const char * format, ... );                      (3) 	
+        int snprintf(char * buffer, size_t buf_size, const char * format, ... );    (4)
+        ```
+        - 从给定位置加载数据，转换为字符串等价版本，并将结果写入各种池
+            - `(1)` 写结果到`stdout`
+            - `(2)` 写结果到`stream`
+            - `(3)` 写结果到字符数组`buffer`
+            - `(4)` 写结果到字符数组`buffer`
+                - 若`buf_size > 0`：至多写`buf_size - 1`个字符，以`'\0'`结尾
+                - 若`buf_size == 0`：不写入任何内容，且`buffer`可以是 *空指针* ，然而依旧计算返回值并返回
+        - *格式字符串* （format string）`format`由下列内容组成
+            - 除 *百分号* `%`以外的字符：精确匹配输入中的 *这个字符* ，否则失败
+            - *转换说明* （conversion specifications），并可以包含如下 *可选* 内容
+                - *赋值抑制字符* （assignment-suppressing character）`*`：丢弃此项对应的结果
+                - *转换格式说明符* （conversion format specifier）
+                    - 格式
+                        - 每个转换说明都以 *百分号* `%`打头
+                        - `% width_specifier length_modifier choice`，如`%10ls`
+                    - 包括如下选项
+                        - `%`：匹配字面`%`
+
+
+        - 返回值
+            - `(1-2)` 若成功则为写入的字符数，若发生错误则为负值
+            - `(3)` 若成功则为写入的字符数（不包含空终止字符），若发生错误则为负值
+            - `(4)` 若成功则为会写入充分大缓冲区的字符数（不包含`'\0'`），若发生错误则为负值。因此，当且仅当返回值非负且小于`buf_size`，`'\0'`结尾的字符序列才是被完整写完的
+                - 以零`buf_size`和对于`buffer`的 *空指针* 调用`snprintf`可以用于确定容纳输出的所需缓冲区大小
+                ```
+                const char * fmt = "sqrt(2) = %f";
+                int sz = std::snprintf(nullptr, 0, fmt, std::sqrt(2));
+                std::vector<char> buf(sz + 1);                          // note + 1 for null terminator
+                std::snprintf(&buf[0], buf.size(), fmt, std::sqrt(2));
+                ```
     - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* `va_list`
 从`stdin`、文件流或缓冲区读取有格式输入 
     - [`vprintf`，`vfprintf`，`vsprintf`，`vsnprintf`](https://en.cppreference.com/w/cpp/io/c/vfprintf)：使用 *可变实参列表* `va_list`
