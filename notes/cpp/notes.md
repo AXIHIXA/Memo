@@ -4554,6 +4554,25 @@ if (cancelEntry)
             - 失败时。返回`EOF`，而给定的流保持不变 
 - `C`风格格式化`I/O`
     - [`scanf`，`fscanf`，`sscanf`](https://en.cppreference.com/w/cpp/io/c/fscanf)：从`stdin`、文件流或缓冲区读取有格式输入
+        - 签名
+        ```
+        ​int scanf(const char * format, ... );                          ​(1) 	
+        int fscanf(FILE * stream, const char * format, ... );          (2) 	
+        int sscanf(const char * buffer, const char * format, ... );    (3) 
+        ```
+        - 从各种源读取数据，按照`format`转译并存储结果于给定位置
+        - *格式字符串* `format`由下列内容组成
+            - 除 *百分号* `'%'`和 *空白字符* 以外的字符：精确匹配输入中的 *这个字符* ，否则失败
+            - *空白字符* `' '`：匹配输入中的 *任意长度连续空白字符* ，注意`format`中`'\n'`、`' '`、`'\t\t'`或其他空白字符都是等价的 
+                - 空白字符由`isspace(c)`定义
+                    - 包括
+                        1. *空格* （space，`0x20`，`' '`）
+                        2. *换页* （form feed，`0x0c`，`'\f'`）
+                        3. *换行* （line feed，`0x0a`，`'\n'`）
+                        4. *回车* （carriage return，`0x0d`，`'\r'`）
+                        5. *水平制表符* （horizontal tab，`0x09`，`'\t'`）
+                        6. *垂直制表符* （vertical tab，`0x0b`，`'\v'`） 
+                    - 如果`ch`的值**不能**表示为`unsigned char`，并且**不等于**`EOF`，则函数 *行为未定义* 
     - [`vscanf`，`vfscanf`，`vsscanf`](https://en.cppreference.com/w/cpp/io/c/vfscanf)：使用 *可变实参列表* 
 从`stdin`、文件流或缓冲区读取有格式输入 
     - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 stdout、文件流或缓冲区 
