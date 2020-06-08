@@ -17,7 +17,7 @@
 
 - `CMakeList`
 
-    - `Boost`: No special CMake configuration needed. `apt` puts them all into `/usr/include` and `/usr/lib`
+    - [Boost](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Boost/CMakeLists.txt)
     - [Criterion](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Criterion/CMakeLists.txt)
     - [Demo](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Demo/CMakeLists.txt)
     - [OpenCV & OpenGL](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/OpenXX/CMakeLists.txt)
