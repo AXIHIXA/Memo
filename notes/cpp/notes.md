@@ -14681,27 +14681,27 @@ quizB.reset(27);                  // student number 27 failed
 - `typedef`
     - [`file_time_type`](https://en.cppreference.com/w/cpp/filesystem/file_time_type)：表示文件时间值
 - 非成员函数
-    - [`absolute`](https://en.cppreference.com/w/cpp/filesystem/)：组成一个绝对路径
-    - [`canonicalweakly_canonical`](https://en.cppreference.com/w/cpp/filesystem/)：组成一个规范路径
-    - [`relativeproximate`](https://en.cppreference.com/w/cpp/filesystem/)：组成一个相对路径
-    - [`copy`](https://en.cppreference.com/w/cpp/filesystem/)：复制文件或目录
-    - [`copy_file`](https://en.cppreference.com/w/cpp/filesystem/)：复制文件内容
-    - [`copy_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：复制一个符号链接
-    - [`create_directory`](https://en.cppreference.com/w/cpp/filesystem/)：创建新目录
-    - [`create_directories`](https://en.cppreference.com/w/cpp/filesystem/)：创建新目录
-    - [`create_hard_link`](https://en.cppreference.com/w/cpp/filesystem/)：创建一个硬链接
-    - [`create_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：创建一个符号链接
-    - [`create_directory_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：创建一个符号链接
-    - [`current_path`](https://en.cppreference.com/w/cpp/filesystem/)：返回或设置当前工作目录
-    - [`exists`](https://en.cppreference.com/w/cpp/filesystem/)：检查路径是否指代既存的文件系统对象
-    - [`equivalent`](https://en.cppreference.com/w/cpp/filesystem/)：检查两个路径是否指代同一文件系统对象
-    - [`file_size`](https://en.cppreference.com/w/cpp/filesystem/)：返回文件的大小
-    - [`hard_link_count`](https://en.cppreference.com/w/cpp/filesystem/)：返回指代特定文件的硬链接数
-    - [`last_write_time`](https://en.cppreference.com/w/cpp/filesystem/)：获取或设置最近一次数据修改的时间
-    - [`permissions`](https://en.cppreference.com/w/cpp/filesystem/)：修改文件访问权限
-    - [`read_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：获得符号链接的目标
-    - [`remove`](https://en.cppreference.com/w/cpp/filesystem/)：移除一个文件或空目录
-    - [`remove_all`](https://en.cppreference.com/w/cpp/filesystem/)：移除一个文件或递归地移除一个目录及其所有内容
+    - [`absolute`](https://en.cppreference.com/w/cpp/filesystem/absolute)：组成一个绝对路径
+    - [`canonicalweakly_canonical`](https://en.cppreference.com/w/cpp/filesystem/canonicalweakly_canonical)：组成一个规范路径
+    - [`relativeproximate`](https://en.cppreference.com/w/cpp/filesystem/relativeproximate)：组成一个相对路径
+    - [`copy`](https://en.cppreference.com/w/cpp/filesystem/copy)：复制文件或目录
+    - [`copy_file`](https://en.cppreference.com/w/cpp/filesystem/copy_file)：复制文件内容
+    - [`copy_symlink`](https://en.cppreference.com/w/cpp/filesystem/copy_symlink)：复制一个符号链接
+    - [`create_directory`](https://en.cppreference.com/w/cpp/filesystem/create_directory)：创建新目录
+    - [`create_directories`](https://en.cppreference.com/w/cpp/filesystem/create_directories)：创建新目录
+    - [`create_hard_link`](https://en.cppreference.com/w/cpp/filesystem/create_hard_link)：创建一个硬链接
+    - [`create_symlink`](https://en.cppreference.com/w/cpp/filesystem/create_symlink)：创建一个符号链接
+    - [`create_directory_symlink`](https://en.cppreference.com/w/cpp/filesystem/create_directory_symlink)：创建一个符号链接
+    - [`current_path`](https://en.cppreference.com/w/cpp/filesystem/current_path)：返回或设置当前工作目录
+    - [`exists`](https://en.cppreference.com/w/cpp/filesystem/exists)：检查路径是否指代既存的文件系统对象
+    - [`equivalent`](https://en.cppreference.com/w/cpp/filesystem/equivalent)：检查两个路径是否指代同一文件系统对象
+    - [`file_size`](https://en.cppreference.com/w/cpp/filesystem/file_size)：返回文件的大小
+    - [`hard_link_count`](https://en.cppreference.com/w/cpp/filesystem/hard_link_count)：返回指代特定文件的硬链接数
+    - [`last_write_time`](https://en.cppreference.com/w/cpp/filesystem/last_write_time)：获取或设置最近一次数据修改的时间
+    - [`permissions`](https://en.cppreference.com/w/cpp/filesystem/permissions)：修改文件访问权限
+    - [`read_symlink`](https://en.cppreference.com/w/cpp/filesystem/read_symlink)：获得符号链接的目标
+    - [`remove`](https://en.cppreference.com/w/cpp/filesystem/remove)：移除一个文件或空目录
+    - [`remove_all`](https://en.cppreference.com/w/cpp/filesystem/remove_all)：移除一个文件或递归地移除一个目录及其所有内容
     - [`rename`](https://en.cppreference.com/w/cpp/filesystem/rename)：移动或重命名一个文件或目录
     - [`resize_file`](https://en.cppreference.com/w/cpp/filesystem/resize_file)：以截断或填充零更改一个常规文件的大小
     - [`space`](https://en.cppreference.com/w/cpp/filesystem/space)：确定文件系统上的可用空闲空间
@@ -14719,7 +14719,6 @@ quizB.reset(27);                  // student number 27 failed
     - [`is_socket`](https://en.cppreference.com/w/cpp/filesystem/is_socket)：检查参数是否表示一个具名`IPC socket`
     - [`is_symlink`](https://en.cppreference.com/w/cpp/filesystem/)：检查参数是否表示一个符号链接
     - [`status_known`](https://en.cppreference.com/w/cpp/filesystem/status_known)：检查文件状态是否已知
-- `PLACEHOLDER`
 
 
 
