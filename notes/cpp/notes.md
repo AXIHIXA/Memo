@@ -3500,7 +3500,7 @@ for (const PersonInfo & entry : people)
 
 #### 格式化`I/O`（formatted `I/O`）
 
-- 除了 *条件状态* 之外，每个`std::iostream`对象还维护一个 *格式状态* （format state）来控制`I/O`如何控制格式化的细节
+- 除了 *条件状态* 之外，每个`std::iostream`对象还维护一个 *格式标记* （format flags）来控制`I/O`如何控制格式化的细节
     - `g++`实现为[`std::ios_base::fmtflags`](https://en.cppreference.com/w/cpp/io/ios_base/fmtflags)
     ```
     // <bits/ios_base.h>
@@ -3555,7 +3555,7 @@ for (const PersonInfo & entry : people)
     protected:
         fmtflags _M_flags;
     ```
-- 标准库定义了一组 *操纵符* （manipulator），来 *修改* 流的格式状态
+- 标准库定义了一组 *操纵符* （manipulator），来 *修改* 流的 *格式标记* 
     - *基础操纵符* ，定义于头文件`<iostream>`中
         - 独立操纵符（打开）
             - `std::boolalpha`：将`bool`输出为`true`和`false`
@@ -4088,16 +4088,6 @@ if (cancelEntry)
             # define SEEK_HOLE 4    /* Seek to next hole.  */
             #endif
             ```
-            - `TMP_MAX`：`tmpnam`所能生成的唯一文件名的最大数量 
-            ```
-            // <stdio_lim.h>
-            #define TMP_MAX 238328
-            ```
-            - `L_tmpnam`：保有`std::tmpnam`结果的字符数组所需的大小 
-            ```
-            // <stdio_lim.h>
-            #define L_tmpnam 20
-            ```
     - `<cwchar>`头文件提供有宽字符`I/O`能力的函数（不搞外语，就不看了）
 - `C`流是`FILE`类型对象，只能通过`FILE *`类型指针访问及操作
     - 通过解引用`FILE *`创建`FILE`类型对象的本地拷贝是可以的，但使用这种本地拷贝是 *未定义行为*
@@ -4176,7 +4166,7 @@ if (cancelEntry)
                 return EXIT_FAILURE;
             }
          
-            int c; // note: int, not char, required to handle EOF
+            int c;  // note: int, not char, required to handle EOF
             
             while ((c = std::fgetc(fp)) != EOF) 
             { 
@@ -4188,7 +4178,7 @@ if (cancelEntry)
             {
                 puts("I/O error when reading");
             }
-            else if (std::feof(fp))
+            else if (feof(fp))
             {
                 puts("End of file reached successfully");
             }
@@ -4901,20 +4891,152 @@ if (cancelEntry)
         ```
 - `C`风格文件寻位
     - [`ftell`](https://en.cppreference.com/w/cpp/io/c/ftell)：返回当前文件位置指示器 
+        - 签名
+        ```
+        long ftell(FILE * stream);
+        ```
+        - 返回文件流`stream`的文件位置指示器的当前值
+            - 若流以 *二进制模式* 打开，则此函数获得的值是 *距文件起始的字节数* 
+            - 若流以 *文本模式* 打开，则此函数的返回值是 *未指定* 的，而且仅若作为`fseek`的输入才有意义
+        - 返回值
+            - 成功时为文件位置指示器，
+            - 失败出现则为`-1L`。失败时亦设置`errno` 
     - [`fgetpos`](https://en.cppreference.com/w/cpp/io/c/fgetpos)：获取文件位置指示器 
+        - 签名
+        ```
+        int fgetpos(FILE * stream, fpos_t * pos);
+        ```
+        - 获得文件流`stream`的文件位置指示器和当前分析状态（若存在），并将它们存储于`pos`所指向的对象。存储的值仅在作为`fsetpos`的输入的情况有意义
+        - 返回值
+            - 成功时为`​0​`
+            - 否则 *非零* 值。失败时还设置`errno` 
     - [`fseek`](https://en.cppreference.com/w/cpp/io/c/fseek)：移动文件位置指示器到文件中的指定位置 
+        - 签名
+        ```
+        int fseek(FILE * stream, long offset, int origin);
+        ```
+        - 设置文件流`stream`的 *文件位置指示器* 为`origin`后的`offset`个字节
+            - `origin`可以选择
+                - `SEEK_SET`，从 *文件起始* 寻位
+                - `SEEK_CUR`，从 *当前文件位置* 寻位
+                - `SEEK_END`：从 *文件尾* 寻位
+            ```
+            // <stdio.h>
+            /* The possibilities for the third argument to `fseek'.
+               These values should not be changed.  */
+            #define SEEK_SET   0    /* Seek from beginning of file.  */
+            #define SEEK_CUR   1    /* Seek from current position.  */
+            #define SEEK_END   2    /* Seek from end of file.  */
+            ```
+            - 若`stream`以 *二进制模式* 打开，则新位置准确地是`origin`后的`offset`个字节
+                - 不要求二进制流支持`SEEK_END`，尤其是是否输出附加的空字节。
+            - 若`stream`以 *文本模式* 打开，则
+                - `offset`值可以零（可用于任何`origin`），或
+                - 若`origin == SEEK_SET`，则`offset`还可以是先前在关联到同一个文件的流上调用`ftell`的返回值
+        - 除了更改文件位置指示器，`fseek`还撤销`ungetc`的效果并清除文件尾状态
+        - 若发生读或写错误，则设置流的 *错误指示器* （`ferror`）而**不**影响文件位置
+        - 返回值
+            - 成功时为`​0​`
+            - 否则为 *非零* 
     - [`fsetpos`](https://en.cppreference.com/w/cpp/io/c/fsetpos)：移动文件位置指示器到文件中的指定位置 
+        - 签名
+        ```
+        int fsetpos(FILE * stream, const fpos_t * pos);
+        ```
+        - 按照`pos`所指向的值，设置文件流`stream`的 *文件位置指示器* 和 *宽字节分析状态* 
+            - 除了建立新的分析状态和位置，调用此函数还会撤销`ungetc`的效果，并清除文件尾状态
+            - 若读或写失败，则设置流的 *错误指示器* （`ferror`） 
+        - 返回值
+            - 成功时为`​0​`
+            - 否则 *非零* 值。失败时还设置`errno` 
     - [`rewind`](https://en.cppreference.com/w/cpp/io/c/rewind)：移动文件位置指示器到文件起始 
+        - 签名
+        ```
+        void rewind(FILE * stream);
+        ```
+        - 移动 *文件位置指示器* 到给定文件流的起始
+            - 函数等价于在调用`fseek(stream, 0, SEEK_SET);`的同时还 *清除* *文件尾指示器* 和 *错误指示器* 
+            - 此函数丢弃任何来自先前对`ungetc`调用的效果
 - `C`风格`I/O`错误处理
-    - [`clearerr`](https://en.cppreference.com/w/cpp/io/c/clearerr)：清除错误 
+    - [`clearerr`](https://en.cppreference.com/w/cpp/io/c/clearerr)：清除错误
+        - 签名
+        ```
+        void clearerr(FILE * stream);
+        ```
+        - 重置给定文件流的 *错误指示器* 和 *文件尾指示器* 
     - [`feof`](https://en.cppreference.com/w/cpp/io/c/feof)：检查文件尾 
+        - 签名
+        ```	
+        int feof(FILE * stream);
+        ```
+        - 检查是否已抵达给定文件流的结尾
+        - 返回值
+            - 若已抵达文件流尾则为 *非零值* 
+            - 否则为`​0​`
+        - 用例
+        ```
+        #include <cstdlib>
+        #include <cstdio>
+        
+        int main()
+        {
+            FILE * fp = fopen("test.txt", "r");
+            
+            if (!fp) 
+            {
+                std::perror("File opening failed");
+                return EXIT_FAILURE;
+            }
+         
+            int c;  // note: int, not char, required to handle EOF
+            
+            while ((c = std::fgetc(fp)) != EOF) 
+            { 
+                // standard C I/O file reading loop
+                putchar(c);
+            }
+         
+            if (ferror(fp))
+            {
+                puts("I/O error when reading");
+            }
+            else if (feof(fp))
+            {
+                puts("End of file reached successfully");
+            }
+                
+            fclose(fp);
+            
+            return EXIT_SUCCESS;
+        }
+        ```
     - [`ferror`](https://en.cppreference.com/w/cpp/io/c/ferror)：检查文件错误 
+        - 签名
+        ```
+        int ferror(FILE * stream);
+        ```
+        - 检查给定的流的错误
+        - 返回值
+            - 若文件流已出现错误则为 *非零值* 
+            - 否则为`​0​`
     - [`perror`](https://en.cppreference.com/w/cpp/io/c/perror)：显示对应当前错误的字符串于`stderr`
-- `C`风格文件上的操作
-    - [`remove`](https://en.cppreference.com/w/cpp/io/c/remove)：删除文件 
-    - [`rename`](https://en.cppreference.com/w/cpp/io/c/rename)：重命名文件 
-    - [`tmpfile`](https://en.cppreference.com/w/cpp/io/c/tmpfile)：创建并打开一个临时、自动移除的文件
-    - [`tmpnam`](https://en.cppreference.com/w/cpp/io/c/tmpnam)：返回一个唯一独有的文件名 
+        - 签名
+        ```
+        void perror(const char * s);
+        ```
+        - 打印当前存储于系统变量`errno`的错误码对应的错误信息到`stderr`
+        - 通过连接下列组分构成描述
+            - `s`所指向的空终止字节字符串的内容后随`": "`（除非`s`为 *空指针* 或`s`所指向字符为 *空字符* ）
+            - 由实现定义的，描述存储于`errno`的错误码的错误消息字符串后随`'\n'`。错误消息字符串等同于`strerror(errno)`的结果
+        - 示例
+        ```
+        double not_a_number = std::log(-1.0);
+        
+        if (errno == EDOM) 
+        {
+            perror("log(-1) failed");  // log(-1) failed: Numerical argument out of domain
+        }
+        ```
 
 
 
@@ -14503,14 +14625,22 @@ quizB.reset(27);                  // student number 27 failed
 
 #### `I/O`库再探
 
-- 格式化`I/O`
-- 未格式化的`I/O`操作
-- 流随机访问
+- 放`Chap 8`了
 
 #### [日期和时间](https://en.cppreference.com/w/cpp/chrono)（Date and time utilities）
 
 - [`<chrono>`](https://en.cppreference.com/w/cpp/header/chrono)
     - `PLACEHOLDER`
+
+#### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem library）
+
+- *文件系统库* 提供在文件系统与其组件，例如路径、常规文件与目录上进行操作的设施
+    - 文件系统库原作为`boost.filesystem`开发，并最终从`C++17`开始并入`ISO C++`
+- 兼容性
+    - 若层级文件系统不能为实现所访问，或若它不提供必要的兼容性，则文件系统库设施可能不可用
+    - 若底层文件系统不支持，则一些特性可能不可用（例如`FAT`文件系统缺少 *符号链接* 并禁止 *多重硬链接* ）
+    - 若对此库的函数的调用引入文件系统竞争，即多个线程、进程或计算机交错地访问并修改文件系统中的同一对象，则 *行为未定义*  
+- `PLACEHOLDER`
 
 
 
