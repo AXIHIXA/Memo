@@ -23,14 +23,27 @@ set -g status-interval 60
 set -g display-time 3000
 set -g history-limit 65535
 
-ssh-keygen
-git config --global user.name "Xi Han"
-git config --global user.email "ahanxi@126.com"
-
 sudo gedit /etc/profile
 
 # default editor
 export EDITOR=/usr/bin/vim
+```
+
+
+## 🌱 `ssh`
+
+- New `ssh`
+```
+ssh-keygen
+git config --global user.name "Xi Han"
+git config --global user.email "ahanxi@126.com"
+```
+- Copy existing `ssh`: your OS username and device name should be the same
+```
+cp -r /media/ax/DATAIN/Downloads/Coding/.ssh ~
+chmod 600 ~/.ssh/id_rsa
+chmod 644 ~/.ssh/id_rsa.pub
+ssh-add
 ```
 
 ## 🌱 time fix

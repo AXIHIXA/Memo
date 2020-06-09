@@ -4,6 +4,12 @@
 
 ### anaconda
 
+- Install:
+```
+# `bash` is CRITICAL!!! or you may fail when choosing to modify .bashrc
+bash ./Anaconda...
+```
+- Virtual environment:
 ```
 conda create -n py3 python=3.7 numpy scipy sympy matplotlib cython ipykernel h5py
 conda activate py3
