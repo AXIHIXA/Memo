@@ -10593,7 +10593,7 @@ private:
     //        return *this;
     //    }
 
-        // when used as condition, this explicit operator will still be applied by conpiler implicitly
+        // when used as condition, this explicit operator will still be applied by compiler implicitly
         // "this is a feature, NOT a bug. " -- Microsoft
         explicit operator bool() const { return static_cast<bool>(*p); }
 
