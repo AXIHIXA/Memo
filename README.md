@@ -16,12 +16,12 @@
 ### 🌱 Sample Code
 
 - `CMakeList`
-
+    
+    - [CppDemo](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/CppDemo/CMakeLists.txt)
     - [Boost](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Boost/CMakeLists.txt)
     - [Criterion](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Criterion/CMakeLists.txt)
-    - [Demo](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Demo/CMakeLists.txt)
     - [OpenCV & OpenGL](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/OpenXX/CMakeLists.txt)
-    - [Libraries](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Static.a/CMakeLists.txt)
+    - [Local Libraries](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Static.a/CMakeLists.txt)
 
 - `C/C++` Code
 

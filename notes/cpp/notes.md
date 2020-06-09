@@ -3555,6 +3555,7 @@ for (const PersonInfo & entry : people)
     protected:
         fmtflags _M_flags;
     ```
+    - 可以使用`std::ios::fmtflags old_fmt_flags = stream.flags();`来获取流`stream`的 *格式标记* 
 - 标准库定义了一组 *操纵符* （manipulator），来 *修改* 流的 *格式标记* 
     - *基础操纵符* ，定义于头文件`<iostream>`中
         - 独立操纵符（打开）
@@ -3624,6 +3625,15 @@ for (const PersonInfo & entry : people)
             - `std::setw(w)`
             - `std::setfill(c)`
         - 最好在不再需要特殊格式时将流恢复到默认状态
+            - 显式调用相反的操纵符固然可以
+            - 也可以直接调用`std::setioflags(old_fmt_flags)`操纵符
+            ```
+            std::cout << 1024UL << std::endl;                               // 1024
+            std::ostream::fmtflags old_fmt_flags {std::cout.flags()};
+            std::cout << std::hex << std::showbase << 1024UL << std::endl;  // 0x400
+            std::cout << std::setiosflags(old_fmt_flags);
+            std::cout << 1024UL << std::endl;                               // 1024
+            ```
 - 控制`bool`的格式
 ```
 // default bool values: 1 0
@@ -4256,7 +4266,7 @@ if (cancelEntry)
             std::putchar('b');
         }
         ```
-    - [`servbuf`](https://en.cppreference.com/w/cpp/io/c/setvbuf)：为文件流设置缓冲区与其大小
+    - [`setvbuf`](https://en.cppreference.com/w/cpp/io/c/setvbuf)：为文件流设置缓冲区与其大小
         - 签名
         ```
         int setvbuf(FILE * stream, char * buffer, int mode, size_t size);
@@ -14637,8 +14647,10 @@ quizB.reset(27);                  // student number 27 failed
 - *文件系统库* 提供在文件系统与其组件，例如路径、常规文件与目录上进行操作的设施
     - 文件系统库原作为`boost.filesystem`开发，并最终从`C++17`开始并入`ISO C++`
     - 定义于头文件`<filesystem>`、命名空间`std::filesystem`
-        - `ubuntu 18.04 LTS`默认的`g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0`干脆还不支持这东西，就先放这儿当花瓶好了
-        - 实测直接用`boost`的`<boost/filesystem.hpp>`倒不是不行，但怎么用`boost`就是另外一个故事了
+        - `ubuntu 18.04 LTS`默认的`g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0`自然还不支持这东西
+            - 实测直接用`boost`的`<boost/filesystem.hpp>`仍旧可以，但怎么用`boost`就是另外一个故事了
+            - 具体配置见 [`CMakeList.txts`](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Boost/CMakeLists.txt)
+        - `ubuntu 20.04 LTS`默认的`g++ (Ubuntu 9.3.0-10ubuntu2) 9.3.0`自然就可以了
     - 使用此库可能要求额外的 *编译器/链接器选项* 
         - `GNU < 9.1`实现要求用`-lstdc++fs`链接
         - `LLVM < 9.0`实现要求用`-lc++fs`链接 
