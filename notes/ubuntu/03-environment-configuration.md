@@ -152,8 +152,10 @@ sudo apt install qtcreator
 sudo apt install libtbb-dev
 
 # boost + cgal
-# I suggest not using this holy s\*\*t thing. 
 sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
+
+# one-key w/o qtcreator
+sudo apt install libeigen3-dev libopencv-dev freeglut3-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev qt5-default libtbb-dev libboost-all-dev libcgal-dev libcgal-qt5-dev
 ```
 
 ## 🌱 Javascript
