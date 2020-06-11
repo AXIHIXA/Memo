@@ -14567,7 +14567,7 @@ quizB.reset(27);                  // student number 27 failed
     - `std::sregex_iterator`：迭代器适配器，调用`regex_search`来遍历一个`std::string`中所有匹配的子串
     - `std::smatch`：容器类，保存在`std::string`中搜索的结果
     - `std::ssub_match`：`std::string`中匹配的子表达式的结果
-- `regex`函数
+- `std::regex`系列函数
     - 这些函数都返回`bool`，指示是否找到了匹配，且都被重载了
     - `std::regex_search`和`std::regex_match`：在字符序列`seq`中查找`regex`对象`r`中的正则表达式
         - 形参列表
@@ -14593,41 +14593,16 @@ quizB.reset(27);                  // student number 27 failed
             - `std::regex_constants::format_sed`：用`POSIX sed`规则替换字符串
             - `std::regex_constants::format_no_copy`：不输出输入序列中未匹配的部分
             - `std::regex_constants::format_first_only`：只替换子表达式的第一次出现
-- 使用正则表达式库
-    - 一个例子
-        - 查找拼写错误（违反规则 *除在`c`之后时以外，`i`必须在`e`之前* ）
-        ```
-        // find the characters ei that follow a character other than c
-        std::string pattern("[^c]ei");
-        
-        // we want the whole word in which our pattern appears
-        pattern = "[[:alpha:]]*" + pattern + "[[:alpha:]]*";
-        std::regex r(pattern);                        // construct a regex to find pattern
-        std::smatch results;                          // define an object to hold the results of a search
-        
-        // define a string that has text that does and doesn't match pattern
-        std::string test_str = "receipt freind theif receive";
-        
-        // use r to find a match to pattern in test_str
-        if (std::regex_search(test_str, results, r))  // if there is a match
-        {
-            std::cout << results.str() << std::endl;  // print the matching word: freind
-        }  
-        ```
-        - 默认情况下使用的正则表达式语言是`ECMAScript`
-            - `[^c]`匹配 *任意不是`c`的字母*
-            - `[[:alpha:]]`匹配 *任意字母* 
-            - `+`匹配 *一或多个* 
-            - `*`匹配 *零或多个*         
+- 使用正则表达式库    
     - 指定`std::regex`对象的选项
         - `std::regex(re);`：`re`是一个 *正则表达式* ，可以是一个`std::string`、表示字符范围的 *迭代器对* 、 *`C`风格字符串* 、 *`char *`和计数器对* 或是 *花括号包围的字符列表* 
         - `std::regex(re, f);`：在上一项的基础上，按照`f`指出的 *选项标志* 处理对象
             - `f`是`std::regex_constants::syntax_option_type`类型的 *`unsigned int`枚举* 值，具体可以是
-                - 匹配规则
+                - 匹配规则（也定义于`std::regex`中）
                     - `std::regex_constants::icase`：匹配时忽略大小写
                     - `std::regex_constants::nosubs`：**不**保存匹配的表达式
                     - `std::regex_constants::optimize`：执行速度优先于构造速度
-                - 正则表达式语言， *只能有一个* 
+                - 正则表达式语言（也定义于`std::regex`中）， *只能有一个* 
                     - `std::regex_constants::ECMAScript`：使用`ECMA-262`语法， *默认选项* 
                     - `std::regex_constants::basic`：使用`POSIX` *基本* 正则表达式语法
                     - `std::regex_constants::extended`：使用`POSIX` *扩展* 正则表达式语法
@@ -14639,22 +14614,128 @@ quizB.reset(27);                  // student number 27 failed
         - `r.mark_count()`：`r`中 *子表达式* 的数目
         - `r.flags()`：返回`r`的 *标志集* ，`typedef regex_constants::syntax_option_type flag_type`
         - 注： *构造函数* 和 *赋值* 操作可能抛出类型为`std::regex_error`的异常
-    - 1
-    - *错误标志* ：枚举类型值
-        - `std::regex_constants::error_collate`：
-        - `std::regex_constants::error_ctype`：
-        - `std::regex_constants::error_escape`：
-        - `std::regex_constants::error_backref`：
-        - `std::regex_constants::error_brack`：
-        - `std::regex_constants::error_paren`：
-        - `std::regex_constants::error_brace`：
-        - `std::regex_constants::error_badbrace`：
-        - `std::regex_constants::error_range`：
-        - `std::regex_constants::error_space`：
-        - `std::regex_constants::error_badrepeat`：
-        - `std::regex_constants::error_complexity`：
-        - `std::regex_constants::error_stack`：
+    - `例1`：查找拼写错误（违反规则 *除在`c`之后时以外，`i`必须在`e`之前* ）
+        - 默认情况下使用的正则表达式语言是`ECMAScript`
+            - `[^c]`匹配 *任意不是`c`的字母*
+            - `[[:alpha:]]`匹配 *任意字母* 
+            - `[[:alnum:]]`匹配 *任意数字 
+            - `+`匹配 *一或多个* 
+            - `*`匹配 *零或多个*   
+    ```
+    // find the characters ei that follow a character other than c
+    std::string pattern("[^c]ei");
+    
+    // we want the whole word in which our pattern appears
+    pattern = "[[:alpha:]]*" + pattern + "[[:alpha:]]*";
+    std::regex r(pattern);                        // construct a regex to find pattern
+    std::smatch results;                          // define an object to hold the results of a search
+    
+    // define a string that has text that does and doesn't match pattern
+    std::string test_str = "receipt freind theif receive";
+    
+    // use r to find a match to pattern in test_str
+    if (std::regex_search(test_str, results, r))  // if there is a match
+    {
+        std::cout << results.str() << std::endl;  // print the matching word: freind
+    }  
+    ```  
+    - `例2`：匹配`C++`源文件扩展名
+        - 默认情况下使用的正则表达式语言是`ECMAScript`
+            - `.`匹配 *任意字符*
+            - `\\.`转义为匹配字面`.`
+                - `\`在`C++`字符串字面量中本身又是转义字符，因此其本身也需要一次转义
+    ```
+    // one or more alphanumeric characters followed by a '.' followed by "cpp" or "cxx" or "cc"
+    std::regex r("[[:alnum:]]+\\.(cpp|cxx|cc)$", std::regex::icase);
+    std::smatch results;
+    std::string filename;
+    
+    while (std::cin >> filename)
+    {
+        if (std::regex_search(filename, results, r))
+        {
+            std::cout << results.str() << std::endl;  // print the current match
+        }
+    }  
+    ```
+    - 指定或使用正则表达式时的错误
+        - 正则表达式本身有自己的语法，不由`C++`编译器编译，是否正确需要在运行时解析
+        - 如果正则表达式本身有语法错误，则运行时会抛出`std::regex_error`异常
+            - `e.what()`：描述发生了什么错误
+            - `e.code()`：错误类型对应的编码，具体数值 *由实现定义* 
+        - *错误类型* ：正则表达式库能抛出的标准错误，`std::regex_constants::error_type`枚举类型值
+            - `std::regex_constants::error_collate`：无效的元素校对请求
+            - `std::regex_constants::error_ctype`：无效的字符类
+            - `std::regex_constants::error_escape`：无效的转义字符或无效的尾置转义
+            - `std::regex_constants::error_backref`：无效的向后引用
+            - `std::regex_constants::error_brack`：不匹配的方括号`[]`
+            - `std::regex_constants::error_paren`：不匹配的圆括号`()`
+            - `std::regex_constants::error_brace`：不匹配的花括号`{}`
+            - `std::regex_constants::error_badbrace`：花括号`{}`中的无效范围
+            - `std::regex_constants::error_range`：无效的字符范围，如`[z-a]`
+            - `std::regex_constants::error_space`：内存不足，无法处理此正则表达式
+            - `std::regex_constants::error_badrepeat`：重复字符`*`、`?`、`+`或`{n}`之前没有有效的正则表达式
+            - `std::regex_constants::error_complexity`：要求的匹配过于复杂
+            - `std::regex_constants::error_stack`：栈空间不足，无法处理匹配
+    - `例3`：捕获错误
+    ```
+    try 
+    {
+        // error: missing close bracket after alnum; the constructor will throw
+        std::regex r("[[:alnum:]+\\.(cpp|cxx|cc)$", std::regex::icase);
+    } 
+    catch (std::regex_error e)
+    { 
+        std::cout << e.what() << "\ncode: " << e.code() << std::endl; 
+    }
+    
+    // Unexpected character in bracket expression.
+    // code: 4
+    ```
+    - 避免创建不必要的正则表达式
+        - 正则表达式的编译发生于程序运行时，非常耗时
+        - 为了最小化开销，应当避免创建不必要的正则表达式
+        - 例如，在循环中使用正则表达式时，应该在循环之外创建而不是每步迭代时都编译一次
+    - 正则表达式与输入序列类型
+        - 可以搜索多种类型的输入序列
+            - 输入可以是包括`char`、`wchar_t`数据
+            - 字符可以保存于`std::string`或`C`风格字符串`const char *`中（或对应的宽字符版本，`std::wstring`以及`const wchar_t *`）
+        - 正则表达式库类类对应的输入类型
+            - `std::string`：`std::regex`、`std::smatch`、`std::ssub_match`和`std::sregex_iterator`
+            - `const char *`：`std::regex`、`std::cmatch`、`std::csub_match`和`std::cregex_iterator`
+            - `std::wstring`：`std::wregex`、`std::wsmatch`、`std::wssub_match`和`std::wsregex_iterator`
+            - `const wchar_t *`：`std::wregex`、`std::wcmatch`、`std::wcsub_match`和`std::wcregex_iterator`
+        - 使用的 *正则表达式库类型* 必须与 *输入类型* 匹配
+            - 例如`std::smatch`用于保存`std::string`的匹配结果，对于`C`风格字符串则必须使用`std::cmatch`
+            ```
+            // <regex.h>
+            // namespace std
+            typedef match_results<const char *>              cmatch;
+            typedef match_results<string::const_iterator>    smatch;
+            ```
+            - 以下程序会报编译错误
+            ```
+            // wrong
+            std::regex r("[[:alnum:]]+\\.(cpp|cxx|cc)$", std::regex::icase);
+            std::smatch results;  // will match a string input sequence, but not char *
+            
+            if (std::regex_search("myfile.cc", results, r))  // error: char * input
+            {
+                std::cout << results.str() << std::endl;
+            }
+            ```
+            - 正确写法
+            ```
+            // correct
+            std::cmatch results;  // will match character array input sequences
+            
+            if (std::regex_search("myfile.cc", results, r))
+            {
+                std::cout << results.str() << std::endl;     // print the current match
+            }
+            ```
 - 匹配
+- *`regex`迭代器*
 - [`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
 - 子表达式
 - `regex_replace`

@@ -21,7 +21,6 @@
     - [CppDemo](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/CppDemo/CMakeLists.txt)
     - [Criterion](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Criterion/CMakeLists.txt)
     - [OpenXX](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/OpenXX/CMakeLists.txt)
-    - [Local Libraries](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Static.a/CMakeLists.txt)
     
 - `C/C++` Code
     - [debug.h](https://github.com/AXIHIXA/Memo/blob/master/code/debug.h)

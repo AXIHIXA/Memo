@@ -26,7 +26,7 @@ set(OPENMESH_LIBRARIES
 
 # all sources
 
-aux_source_directory(main/src MAIN)
+aux_source_directory(src/main/src MAIN)
 
 set(ALL_SOURCE_FILES
         ${MAIN}
@@ -35,7 +35,7 @@ set(ALL_SOURCE_FILES
 set(ALL_INCLUDE_DIRS
         ${GLEW_INCLUDE_DIRS}
         ${OPENMESH_INCLUDE_DIRS}
-        main/include
+        src/main/include
         )
 
 set(ALL_LIBRARIES
