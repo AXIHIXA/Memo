@@ -14557,7 +14557,7 @@ status = quizB[27];               // check how student number 27 did
 quizB.reset(27);                  // student number 27 failed
 ```
 
-#### [正则表达式](https://en.cppreference.com/w/cpp/regex)
+#### [正则表达式库](https://en.cppreference.com/w/cpp/regex)
 
 - `C++` *正则表达式* 标准库`<regex>`
     - `std::regex`：表示有一个正则表达式的类
@@ -14579,36 +14579,23 @@ quizB.reset(27);                  // student number 27 failed
             - `C`风格字符串
         - `r`是一个`std::regex`对象
         - `m`是一个`std::smatch`对象，用来保存匹配结果的相关细节。`m`和`seq`必须具有兼容的类型
-        - `mft`是一个 *可选* 的 *匹配标志* ，具体是`std::regex_constants::match_flag_type`类型的 *`unsigned int`枚举* 值
-            - `std::regex_constants::match_default`：等价于`format_default`
-            - `std::regex_constants::match_not_bol`：不将首字符作为行首处理
-            - `std::regex_constants::match_not_eol`：不将尾字符作为行尾处理
-            - `std::regex_constants::match_not_bow`：不将首字符作为词首处理
-            - `std::regex_constants::match_not_eow`：不将首字符作为词尾处理
-            - `std::regex_constants::match_any`：如果存在多个匹配，则可返回任意一个匹配
-            - `std::regex_constants::match_not_null`：不匹配任何空序列
-            - `std::regex_constants::match_continuous`：匹配必须从输入的首字符开始
-            - `std::regex_constants::match_prev_avail`：输入序列包含
-            - `std::regex_constants::format_default`：用`ECMAScript`规则替换字符串。 *默认* 
-            - `std::regex_constants::format_sed`：用`POSIX sed`规则替换字符串
-            - `std::regex_constants::format_no_copy`：不输出输入序列中未匹配的部分
-            - `std::regex_constants::format_first_only`：只替换子表达式的第一次出现
+        - `mft`是一个 *可选* 的 *匹配标志* => 17.3.4
 - 使用正则表达式库    
     - 指定`std::regex`对象的选项
         - `std::regex(re);`：`re`是一个 *正则表达式* ，可以是一个`std::string`、表示字符范围的 *迭代器对* 、 *`C`风格字符串* 、 *`char *`和计数器对* 或是 *花括号包围的字符列表* 
         - `std::regex(re, f);`：在上一项的基础上，按照`f`指出的 *选项标志* 处理对象
             - `f`是`std::regex_constants::syntax_option_type`类型的 *`unsigned int`枚举* 值，具体可以是
-                - 匹配规则（也定义于`std::regex`中）
-                    - `std::regex_constants::icase`：匹配时忽略大小写
-                    - `std::regex_constants::nosubs`：**不**保存匹配的表达式
-                    - `std::regex_constants::optimize`：执行速度优先于构造速度
-                - 正则表达式语言（也定义于`std::regex`中）， *只能有一个* 
-                    - `std::regex_constants::ECMAScript`：使用`ECMA-262`语法， *默认选项* 
-                    - `std::regex_constants::basic`：使用`POSIX` *基本* 正则表达式语法
-                    - `std::regex_constants::extended`：使用`POSIX` *扩展* 正则表达式语法
-                    - `std::regex_constants::awk`：使用`POSIX` `awk`正则表达式语法
-                    - `std::regex_constants::grep`：使用`POSIX` `grep`正则表达式语法
-                    - `std::regex_constants::egrep`：使用`POSIX` `egrep`正则表达式语法
+                - 匹配规则（同时是`std::regex`和`std::regex_constants`的静态成员）
+                    - `std::regex::icase`：匹配时忽略大小写
+                    - `std::regex::nosubs`：**不**保存匹配的表达式
+                    - `std::regex::optimize`：执行速度优先于构造速度
+                - 正则表达式语言（同时是`std::regex`和`std::regex_constants`的静态成员）， *只能有一个* 
+                    - `std::regex::ECMAScript`：使用`ECMA-262`语法， *默认选项* 
+                    - `std::regex::basic`：使用`POSIX` *基本* 正则表达式语法
+                    - `std::regex::extended`：使用`POSIX` *扩展* 正则表达式语法
+                    - `std::regex::awk`：使用`POSIX` `awk`正则表达式语法
+                    - `std::regex::grep`：使用`POSIX` `grep`正则表达式语法
+                    - `std::regex::egrep`：使用`POSIX` `egrep`正则表达式语法
         - `r1 = re;`：将`r1`中的正则表达式替换为`re`。`re`可以是一个`std::string`、表示字符范围的 *迭代器对* 、 *`C`风格字符串* 、 *`char *`和计数器对* 或是 *花括号包围的字符列表* 
         - `r1.assign(re, f);`：与使用 *赋值运算符* `=`效果相同，`f`为 *选项标志* 
         - `r.mark_count()`：`r`中 *子表达式* 的数目
@@ -14700,7 +14687,7 @@ quizB.reset(27);                  // student number 27 failed
         - 可以搜索多种类型的输入序列
             - 输入可以是包括`char`、`wchar_t`数据
             - 字符可以保存于`std::string`或`C`风格字符串`const char *`中（或对应的宽字符版本，`std::wstring`以及`const wchar_t *`）
-        - 正则表达式库类类对应的输入类型
+        - *输入类型* 及其对应的 *正则表达式库类型* 
             - `std::string`：`std::regex`、`std::smatch`、`std::ssub_match`和`std::sregex_iterator`
             - `const char *`：`std::regex`、`std::cmatch`、`std::csub_match`和`std::cregex_iterator`
             - `std::wstring`：`std::wregex`、`std::wsmatch`、`std::wssub_match`和`std::wsregex_iterator`
@@ -14710,8 +14697,10 @@ quizB.reset(27);                  // student number 27 failed
             ```
             // <regex.h>
             // namespace std
-            typedef match_results<const char *>              cmatch;
-            typedef match_results<string::const_iterator>    smatch;
+            typedef match_results<const char *>               cmatch;
+            typedef match_results<string::const_iterator>     smatch;
+            typedef match_results<const wchar_t *>            wcmatch;
+            typedef match_results<wstring::const_iterator>    wsmatch;
             ```
             - 以下程序会报编译错误
             ```
@@ -14734,11 +14723,87 @@ quizB.reset(27);                  // student number 27 failed
                 std::cout << results.str() << std::endl;     // print the current match
             }
             ```
-- 匹配
-- *`regex`迭代器*
-- [`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
-- 子表达式
-- `regex_replace`
+- 匹配与[`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
+    - 下面以`std::string`输入为例，对其他输入类型对应的正则表达式库类型一样适用
+    - `std::sregex_iterator`操作
+        - `std::sregex_iterator it(b, e, r);`：创建一个`std::sregex_iterator`，遍历迭代器`[b, e)`表示的`std::string`。它调用`std::sregex_search(b, e, r)`将`it`定位到输入中 *第一个* 匹配的位置
+        - `std::sregex_iterator end;`：`std::sregex_iterator`的 *尾后迭代器*
+        - `*it`：根据上一次调用`std::regex_match`的结果，返回一个`sts::smatch`对象的 *引用* 
+        - `it->`：根据上一次调用`std::regex_match`的结果，返回一个`sts::smatch`对象的 *指针* 
+        - `++it`，`it++`：从输入序列当前匹配位置开始调用`std::regex_search`，前置版本返回递增后的迭代器；后置版本返回旧值
+        - `it1 == it2`，`it1 != it2`：如果两个`std::sgrgex_iterator`都是尾后迭代器，或都是从同一个序列构造出的非尾后迭代器，则它们相等
+    - 可以使用`std::sregex_iterator`来获得所有匹配
+    ```
+    // find the characters ei that follow a character other than c
+    std::string str_to_test {"receipt freind theif receive"};
+    std::string pattern {"[^c]ei"}; 
+    // we want the whole word in which our pattern appears
+    pattern = "[[:alpha:]]*" + pattern + "[[:alpha:]]*";
+    // we'll ignore case in doing the match
+    std::regex r {pattern, std::regex::icase};  
+    
+    // it will repeatedly call regex_search to find all matches in file
+    for (std::sregex_iterator it {str_to_test.begin(), str_to_test.end(), r}, end_it; it != end_it; ++it)
+    {
+        std::cout << it->str() << std::endl;  // matched word
+    }
+    ```
+    - `std::smatch`操作
+        - `m.ready()`：如果已经通过调用`std::regex_match`或`std::regex_search`设置了`m`，则返回`true`；否则返回`false`。访问未设置的`m`是 *未定义行为* 
+        - `m.size()`：如果匹配失败，则返回`0`；否则，返回最近一次正则表达式中 *子表达式* 的数目
+        - `m.empty()`：`return m.size() == 0;`
+        - `m.prefix()`：一个`std::ssub_match`对象，表示当前匹配之前的序列
+        - `m.suffix()`：一个`std::ssub_match`对象，表示当前匹配之后的部分
+        - `m.format(...)`：用于正则表达式 *替换* 操作`std::regex_replace` => 17.3.4
+        - 在接受 *索引* 的操作中，`n`默认值为`0`，且必须小于`m.size()`。第一个子匹配（索引为`0`）表示 *整个匹配*
+        - `m.length(n)`：第`n`个匹配的子表达式的大小
+        - `m.position(n)`：第`n`个匹配的子表达式距序列开始的距离
+        - `m.str(n)`：第`n`个匹配的子表达式匹配的`std::string`
+        - `m[n]`：对应第`n`个子表达式的`std::ssub_match`对象
+        - `m.begin()`，`m.end()`：表示`m`中`std::sub_match`元素范围的迭代器
+        - `m.cbegin()`，`m.cend()`：表示`m`中`std::sub_match`元素范围的常迭代器
+    - 使用匹配数据
+        - `std::smatch`的`prefix`和`suffix`成员函数分别表示输入序列中当前匹配之前和之后部分的`std::ssub_match`对象
+        - 一个`std::ssub_match`对象有两个名为`str`和`length`的成员函数，分别返回匹配的`std::string`及其长度
+        - 可以用这些操作重写语法程序的循环，输出匹配的上下文
+        ```
+        // find the characters ei that follow a character other than c
+        std::string file {"receipt freind theif receive"};
+        std::string pattern {"[^c]ei"};
+        // we want the whole word in which our pattern appears
+        pattern = "[[:alpha:]]*" + pattern + "[[:alpha:]]*";
+        // we'll ignore case in doing the match
+        std::regex r {pattern, std::regex::icase};
+
+        // same for loop header as before
+        for (std::sregex_iterator it {file.begin(), file.end(), r}, end_it; it != end_it; ++it)
+        {
+            // size of the prefix
+            // we want up to 40 characters
+            std::string::size_type pos = std::max(it->prefix().length() - 40, 0);                      
+            
+            std::cout << it->prefix().str().substr(pos)          // last part of the prefix
+                      << "\n\t\t>>> " << it->str() << " <<<\n"   // matched word
+                      << it->suffix().str().substr(0, 40)        // first part of the suffix
+                      << std::endl;
+        }
+        ```
+- *子表达式* （Subexpressions）
+- `std::regex_replace`
+    - *匹配标志* ，具体是`std::regex_constants::match_flag_type`类型的 *`unsigned int`枚举* 值
+        - `std::regex_constants::match_default`：等价于`format_default`， *默认参数*
+        - `std::regex_constants::match_not_bol`：不将首字符作为行首处理
+        - `std::regex_constants::match_not_eol`：不将尾字符作为行尾处理
+        - `std::regex_constants::match_not_bow`：不将首字符作为词首处理
+        - `std::regex_constants::match_not_eow`：不将首字符作为词尾处理
+        - `std::regex_constants::match_any`：如果存在多个匹配，则可返回任意一个匹配
+        - `std::regex_constants::match_not_null`：不匹配任何空序列
+        - `std::regex_constants::match_continuous`：匹配必须从输入的首字符开始
+        - `std::regex_constants::match_prev_avail`：输入序列包含第一个匹配之前的内容
+        - `std::regex_constants::format_default`：用`ECMAScript`规则替换字符串。 *默认* 
+        - `std::regex_constants::format_sed`：用`POSIX sed`规则替换字符串
+        - `std::regex_constants::format_no_copy`：不输出输入序列中未匹配的部分
+        - `std::regex_constants::format_first_only`：只替换子表达式的第一次出现
 
 #### [伪随机数](https://en.cppreference.com/w/cpp/numeric/random)
 
