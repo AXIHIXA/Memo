@@ -1,34 +1,57 @@
-cmake_minimum_required(VERSION 3.0)
-project(PVG)
-set(CMAKE_CXX_STANDARD 11)
+cmake_minimum_required(VERSION 3.16)
+project(OpenXXDemo)
+set(CMAKE_CXX_STANDARD 17)
 
-find_package(Eigen3 REQUIRED)
-find_package(GLUT REQUIRED)
+# packages to find
+
+find_package(CGAL REQUIRED)
+set(CGAL_DO_NOT_WARN_ABOUT_CMAKE_BUILD_TYPE TRUE)
+
+find_package(Eigen3 REQUIRED NO_MODULE)
+find_package(glfw3 REQUIRED)
+find_package(GLEW REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(OpenGL REQUIRED)
 
-set(SOURCE_FILES
-        include/debug.h
-        include/global.h
-        src/main.cpp
+# OpenMesh
+
+set(OPENMESH_INCLUDE_DIRS
+        /home/ax/lib/OpenMesh/include
+        )
+
+set(OPENMESH_LIBRARIES
+        /home/ax/lib/OpenMesh/lib/libOpenMeshCore.so
+        /home/ax/lib/OpenMesh/lib/libOpenMeshTools.so
+        )
+
+# all sources
+
+aux_source_directory(main/src MAIN)
+
+set(ALL_SOURCE_FILES
+        ${MAIN}
         )
 
 set(ALL_INCLUDE_DIRS
-        include
-        ${EIGEN3_INCLUDE_DIR}
-        ${OpenCV_INCLUDE_DIRS}
-        ${GLUT_INCLUDE_DIR}
-        ${OPENGL_INCLUDE_DIR}
+        ${GLEW_INCLUDE_DIRS}
+        ${OPENMESH_INCLUDE_DIRS}
+        main/include
         )
 
-set(ALL_LIBS
-        ${GLUT_LIBRARY}
-        ${OPENGL_LIBRARY}
-        ${OpenCV_LIBS}
+set(ALL_LIBRARIES
+        ${OPENMESH_LIBRARIES}
+        CGAL::CGAL
+        Eigen3::Eigen
+        GLEW::GLEW
+        glfw
+        OpenGL::GL
+        OpenGL::OpenGL
+        OpenGL::GLU
+        OpenGL::EGL
         )
 
-add_definitions(-DST_COLOR -DST_VERBOSE)
+# executable target
 
-add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+add_executable(${PROJECT_NAME} ${ALL_SOURCE_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ALL_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${ALL_LIBS})
+target_link_libraries(${PROJECT_NAME} ${ALL_LIBRARIES})

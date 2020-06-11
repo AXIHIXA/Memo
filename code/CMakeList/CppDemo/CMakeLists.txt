@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(CppDemo CXX)
+project(CppDemo)
 set(CMAKE_CXX_STANDARD 17)
 
 aux_source_directory(main/src MAIN)

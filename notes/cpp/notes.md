@@ -29,7 +29,7 @@
     - 想要`auto`推导出引用或者常量的话，直接写清楚是坠吼的（`const auto & a = b`），别折腾顶层`const`什么的
     - 认定应为常量表达式的变量应当声明为`constexpr`类型
     - 凡是不修改类数据成员的成员函数函数一律定义成常成员函数
-    - `constexpr`函数、静态`constexpr`成员、`inline`函数（包括类的`inline`成员函数）以及模板的**定义和实现都应**写进头文件
+    - `constexpr`函数、静态`constexpr`成员、`inline`函数（包括类的`inline`成员函数）以及 *模板* （ *函数* 和 *类* ）的**定义和实现都应**写进头文件
     - `using`声明（`using std::string`、`using namespace std`、`using intptr = int *`等）**不应**写进头文件
     - `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
     - 现代`C++`应使用标准库类型配合迭代器，而**不是**`C`风格的数组和指针。数组也是一种迭代器
@@ -12724,8 +12724,8 @@ protected:
         - 调用函数时，编译器只需要掌握函数的声明；类似地，使用类类型对象时，类定义必须可用，但成员函数定义不必已经出现
             - 因此函数声明和类的定义被放在 *头文件* （header file）中，而普通函数和类的成员函数的定义放在 *源文件* （source file）中
         - 模板则**不同**
-            - 为了生成实例化版本，编译器需要掌握函数模板或类模板成员函数的定义
-            - 因此，**模板的头文件既需包括声明、也需包含定义**
+            - 为了生成实例化版本，编译器需要掌握 *函数模板* 或 *类模板成员函数* 的 *定义* 
+            - 因此，**函数模板和类模板的头文件都既需包括声明、也需包含定义**
     - 大多数编译错误在实例化期间报告
         - 第一阶段：编译模板本身时。只能检查语法错误
         - 第二阶段：遇到模板使用时。检查模板调用实参数目是否准确、参数类型是否匹配
@@ -14567,33 +14567,32 @@ quizB.reset(27);                  // student number 27 failed
     - `std::sregex_iterator`：迭代器适配器，调用`regex_search`来遍历一个`std::string`中所有匹配的子串
     - `std::smatch`：容器类，保存在`std::string`中搜索的结果
     - `std::ssub_match`：`std::string`中匹配的子表达式的结果
-- `regex`函数的参数
+- `regex`函数
     - 这些函数都返回`bool`，指示是否找到了匹配，且都被重载了
-    - 其中一个版本接受一个类型为`smatch`的 *附加参数* ，用于保存匹配成功时的相关信息
-    - `std::regex_search`和`std::regex_match`的参数
-        - 形参列表格式
+    - `std::regex_search`和`std::regex_match`：在字符序列`seq`中查找`regex`对象`r`中的正则表达式
+        - 形参列表
             - `(seq, m, r, mft)`
             - `(seq, r, mft)`
-        - 在字符序列`seq`中查找`regex`对象`r`中的正则表达式，具体参数列表为
         - `seq`可以是
             - `std::string`
             - 表示范围的一对迭代器
-            - 指向空字符结尾的字符数组的指针
-        - `m`是一个`match`对象，用来保存匹配结果的相关细节。`m`和`seq`必须具有兼容的类型
-        - `mft`是一个 *可选* 的`std::regex_constants::match_flag_type`值
-            - `match_default`：等价于`format_default`
-            - `match_not_bol`：不将首字符作为行首处理
-            - `match_not_eol`：不将尾字符作为行尾处理
-            - `match_not_bow`：不将首字符作为词首处理
-            - `match_not_eow`：不将首字符作为词尾处理
-            - `match_any`：如果存在多个匹配，则可返回任意一个匹配
-            - `match_not_null`：不匹配任何空序列
-            - `match_continuous`：匹配必须从输入的首字符开始
-            - `match_prev_avail`：输入序列包含
-            - `format_default`：用`ECMAScript`规则替换字符串。 *默认* 
-            - `format_sed`：用`POSIX sed`规则替换字符串
-            - `format_no_copy`：不输出输入序列中未匹配的部分
-            - `format_first_only`：只替换子表达式的第一次出现
+            - `C`风格字符串
+        - `r`是一个`std::regex`对象
+        - `m`是一个`std::smatch`对象，用来保存匹配结果的相关细节。`m`和`seq`必须具有兼容的类型
+        - `mft`是一个 *可选* 的 *匹配标志* ，具体是`std::regex_constants::match_flag_type`类型的 *`unsigned int`枚举* 值
+            - `std::regex_constants::match_default`：等价于`format_default`
+            - `std::regex_constants::match_not_bol`：不将首字符作为行首处理
+            - `std::regex_constants::match_not_eol`：不将尾字符作为行尾处理
+            - `std::regex_constants::match_not_bow`：不将首字符作为词首处理
+            - `std::regex_constants::match_not_eow`：不将首字符作为词尾处理
+            - `std::regex_constants::match_any`：如果存在多个匹配，则可返回任意一个匹配
+            - `std::regex_constants::match_not_null`：不匹配任何空序列
+            - `std::regex_constants::match_continuous`：匹配必须从输入的首字符开始
+            - `std::regex_constants::match_prev_avail`：输入序列包含
+            - `std::regex_constants::format_default`：用`ECMAScript`规则替换字符串。 *默认* 
+            - `std::regex_constants::format_sed`：用`POSIX sed`规则替换字符串
+            - `std::regex_constants::format_no_copy`：不输出输入序列中未匹配的部分
+            - `std::regex_constants::format_first_only`：只替换子表达式的第一次出现
 - 使用正则表达式库
     - 一个例子
         - 查找拼写错误（违反规则 *除在`c`之后时以外，`i`必须在`e`之前* ）
@@ -14612,16 +14611,49 @@ quizB.reset(27);                  // student number 27 failed
         // use r to find a match to pattern in test_str
         if (std::regex_search(test_str, results, r))  // if there is a match
         {
-            std::cout << results.str() << std::endl;  // print the matching word
+            std::cout << results.str() << std::endl;  // print the matching word: freind
         }  
         ```
         - 默认情况下使用的正则表达式语言是`ECMAScript`
             - `[^c]`匹配 *任意不是`c`的字母*
             - `[[:alpha:]]`匹配 *任意字母* 
             - `+`匹配 *一或多个* 
-            - `*`匹配 *零或多个* 
-                - `[[:alpha:]]*`匹配 *零或多个字母* 
-        - 
+            - `*`匹配 *零或多个*         
+    - 指定`std::regex`对象的选项
+        - `std::regex(re);`：`re`是一个 *正则表达式* ，可以是一个`std::string`、表示字符范围的 *迭代器对* 、 *`C`风格字符串* 、 *`char *`和计数器对* 或是 *花括号包围的字符列表* 
+        - `std::regex(re, f);`：在上一项的基础上，按照`f`指出的 *选项标志* 处理对象
+            - `f`是`std::regex_constants::syntax_option_type`类型的 *`unsigned int`枚举* 值，具体可以是
+                - 匹配规则
+                    - `std::regex_constants::icase`：匹配时忽略大小写
+                    - `std::regex_constants::nosubs`：**不**保存匹配的表达式
+                    - `std::regex_constants::optimize`：执行速度优先于构造速度
+                - 正则表达式语言， *只能有一个* 
+                    - `std::regex_constants::ECMAScript`：使用`ECMA-262`语法， *默认选项* 
+                    - `std::regex_constants::basic`：使用`POSIX` *基本* 正则表达式语法
+                    - `std::regex_constants::extended`：使用`POSIX` *扩展* 正则表达式语法
+                    - `std::regex_constants::awk`：使用`POSIX` `awk`正则表达式语法
+                    - `std::regex_constants::grep`：使用`POSIX` `grep`正则表达式语法
+                    - `std::regex_constants::egrep`：使用`POSIX` `egrep`正则表达式语法
+        - `r1 = re;`：将`r1`中的正则表达式替换为`re`。`re`可以是一个`std::string`、表示字符范围的 *迭代器对* 、 *`C`风格字符串* 、 *`char *`和计数器对* 或是 *花括号包围的字符列表* 
+        - `r1.assign(re, f);`：与使用 *赋值运算符* `=`效果相同，`f`为 *选项标志* 
+        - `r.mark_count()`：`r`中 *子表达式* 的数目
+        - `r.flags()`：返回`r`的 *标志集* ，`typedef regex_constants::syntax_option_type flag_type`
+        - 注： *构造函数* 和 *赋值* 操作可能抛出类型为`std::regex_error`的异常
+    - 1
+    - *错误标志* ：枚举类型值
+        - `std::regex_constants::error_collate`：
+        - `std::regex_constants::error_ctype`：
+        - `std::regex_constants::error_escape`：
+        - `std::regex_constants::error_backref`：
+        - `std::regex_constants::error_brack`：
+        - `std::regex_constants::error_paren`：
+        - `std::regex_constants::error_brace`：
+        - `std::regex_constants::error_badbrace`：
+        - `std::regex_constants::error_range`：
+        - `std::regex_constants::error_space`：
+        - `std::regex_constants::error_badrepeat`：
+        - `std::regex_constants::error_complexity`：
+        - `std::regex_constants::error_stack`：
 - 匹配
 - [`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
 - 子表达式
@@ -14679,7 +14711,7 @@ quizB.reset(27);                  // student number 27 failed
             - *规范路径* ：**不**含 *符号链接* 、`"."`或`".."`元素的绝对路径
             - *相对路径* ：标识相对于文件系统中某位置的文件位置的路径。特殊路径名`"."`（当前目录）和`".."` （父目录）是相对路径 
 - 类
-    - [`path`](https://en.cppreference.com/w/cpp/filesystem/path)：表示一个路径
+    - [`path`](https://en.cppreference.com/w/cpp/filesystem/path)：表示一个路径。 *核心库* 
     - [`filesystem_error`](https://en.cppreference.com/w/cpp/filesystem/filesystem_error)：文件系统错误时抛出的异常
     - [`directory_entry`](https://en.cppreference.com/w/cpp/filesystem/directory_entry)：目录条目
     - [`directory_iterator`](https://en.cppreference.com/w/cpp/filesystem/directory_iterator)：指向目录内容的迭代器
