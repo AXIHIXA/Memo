@@ -15072,7 +15072,7 @@ quizB.reset(27);                  // student number 27 failed
         - `std::wcregex_token_iterator`：`std::regex_token_iterator<const wchar_t *>`
         - `std::wsregex_token_iterator`：`std::regex_token_iterator<std::wstring::const_iterator>`
     - 支持的操作
-        - [`std::sregex_token_iterator srt_it (b, e, r, submatche, mft)`](http://www.cplusplus.com/reference/regex/regex_token_iterator/regex_token_iterator/)：就像调用`std::regex_search(b, e, r, mft)`一样进行匹配。如成功，则保留`std::smatch`的结果，迭代器指向这次匹配结果的第`submatch`个`std::ssub_match`对象。如不成功，则初始化为尾后迭代器。`submatch`可以是`int`、 *数组* 、`std::vector<int>`或`std::initializer-list<int>`
+        - [`std::sregex_token_iterator srt_it (b, e, r, submatch, mft)`](http://www.cplusplus.com/reference/regex/regex_token_iterator/regex_token_iterator/)：就像调用`std::regex_search(b, e, r, mft)`一样进行匹配。如成功，则保留`std::smatch`的结果，迭代器指向这次匹配结果的第`submatch`个`std::ssub_match`对象。如不成功，则初始化为尾后迭代器。`submatch`可以是`int`、 *数组* 、`std::vector<int>`或`std::initializer-list<int>`
             - `int`：指明在迭代器的每个位置要选择的`std::ssub_match`。如果是`0`，选择整个匹配；如果是`-1`，则使用`match`作为分隔符，选择未被匹配到的序列。 *默认值* 为`0`
             - 其余：指定数个`std::ssub_match`。注意，此时迭代器需要的多递增相应的次数，以到达下一次匹配的位置
             - *警告* ：编程者必须确保 *`r`生存期* 比迭代器长。特别，**不能**传入临时量
