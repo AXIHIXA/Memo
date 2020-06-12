@@ -15075,6 +15075,7 @@ quizB.reset(27);                  // student number 27 failed
         - `std::sregex_token_iterator srt_it (b, e, r, submatches, mft)`：就像调用`std::regex_search(b, e, r, mft)`一样进行匹配，如成功则继续匹配，迭代器指向`std::ssub_match`对象，描述输入序列中第一个被选中的`submatch`；否则初始化为尾后迭代器。`submatches`可以是`int`，数组，`std::vector<int>`或`std::initializer-list<int>`
             - `int`：指明在迭代器的每个位置要选择的`std::ssub_match`。如果是`0`，选择整个匹配；如果是`-1`，则使用`match`作为分隔符，选择未被匹配到的序列。 *默认值* 为`0`
             - 其余：指定数个`std::ssub_match`
+            - *警告* ：编程者必须确保 *`r`生存期* 比迭代器长。特别，**不能**传入临时量
         - `std::sregex_token_iterator srt_it_end`：默认初始化，创建尾后迭代器
         - `*it`：根据上一次调用`std::regex_match`的结果，返回一个`sts::ssub_match`对象的 *引用* 
         - `it->`：根据上一次调用`std::regex_match`的结果，返回一个`sts::ssub_match`对象的 *指针* 
@@ -15085,7 +15086,8 @@ quizB.reset(27);                  // student number 27 failed
     - 使用示例`1`
     ```
     // Tokenization (non-matched fragments)
-    // Note that regex is matched only two times; when the third value is obtainedn the iterator is a suffix iterator.
+    // Note that regex is matched only two times; 
+    // when the third value is obtainedn the iterator is a suffix iterator.
     const std::string text = "Quick brown fox.";
     const std::regex ws_re(R"(\s+)");             // whitespace
     std::copy(std::sregex_token_iterator(text.begin(), text.end(), ws_re, -1),
