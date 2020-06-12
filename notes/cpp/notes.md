@@ -14678,10 +14678,11 @@ quizB.reset(27);                  // student number 27 failed
                 - `[[:xdigit:]]`：任何十六进制的数字，即`[0-9a-fA-F]`
 - `C++` *正则表达式* 标准库`<regex>`
     - `std::regex`：表示有一个正则表达式的类
-    - `std::regex_match`：将一个字符序列与一个正则表达式相匹配
+    - `std::regex_match`：将一个字符序列与一个正则表达式相匹配，要求 *全文匹配*
     - `std::regex_search`：寻找第一个与正则表达式匹配的子序列
     - `std::regex_replace`：使用给定格式替换一个正则表达式
     - `std::sregex_iterator`：迭代器适配器，调用`regex_search`来遍历一个`std::string`中所有匹配的子串
+    - `std::sregex_token_iterator`：迭代器适配器，按照正则表达式将输入序列划分成子串并一一遍历
     - `std::smatch`：容器类，保存在`std::string`中搜索的结果
     - `std::ssub_match`：`std::string`中匹配的子表达式的结果
 - `std::regex`系列函数
@@ -14848,7 +14849,7 @@ quizB.reset(27);                  // student number 27 failed
         - `*it`：根据上一次调用`std::regex_match`的结果，返回一个`sts::smatch`对象的 *引用* 
         - `it->`：根据上一次调用`std::regex_match`的结果，返回一个`sts::smatch`对象的 *指针* 
         - `++it`，`it++`：从输入序列当前匹配位置开始调用`std::regex_search`，前置版本返回递增后的迭代器；后置版本返回旧值
-        - `it1 == it2`，`it1 != it2`：如果两个`std::sgrgex_iterator`都是尾后迭代器，或都是从同一个序列构造出的非尾后迭代器，则它们相等
+        - `it1 == it2`，`it1 != it2`：如果两个`std::sregex_iterator`都是尾后迭代器，或都是从同一个序列构造出的非尾后迭代器，则它们相等
     - 可以使用`std::sregex_iterator`来获得所有匹配
     ```
     // find the characters ei that follow a character other than c
@@ -15063,17 +15064,85 @@ quizB.reset(27);                  // student number 27 failed
     std::cout << std::regex_replace(s, r, fmt2, std::regex_constants::format_no_copy) 
               << std::endl;  // 201.555.2368 862.555.0123
     ```
-- [`std::regex_token_iterator`](https://en.cppreference.com/w/cpp/regex/regex_token_iterator)
+- [`std::regex_token_iterator`](http://www.cplusplus.com/reference/regex/regex_token_iterator/regex_token_iterator/)
     - 只读`LegacyForwardIterator`，用于遍历给定字符串中、给定正则表达式的 *每一次匹配* 的子匹配
     - 四种输入的对应版本
         - `std::sregex_token_iterator`：`std::regex_token_iterator<std::string::const_iterator>`
         - `std::cregex_token_iterator`：`std::regex_token_iterator<const char *>`
         - `std::wcregex_token_iterator`：`std::regex_token_iterator<const wchar_t *>`
         - `std::wsregex_token_iterator`：`std::regex_token_iterator<std::wstring::const_iterator>`
-    - 初始化
-        - `std::sregex_token_iterator srt_it (b, e, r, )`
+    - 支持的操作
+        - `std::sregex_token_iterator srt_it (b, e, r, submatches, mft)`：就像调用`std::regex_search(b, e, r, mft)`一样进行匹配，如成功则继续匹配，迭代器指向`std::ssub_match`对象，描述输入序列中第一个被选中的`submatch`；否则初始化为尾后迭代器。`submatches`可以是`int`，数组，`std::vector<int>`或`std::initializer-list<int>`
+            - `int`：指明在迭代器的每个位置要选择的`std::ssub_match`。如果是`0`，选择整个匹配；如果是`-1`，则使用`match`作为分隔符，选择未被匹配到的序列。 *默认值* 为`0`
+            - 其余：指定数个`std::ssub_match`
         - `std::sregex_token_iterator srt_it_end`：默认初始化，创建尾后迭代器
+        - `*it`：根据上一次调用`std::regex_match`的结果，返回一个`sts::ssub_match`对象的 *引用* 
+        - `it->`：根据上一次调用`std::regex_match`的结果，返回一个`sts::ssub_match`对象的 *指针* 
+        - `++it`，`it++`：从输入序列当前匹配位置开始调用`std::regex_search`，前置版本返回递增后的迭代器；后置版本返回旧值
+        - `it1 == it2`，`it1 != it2`：两个`std::sregex_token_iterator`在如下情况下相等
+            1. 都是尾后迭代器
+            2. 都指向同一个序列的同一处匹配（这句话是错的，先这么写着，具体看文档去吧）
+    - 使用示例`1`
+    ```
+    // Tokenization (non-matched fragments)
+    // Note that regex is matched only two times; when the third value is obtainedn the iterator is a suffix iterator.
+    const std::string text = "Quick brown fox.";
+    const std::regex ws_re(R"(\s+)");             // whitespace
+    std::copy(std::sregex_token_iterator(text.begin(), text.end(), ws_re, -1),
+              std::sregex_token_iterator(),
+              std::ostream_iterator<std::string>(std::cout, "\n"));
+    std::cout << std::endl;
+ 
+    // Iterating the first submatches
+    const std::string html = R"(<p><a href="http://google.com">google</a> )"
+                             R"(< a HREF ="http://cppreference.com">cppreference</a>\n</p>)";
+    const std::regex url_re(R"!!(<\s*A\s+[^>]*href\s*=\s*"([^"]*)")!!", std::regex::icase);
+    std::copy(std::sregex_token_iterator(html.begin(), html.end(), url_re, 1),
+              std::sregex_token_iterator(),
+              std::ostream_iterator<std::string>(std::cout, "\n"));
+    std::cout << std::endl;
+    
+    // OUTPUT: 
+    Quick
+    brown
+    fox.
+    http://google.com
+    http://cppreference.com
+    ```
+    - 使用示例`2`
+    ```
+    std::string s {"this subject has a submarine as a subsequence"};
+    std::regex r {R"(\b(sub)([^ ]*))"};   // matches words beginning by "sub"
 
+    // default constructor = end-of-sequence:
+    std::regex_token_iterator<std::string::iterator> rend;
+
+    std::cout << "entire matches:"; 
+    std::regex_token_iterator<std::string::iterator> a {s.begin(), s.end(), r};
+    while (a != rend) std::cout << " [" << *a++ << "]";
+    std::cout << std::endl;  // entire amtches: [subject] [submarine] [subsequence]
+
+    std::cout << "2nd submatches:";
+    std::regex_token_iterator<std::string::iterator> b {s.begin(), s.end(), r, 2};
+    while (b != rend) std::cout << " [" << *b++ << "]";
+    std::cout << std::endl;  // 2nd submatches: [ject] [marine] [sequence]
+
+    std::cout << "1st and 2nd submatches:";
+    int submatches[] {1, 2};
+    std::regex_token_iterator<std::string::iterator> c {s.begin(), s.end(), r, submatches};
+    while (c != rend) std::cout << " [" << *c++ << "]";
+    std::cout << std::endl;  // 1st and 2nd submatches: [sub] [ject] [sub] [marine] [sub] [sequence]
+
+    std::cout << "1st and 2nd submatches";
+    std::regex_token_iterator<std::string::iterator> d {s.begin(), s.end(), r, {1, 2}};
+    while (d != rend) std::cout << " [" << *d++ << "]";
+    std::cout << std::endl;  // 1st and 2nd submatches: [sub] [ject] [sub] [marine] [sub] [sequence]
+    
+    std::cout << "matches as splitters:";
+    std::regex_token_iterator<std::string::iterator> e {s.begin(), s.end(), r, -1};
+    while (e != rend) std::cout << " [" << *e++ << "]";
+    std::cout << std::endl;  // matches as splitters: [this ] [ has a ] [ as a ]
+    ```
 
 #### [伪随机数](https://en.cppreference.com/w/cpp/numeric/random)
 
