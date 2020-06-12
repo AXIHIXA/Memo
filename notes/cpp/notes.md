@@ -15029,7 +15029,7 @@ quizB.reset(27);                  // student number 27 failed
                 }
             }
             ```
-- 正则表达式 *替换*
+- [正则表达式 *替换*](http://www.cplusplus.com/reference/regex/regex_replace/)
     - 正则表达式 *替换* 操作，适用于`std::smatch`、`std::cmatch`、`std::wsmatch`、`std::wcmatch`以及对应的`std::ssub_match`、`std::csub_match`、`std::wssub_match`、`std::wcsub_match`
         - `m.format(dest, fmt, mft)`：使用 *格式字符串* `fmt`、`m`中的匹配，以及 *可选* 的 *匹配标志* `mft`生成格式化输出，写入迭代器`dest`指向的目的位置。`fmt`可以是`std::string`，也可以是表示字符数组范围的 *一对指针* 。`mft`默认参数为`std::regex_constants::match_default`
         - `m.format(fmt, mft)`：返回一个`std::string`，其余与前者相同
@@ -15058,18 +15058,18 @@ quizB.reset(27);                  // student number 27 failed
         - `std::regex_constants::format_first_only`：只替换子表达式的第一次出现
     - 使用示例
     ```
-    std::string s ("there is a subsequence in the string\n");
-    std::regex e ("\\b(sub)([^ ]*)");                // matches words beginning by "sub"
+    std::string s {"there is a subsequence in the string\n"};
+    std::regex e {R"(\b(sub)([^ ]*))"};               // matches words beginning by "sub"
 
-    std::cout << std::regex_replace (s,e,"sub-$2");  // there is a sub-sequence in the string
+    std::cout << std::regex_replace(s, e, "sub-$2");  // there is a sub-sequence in the string
 
     std::string result;
-    std::regex_replace (std::back_inserter(result), s.begin(), s.end(), e, "$2");
-    std::cout << result;                             // there is a sequence in the string
+    std::regex_replace(std::back_inserter(result), s.begin(), s.end(), e, "$2");
+    std::cout << result;                              // there is a sequence in the string
 
     // with flags:
-    std::cout << std::regex_replace (s,e,"$1 and $2",std::regex_constants::format_no_copy);
-    std::cout << std::endl;                          // sub and sequence
+    std::cout << std::regex_replace(s, e, "$1 and $2", std::regex_constants::format_no_copy);
+    std::cout << std::endl;                           // sub and sequence
     ```
 - [`std::regex_token_iterator`](http://www.cplusplus.com/reference/regex/regex_token_iterator/)
     - 只读`LegacyForwardIterator`，用于遍历给定字符串中、给定正则表达式的 *每一次匹配* 的子匹配
