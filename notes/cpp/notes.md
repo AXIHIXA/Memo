@@ -15149,7 +15149,6 @@ quizB.reset(27);                  // student number 27 failed
     ```
     std::string line {"as 1df 1gh"};
     std::regex r {R"(( )(1))"};
-    std::smatch sm;
 
     for (std::sregex_iterator it {line.begin(), line.end(), r}, end; it != end; ++it)
     {
