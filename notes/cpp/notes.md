@@ -22,6 +22,7 @@
     - 先声明（或定义）再使用。 *第一次实际使用前* 再声明（定义）
     - **严禁**混用有符号类型和无符号类型（比如：该用`size_t`就用，别啥玩意都整成`int`）
     - 下标遍历型`for`循环的唯一指定写法，例如`for (std::string::size_type i = 0; i != 10; ++i) {}`， *括号内声明* `i`（避免冲突）、`std::string::size_type`（精确匹配类型，别啥玩意都整成`int`），`!=`（为了性能和一般至少都会实现`==`和`!=`，而`<`则不一定了）和`++i`（为了性能，严禁乱用`i++`）这四条你要细品
+    - 范围遍历型`for`循环的科学写法：`for (const auto & item : iteratable) {}`。`auto`可以帮助减少非必要的拷贝（例如`std::map<K, V>`只读范围遍历时的元素类型应该是`const std::pair<const K, V> &`，如果用`const std::pair<K, V> &`遍历则实际上会进行隐式类型转换和拷贝，性能一样不好）
     - 整数和浮点数字面值的 *后缀* 一律使用 *大写* 版本，避免`l`和`1`混淆
     - 函数的返回值类型**永远不要**设置成引用，左值右值都不行，统统是悬垂的
     - 如果函数有可能用到某个全局变量，则**不宜**再定义同名的局部变量
@@ -43,6 +44,7 @@
     - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`
     - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
     - 通常**不对**关联容器使用泛型算法（或不能用或性能很差）
+    - **应该**使用`auto`接收`lambda`表达式，**不能**用`std::function`或 *函数指针* 接收，否则会有类型转换以至将来的性能损失
     - `lambda`表达式应尽量**避免**捕获指针或引用。如捕获引用，必须保证在`lambda`执行时变量 *仍存在* 
     - 出于性能考虑，`std::list`和`std::forward_list`应当优先使用 *成员函数版本* 的算法，而**不是**通用算法  
     - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
@@ -67,6 +69,7 @@
     - 在定义任何函数之前，记得 *声明所有重载的函数版本* ，这样就不必担心编译器由于未遇到希望调用的版本而实例化并非所需的函数模板
     - 一个特定文件所需要的 *所有模板声明* 通常 *一起放置在文件开始* 位置，出现于任何使用这些模板的代码之前 => 16.3
     - *模板及其特例化版本* 应该 *声明在同一个头文件* 中，所有同名模板的声明应该放在前面，然后是这些模板的特例化版本
+    - `C++`程序**不应**使用`C`库函数`rand`，而应使用`std::default_random_engine`和恰当的分布类对象
 - 跟类有关的一箩筐规则
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
@@ -5690,6 +5693,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 
 #### 定义格式
 
+- 可以使用`auto`，`std::function`或 *函数指针* 接收`lambda`表达式
 ```
 auto f1 = [capture_list] (paramater_list) -> return_type { function_body; };
 
@@ -5697,6 +5701,41 @@ auto f1 = [capture_list] (paramater_list) -> return_type { function_body; };
 return_type                               (*f2)(paramater_list) = f1;
 std::function<return_type (paramater_list)> f3                  = f1;
 ```
+- 注意`lambda`的实际类型既**不是**`std::function`也**不是**函数指针
+```
+#include <bits/stdc++.h>
+#include <boost/core/demangle.hpp>
+
+int main(int argc, char * argv[])
+{
+    auto cmp1 = [] (int a, int b) { return a < b; };
+    std::function<bool (int, int)> cmp2 = cmp1;
+    bool (*cmp3)(int, int) = cmp1;
+
+    std::cout << boost::core::demangle(typeid(cmp1).name()) << std::endl;
+    std::cout << boost::core::demangle(typeid(cmp2).name()) << std::endl;
+    std::cout << boost::core::demangle(typeid(cmp3).name()) << std::endl;
+
+    return EXIT_SUCCESS;
+}
+
+// OUTPUT:
+main::{lambda(int, int)#1}
+std::function<bool (int, int)>
+bool (*)(int, int)
+```
+- **应该**使用`auto`接收`lambda`表达式
+    - 使用`std::function`或函数指针接收`lambda`表达式会导致类型转换，以至后续使用时的性能损失！
+    - 例如，使用`std::bind`的时候，乱用`std::function`会阻碍编译器优化
+    ```
+    std::function<bool(T, T)> cmp1 = std::bind(f, _2, 10, _1);  // bad
+    auto cmp2 = std::bind(f, _2, 10, _1);                       // good
+    auto cmp3 = [] (T a, T b) { return f(b, 10, a); };          // also good
+
+    std::stable_partition(std::begin(x), std::end(x), cmp?);
+    ```
+    - 对于~`
+    - 比如本来能`inline`的`lambda`因为显式创建函数对象不能`inline`了，还摊上了名字查找的时间
 
 #### 内容物
 
@@ -5813,7 +5852,7 @@ auto newCallable = std::bind(callable, arg_list);
     int main()
     {
         int n1 = 1, n2 = 2, n3 = 3;
-        std::function<void ()> bound_f = std::bind(f, n1, std::ref(n2), std::cref(n3));
+        auto bound_f = std::bind(f, n1, std::ref(n2), std::cref(n3));
         n1 = 10, n2 = 11, n3 = 12;
         printf("%d %d %d\n", n1, n2, n3);  // 10 11 12
         bound_f();                         // 1 11 12                                                     
@@ -10810,6 +10849,7 @@ private:
                 2. *初始化* 对象时，初始化器表达式是和变量 *同类型纯右值* （不考虑`cv`限定）
                     - 这一条仅当被初始化的对象**不是** *潜在重叠的子对象* 时有效
                     - 这条规则并不是优化，因为`C++17`中纯右值是被 *未实质化传递* 的，甚至不会构造临时量
+                    - 特别地：返回类型不是引用的函数类型的返回值都是纯右值
                 ```
                 T x = T(T(f()));        // only one call to default constructor of T, to initialize x
                 
@@ -10831,7 +10871,7 @@ private:
             - 可以连锁多次复制消除，以消除多次复制
             - 具体发生于如下情景
                 1. *具名返回值优化* （Named Return Value Optimization，`NRVO`）
-                    - *返回语句* 中，操作数是 *非`vloatile`自动对象* ，且**不是** *函数形参* 或 *`catch`子句形参* ，且与返回值 *同类型* （不考虑`cv`限定）
+                    - *返回语句* 中，操作数是 *非`vloatile`自动对象* ，且**不是** *函数形参* 或 *`catch`子句形参* ，且与返回值 *同类型* （不考虑`const`限定）
                 2. *初始化* 对象时，源对象是和变量 *同类型无名临时量* （不考虑`cv`限定） `(until C++17)`
                     - 临时量是返回语句操作数时，被称作 *返回值优化* （Return Value Optimization，`VRO`）
                     - `C++17`开始， *返回值优化* 已经变成了 *强制消除* 
@@ -10855,57 +10895,49 @@ private:
         int i;
     }
     ```
-- 函数返回临时量的四种操作
-    - 例1
-    ```
-    std::vector<int> return_vector()
-    {
-        std::vector<int> tmp{1, 2, 3, 4, 5};
-        return tmp;
-    }
-
-    std::vector<int> &&       rval_ref = return_vector();  // temporary caught & lifetime extended
-    const std::vector<int> & clval_ref = return_vector();  // temporary caught & lifetime extended
-    ```
-    - 例2
+- `std::move`不能乱用
+    - `例1`：作大死
         - 看，看什么看，这是 *悬垂引用* ，没事作死玩儿啊
         - 再说一遍：函数**不能**返回临时量的引用，左值右值，常或非常都不行
         - 返回语句中生成的右值引用得绑定到普通类型返回值上，才能发生移动构造
         - 绑到引用上，资源压根儿就没转移，函数结束就被析构了
     ```
-    std::vector<int>&& return_vector()
+    std::vector<int> && return_vector()
     {
-        std::vector<int> tmp{1, 2, 3, 4, 5};
+        std::vector<int> tmp {1, 2, 3, 4, 5};
         return std::move(tmp);
     }
 
     std::vector<int> && rval_ref = return_vector();
     ```
-    - 例3
-        - 这个和例1具体谁好很难讲
-            - 如果`NRVO`发生了，则是例1好（连 *移动* 都省了）
-            - 反之，则是这个好（好歹不用 *拷贝* 了啊）
+    - `例2`：弄巧成拙
+        - 乱用`std::move`抑制了 *拷贝消除* ，反而**不好**
     ```
     std::vector<int> return_vector()
     {
-        std::vector<int> tmp{1, 2, 3, 4, 5};
+        std::vector<int> tmp {1, 2, 3, 4, 5};
         return std::move(tmp);
     }
 
-    std::vector<int> && rval_ref = return_vector();
+    std::vector<int>         val      = return_vector();  // 强制拷贝消除
+    std::vector<int> &&      rval_ref = return_vector();
+    const std::vector<int> & c_ref    = return_vector();
     ```
-    - 例4
-        - 最省事儿的写法
-        - [`stackoverflow`](https://stackoverflow.com/questions/4986673/c11-rvalues-and-move-semantics-confusion-return-statement)上一高赞回答说这是最好的写法，又省事儿又能白嫖`NRVO`，连移动都省了。当然，前提是`NRVO`确实发生
-    ```
-    std::vector<int> return_vector(void)
-    {
-        std::vector<int> tmp{1, 2, 3, 4, 5};
-        return tmp;
-    }
-
-    std::vector<int> rval_ref = return_vector();
-    ```
+    - 如何不乱用`std::move`
+        - 很多情况下需要使用`std::move`来提升性能，但不是所有时候都该这么用
+        - 实际情况很复杂，但`gcc 9`开始支持了如下两个[编译器选项](https://developers.redhat.com/blog/2019/04/12/understanding-when-not-to-stdmove-in-c/)来识别
+            - `-Wpessimizing-move`
+                - `std::move`阻碍`NRVO`时报`warning`
+                - 这种情况下是有性能损失的，必须避免
+                - 包含在`-Wall`中
+            - `-Wredundant-move`
+                - 当满足 *强制拷贝消除* 时还写了`std::move`时报`warning`
+                - 这种情况下没有性能损失，纯粹只是多余而已
+                - 包含在`-Wextra`中，`-Wall`中没有
+        - `CMake`使用示例
+        ```
+        target_compile_options(${PROJECT_NAME} PUBLIC -Wpessimizing-move -Wredundant-move)
+        ```
     
 #### 动态内存管理类`StrVec`
 
@@ -15201,9 +15233,97 @@ quizB.reset(27);                  // student number 27 failed
     [ gh ]
     ```
 
-#### [伪随机数](https://en.cppreference.com/w/cpp/numeric/random)
+#### [随机数](https://en.cppreference.com/w/cpp/numeric/random)
 
-- 随机数引擎和分布
+- `C++`随机数标准库`<random>`中定义了
+    - *随机数引擎* （random-number engine）
+        - 生成随机的 *无符号整数* 序列
+    - *随机数分布类* （random-number distribution）
+        - 使用引擎返回服从特定概率分布的随机数
+- `C++`程序**不应**使用`C`库函数`rand`，而应使用`std::default_random_engine`和恰当的分布类对象
+- *随机数引擎* 
+    - 随机数引擎是函数对象类，定义了一个调用运算符，不接收参数，返回一个随机的 *无符号整数* 
+    ```
+    std::default_random_engine e;  // generates random unsigned integers
+    
+    for (size_t i = 0; i != 10; ++i)
+    {
+        // e() "calls" the object to produce the next random number
+        std::cout << e() << " ";
+    }
+    ```
+    - 标准库定义了很多随机数引擎，区别在于性能和随机性质量不同
+        - 每个编译器都会指定一个`std::default_random_engine`类型
+        - 此类型一般具有最常用的特性
+    - 随机数引擎操作
+        - `std::default_random_engine e;`：默认构造函数，使用该引擎类型的默认种子
+        - `std::default_random_engine e(s);`：使用整型值`s`作为种子
+        - `e.seed(s);`：使用种子`s`重置引擎状态
+        - `e()`：返回一个随机数
+        - `e.min()`：此引擎可生成的最小值
+        - `e.max()`：此引擎可生成的最大值
+        - `std::default_random_engine::result_type`：此引擎生成的随机数的类型
+        - `e.discard(u)`：将引擎推进`u`步；`u`为`unsigned long long`
+    - *分布类型* 和引擎
+        - 为了得到在一个指定范围内的数，我们使用一个分布类型对象
+        ```
+        // uniformly distributed unsigned int from [0, 9]
+        std::uniform_int_distribution<unsigned> u(0, 9);
+        
+        // generates unsigned random integers
+        std::default_random_engine e;
+        
+        for (size_t i = 0; i < 10; ++i)
+        {
+            // u uses e as a source of numbers
+            // each call returns a uniformly distributed value in the specified range
+            std::cout << u(e) << " ";
+        }
+        ```
+        - 我们说 *随机数发生器* 一词时，是指 *分布对象* 和 *引擎对象* 的组合
+        - 每个新引擎生成的序列都是一样的，因此要么定义成 *全局* 的，要么定义为函数的 *局部静态* 变量
+        ```
+        std::vector<unsigned> good_randVec()
+        {
+            static std::default_random_engine e;
+            static std::uniform_int_distribution<unsigned> u(0, 9);
+            
+            std::vector<unsigned> ret;
+            
+            for (size_t i = 0; i < 100; ++i)
+            {
+                ret.push_back(u(e));
+            }
+                
+            return std::move(ret);
+        }
+        ```
+    - 可用的 *随机数分布类* 
+        - 均匀分布
+            - [`std::uniform_int_distribution`](https://en.cppreference.com/w/cpp/numeric/random/uniform_int_distribution)：产生在一个范围上均匀分布的整数值
+            - [`std::uniform_real_distribution`](https://en.cppreference.com/w/cpp/numeric/random/uniform_real_distribution)：产生在一个范围上均匀分布的实数值
+        - 伯努利分布
+            - [`std::bernoulli_distribution`](https://en.cppreference.com/w/cpp/numeric/random/bernoulli_distribution)：产生伯努利分布上的`bool`值
+            - [`std::binomial_distribution`](https://en.cppreference.com/w/cpp/numeric/random/binomial_distribution)：产生二项分布上的整数值
+            - [`std::negative_binomial_distribution`](https://en.cppreference.com/w/cpp/numeric/random/negative_binomial_distribution)：产生负二项分布上的整数值
+            - [`std::geometric_distribution`](https://en.cppreference.com/w/cpp/numeric/random/geometric_distribution)：产生几何分布上的整数值
+        - 泊松分布
+            - [`std::poisson_distribution`](https://en.cppreference.com/w/cpp/numeric/random/poisson_distribution)：产生泊松分布上的整数值
+            - [`std::exponential_distribution`](https://en.cppreference.com/w/cpp/numeric/random/exponential_distribution)：产生指数分布上的实数值
+            - [`std::gamma_distribution`](https://en.cppreference.com/w/cpp/numeric/random/gamma_distribution)：产生`Γ`分布上的实数值
+            - [`std::weibull_distribution`](https://en.cppreference.com/w/cpp/numeric/random/weibull_distribution)：产生威布尔分布上的实数值
+            - [`std::extreme_value_distribution`](https://en.cppreference.com/w/cpp/numeric/random/extreme_value_distribution)：产生极值分布上的实数值
+        - 正态分布
+            - [`std::normal_distribution`](https://en.cppreference.com/w/cpp/numeric/random/normal_distribution)：产生标准正态分布上的实数
+            - [`std::lognormal_distribution`](https://en.cppreference.com/w/cpp/numeric/random/lognormal_distribution)：产生对数正态分布上的实数值
+            - [`std::chi_squared_distribution`](https://en.cppreference.com/w/cpp/numeric/random/chi_squared_distribution)：产生`χ2`分布上的实数值
+            - [`std::cauchy_distribution`](https://en.cppreference.com/w/cpp/numeric/random/cauchy_distribution)：产生柯西分布上的实数值
+            - [`std::fisher_f_distribution`](https://en.cppreference.com/w/cpp/numeric/random/fisher_f_distribution)：产生费舍尔`F`分布上的实数值
+            - [`std::student_t_distribution`](https://en.cppreference.com/w/cpp/numeric/random/student_t_distribution)：产生学生`t`分布上的实数值
+        - 采样分布
+            - [`std::discrete_distribution`](https://en.cppreference.com/w/cpp/numeric/random/discrete_distribution)：产生离散分布上的随机整数
+            - [`std::piecewise_constant_distribution`](https://en.cppreference.com/w/cpp/numeric/random/piecewise_constant_distribution)：产生分布在常子区间上的实数值
+            - [`std::piecewise_linear_distribution`]()：产生分布在定义的子区间上的实数值
 - 其他随机数分布
 - `bernoulli_distribution`类
 

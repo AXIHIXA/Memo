@@ -19,5 +19,6 @@ set(ALL_LIBRARIES
         )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+target_compile_options(${PROJECT_NAME} PUBLIC -Wpessimizing-move -Wredundant-move)
 target_include_directories(${PROJECT_NAME} PUBLIC ${ALL_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${ALL_LIBRARIES})
