@@ -15058,19 +15058,18 @@ quizB.reset(27);                  // student number 27 failed
         - `std::regex_constants::format_first_only`：只替换子表达式的第一次出现
     - 使用示例
     ```
-    const std::string phone = R"((\()?(\d{3})(\))?([-. ])?(\d{3})([-. ]?)(\d{4}))";
-    std::string fmt = "$2.$5.$7";           // reformat numbers to ddd.ddd.dddd
-                                            // by replacing subexpr 2, 5, 7 and ignoring others
-    std::regex r(phone);                    // a regex to find our pattern
-    std::string number = "(908) 555-1800";
-    std::cout << std::regex_replace(number, r, fmt) << std::endl;  // 908.555.1800
-    
-    std::string s = "morgan 201.555.2368 862.555.0123";
-    std::string fmt2 = "$2.$5.$7 ";         // put space after the last number as a separator
-    
-    // tell regex_replace to copy only the text that it replaces
-    std::cout << std::regex_replace(s, r, fmt2, std::regex_constants::format_no_copy) 
-              << std::endl;  // 201.555.2368 862.555.0123
+    std::string s ("there is a subsequence in the string\n");
+    std::regex e ("\\b(sub)([^ ]*)");                // matches words beginning by "sub"
+
+    std::cout << std::regex_replace (s,e,"sub-$2");  // there is a sub-sequence in the string
+
+    std::string result;
+    std::regex_replace (std::back_inserter(result), s.begin(), s.end(), e, "$2");
+    std::cout << result;                             // there is a sequence in the string
+
+    // with flags:
+    std::cout << std::regex_replace (s,e,"$1 and $2",std::regex_constants::format_no_copy);
+    std::cout << std::endl;                          // sub and sequence
     ```
 - [`std::regex_token_iterator`](http://www.cplusplus.com/reference/regex/regex_token_iterator/)
     - 只读`LegacyForwardIterator`，用于遍历给定字符串中、给定正则表达式的 *每一次匹配* 的子匹配
