@@ -224,6 +224,34 @@
         - `U`：`Unicode 32`字符，匹配`char32_t`
         - `L`：宽字符，匹配`wchar_t`
         - `u8`：`UTF-8`字符（仅用于字符串字面值），匹配`char`
+    - *原始字符串字面量* （raw string literal）
+        - 其中所有字符均被理解为 *未转义字符* （unescaped characters），格式
+        ```
+        prefix(optional) R"delimiter( raw_characters )delimiter" (since C++11)
+        ```
+        - 由如下部分组成
+            - `prefix`为前面四格可选前缀
+            - `R"`：必须原样保留
+            - `delimiter`为一对分隔符，是**除**括号、反斜杠和空格**以外**的任何源字符所构成的字符序列（可为空，长度至多`16`个字符） 
+            - `(`：必须原样保留
+            - 字符串
+            - `)"`：必须原样保留
+        - 举例
+        ```
+        // A Normal string 
+        std::cout << "Geeks.\nFor.\nGeeks.\n";  
+        
+        // OUTPUT: 
+        Geeks.
+        For.
+        Geeks.
+
+        // A Raw string 
+        std::cout << R"(Geeks.\nFor.\nGeeks.\n)" << std::endl;  
+        
+        // OUTPUT:
+        // Geeks.\nFor.\nGeeks.\n
+        ```
     - 字符串字面值实际是 *常字符数组* ，编译器 *自动在末尾添加空字符* `'\0'`作为结尾
     ```
     strlen("12")   == 3
@@ -14601,7 +14629,7 @@ quizB.reset(27);                  // student number 27 failed
         - `r.mark_count()`：`r`中 *子表达式* 的数目
         - `r.flags()`：返回`r`的 *标志集* ，`typedef regex_constants::syntax_option_type flag_type`
         - 注： *构造函数* 和 *赋值* 操作可能抛出类型为`std::regex_error`的异常
-    - `例1`：查找拼写错误（违反规则 *除在`c`之后时以外，`i`必须在`e`之前* ）
+    - `例17.1`：查找拼写错误（违反规则 *除在`c`之后时以外，`i`必须在`e`之前* ）
         - 默认情况下使用的正则表达式语言是`ECMAScript`
             - `[^c]`匹配 *任意不是`c`的字母*
             - `[[:alpha:]]`匹配 *任意字母* 
@@ -14626,7 +14654,7 @@ quizB.reset(27);                  // student number 27 failed
         std::cout << results.str() << std::endl;  // print the matching word: freind
     }  
     ```  
-    - `例2`：匹配`C++`源文件扩展名
+    - `例17.2`：匹配`C++`源文件扩展名
         - 默认情况下使用的正则表达式语言是`ECMAScript`
             - `.`匹配 *任意字符*
             - `\\.`转义为匹配字面`.`
@@ -14664,7 +14692,7 @@ quizB.reset(27);                  // student number 27 failed
             - `std::regex_constants::error_badrepeat`：重复字符`*`、`?`、`+`或`{n}`之前没有有效的正则表达式
             - `std::regex_constants::error_complexity`：要求的匹配过于复杂
             - `std::regex_constants::error_stack`：栈空间不足，无法处理匹配
-    - `例3`：捕获错误
+    - `例17.3`：捕获错误
     ```
     try 
     {
@@ -14748,7 +14776,7 @@ quizB.reset(27);                  // student number 27 failed
         std::cout << it->str() << std::endl;  // matched word
     }
     ```
-    - `std::smatch`操作
+    - `std::smatch`操作，也适用于`std::cmatch`、`std::wsmatch`、`std::wcmatch`以及对应的`std::ssub_match`、`std::csub_match`、`std::wssub_match`、`std::wcsub_match`
         - `m.ready()`：如果已经通过调用`std::regex_match`或`std::regex_search`设置了`m`，则返回`true`；否则返回`false`。访问未设置的`m`是 *未定义行为* 
         - `m.size()`：如果匹配失败，则返回`0`；否则，返回最近一次正则表达式中 *子表达式* 的数目
         - `m.empty()`：`return m.size() == 0;`
@@ -14789,9 +14817,136 @@ quizB.reset(27);                  // student number 27 failed
         }
         ```
 - *子表达式* （Subexpressions）
+    - 正则表达式中的 *模式* （pattern）通常包含一或多个 *子表达式* 
+        - 一个子表达式是模式的一部分，本身也有意义
+        - 正则表达式语法通常用 *括号* `()` 表示子表达式
+        - 例如
+        ```
+        // r has two subexpressions: the first is the part of the file name before the period
+        // the second is the file extension
+        std::regex r("([[:alnum:]]+)\\.(cpp|cxx|cc)$", std::regex::icase);
+        ```
+        - 包含 *两个* 子表达式
+            1. `([[:alnum:]]+)`匹配一或多个字符
+            2. `(cpp|cxx|cc)`匹配`cpp`、`cxx`或`cc`
+        - 可以重写之前的扩展名匹配程序`例17.2`，使之只输出文件名
+            - 例如`foo.cpp`的`results.str(0)`为`foo.cpp`、`results.str(1)`为`foo`、`results.str(2)`为`cpp`
+        ```
+        // one or more alphanumeric characters followed by a '.' followed by "cpp" or "cxx" or "cc"
+        std::regex r("[[:alnum:]]+\\.(cpp|cxx|cc)$", std::regex::icase);
+        std::smatch results;
+        std::string filename;
+        
+        while (std::cin >> filename)
+        {
+            if (std::regex_search(filename, results, r))
+            {
+                std::cout << results.str(1) << std::endl;  // print only the 1st subexpression
+            }
+        }  
+        ```
+    - 子表达式用于数据验证
+        - [`ECMAScript`正则表达式语言](https://zh.cppreference.com/w/cpp/regex/ecmascript)的一些特性
+            - `\{d}`表示 *单个数字* ，`\{d}{n}`表示 *`n`个数字的序列* 
+                - 例如，`\{d}{3}`匹配三个数字的序列
+            - *方括号`[]`中的字符集合* 匹配 *这些字符中的任意一个*
+                - 例如，`[-. ]`匹配一个短横线`'-'`、一个点`'.'`或一个空格`' '`
+                - 注意，点`.`在方括号中**没有**特殊含义
+            - *后接`?`* 的组件是 *可选* 的
+                - 例如，`\{d}{3}[-. ]?\{d}{4}`匹配三个数字加可选的短横线或点或空格加四个数字
+                - 可以匹配`555-0132`或`555.0132`或`555 0132`或`5550132`
+        - `C++`中的`ECMAScript`字面量中，表示转义`ECMAScript`的 *反斜线* `\`应写为`\\`
+            - `C++`和`ECMAScript`都使用`\`表示转义
+            - 所以如果想要匹配字面括号，就需要转义成`\\(`或`\\)`，否则会被认为是子表达式的边界
+                - `\\`是因为`\`在`C++`字符串中也是转义的，因此第一个`\`表示转义第二个`\`，由被转义的第二个`\`去转义`(`和`)`
+            - 类似地，`\{d}{3}[-. ]?\{d}{4}`在`C++`编程时也应写成`\\{d}{3}[-. ]?\\{d}{4}`
+            - 使用 *原始字符串字面量* （raw string literal）`R"(str)"`则可以避免两个`\\`这种难看的东西
+        - `例17.4`：匹配美国式电话号码
+            - 匹配模式解析
+                - 整体模式
+                ```
+                // our overall expression has seven subexpressions: ( ddd ) separator ddd separator dddd
+                // subexpressions 1, 3, 4, and 6 are optional; 2, 5, and 7 hold the number
+                std::string p1 {"(\\()?(\\d{3})(\\))?([-. ])?(\\d{3})([-. ]?)(\\d{4})"};
+                
+                // use of raw string literals can avoid `\\`
+                std::string p2 {R"((\()?(\d{3})(\))?([-. ])?(\d{3})([-. ]?)(\d{4}))"};
+                
+                std::cout << std::boolalpha << (p1 == p2) << std::endl;  // true
+                ```
+                - 子表达式
+                1. `(\\()?`：区号部分可选的左括号
+                2. `(\\d{3})`：区号
+                3. `(\\))?`：区号部分可选的左括号
+                4. `([-. ])?`：区号后面可选的分隔符
+                5. `(\\d{3})`：号码的下三位数字
+                6. `([-. ])?`：可选的分隔符
+                7. `(\\d{4})`：号码的最后四位数字
+            - 初版程序
+            ```
+            const std::string phone = R"((\()?(\d{3})(\))?([-. ])?(\d{3})([-. ]?)(\d{4}))";
+            std::regex r(phone); // a regex to find our pattern
+            std::smatch m;
+
+            // read each record from the input file
+            for (std::string s; std::getline(std::cin, s);)
+            {
+                // for each matching phone number
+                for (std::sregex_iterator it(s.begin(), s.end(), r), end_it; it != end_it; ++it)
+                {
+                    // check whether the number's formatting is valid
+                    if (valid(*it))
+                    {
+                        std::cout << "valid: " << it->str() << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "not valid: " << it->str() << std::endl;
+                    }
+                }
+            }
+            ```
+    - 使用 *子匹配操作* （Submatch Operations）
+        - 子匹配操作，适用于`std::ssub_match`、`std::csub_match`、`std::wssub_match`以及`std::wcsub_match`对象
+            - `m.matched`：一个`public bool`数据成员，指出此`ssub_match`是否匹配了
+            - `m.first`，`m.second`：`public`数据成员，指向匹配序列首元素和尾后位置的迭代器。如果
+            - `m.length()`：匹配的大小。如果`matched`部分为`false`，则返回`0`
+            - `m.str()`：返回一个包含输入中匹配部分的`std::string`，如果`matched`为`false`，则返回空`std::string`
+            - `str = ssub`：将`std::ssub_match`对象转化为`std::string`，等价于`str = ssub.str()`。`std::ssub_match`向`std::string`的 *类型转换运算符* **不是**`explicit`的
+        - 可以使用子匹配操作来编写`例17.4`中的`valid`函数
+            - `pattern`有 *七个* 子表达式，从而匹配结果`std::ssmatch m`会有一共 *八个* `std::ssub_match ssub`子匹配对象
+                - 其中`m[0]`表示 *完整匹配* 
+                - `m[1]`至`m[7]`分别对应七个子表达式的匹配结果
+            - 调用我们即将编写的这个`valid`函数时，我们已经知道有一个完整匹配，但不知道每个可选的子表达式是否是完整匹配的一部分
+                - 如果一个子表达式是完整匹配的一部分，则其对应的`std::ssub_match`对象的`matched`成员为`true`
+            - `valid`函数实现
+            ```
+            bool valid(const std::smatch & m)
+            {
+                
+                if (m[1].matched)
+                {
+                    // if there is an open parenthesis before the area code
+                    // the area code must be followed by a close parenthesis
+                    // and followed immediately by the rest of the number or a space
+                    return m[3].matched && (!m[4].matched || m[4].str() == " ");
+                }
+                else
+                {
+                    // then there can't be a close after the area code
+                    // the delimiters between the other two components must match
+                    return !m[3].matched && m[4].str() == m[6].str();
+                }
+            }
+            ```
 - `std::regex_replace`
-    - *匹配标志* ，具体是`std::regex_constants::match_flag_type`类型的 *`unsigned int`枚举* 值
-        - `std::regex_constants::match_default`：等价于`format_default`， *默认参数*
+    - 正则表达式 *替换* 操作，适用于`std::smatch`、`std::cmatch`、`std::wsmatch`、`std::wcmatch`以及对应的`std::ssub_match`、`std::csub_match`、`std::wssub_match`、`std::wcsub_match`
+        - `m.format(dest, fmt, mft)`：使用 *格式字符串* `fmt`、`m`中的匹配，以及 *可选* 的 *匹配标志* `mft`生成格式化输出，写入迭代器`dest`指向的目的位置。`fmt`可以是`std::string`，也可以是表示字符数组范围的 *一对指针* 。`mft`默认参数为`std::regex_constants::match_default`
+        - `m.format(fmt, mft)`：返回一个`std::string`，其余与前者相同
+        - `std::regex_replace(dest, b, e, r, fmt, mft)`：遍历迭代器`[b, e)`表示的范围，用`std::regex_match`寻找与`std::regex r`匹配的子串。使用 *格式字符串* `fmt`，以及 *可选* 的 *匹配标志* `mft`生成格式化输出，写入迭代器`dest`指向的位置。`fmt`可以是`std::string`，也可以是 *`C`风格字符串* 。`mft`默认参数为`std::regex_constants::match_default`
+        - `std::regex_replace(seq, r, fmt, mft)`：遍历`seq`，用`std::regex_match`寻找与`std::regex r`匹配的子串。使用 *格式字符串* `fmt`，以及 *可选* 的 *匹配标志* `mft`生成格式化输出并作为`std::string`返回。`seq`可以是`std::string`或 *`C`风格字符串* 。`fmt`可以是`std::string`，也可以是 *`C`风格字符串* 。`mft`默认参数为`std::regex_constants::match_default`
+    - `mft`是 *匹配标志* ，具体是`std::regex_constants::match_flag_type`类型的 *`unsigned int`枚举* 值
+        - `std::regex_constants::match_default`：等价于`std::regex_constants::format_default`， *默认参数*
         - `std::regex_constants::match_not_bol`：不将首字符作为行首处理
         - `std::regex_constants::match_not_eol`：不将尾字符作为行尾处理
         - `std::regex_constants::match_not_bow`：不将首字符作为词首处理
@@ -14804,6 +14959,21 @@ quizB.reset(27);                  // student number 27 failed
         - `std::regex_constants::format_sed`：用`POSIX sed`规则替换字符串
         - `std::regex_constants::format_no_copy`：不输出输入序列中未匹配的部分
         - `std::regex_constants::format_first_only`：只替换子表达式的第一次出现
+    - 使用示例
+    ```
+    const std::string phone = R"((\()?(\d{3})(\))?([-. ])?(\d{3})([-. ]?)(\d{4}))";
+    std::string fmt = "$2.$5.$7";           // reformat numbers to ddd.ddd.dddd
+                                            // by replacing subexpr 2, 5, 7 and ignoring others
+    std::regex r(phone);                    // a regex to find our pattern
+    std::string number = "(908) 555-1800";
+    std::cout << std::regex_replace(number, r, fmt) << std::endl;  // 908.555.1800
+    
+    std::string s = "morgan 201.555.2368 862.555.0123";
+    
+    // tell regex_replace to copy only the text that it replaces
+    std::cout << std::regex_replace(s, r, fmt2, std::regex_constants::format_no_copy) 
+              << std::endl;  // 201.555.2368 862.555.0123
+    ```
 
 #### [伪随机数](https://en.cppreference.com/w/cpp/numeric/random)
 
@@ -14996,12 +15166,7 @@ quizB.reset(27);                  // student number 27 failed
     - `demangle`
     ```
     // typename demangle is needed for g++
-    // 1. $ sudo apt install boost-all-dev
-    // 2. CMakeList.txt: find_package(Boost REQUIRED)
-    // 3. that's it! enjoy! because everything are in default place: 
-    //    ${Boost_INCLUDE_DIRS} => /usr/include
-    //    ${Boost_LIBRARY_DIRS} => /usr/lib
-
+    
     #include <bits/stdc++.h>
     #include <boost/core/demangle.hpp>
 
