@@ -14841,7 +14841,7 @@ quizB.reset(27);                  // student number 27 failed
                 std::cout << results.str() << std::endl;     // print the current match
             }
             ```
-- 匹配与[`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
+- [`std::regex_iterator`](https://en.cppreference.com/w/cpp/regex/regex_iterator)
     - 下面以`std::string`输入为例，对其他输入类型对应的正则表达式库类型一样适用
     - `std::sregex_iterator`操作
         - `std::sregex_iterator it(b, e, r);`：创建一个`std::sregex_iterator`，遍历迭代器`[b, e)`表示的`std::string`。它调用`std::sregex_search(b, e, r)`将`it`定位到输入中 *第一个* 匹配的位置
@@ -14951,7 +14951,7 @@ quizB.reset(27);                  // student number 27 failed
                 - `\\`是因为`\`在`C++`字符串中也是转义的，因此第一个`\`表示转义第二个`\`，由被转义的第二个`\`去转义`(`和`)`
             - 类似地，`\{d}{3}[-. ]?\{d}{4}`在`C++`编程时也应写成`\\{d}{3}[-. ]?\\{d}{4}`
             - 使用 *原始字符串字面量* （raw string literal）`R"(str)"`则可以避免两个`\\`这种难看的东西
-        - `例17.4`：匹配美国式电话号码
+        - `例17.4`：匹配美国电话号码
             - 匹配模式解析
                 - 整体模式
                 ```
@@ -15029,12 +15029,19 @@ quizB.reset(27);                  // student number 27 failed
                 }
             }
             ```
-- `std::regex_replace`
+- 正则表达式 *替换*
     - 正则表达式 *替换* 操作，适用于`std::smatch`、`std::cmatch`、`std::wsmatch`、`std::wcmatch`以及对应的`std::ssub_match`、`std::csub_match`、`std::wssub_match`、`std::wcsub_match`
         - `m.format(dest, fmt, mft)`：使用 *格式字符串* `fmt`、`m`中的匹配，以及 *可选* 的 *匹配标志* `mft`生成格式化输出，写入迭代器`dest`指向的目的位置。`fmt`可以是`std::string`，也可以是表示字符数组范围的 *一对指针* 。`mft`默认参数为`std::regex_constants::match_default`
         - `m.format(fmt, mft)`：返回一个`std::string`，其余与前者相同
         - `std::regex_replace(dest, b, e, r, fmt, mft)`：遍历迭代器`[b, e)`表示的范围，用`std::regex_match`寻找与`std::regex r`匹配的子串。使用 *格式字符串* `fmt`，以及 *可选* 的 *匹配标志* `mft`生成格式化输出，写入迭代器`dest`指向的位置。`fmt`可以是`std::string`，也可以是 *`C`风格字符串* 。`mft`默认参数为`std::regex_constants::match_default`
         - `std::regex_replace(seq, r, fmt, mft)`：遍历`seq`，用`std::regex_match`寻找与`std::regex r`匹配的子串。使用 *格式字符串* `fmt`，以及 *可选* 的 *匹配标志* `mft`生成格式化输出并作为`std::string`返回。`seq`可以是`std::string`或 *`C`风格字符串* 。`fmt`可以是`std::string`，也可以是 *`C`风格字符串* 。`mft`默认参数为`std::regex_constants::match_default`
+    - `fmt`是 *格式化字符串* ，具体可以含有 
+        - `$n`：第`n`个 *反向引用* ，即第`n`个匹配到的`std::ssub_match`对象。`n`必须是 *非负* 的，且 *最多有两位数* 
+        - `$&`：整个`std::smatch`
+        - `$^`：`std::match`的前缀`prefix()`
+        - `$'`：`std::match`的后缀`suffix()`
+        - `$$`：字面`$`
+        - 其他普通字符
     - `mft`是 *匹配标志* ，具体是`std::regex_constants::match_flag_type`类型的 *`unsigned int`枚举* 值
         - `std::regex_constants::match_default`：等价于`std::regex_constants::format_default`， *默认参数*
         - `std::regex_constants::match_not_bol`：不将首字符作为行首处理
@@ -15059,6 +15066,7 @@ quizB.reset(27);                  // student number 27 failed
     std::cout << std::regex_replace(number, r, fmt) << std::endl;  // 908.555.1800
     
     std::string s = "morgan 201.555.2368 862.555.0123";
+    std::string fmt2 = "$2.$5.$7 ";         // put space after the last number as a separator
     
     // tell regex_replace to copy only the text that it replaces
     std::cout << std::regex_replace(s, r, fmt2, std::regex_constants::format_no_copy) 
