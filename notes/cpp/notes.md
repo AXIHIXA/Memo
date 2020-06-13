@@ -15827,6 +15827,21 @@ quizB.reset(27);                  // student number 27 failed
             - 实际上只是`std::chrono::system_clock`或者`std::chrono::steady_clock`的`typedef`
     - 常用的操作
         - `std::chrono::steady_clock::now()`：返回记录当前时刻的`std::chrono::time_point`
+    - 类型成员
+        - `std::chrono::steady_clock::time_point`
+        - `std::chrono::steady_clock::duration`
+- 整体使用示例
+```
+using CLK = std::chrono::high_resolution_clock;
+using TP = CLK::time_point;
+using TD = CLK::duration;
+
+TP t0 {CLK::now()};
+using namespace std::chrono_literals;
+std::this_thread::sleep_for(1234.56ms);
+TP t1 {CLK::now()};
+std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;  // 1235
+```
 
 #### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem library） `(since C++17)`
 
