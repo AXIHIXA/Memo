@@ -44,7 +44,7 @@
     - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`
     - 调用泛型算法时，在不需要使用返回的迭代器修改容器的情况下，传参应为`const_iterator`
     - 通常**不对**关联容器使用泛型算法（或不能用或性能很差）
-    - **应该**使用`auto`接收`lambda`表达式，**不能**用`std::function`或 *函数指针* 接收，否则会有类型转换以至将来的性能损失
+    - **应该**使用`auto`接收`lambda`表达式，乱用`std::function`或 *函数指针* 接收`lambda`表达式会导致类型转换和其他严重的性能损失！
     - `lambda`表达式应尽量**避免**捕获指针或引用。如捕获引用，必须保证在`lambda`执行时变量 *仍存在* 
     - 出于性能考虑，`std::list`和`std::forward_list`应当优先使用 *成员函数版本* 的算法，而**不是**通用算法  
     - 如果将`std::shared_ptr`存放于容器中，而后不再需要全部元素，要使用`c.erase`删除不再需要的元素
@@ -5701,7 +5701,7 @@ auto f1 = [capture_list] (paramater_list) -> return_type { function_body; };
 return_type                               (*f2)(paramater_list) = f1;
 std::function<return_type (paramater_list)> f3                  = f1;
 ```
-- 注意`lambda`的实际类型既**不是**`std::function`也**不是**函数指针
+- 注意`lambda`的实际类型就是匿名类型`lambda`，既**不是**`std::function`也**不是**函数指针
 ```
 #include <bits/stdc++.h>
 #include <boost/core/demangle.hpp>
@@ -5725,8 +5725,8 @@ std::function<bool (int, int)>
 bool (*)(int, int)
 ```
 - **应该**使用`auto`接收`lambda`表达式
-    - 使用`std::function`或函数指针接收`lambda`表达式会导致类型转换，以至后续使用时的性能损失！
-    - 例如，使用`std::bind`的时候，乱用`std::function`会阻碍编译器优化
+    - 乱用`std::function`或 *函数指针* 接收`lambda`表达式会导致类型转换和其他严重的性能损失！
+    - 例如，使用`std::bind`的时候，乱用`std::function`会导致严重的性能损失
     ```
     std::function<bool(T, T)> cmp1 = std::bind(f, _2, 10, _1);  // bad
     auto cmp2 = std::bind(f, _2, 10, _1);                       // good
@@ -5734,8 +5734,11 @@ bool (*)(int, int)
 
     std::stable_partition(std::begin(x), std::end(x), cmp?);
     ```
-    - 对于~`
-    - 比如本来能`inline`的`lambda`因为显式创建函数对象不能`inline`了，还摊上了名字查找的时间
+    - 对于`cmp2`和`cmp3`，泛型算法能够`inline`谓词调用
+    - 但对于`cmp1`
+        - 首先，显式创建函数对象有类型转换的性能损失
+        - 其次，本来能`inline`的这回也不能`inline`了
+        - 最后，函数对象内部类型是多态的，还摊上了动态类型查找的时间
 
 #### 内容物
 
@@ -13902,7 +13905,9 @@ protected:
 - *模板特例化* 版本就是一个模板的独立定义，其中一个或多个模板参数被指定为特定的类型
     - 特例化函数模板时，必须为原模板中的每个模板参数都提供实参
     - 为了指出我们正在实例化一个模板，应使用关键字`template <>`指出我们将为原模板的所有模板参数提供实参
-        - 注意这与模板默认实参的`template <>`的区别在于后者是在实例化一个具体的模板类的对象
+        - 注意这与模板默认实参的`template <>`的区别在于
+            - 这是在定义一个类模板
+            - 后者是在实例化一个类模板的对象，且模板实参全部使用默认参数
 - *函数模板* 特例化
         - 提供的模板参数实参必须与原模板的形参类型相匹配
             - 例如下面的例子，`const char * const &`匹配`const T &`，其中`T = const char * const`
@@ -13967,9 +13972,43 @@ protected:
     - 类模板 *偏特化* （partial specialization）
         - *偏特化* （又称 *部分实例化* ）只适用于类模板，**不**适用于函数模板
             - *偏特化* 时 *不必* 提供全部模板实参
-            - 可以只指定一部分而非所有模板参数
-            - 或是参数的一部分而非全部特性
+                - 可以只指定一部分而非所有模板参数
+                - 或是参数的一部分而非全部特性
+            - 偏特化定义时仍旧需要`template <parameters>`
+                - `parameters`为这个偏特化版本没有显式提供的模板参数
+                - 如果显式提供了全部模板参数（这时候就是普通的特例化），则用空的尖括号
         - 举例
+            - 一个小例子
+            ```
+            template <typename K = size_t, typename V = std::string>
+            struct Entry
+            {
+                void fun() { std::cout << boost::core::demangle(typeid(*this).name()) << std::endl; }
+
+                K k {};
+                V v {};
+            };
+
+            template <typename K>
+            struct Entry<K, char *>
+            {
+                ~Entry() { delete v; }
+
+                void fun() { std::cout << "partial Entry<K, char *>" << std::endl; }
+
+                K      k {};
+                char * v {nullptr};
+            };
+
+            template <>
+            struct Entry<int, int>
+            {
+                void fun() { std::cout << "partial Entry<int, int>" << std::endl; }
+
+                int k {233};
+                int v {666};
+            };
+            ```
             - `std::remove_reference`的实现
             ```
             // original, most general template
@@ -15298,33 +15337,190 @@ quizB.reset(27);                  // student number 27 failed
             return std::move(ret);
         }
         ```
+        - 设置 *种子* （seed）
+            - 可以创建时设置，也可以随后设置
+            - 可以设置为随机的`time(NULL)`，返回当前时间（到秒为止）
+                - 如果程序是作为一个自动过程反复运行，将`time`的返回值作为种子的方式就无效了；它可能多次使用的都是相同的种子
+        ```
+        std::default_random_engine e1;              // uses the default seed
+        std::default_random_engine e2(2147483646);  // use the given seed value
+        
+        // e3 and e4 will generate the same sequence because they use the same seed
+        std::default_random_engine e3;              // uses the default seed value
+        e3.seed(32767);                             // call seed to set a new seed value
+        std::default_random_engine e4(32767);       // set the seed value to 32767
+
+        for (size_t i = 0; i != 100; ++i) 
+        {
+            if (e1() == e2())
+            {
+                std::cout << "unseeded match at iteration: " << i << std::endl;
+            }
+            
+            if (e3() != e4())
+            {
+                std::cout << "seeded differs at iteration: " << i << std::endl;
+            }   
+        }
+        ```
+- 其他随机数分布
+    - 分布类型的操作
+        - `Dist d;`：默认构造函数，使`d`准备好被使用。其他构造函数依赖于`Dist`类型。`Dist`类型的构造函数都是`explicit`的
+        - `d(e)`：用相同的随机数引擎对象`e`连续调用`d`的话，会根据`d`的分布式类型生成一个随机序列
+        - `d.min()`：返回`d(e)`能生成的最小值
+        - `d.max()`：返回`d(e)`能生成的最大值
+        - `d.reset()`：重建`d`的状态，使得随后对`d`的使用不依赖于`d`已经生成的值
     - 可用的 *随机数分布类* 
         - 均匀分布
             - [`std::uniform_int_distribution`](https://en.cppreference.com/w/cpp/numeric/random/uniform_int_distribution)：产生在一个范围上均匀分布的整数值
+                - `std::uniform_int_distribution<IntT> u(m, n);`
+                - 生成指定类型的在给定包含范围之内的值
+                - `m`是可以返回的最小值，默认为`0`
+                - `n`为可以返回的最大值，默认为`IntT`类型对象可以表示的最大值
             - [`std::uniform_real_distribution`](https://en.cppreference.com/w/cpp/numeric/random/uniform_real_distribution)：产生在一个范围上均匀分布的实数值
+                - `std::uniform_real_distribution<RealT> u(x, y);`
+                - 生成指定类型的在给定包含范围之内的值
+                - `x`是可以返回的最小值，默认为`0`
+                - `y`为可以返回的最大值，默认为`RealT`类型对象可以表示的最大值
         - 伯努利分布
-            - [`std::bernoulli_distribution`](https://en.cppreference.com/w/cpp/numeric/random/bernoulli_distribution)：产生伯努利分布上的`bool`值
-            - [`std::binomial_distribution`](https://en.cppreference.com/w/cpp/numeric/random/binomial_distribution)：产生二项分布上的整数值
+            - [`std::bernoulli_distribution`](https://en.cppreference.com/w/cpp/numeric/random/bernoulli_distribution)：产生伯努利分布上的布尔值
+                - `std::bernoulli_distribution b(p);`
+                - 以概率`p`生成`true`
+                - `p`默认为`0.5`
+            - [`std::binomial_distribution`]
+            (https://en.cppreference.com/w/cpp/numeric/random/binomial_distribution)：产生二项分布上的整数值
+                - `std::binomial_distribution<IntT> b(t, p);`
+                - 以概率`p`采样`t`次，成功次数的二项分布
+                - `t`为整数，默认为`1`
+                - `p`默认为`0.5`
             - [`std::negative_binomial_distribution`](https://en.cppreference.com/w/cpp/numeric/random/negative_binomial_distribution)：产生负二项分布上的整数值
+                - `std::negative_binomial_distribution<IntT> nb(k, p);`
+                - 以概率`p`采样直至第`k`次成功时，所经历的失败次数的负二项分布
+                - `k`为整数，默认为`1`
+                - `p`默认为`0.5`
             - [`std::geometric_distribution`](https://en.cppreference.com/w/cpp/numeric/random/geometric_distribution)：产生几何分布上的整数值
+                - `std::geometric_distribution<IntT> g(p);`
+                - 以概率`p`采样直至第一次成功时，所经历的失败次数的几何分布
+                - `p`默认为`0.5`
         - 泊松分布
             - [`std::poisson_distribution`](https://en.cppreference.com/w/cpp/numeric/random/poisson_distribution)：产生泊松分布上的整数值
+                - `std::poisson_distribution<IntT> p(x);`
+                - 均值为`double`值`x`的分布
             - [`std::exponential_distribution`](https://en.cppreference.com/w/cpp/numeric/random/exponential_distribution)：产生指数分布上的实数值
+                - `std::exponential_distribution<RealT> e(lam);`
+                - 指数分布，参数`lambda`通过浮点值`lam`给出
+                - `lam`默认值为`1.0`
             - [`std::gamma_distribution`](https://en.cppreference.com/w/cpp/numeric/random/gamma_distribution)：产生`Γ`分布上的实数值
+                - `std::gamma_distribution<RealT> g(a, b);`
+                - 形状参数`alpha`为`a`，默认值`1.0`
+                - 尺度参数`beta`为`b`，默认值`1.0`
             - [`std::weibull_distribution`](https://en.cppreference.com/w/cpp/numeric/random/weibull_distribution)：产生威布尔分布上的实数值
+                - `std::weibull_distribution<RealT> w(a, b);`
+                - 形状参数`alpha`为`a`，默认值`1.0`
+                - 尺度参数`beta`为`b`，默认值`1.0`
             - [`std::extreme_value_distribution`](https://en.cppreference.com/w/cpp/numeric/random/extreme_value_distribution)：产生极值分布上的实数值
+                - `std::extreme_value_distribution<RealT> e(a, b);`
+                - `a`默认值为`1.0`
+                - `b`默认值为`1.0`
         - 正态分布
             - [`std::normal_distribution`](https://en.cppreference.com/w/cpp/numeric/random/normal_distribution)：产生标准正态分布上的实数
+                - `std::normal_distribution<RealT> n(m, s);`
+                - 均值`m`、标准差`s`的正态分布
+                - `m`默认值为`0.0`
+                - `s`默认值为`1.0`
             - [`std::lognormal_distribution`](https://en.cppreference.com/w/cpp/numeric/random/lognormal_distribution)：产生对数正态分布上的实数值
+                - `std::lognormal_distribution<RealT> ln(m, s);`
+                - 均值`m`、标准差`s`的对数正态分布
+                - `m`默认值为`0.0`
+                - `s`默认值为`1.0`
             - [`std::chi_squared_distribution`](https://en.cppreference.com/w/cpp/numeric/random/chi_squared_distribution)：产生`χ2`分布上的实数值
+                - `std::chi_squared_distribution<RealT> c(x);`
+                - 自由度为`x`的`χ2`分布
+                - `x`默认值为`0.0`
             - [`std::cauchy_distribution`](https://en.cppreference.com/w/cpp/numeric/random/cauchy_distribution)：产生柯西分布上的实数值
+                - `std::cauchy_distribution<RealT> c(a, b);`
+                - 位置参数为`a`，默认值`0.0`
+                - 尺度参数为`b`，默认值`1.0`
             - [`std::fisher_f_distribution`](https://en.cppreference.com/w/cpp/numeric/random/fisher_f_distribution)：产生费舍尔`F`分布上的实数值
+                - `std::fisher_f_distribution<RealT> f(m, n);`
+                - 自由度为`m`和`n`的费舍尔`F`分布
+                - `m`和`n`默认值均为`1`
             - [`std::student_t_distribution`](https://en.cppreference.com/w/cpp/numeric/random/student_t_distribution)：产生学生`t`分布上的实数值
+                - `std::student_t_distribution<RealT> s(n);`
+                - 自由度为和`n`的学生`t`分布
+                - `n`默认值为`1`
         - 采样分布
             - [`std::discrete_distribution`](https://en.cppreference.com/w/cpp/numeric/random/discrete_distribution)：产生离散分布上的随机整数
+                - 构造函数
+                ```
+                std::discrete_distribution<IntT> d(i, j);
+                std::discrete_distribution<IntT> d{il};
+                ```
+                - `i`和`j`是一个权重序列的输入迭代器
+                - `il`是一个权重的初始化列表
+                - 权重必须能转换为`double`
             - [`std::piecewise_constant_distribution`](https://en.cppreference.com/w/cpp/numeric/random/piecewise_constant_distribution)：产生分布在常子区间上的实数值
-            - [`std::piecewise_linear_distribution`]()：产生分布在定义的子区间上的实数值
-- 其他随机数分布
+                - `std::piecewise_constant_distribution<RealT> pc(b, e, w);`
+                - `b`，`e`和`w`是输入迭代器
+            - [`std::piecewise_linear_distribution`](https://en.cppreference.com/w/cpp/numeric/random/piecewise_linear_distribution)：产生分布在定义的子区间上的实数值
+                - `std::piecewise_linear_distribution<RealT> pl(b, e, w);`
+                - `b`，`e`和`w`是输入迭代器
+    - 生成随机实数
+    ```
+    // generates unsigned random integers
+    std::default_random_engine e; 
+    
+    // uniformly distributed from 0 to 1 inclusive
+    std::uniform_real_distribution<double> u(0, 1);
+    
+    for (size_t i = 0; i != 10; ++i)
+    {
+        std::cout << u(e) << " ";
+    }
+    ```
+    - 使用分布的默认结果类型
+        - 每个分布模板都有一个默认实参
+            - 生成浮点值的分布类型默认`double`
+            - 生成整数类型的分布类型默认`int`
+        - 希望使用模板默认实参时，跟空的尖括号
+    ```
+    // empty <> signify we want to use the default result type
+    std::uniform_real_distribution<> u(0,1); // generates double by default
+    ```
+    - 生成非均匀分布的随机数
+        - 例如正态分布
+        ```
+        std::default_random_engine e;  // generates random integers
+        std::normal_distribution<> n(4, 1.5);  // mean 4, standard deviation 1.5
+        std::vector<unsigned> vals(9);  // nine elements each 0
+
+        for (size_t i = 0; i != 200; ++i)
+        {
+            unsigned v = lround(n(e));  // round to the nearest integer
+
+            if (v < vals.size())
+            {  // if this result is in range
+                ++vals[v];
+            }  // count how often each number appears
+        }
+
+        for (size_t j = 0; j != vals.size(); ++j)
+        {
+            std::cout << j << ": " << std::string(vals[j], '*') << std::endl;
+        }
+        ```
+        - 实测输出
+        ```
+        0: ***
+        1: ********
+        2: ********************
+        3: **************************************
+        4: **********************************************************
+        5: ******************************************
+        6: ***********************
+        7: *******
+        8: *
+        ```
 - `bernoulli_distribution`类
 
 #### `I/O`库再探
