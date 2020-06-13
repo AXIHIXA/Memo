@@ -15725,10 +15725,6 @@ quizB.reset(27);                  // student number 27 failed
             - `std::chrono::duration::zero()`：返回一个零长度时间间隔
             - `std::chrono::duration::min()`：返回此时间间隔的最小值
             - `std::chrono::duration::max()`：返回此时间间隔的最大值
-            - [`std::chrono::duration::floor`](https://en.cppreference.com/w/cpp/chrono/duration/floor)
-            - [`std::chrono::duration::ceil`](https://en.cppreference.com/w/cpp/chrono/duration/ceil)
-            - [`std::chrono::duration::round`](https://en.cppreference.com/w/cpp/chrono/duration/round)
-            - [`std::chrono::duration::abs`](https://en.cppreference.com/w/cpp/chrono/duration/abs)
             - `t++`，`++t`
             - `t--`，`--t`
             - `std::chrono::duration_cast<Duration>(t)`
@@ -15785,16 +15781,52 @@ quizB.reset(27);                  // student number 27 failed
         std::chrono::time_point<std::chrono::high_resolution_clock> t4  {std::chrono::seconds(4)};  // 4ms
         std::chrono::time_point<std::chrono::high_resolution_clock> now \
                                                       {std::chrono::high_resolution_clock::now()};  // now
-        }
         ```
-       
+        - 一元操作
+            - `t++`，`++t`
+            - `t--`，`--t`
+            - `t.time_since_epoch()`：返回距零时的`std::chrono::duration`
+            - `std::chrono::time_point_cast<Duration>(t)`
+            ```
+            using Clock = std::chrono::high_resolution_clock;
+            using Ms = std::chrono::milliseconds;
+            using Sec = std::chrono::seconds;
+             
+            template<class Duration>
+            using TimePoint = std::chrono::time_point<Clock, Duration>;
+            
+            TimePoint<Sec> time_point_sec(Sec(4));
+         
+            // implicit cast, no precision loss
+            TimePoint<Ms> time_point_ms(time_point_sec);
+            print_ms(time_point_ms);   // 4000 ms
+         
+            time_point_ms = TimePoint<Ms>(Ms(5756));
+         
+            // explicit cast, need when precision loss may happens
+            // 5756 truncated to 5000
+            time_point_sec = std::chrono::time_point_cast<Sec>(time_point_ms);
+            print_ms(time_point_sec);  // 5000 ms
+            ```
+        - 二元操作
+            - `t1 + t2`，`t1 - t2`
+            - `t1 += t2;`，`t1 -= t2;`
+            - `t1 == t2`，`t1 <=> t2 (since C++20)` 
 - *时钟* 
-    1. [`std::chrono::system_clock`](https://en.cppreference.com/w/cpp/chrono/system_clock)
-    2. [`std::chrono::steady_clock`](https://en.cppreference.com/w/cpp/chrono/steady_clock)
-    3. [`std::chrono::high_resolution_clock`](https://en.cppreference.com/w/cpp/chrono/high_resolution_clock)
-
-
-
+    - 三种时钟
+        1. [`std::chrono::system_clock`](https://en.cppreference.com/w/cpp/chrono/system_clock)
+            - 系统时钟
+            - 记录距1970年1月1日（周四）协调世界时零时（00:00:00 Coordinated Universal Time (UTC)）`epoch`的时间间隔
+            - 系统中运行的所有进程使用`now()`得到的时间是一致的
+        2. [`std::chrono::steady_clock`](https://en.cppreference.com/w/cpp/chrono/steady_clock)
+            - 稳定时钟
+            - 表示稳定的时间间隔，后一次调用`now()`得到的时间总是比前一次的值大
+                - 如果中途修改了系统时间，也不影响`now()`的结果
+        3. [`std::chrono::high_resolution_clock`](https://en.cppreference.com/w/cpp/chrono/high_resolution_clock)
+            - 系统可用的最高精度的时钟
+            - 实际上只是`std::chrono::system_clock`或者`std::chrono::steady_clock`的`typedef`
+    - 常用的操作
+        - `std::chrono::steady_clock::now()`：返回记录当前时刻的`std::chrono::time_point`
 
 #### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem library） `(since C++17)`
 
