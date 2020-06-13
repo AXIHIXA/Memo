@@ -15529,8 +15529,100 @@ quizB.reset(27);                  // student number 27 failed
 
 #### [日期和时间](https://en.cppreference.com/w/cpp/chrono)（Date and time utilities）
 
-- [`<chrono>`](https://en.cppreference.com/w/cpp/header/chrono)
-    - `PLACEHOLDER`
+- `C++`日期时间库[`<chrono>`](https://en.cppreference.com/w/cpp/header/chrono)的三个核心类
+    - [`std::chrono::duration`](https://en.cppreference.com/w/cpp/chrono/duration)：表示一段时间
+        - 定义
+        ```
+        template <class Rep, class Period = std::ratio<1>> 
+        class duration;
+        ```
+        - 其中
+            - `Rep`
+                - 数值类型，例如`int`，`float`，`double`
+                - 表示`period`的数量
+            - `Period`
+                - [`std::ratio`](https://en.cppreference.com/w/cpp/numeric/ratio/ratio)类型
+                    - 模板类，代表一个 *分数值* `Num / Denom`
+                    ```
+                    template<std::intmax_t Num, std::intmax_t Denom = 1> 
+                    class ratio;
+                    ```
+                    - 预定义好的`std::ratio`类型
+                    ```
+                    // <ratio>
+                    // namespace std
+                    
+                    typedef ratio<1,       1000000000000000000> atto;
+                    typedef ratio<1,          1000000000000000> femto;
+                    typedef ratio<1,             1000000000000> pico;
+                    typedef ratio<1,                1000000000> nano;
+                    typedef ratio<1,                   1000000> micro;
+                    typedef ratio<1,                      1000> milli;
+                    typedef ratio<1,                       100> centi;
+                    typedef ratio<1,                        10> deci;
+                    typedef ratio<                       10, 1> deca;
+                    typedef ratio<                      100, 1> hecto;
+                    typedef ratio<                     1000, 1> kilo;
+                    typedef ratio<                  1000000, 1> mega;
+                    typedef ratio<               1000000000, 1> giga;
+                    typedef ratio<            1000000000000, 1> tera;
+                    typedef ratio<         1000000000000000, 1> peta;
+                    typedef ratio<      1000000000000000000, 1> exa;
+                    ```
+                - 在这里用来表示此`std::duration`的单位时长，具体存储`std::ratio`，代表秒的倍数
+        - 预定义好的`duration`类型及其`g++`实现
+            - `std::chrono::nanoseconds`：`std::chrono::duration<int64_t, std::nano>`
+            - `std::chrono::microseconds`：`std::chrono::duration<int64_t, std::micro>`
+            - `std::chrono::milliseconds`：`std::chrono::duration<int64_t, std::milli>`
+            - `std::chrono::seconds`：`std::chrono::duration<int64_t>`
+            - `std::chrono::minutes`：`std::chrono::duration<int64_t, std::ratio<60>>`
+            - `std::chrono::hours`：`std::chrono::duration<int64_t, std::ratio<3600>>`
+            - `std::chrono::days`：`std::chrono::duration<int64_t, std::ratio<86400>>` `(since C++20)`
+            - `std::chrono::weeks`：`std::chrono::duration<int64_t, std::ratio<604800>> ``(since C++20)`
+            - `std::chrono::months`：`std::chrono::duration<int64_t, std::ratio<2629746>>` `(since C++20)`
+            - `std::chrono::years`：`std::chrono::duration<int64_t, std::ratio<31556952>>` `(since C++20)`
+        - `std::duration`字面量 `(since C++14)`
+            - [`std::literals::chrono_literals::operator""h`](https://en.cppreference.com/w/cpp/chrono/operator%22%22h)
+                - 可能的实现
+                ```
+                constexpr std::chrono::hours operator ""h(unsigned long long h)
+                {
+                    return std::chrono::hours(h);
+                }
+                
+                constexpr std::chrono::duration<long double, ratio<3600,1>> operator ""h(long double h)
+                {
+                    return std::chrono::duration<long double, std::ratio<3600,1>>(h);
+                }
+                ```
+                - 示例
+                ```
+                using namespace std::chrono_literals;
+                auto day = 24h;
+                auto halfhour = 0.5h;
+                std::cout << "one day is " << day.count() << " hours\n"             // one day is 24 hours
+                          << "half an hour is " << halfhour.count() << " hours\n";  // half an hour is 0.5 hours
+                ```
+            - [`std::literals::chrono_literals::operator""min`](https://en.cppreference.com/w/cpp/chrono/operator%22%22min)
+            - [`std::literals::chrono_literals::operator""s`](https://en.cppreference.com/w/cpp/chrono/operator%22%22s)
+            - [`std::literals::chrono_literals::operator""ms`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ms)
+            - [`std::literals::chrono_literals::operator""us`](https://en.cppreference.com/w/cpp/chrono/operator%22%22us)
+            - [`std::literals::chrono_literals::operator""ns`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ns)   
+        - 支持的操作
+            - 一元操作
+                - `t.count()`
+                - `std::chrono::duration::zero()`
+                - `std::chrono::duration::min()`
+                - `std::chrono::duration::max()`
+                - `t++`，`++t`
+                - `t--`，`--t`
+                - `std::chrono::duration_cast<Duration>(t)`
+            - 二元操作
+                - `t1 = t2;`
+                - `t1 + t2`，`t1 - t2`，`t1 * t2`，`t1 / t2`，`t1 % t2`
+                - `t1 += t2;`，`t1 -= t2;`，`t1 *= t2;`，`t1 /= t2;`，`t1 %= t2;`
+                - `t1 == t2`，`t1 <=> t2`
+            
 
 #### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem library） `(since C++17)`
 
@@ -15569,7 +15661,7 @@ quizB.reset(27);                  // student number 27 failed
             - *规范路径* ：**不**含 *符号链接* 、`"."`或`".."`元素的绝对路径
             - *相对路径* ：标识相对于文件系统中某位置的文件位置的路径。特殊路径名`"."`（当前目录）和`".."` （父目录）是相对路径 
 - 类
-    - [`path`](https://en.cppreference.com/w/cpp/filesystem/path)：表示一个路径。 *核心库* 
+    - [`path`](https://en.cppreference.com/w/cpp/filesystem/path)：表示一个路径。 *核心类* 
     - [`filesystem_error`](https://en.cppreference.com/w/cpp/filesystem/filesystem_error)：文件系统错误时抛出的异常
     - [`directory_entry`](https://en.cppreference.com/w/cpp/filesystem/directory_entry)：目录条目
     - [`directory_iterator`](https://en.cppreference.com/w/cpp/filesystem/directory_iterator)：指向目录内容的迭代器
