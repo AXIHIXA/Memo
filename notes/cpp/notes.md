@@ -15527,7 +15527,7 @@ quizB.reset(27);                  // student number 27 failed
 
 - 放`Chap 8`了
 
-#### [日期和时间](https://en.cppreference.com/w/cpp/chrono)（Date and time utilities）
+#### [日期时间库](https://en.cppreference.com/w/cpp/chrono)（Date and time utilities）
 
 - `C++`日期时间库[`<chrono>`](https://en.cppreference.com/w/cpp/header/chrono)的三个核心类
     - [`std::chrono::duration`](https://en.cppreference.com/w/cpp/chrono/duration)：表示一段时间
@@ -15536,40 +15536,37 @@ quizB.reset(27);                  // student number 27 failed
         template <class Rep, class Period = std::ratio<1>> 
         class duration;
         ```
-        - 其中
-            - `Rep`
-                - 数值类型，例如`int`，`float`，`double`
-                - 表示`period`的数量
-            - `Period`
-                - [`std::ratio`](https://en.cppreference.com/w/cpp/numeric/ratio/ratio)类型
-                    - 模板类，代表一个 *分数值* `Num / Denom`
-                    ```
-                    template<std::intmax_t Num, std::intmax_t Denom = 1> 
-                    class ratio;
-                    ```
-                    - 预定义好的`std::ratio`类型
-                    ```
-                    // <ratio>
-                    // namespace std
-                    
-                    typedef ratio<1,       1000000000000000000> atto;
-                    typedef ratio<1,          1000000000000000> femto;
-                    typedef ratio<1,             1000000000000> pico;
-                    typedef ratio<1,                1000000000> nano;
-                    typedef ratio<1,                   1000000> micro;
-                    typedef ratio<1,                      1000> milli;
-                    typedef ratio<1,                       100> centi;
-                    typedef ratio<1,                        10> deci;
-                    typedef ratio<                       10, 1> deca;
-                    typedef ratio<                      100, 1> hecto;
-                    typedef ratio<                     1000, 1> kilo;
-                    typedef ratio<                  1000000, 1> mega;
-                    typedef ratio<               1000000000, 1> giga;
-                    typedef ratio<            1000000000000, 1> tera;
-                    typedef ratio<         1000000000000000, 1> peta;
-                    typedef ratio<      1000000000000000000, 1> exa;
-                    ```
-                - 在这里用来表示此`std::duration`的单位时长，具体存储`std::ratio`，代表秒的倍数
+        - `Rep`
+            - 表示`period`的数量，是一个 *数值类型* ，例如`int`，`float`，`double`
+        - `Period`
+            - 在这里用来表示此`std::duration`的时长单位（period），是一个[`std::ratio`](https://en.cppreference.com/w/cpp/numeric/ratio/ratio)类型，单位为秒
+            - `std::ratio`是一个模板类，代表一个 *分数值* `Num / Denom`
+            ```
+            template<std::intmax_t Num, std::intmax_t Denom = 1> 
+            class ratio;
+            ```
+            - 预定义好的`std::ratio`类型
+            ```
+            // <ratio>
+            // namespace std
+            
+            typedef ratio<1, 1000000000000000000> atto;
+            typedef ratio<1,    1000000000000000> femto;
+            typedef ratio<1,       1000000000000> pico;
+            typedef ratio<1,          1000000000> nano;
+            typedef ratio<1,             1000000> micro;
+            typedef ratio<1,                1000> milli;
+            typedef ratio<1,                 100> centi;
+            typedef ratio<1,                  10> deci;
+            typedef ratio<                 10, 1> deca;
+            typedef ratio<                100, 1> hecto;
+            typedef ratio<               1000, 1> kilo;
+            typedef ratio<            1000000, 1> mega;
+            typedef ratio<         1000000000, 1> giga;
+            typedef ratio<      1000000000000, 1> tera;
+            typedef ratio<   1000000000000000, 1> peta;
+            typedef ratio<1000000000000000000, 1> exa;
+            ```
         - 预定义好的`duration`类型及其`g++`实现
             - `std::chrono::nanoseconds`：`std::chrono::duration<int64_t, std::nano>`
             - `std::chrono::microseconds`：`std::chrono::duration<int64_t, std::micro>`
@@ -15590,9 +15587,9 @@ quizB.reset(27);                  // student number 27 failed
                     return std::chrono::hours(h);
                 }
                 
-                constexpr std::chrono::duration<long double, ratio<3600,1>> operator ""h(long double h)
+                constexpr std::chrono::duration<long double, ratio<3600, 1>> operator ""h(long double h)
                 {
-                    return std::chrono::duration<long double, std::ratio<3600,1>>(h);
+                    return std::chrono::duration<long double, std::ratio<3600, 1>>(h);
                 }
                 ```
                 - 示例
@@ -15604,19 +15601,102 @@ quizB.reset(27);                  // student number 27 failed
                           << "half an hour is " << halfhour.count() << " hours\n";  // half an hour is 0.5 hours
                 ```
             - [`std::literals::chrono_literals::operator""min`](https://en.cppreference.com/w/cpp/chrono/operator%22%22min)
+                - 可能的实现
+                ```
+                constexpr std::chrono::minutes operator ""min(unsigned long long m)
+                {
+                    return std::chrono::minutes(m);
+                }
+                
+                constexpr std::chrono::duration<long double, std::ratio<60, 1>> operator ""min(long double m)
+                {
+                    return std::chrono::duration<long double, ratio<60, 1>> (m);
+                }
+                ```
+                - 示例
+                ```
+                using namespace std::chrono_literals;
+                auto lesson = 45min;
+                auto halfmin = 0.5min;
+                std::cout << "one lesson is " << lesson.count() << " minutes\n"       // one lesson is 45 minutes
+                          << "half a minute is " << halfmin.count() << " minutes\n";  // half a minute is 0.5 minutes
+                ```
             - [`std::literals::chrono_literals::operator""s`](https://en.cppreference.com/w/cpp/chrono/operator%22%22s)
+                - 可能的实现
+                ```
+                constexpr std::chrono::seconds operator ""s(unsigned long long s)
+                {
+                    return std::chrono::seconds(s);
+                }
+                constexpr std::chrono::duration<long double> operator ""s(long double s)
+                {
+                    return std::chrono::duration<long double>(s);
+                }
+                ```
+                - 示例
+                ```
+                using namespace std::chrono_literals;
+                auto halfmin = 30s;
+                std::cout << "half a minute is " << halfmin.count() << " seconds\n"               // half a minute is 30 seconds
+                          << "a minute and a second is " << (1min + 1s).count() << " seconds\n";  // a minute and a second is 61 seconds
+                ```
             - [`std::literals::chrono_literals::operator""ms`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ms)
+                - 可能的实现
+                ```
+                ```
+                - 示例
+                ```
+                ```
             - [`std::literals::chrono_literals::operator""us`](https://en.cppreference.com/w/cpp/chrono/operator%22%22us)
-            - [`std::literals::chrono_literals::operator""ns`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ns)   
+                - 可能的实现
+                ```
+                ```
+                - 示例
+                ```
+                ```
+            - [`std::literals::chrono_literals::operator""ns`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ns)  
+                - 可能的实现
+                ```
+                ```
+                - 示例
+                ```
+                ```
         - 支持的操作
             - 一元操作
-                - `t.count()`
+                - `t.count()`：返回其`Ref`的值
                 - `std::chrono::duration::zero()`
                 - `std::chrono::duration::min()`
                 - `std::chrono::duration::max()`
                 - `t++`，`++t`
                 - `t--`，`--t`
                 - `std::chrono::duration_cast<Duration>(t)`
+                ```
+                void f()
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+                 
+                int main()
+                {
+                    auto t1 = std::chrono::high_resolution_clock::now();
+                    f();
+                    auto t2 = std::chrono::high_resolution_clock::now();
+                 
+                    // floating-point duration: no duration_cast needed
+                    std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
+                 
+                    // integral duration: requires duration_cast
+                    auto int_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+                 
+                    // converting integral duration to integral duration of shorter divisible time unit:
+                    // no duration_cast needed
+                    std::chrono::duration<long, std::micro> int_usec = int_ms;
+                 
+                    std::cout << "f() took " << fp_ms.count() << " ms, "
+                              << "or " << int_ms.count() << " whole milliseconds "
+                              << "(which is " << int_usec.count() << " whole microseconds)" << std::endl;
+                }
+                ```
             - 二元操作
                 - `t1 = t2;`
                 - `t1 + t2`，`t1 - t2`，`t1 * t2`，`t1 / t2`，`t1 % t2`
