@@ -16104,7 +16104,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     - *重新抛出* （rethrowing）
         - 有时一个单独的`catch`子句不能完整地处理某个异常，在执行了某些校正操作之后，当前的`catch`可能会决定由调用链更上一层的函数接着处理异常
         - 一条`catch`语句通过 *重新抛出* 的操作，将 *当前的异常传递* 给 *其他的* `catch`语句
-            - 重新抛出任然是一条`throw`语句，但**不**包含任何表达式
+            - 重新抛出任然是一条`throw`语句，但**不**包含任何表达式，形如
             ```
             throw;
             ```
@@ -16124,6 +16124,33 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             throw;                              // the status member of the exception object is unchanged
         }
         ```
+    - *捕获所有异常* （catch-all）的处理代码
+        - 一条`catch`语句通过 *省略号异常声明* `(...)`来 *捕获所有异常* 
+            - 形如
+            ```
+            catch (...)
+            ```
+            - 一条捕获所有异常的`catch (...)`语句可以与任意类型的异常匹配
+                - 虽然这是非常推荐的，但并不是所有的异常都必须继承自`std::exception`
+                - 因此`catch (...)`要比`catch (std::exception & e)`更万金油一些
+        - `catch (...)`通常与 *重新抛出* 语句一起使用，其中`catch`执行当前局部能完成的工作，随后抛出异常
+        ```
+        void manip() 
+        {
+            try 
+            {
+                // actions that cause an exception to be thrown
+            }
+            catch (...) 
+            {
+                // work to partially handle the exception
+                throw;
+            }
+        }
+        ```
+        - `catch (...)`既能 *单独出现* ，又能与其他几个`catch`语句 *一同出现* 
+            - 一同出现时，`catch (...)`自然必须放在最后
+            - 不然你让别人怎么玩儿
 - 函数`try`语句块与构造函数
 - `noexcept`异常说明
 
