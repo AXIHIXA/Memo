@@ -193,6 +193,17 @@ sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 sudo apt install libeigen3-dev libopencv-dev freeglut3-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev qt5-default libtbb-dev libboost-all-dev libcgal-dev libcgal-qt5-dev
 ```
 
+### `OpenGL`
+
+- Check apt installed package version
+```
+apt policy <package>
+```
+- Check system `OpenGL`
+```
+sudo glxinfo | grep "OpenGL"
+```
+
 ## 🌱 Javascript
 
 ### `Node.js`

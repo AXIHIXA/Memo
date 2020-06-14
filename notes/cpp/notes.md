@@ -70,6 +70,13 @@
     - 一个特定文件所需要的 *所有模板声明* 通常 *一起放置在文件开始* 位置，出现于任何使用这些模板的代码之前 => 16.3
     - *模板及其特例化版本* 应该 *声明在同一个头文件* 中，所有同名模板的声明应该放在前面，然后是这些模板的特例化版本
     - `C++`程序**不应**使用`C`库函数`rand`，而应使用`std::default_random_engine`和恰当的分布类对象
+    - 析构函数**不应**抛出不能被它自己处理的异常，即：如果析构函数将要执行某个可能抛出异常的操作，则该操作应该被放置在一个`try`块内，并在析构函数内部得到处理
+    - `throw` *指向局部对象的指针* 是**错误**的，因为执行到`catch`之前局部对象就已经被销毁了
+    - `throw` *解引用多态指针* 也是**错误**的。解引用指向派生类对象的基类指针会导致被抛出对象 *被截断* 
+    - `throw`指针要求在任何对应的`catch`子句所在的地方，指针所指的对象都必须存在
+    - `Clang-Tidy`要求只能`throw`在`throw`子句中临时创建的匿名`std::exception`类及其派生类对象
+    - 通常情况下，如果`catch`接受的异常与某个继承体系有关，则通常将其捕获形参定义为引用类型
+    - 越是专门的`catch`，就越应该置于整个`catch`列表的前端。如果在多个`catch`语句的类型之间存在着继承关系，则我们应该把继承链最底端的类（most derived type）放在前面，而将继承链最顶端的类（least derived type）放在后面。因为挑选规则是第一个能匹配的，而不是最佳匹配
 - 跟类有关的一箩筐规则
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
@@ -115,6 +122,7 @@
     - `std::endl`有刷新缓冲区的效果。最好带上
     - 如果一个函数是永远也不会用到的，那么它可以只有声明而没有定义 => 15.3
     - 如果一个函数形参是没有用到的，那么在函数定义中也不必为之具名 => 14.6
+    - 像在函数形参列表中一样，如果`catch`无需访问抛出的表达式的话，则我们可以忽略捕获形参的名字 => 18.1.2
     - 引用从来都是作为被引用对象的同义词出现（比如`auto`就不能自动推断出引用），唯一例外是`decltype`。它会原样保留引用以及顶层`const`
     - `main`函数不能递归调用、不能重载
     - *名字查找* 先于 *类型匹配* ，因此不同的作用域中**无法**重载函数
@@ -148,6 +156,7 @@
     - 引用类或函数模板的 *一个特定实例* 之前 *必须前向声明模板自身* ；如果引用的是 *全部实例* ，则 *不需前向声明* 
     - 无论何时使用一个类模板，都必须在模板名后面接上尖括号`<>`。对于全默认实参的类模板，也要带一个空尖括号
     - 函数模板的匹配规则一句话：形参匹配，特例化（非模板才是最特例化的），完犊子
+    - 所有标准库类型都能确保它们的析构函数**不会**引发异常
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
@@ -237,7 +246,7 @@
             - `R"`：必须原样保留
             - `delimiter`为一对分隔符，是**除**括号、反斜杠和空格**以外**的任何源字符所构成的字符序列（可为空，长度至多`16`个字符） 
             - `(`：必须原样保留
-            - 字符串
+            - 字符串，其字符一律不转义
             - `)"`：必须原样保留
         - 举例
         ```
@@ -2099,7 +2108,7 @@ sizeof expr   // 返回表达式 结果类型 大小
 - 所有`cast<T>`的结果的 *值类别* （value category）是
     - *左值* ，如果`T`为 *左值引用* 或 *函数类型的右值引用*  
     - *将亡值* ，如果`T`为 *对象类型的右值引用*
-    - *纯右值* ，其他情况
+    - *纯右值* ，其他情况。此时生成转换结果需要一次 *拷贝构造* 
 
 #### [`static_cast`](https://en.cppreference.com/w/cpp/language/static_cast)
 
@@ -2181,9 +2190,9 @@ sizeof expr   // 返回表达式 结果类型 大小
         size_t b3 = reinterpret_cast<size_t>(p);                 // 正确
         ```
 
-#### [显式类型转换](https://en.cppreference.com/w/cpp/language/explicit_cast)
+#### [旧式强制类型转换](https://en.cppreference.com/w/cpp/language/explicit_cast)
 
-- *显式强制类型转换* 使用`C`风格写法和函数式写法，用显式和隐式转换的组合进行类型之间的转换
+- *旧式强制类型转换* 使用`C`风格写法和函数式写法，用显式和隐式转换的组合进行类型之间的转换
 ```
 (new_type) expression                   (1)     
 new_type(expression)                    (2)     
@@ -2286,6 +2295,11 @@ __DATE__
 
 
 ### 🌱 [Chap 6] 函数
+
+#### 实参和形参
+
+- *实参* （argument）
+- *形参* （parameter）
 
 #### 函数返回值
 
@@ -5738,7 +5752,7 @@ bool (*)(int, int)
     - 但对于`cmp1`
         - 首先，显式创建函数对象有类型转换的性能损失
         - 其次，本来能`inline`的这回也不能`inline`了
-        - 最后，函数对象内部类型是多态的，还摊上了动态类型查找的时间
+        - 最后，函数对象内部类型是多态的，还搭上了 *运行时类型识别* 耗费的时间
 
 #### 内容物
 
@@ -9444,12 +9458,12 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `std::unique_ptr<T, D> u(d)`：定义一个 *空的* `std::unique_ptr<T, D>`，`D` *删除器* 的类型，`d`为指定的 *删除器* 
         - `std::unique_ptr<T, D> u(q, d)`：`u1`管理内置指针`q`所指向的对象，`q`必须指向`new`分配的内存，且能够转换成`T *`类型；调用`D`类型 *删除器* `d`
         - [`std::make_unique`](https://en.cppreference.com/w/cpp/memory/unique_ptr/make_unique)：返回一个`std::unique_ptr<T>`，用`new(args)`初始化 `(since C++14)`
-        - [`u1 = u2`](https://en.cppreference.com/w/cpp/memory/unique_ptr/operator%3D)：若`u2`是`std::unique_ptr &&`，则等价于`u1.reset(u2.release())`；`u2`还可以是自定义删除器的数组类型指针 `(since C++17)`；若`u2`是`nullptr`，`u1`将释放`u1`指向的对象，将`u1` *置空* 
-            - `Clang-Tidy`：更推荐`u1 = std::move(u2)`
+        - [`u1 = u2`](https://en.cppreference.com/w/cpp/memory/unique_ptr/operator%3D)：`u2`必须是 *右值* 。若`u2`是`std::unique_ptr &&`，则等价于`u1.reset(u2.release())`；`u2`还可以是自定义删除器的数组类型指针 `(since C++17)`；若`u2`是`nullptr`，`u1`将释放`u1`指向的对象，将`u1` *置空* 
+            - `Clang-Tidy`：相比`u1.reset(u2.release())`，更推荐`u1 = std::move(u2)`
         - `u.release()`：`u` *放弃* 对指针的控制权，返回内置指针，并将`u` *置空* 。注意`u.release()`只是放弃所有权，并**没有**释放`u`原先指向的对象
         - `u.reset()`：释放指向`u`的对象，将`u` *置空*
         - `u.reset(q)`：释放指向`u`的对象，令`u` *指向内置指针* `q`。常见转移操作：`u1.reset(u2.release())`
-            - `Clang-Tidy`：更推荐`u1 = std::move(u2)`
+            - `Clang-Tidy`：相比`u1.reset(u2.release())`，更推荐`u1 = std::move(u2)`
         - `u.reset(nullptr)`：释放指向`u`的对象，将`u` *置空*
     - `std::unique_ptr<T[]>`独有的操作
         - `std::unique_ptr<T[]> u`：定义一个 *空的* `std::unique_ptr<T[]>`，使用默认删除器`delete []`，可以指向动态分配的数组
@@ -10834,7 +10848,7 @@ private:
     };
     ```
 
-#### 右值引用探究
+#### `std::move`探究
 
 - [复制消除](https://en.cppreference.com/w/cpp/language/copy_elision)（Copy Elision）
     - 省略 *拷贝构造函数* 和 *移动构造函数* ，达成无拷贝的按值传递语义，分为
@@ -11193,7 +11207,7 @@ Entry & operator=(Entry rhs)
             4. 可以初始化右值引用或常量左值引用
     - 通过`&&`来获得
     - 可以自由地将一个右值的资源 *移动* ，或者说， *窃取* 到别处去
-        - 反正没人要，不拿白不拿
+        - 反正没人要，而且马上就要被销毁了，不如拿走，待会儿销毁个寂寞
         - 变量都是 *左值* ， *左值* 不能直接绑定到 *右值引用* 上，既使这个变量自己也是 *右值引用* 类型也不行
             - 搞不懂这句话的人都是把 *（值的）类型* （type）和 *值类别* （value category）这俩货给搞混了
             - 比如`T && a;`， *（值的类型）是右值引用* 说的是`T &&`， *（值类别）是左值* 说的是`a`，压根不是一回事儿
@@ -11211,12 +11225,35 @@ Entry & operator=(Entry rhs)
     ```
 - 从左值获取右值的两个方法
     1. 通过 *强制类型转换* 显式地将左值变为右值
+        - 复习：所有`cast<T>`的结果的 *值类别* （value category）是
+            - *左值* ，如果`T`为 *左值引用* 或 *函数类型的右值引用*  
+            - *将亡值* ，如果`T`为 *对象类型的右值引用*
+            - *纯右值* ，其他情况。此时生成转换结果需要一次 *拷贝构造* 
+        - 辨析
+            - 只要实参的值类别是右值，就绑定到右值引用版本
+            - 至于实参的类型是对象，还是对象的右值引用，那根本无所谓
+        ```
+        S35 s1;
+        S35 s2 {static_cast<S35>(s1)};  // cast result needs copy initialization
+                                        // compiler will do copy elision
+                                        // and construct s2 directly
+                                        // and thus avoids an extra move initialization
+        
+        S35 s3;                         // default initialization
+        S35 s4;                         // default initialization
+        s4 = static_cast<S35>(s3);      // 1. copy initialization of the cast result
+                                        // 2. move assignment
+        ```
     2. `std::move`
+        - 实际就是一个封装版的`static_cast`
     ```
-    int i1 = 10, i2 = 10, i3 = 10;
-    int && rr1 = static_cast<int &&>(i1);
-    int && rr2 = reinterpret_cast<int &&>(i2);
-    int && rr3 = std::move(i3);
+    S35 s1;
+    S35 s2;
+    S35 s3;
+
+    S35 && r1 = static_cast<S35 &&>(s1);
+    S35 && r2 = reinterpret_cast<S35 &&>(s2);
+    S35 && r3 = std::move(s3);
     ```
 - [`std::move`](https://en.cppreference.com/w/cpp/utility/move)
     - 具体实现 => 16.2.6
@@ -15950,6 +15987,8 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 ```
 [[noreturn]]
 
+[[maybe_unused]]
+
 [[nodiscard]]                     (since C++17)
 [[nodiscard(string_literal)]]     (since C++20)
 
@@ -15957,7 +15996,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 [[deprecated(string-literal)]]    (since C++14)
 ```
 
-#### 异常处理
+#### 异常处理（exception handling）
 
 - `C++`标准异常
     - 异常类层次
@@ -15980,8 +16019,111 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     - 以上异常除特别说明的，都 *必须* 传参（`C`风格字符串）
     - 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息。
       如果此异常传入了初始参数，则返回之；否则返回值由编译器决定
-- 抛出异常
-- 捕获异常
+- *抛出* 异常
+    - `C++`通过 *抛出* （throwing）一条表达式来 *引发* （raising）一个异常
+        - 被抛出的表达式的类型以及当前的调用链共同决定了哪段 *处理代码* （handler）将被用来处理该异常
+        - 被选中的处理代码是在调用链中与抛出对象类型匹配的最近的处理代码
+    - 当执行一个`throw`时，跟在这个`throw`后面的语句都**不会**被执行
+        - 相反，程序的控制权从`throw`转移到与之匹配的 *`catch`模块* 
+        - 该`catch`可能是同一个函数中的局部`catch`，也可能位于直接或间接调用了发生异常的函数的另一个函数中
+        - 控制权转移意味着
+            - 沿着调用链的函数可能提早推出
+            - 一旦程序开始执行异常处理代码，则沿着调用链创建的对象将被销毁
+        - 因为跟在`throw`后面的语句将不再执行，所以`throw`语句的用法有点类似于`return`语句
+            - 它通常作为条件语句的一部分
+            - 或者作为某个函数的最后（或唯一）一条语句
+    - *栈展开* （stack unwinding）
+        - 当抛出一个异常后，程序暂停当前函数的执行，并立即开始寻找与异常匹配的 *`catch`子句* 
+        - 当`throw`或 *对抛出异常的函数的调用* 出现在一个 *`try`语句块* （`try` block）内时，检查与该`try`块相关联的`catch`子句
+        - 如果找到了匹配的`catch`，就用该`catch`处理异常；处理完毕后，找到与`try`块关联的最后一个`catch`子句之后的点，并从这里继续执行
+        - 如果没找到匹配的`catch`，但该`try`语句块嵌套在其他`try`块中，则继续检查与外层`try`相匹配的`catch`子句
+        - 如果还是找不到匹配的`catch`，则退出当前函数，在调用当前函数的外层函数中继续寻找
+        - 如果最终还是没有找到`catch`，退出了 *主函数* ，程序将调用`std::terminate()`终止整个程序的运行
+    - 栈展开过程中对象被自动销毁
+        - 栈展开会导致退出语句块，则在之前创建的对象都应该被销毁
+        - 尤其对于数组或标准库容器的构造过程，如果异常发生时已经构造了一部分元素，则应该确保这部分元素被正确地销毁
+    - 析构函数与异常
+        - 析构函数总会被执行，但函数中负责释放资源的代码却可能被跳过
+            - 例如，一个块分配了资源，并且负责释放这些资源的代码前面发生了异常，则释放资源的代码将**不会**被执行
+        - 另一方面， *类对象分配的资源* 将由类的 *析构函数* 负责释放
+            - 使用类来控制资源的分配，就能确保不论发生异常与否，资源都能被正确释放
+        - 析构函数在 *栈展开* 过程中被执行
+            - 栈展开过程中，一个异常已经被抛出，但尚未被处理
+            - 如果此时又出现了新的异常，又未能被捕获，则程序将调用`std::terminate()`
+            - 因此，析构函数**不应**抛出不能被它自己处理的异常
+                - 换句话说：如果析构函数将要执行某个可能抛出异常的操作，则该操作应该被放置在一个`try`块内，并在析构函数内部得到处理
+        - 在实际编程过程中，因为析构函数仅仅是释放资源，所以它不大可能抛出异常
+            - 所有标准库类型都能确保它们的析构函数**不会**引发异常
+    - *异常对象* （exception object）
+        - *异常对象* 是一种特殊的对象，由`throw`语句对其进行 *拷贝初始化* 
+            - 因此，`throw`语句中的表达式必须拥有完全类型
+            - 而且，如果该表达式时类类型的话，则相应的类必须含有一个可访问的析构函数和一个可访问的拷贝或移动构造函数
+            - 如果表达式是数组类型或函数类型，则表达式将被转换成与之对应的指针类型
+        - 异常对象位于 *由编译器管理的空间* 中
+            - 编译器确保不论最终调用的是哪个`catch`子句，都能访问该空间
+            - 当异常处理完毕后，异常对象被销毁
+            - 栈展开过程中会逐层退出块，销毁该块内的局部对象
+                - 因此，`throw` *指向局部对象的指针* 是**错误**的，因为执行到`catch`之前局部对象就已经被销毁了
+                - `throw`指针要求在任何对应的`catch`子句所在的地方，指针所指的对象都必须存在
+                - 类似地，函数也不能返回指向局部对象的指针或引用
+        - `throw`表达式时，该表达式的 *静态编译时类型* 决定了异常对象的类型
+            - 即：`throw` *解引用多态指针* 也是**错误**的。解引用指向派生类对象的基类指针会导致被抛出对象 *被截断* 
+        - `Clang-Tidy`要求只能`throw`在`throw`子句中临时创建的匿名`std::exception`类及其派生类对象
+- *捕获* 异常
+    - *`catch`子句* （catch clause）中的 *异常声明* （exception declaration）看起来像是只包含一个形参的函数形参列表
+        - 像在函数形参列表中一样，如果`catch`无需访问抛出的表达式的话，则我们可以忽略捕获形参的名字
+        - 声明的类型决定了此`catch`子句所能捕获并处理的异常的类型
+        - 声明的类型可以是 *左值引用* ，但**不能**是 *右值引用* 
+    - 当进入`catch`子句后，通过异常对象初始化异常声明中的参数
+        - 和函数形参类似
+            - 如果`catch`的形参类型是 *非引用类型* 
+                - 则该形参是异常对象的一个 *副本* 
+                - 在`catch`中改变异常对象实际上改变的是局部副本而**不是**异常对象本身
+            - 如果`catch`的形参类型是 *左值引用类型* 
+                - 则在`catch`中改变异常对象实际上改变的就是异常对象本身
+            - 如果`catch`形参类型是 *基类类型* 
+                - 则可以使用派生类类型的异常对象对其初始化
+                - 只是这样会截断一部分内容
+            - `catch`形参**不是**多态的
+                - 即：如果`catch`形参类型是基类类型的引用
+                - 该参数将以 *常规方式* 绑定到异常对象上
+        - 注意：异常声明的静态类型决定了`catch`子句所能执行的操作
+            - 如果`catch`的是基类类型，则`catch`子句无法使用派生类特有的任何成员
+        - 通常情况下，如果`catch`接受的异常与某个继承体系有关，则通常将其捕获形参定义为引用类型
+    - 查找匹配的异常处理代码
+        - 在搜寻`catch`子句的过程中，我们最终找到的`catch`**未必**是异常的最佳匹配
+            - 相反，挑选出来的是 *第一个* 匹配的
+            - 因此，越是专门的`catch`，就越应该置于整个`catch`列表的前端
+        - 与函数匹配规则相比，异常匹配规则受到很多限制
+            - 绝大多数 *类型转换* 都**不**被允许。除了以下 *三种* 以外，要求异常类型与`catch`形参类型 *精确匹配* 
+                - 允许从 *非常量* 向 *常量* 的转换
+                    - 即：一条非常量对象的`throw`可以匹配捕获常量的`catch`子句
+                - 允许从 *派生类* 向 *基类* 的转换
+                - 数组被转换成指向数组元素类型的指针，函数被转换成指向该函数类型的指针
+        - 如果在多个`catch`语句的类型之间存在着继承关系，则我们应该把继承链最底端的类（most derived type）放在前面，而将继承链最顶端的类（least derived type）放在后面
+    - *重新抛出* （rethrowing）
+        - 有时一个单独的`catch`子句不能完整地处理某个异常，在执行了某些校正操作之后，当前的`catch`可能会决定由调用链更上一层的函数接着处理异常
+        - 一条`catch`语句通过 *重新抛出* 的操作，将 *当前的异常传递* 给 *其他的* `catch`语句
+            - 重新抛出任然是一条`throw`语句，但**不**包含任何表达式
+            ```
+            throw;
+            ```
+            - 空的`throw`语句只能出现在`catch`语句或`catch`语句直接或间接调用的函数之内
+            - 如果异常处理代码之外的区域遇到了空的`throw`语句，编译器将调用`std::terminate()`
+        - 重新抛出后，新的接收者可能是更上一层的`catch`语句，也可能是同层更靠后的`catch`语句
+        - 如果`catch`语句改变了参数内容，则只有当参数是左值引用类型时，改变才会被保留并继续传播
+        ```
+        catch (my_error & eObj)                 // specifier is a reference type
+        { 
+            eObj.status = errCodes::severeErr;  // modifies the exception object
+            throw;                              // the status member of the exception object is severeErr
+        } 
+        catch (other_error eObj)                // specifier is a nonreference type
+        { 
+            eObj.status = errCodes::badErr;     // modifies the local copy only
+            throw;                              // the status member of the exception object is unchanged
+        }
+        ```
 - 函数`try`语句块与构造函数
 - `noexcept`异常说明
 
@@ -16012,7 +16154,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 - 重载`new`和`delete`
 - 定位`new`（placement new）表达式
 
-#### [运行时类型识别](https://en.cppreference.com/w/cpp/types)
+#### [运行时类型识别](https://en.cppreference.com/w/cpp/types)（run-time type identification，`RTTI`）
 
 - `dynamic_cast`运算符
 - `typeid`运算符
