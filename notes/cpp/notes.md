@@ -16090,7 +16090,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         // read two transactions
         try 
         {
-            sum = item1 + item2; // calculate their sum
+            sum = item1 + item2;  // calculate their sum
             // use sum
         } 
         catch (const isbn_mismatch & e) 
@@ -16350,12 +16350,28 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         ```
         - *拷贝控制成员*
             - 当
-- 异常类层次
 
-#### 命名空间
+#### [命名空间](https://en.cppreference.com/w/cpp/language/namespace)（Namespaces）
 
 - 命名空间定义
 - 使用命名空间成员
+    - [*命名空间别名*](https://en.cppreference.com/w/cpp/language/namespace_alias)（namespace alias）
+    ```
+    namespace foo 
+    {
+        namespace bar 
+        {
+            namespace baz 
+            {
+                int qux = 42;
+            }
+        }
+    }
+ 
+    namespace fbz = foo::bar::baz;
+
+    std::cout << fbz::qux << std::endl;  // 42
+    ```
 - 类、命名空间与作用域
 - 重载与命名空间
 
@@ -16377,7 +16393,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 #### 控制内存分配
 
 - 重载`new`和`delete`
-- 定位`new`（placement new）表达式
+- *定位`new`* （placement `new`）表达式
 
 #### [运行时类型识别](https://en.cppreference.com/w/cpp/types)（run-time type identification，`RTTI`）
 
