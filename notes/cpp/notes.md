@@ -4601,8 +4601,8 @@ if (cancelEntry)
     - [`scanf`，`fscanf`，`sscanf`](https://en.cppreference.com/w/cpp/io/c/fscanf)：从`stdin`、文件流或缓冲区读取有格式输入
         - 签名
         ```
-        ​int scanf(const char * format, ... );                          ​(1) 	
-        int fscanf(FILE * stream, const char * format, ... );          (2) 	
+        ​int scanf(const char * format, ... );                          ​(1)    
+        int fscanf(FILE * stream, const char * format, ... );          (2)  
         int sscanf(const char * buffer, const char * format, ... );    (3) 
         ```
         - 从各种源读取数据，按照`format`转译并存储结果于给定位置
@@ -4732,9 +4732,9 @@ if (cancelEntry)
     - [`printf`，`fprintf`，`sprintf`，`snprintf`](https://en.cppreference.com/w/c/io/fprintf)：打印有格式输出到 `stdout`、文件流或缓冲区 
         - 签名
         ```
-        int printf(const char * format, ... );                                      (1) 	
-        int fprintf(FILE * stream, const char * format, ... );                      (2) 	
-        int sprintf(char * buffer, const char * format, ... );                      (3) 	
+        int printf(const char * format, ... );                                      (1)     
+        int fprintf(FILE * stream, const char * format, ... );                      (2)     
+        int sprintf(char * buffer, const char * format, ... );                      (3)     
         int snprintf(char * buffer, size_t buf_size, const char * format, ... );    (4)
         ```
         - 从给定位置加载数据，按`format`指定的格式转换为字符串等价版本，并将结果写入
@@ -5021,7 +5021,7 @@ if (cancelEntry)
         - 重置给定文件流的 *错误指示器* 和 *文件尾指示器* 
     - [`feof`](https://en.cppreference.com/w/cpp/io/c/feof)：检查文件尾 
         - 签名
-        ```	
+        ``` 
         int feof(FILE * stream);
         ```
         - 检查是否已抵达给定文件流的结尾
@@ -16367,25 +16367,53 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 #### [命名空间](https://en.cppreference.com/w/cpp/language/namespace)（Namespaces）
 
+- *命名空间污染* （namespace pollution）
+    - 多个库将名字放置在 *全局命名空间* 中导致名字冲突的情况
+        - 传统解决方法：将名字定义得很长，例如`cplusplus_primer_fun1`
+            - 此方法仍旧用于 *宏定义* （macro），例如头文件的保护头
+                - 宏定义处理发生在预处理阶段
+                - 命名空间解析发生于之后的编译阶段，管不到这东西
+        - 实名diss一下`OpenCV`里那个叫`debug`的宏，还有`<cmath>`里那个叫`y1`的函数，缺德死了
+    - *命名空间* 为防止名字冲突提供了更加可控的机制
+        - 命名空间分割了全局命名空间，其中每个命名空间都是一个独立的作用域
+        - 通过在某个命名空间中定义库的名字，库的作者以及用户就可以有效避免全局名字固有的限制
+- 全部语法速览
+```
+namespace ns_name { declarations }                                        (1)
+inline namespace ns_name { declarations }                                 (2)    (since C++11)
+namespace { declarations }                                                (3)
+ns_name::name                                                             (4)
+using namespace ns_name;                                                  (5)
+using ns_name::name;                                                      (6)
+namespace name = qualified-namespace;                                     (7)
+namespace ns_name::inline(since C++20)(optional) name { declarations }    (8)    (since C++17)
+```
+    1. *具名命名空间* 定义
+    2. *内联命名空间* 定义
+        - 命名空间`ns_name`内的声明在其外层命名空间中亦可见
+    3. *匿名命名空间* 定义
+        - 其成员的作用域从声明点开始，到翻译单元结尾为止
+        - 其成员具有 *内部链接* 
+    4. *命名空间名* （还有 *类名* ）可以出现在 *域运算符左侧* ，作为 *限定名字查找* 的一部分
+    5. *`using`指令* （`using`-directive）
+        - 从这条`using`指令开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的任何名字均可见
+            - 如同它们被声明于同时含有这条`using`指令以及`ns_name`这两者的更外一层的命名空间作用域中
+    6. *`using`声明* （`using`-declaration）
+        - 从这条`using`指令开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的名字`name`可见
+            - 如同它被声明于包含这条`using`声明的相同的类作用域、块作用域或命名空间作用域中
+    7. *命名空间别名* （namespace alias）定义
+    8. *嵌套命名空间* （nested namespace）定义
+        - `namespace A::B::C { ... }`等价于`namespace A { namespace B { namespace C { ... } } }`
+        - *嵌套`inline`*  `(since C++20)`
+            - `inline`可出现于除第一个之外的任何一个命名空间名之前
+            - `namespace A::B::inline C { ... }`等价于`namespace A::B { inline namespace C { ... } }`
+            - `namespace A::inline B::C {}`等价于`namespace A { inline namespace B { namespace C {} } }` 
 - 命名空间定义
-- 使用命名空间成员
-    - [*命名空间别名*](https://en.cppreference.com/w/cpp/language/namespace_alias)（namespace alias）
-    ```
-    namespace foo 
-    {
-        namespace bar 
-        {
-            namespace baz 
-            {
-                int qux = 42;
-            }
-        }
-    }
- 
-    namespace fbz = foo::bar::baz;
+    - 定义规则
+        - 命名空间**不能**定义于 *函数内部* 
+        - 命名空间作用域后面**无需**分号
 
-    std::cout << fbz::qux << std::endl;  // 42
-    ```
+- 使用命名空间成员
 - 类、命名空间与作用域
 - 重载与命名空间
 
