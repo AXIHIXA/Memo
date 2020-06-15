@@ -237,17 +237,18 @@
         - `L`：宽字符，匹配`wchar_t`
         - `u8`：`UTF-8`字符（仅用于字符串字面值），匹配`char`
     - *原始字符串字面量* （raw string literal）
-        - 其中所有字符均被理解为 *未转义字符* （unescaped characters），格式
-        ```
-        prefix(optional) R"delimiter( raw_characters )delimiter" (since C++11)
-        ```
-        - 由如下部分组成
-            - `prefix`为前面四格可选前缀
-            - `R"`：必须原样保留
-            - `delimiter`为一对分隔符，是**除**括号、反斜杠和空格**以外**的任何源字符所构成的字符序列（可为空，长度至多`16`个字符） 
-            - `(`：必须原样保留
-            - 字符串，其字符一律不转义
-            - `)"`：必须原样保留
+        - 其中所有字符均被理解为 *未转义字符* （unescaped characters）
+            - 格式
+            ```
+            prefix(optional) R"delimiter( raw_characters )delimiter" (since C++11)
+            ```
+            - 由如下部分组成
+                - `prefix`为前面四格可选前缀
+                - `R"`：必须原样保留
+                - `delimiter`为一对分隔符，是**除**括号、反斜杠和空格**以外**的任何源字符所构成的字符序列（可为空，长度至多`16`个字符） 
+                - `(`：必须原样保留
+                - 字符串，其字符一律不转义
+                - `)"`：必须原样保留
         - 举例
         ```
         // A Normal string 
@@ -294,6 +295,8 @@
             - `'\12'`：换行
             - `'\40'`：空格
             - `'\115'`，`'\x4d'`：`'M'`
+- *`std::chrono::duration`字面量* `(since C++14)`
+    - => 17
 
 
 
@@ -303,7 +306,7 @@
 ### 🌱 [声明和定义](https://en.cppreference.com/w/cpp/language/definition)（Declarations and definitions）
 
 - *定义* 就是完整定义了被引入的实体的 *声明* 
-- 所有的 *声明* 都是定义，除以下情况**例外**
+- **除以下情况以外**，所有的 *声明* 都是定义
     - *无函数体* 的函数声明 
     ```
     int f(int);                       // 声明但不定义 f
@@ -368,16 +371,16 @@
     ```
     using N::d;                       // 声明但不定义 d
     ```
-    - `(since C++17)` 推导指引的声明（不定义任何实体）
+    - 推导指引的声明（不定义任何实体） `(since C++17)` 
     - `static_assert`声明（不定义任何实体）
     - 特性声明（不定义任何实体） 
     - 空声明（不定义任何实体）
     - `using`指令（不定义任何实体） 
-    - 显式实例化声明（ *`extern`模板* ） 
+    - 模板的显式实例化声明（ *`extern`模板* ） 
     ```
     extern template f<int, char>;     // 声明但不定义 f<int, char>
     ```
-    - 不是定义的显式特化声明 
+    - 不是定义的模板特例化声明 
     ```
     template<> struct A<int>;         // 声明但不定义 A<int>
     ```
@@ -674,7 +677,7 @@ void g()
     1. 这个命名空间的 *剩余部分* 
     2. 其后所有 *同名命名空间* 
     3. 使用了`using`命令 *引入了此实体或整个这个命名空间的域* 
-- *翻译单元* （文件）的顶层作用域（即所谓的 *文件作用域* 或 *全局作用域* ）亦为命名空间，而被正式称作 *全局命名空间作用域* 
+- *翻译单元* （文件）的顶层作用域（即所谓的 *文件作用域* 或 *全局作用域* ）亦为命名空间，被正式称作 *全局命名空间作用域* 
     - 任何声明于 *全局命名空间作用域* 的实体的作用域均开始于其声明，并持续到 *翻译单元的结尾* 
 - 声明于 *无名命名空间* 或 *内联命名空间* 的实体的作用域 *包括外围命名空间* 
 ```
@@ -735,7 +738,7 @@ int main()
 - 类中声明的名字的作用域开始于其声明点，并包含
     1. 类体的 *剩余部分* 
     2. 所有 *成员函数体* （无论是否定义于类定义外或在该名字的声明之前）及其 *默认实参* 、 *异常规定* 
-    3. 类内 *花括号或等号初始化器* 
+    3. 类内 *花括号或等号初始化器* （即 *类内初始值* ）
     4. 递归地包括 *嵌套类* 中的所有这些内容
 ```
 class X 
@@ -830,7 +833,7 @@ template <N X,                            // int 类型的非类型模板形参
 struct A;
 ```
 
-#### [*限定标识符*](https://en.cppreference.com/w/cpp/language/identifiers#Qualified_identifiers)（Qualified identifiers）
+#### [限定标识符](https://en.cppreference.com/w/cpp/language/identifiers#Qualified_identifiers)（Qualified identifiers）
 
 - *限定标识表达式* 
     - 在 *无限定标识表达式* 前面带上 *作用域解析运算符*（scope resolution operator）`::`
@@ -15621,7 +15624,7 @@ quizB.reset(27);                  // student number 27 failed
         - `std::chrono::weeks`：`std::chrono::duration<int64_t, std::ratio<604800>> ``(since C++20)`
         - `std::chrono::months`：`std::chrono::duration<int64_t, std::ratio<2629746>>` `(since C++20)`
         - `std::chrono::years`：`std::chrono::duration<int64_t, std::ratio<31556952>>` `(since C++20)`
-    - `std::duration`字面量 `(since C++14)`
+    - `std::chrono::duration`字面量 `(since C++14)`
         - [`std::literals::chrono_literals::operator""h`](https://en.cppreference.com/w/cpp/chrono/operator%22%22h)
             - 可能的实现
             ```
@@ -16466,6 +16469,92 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             ::member_name    // (global_ns)::member_name
             ```
     - *嵌套命名空间* （nested namespaces）
+        - 指定义在其他命名空间内部的命名空间
+        ```
+        namespace cplusplus_primer 
+        {
+            // first nested namespace: defines the Query portion of the library
+            namespace QueryLib 
+            {
+                class Query { /* ... */ };
+                Query operator&(const Query &, const Query &);
+                // ...
+            }
+            
+            // second nested namespace: defines the Sales_data portion of the library
+            namespace Bookstore 
+            {
+                class Quote { /* ... */ };
+                class Disc_quote : public Quote { /* ... */ };
+                // ...
+            }
+        }
+        ```
+        - 嵌套的命名空间同时是一个嵌套的作用域，嵌套在外层命名空间的作用域中
+        - 内层的名字将覆盖外层的同名实体
+        - 内层的名字只在内层直接可见；外层想访问内层的名字，必须加 [*限定标识符*](https://en.cppreference.com/w/cpp/language/identifiers#Qualified_identifiers)（Qualified identifiers）
+        ```
+        // outside of namespace QueryLib
+        cplusplus_primer::QueryLib::Query
+        ```
+    - *内联命名空间* （inline namespaces）
+        - 在`namespace`前加关键字`inline`可以将命名空间定义为 *内联的* 
+            - 关键字`inline`必须出现在命名空间 *第一次定义* 的地方
+            - 后续打开命名空间时，可以加`inline`，也可以不加
+        - 内联命名空间中的名字在 *外层* 命名空间中 *直接可见* ，不必加 *限定标识符*
+        ```
+        inline namespace FifthEd 
+        {
+        // namespace for the code from the Primer Fifth Edition
+        }
+        
+        namespace FifthEd  // implicitly inline
+        { 
+        class Query_base { /* ... * /};
+        // other Query-related declarations
+        }
+        ```
+        - 当应用程序的代码在版本更新时发生了改变，常常会用到内联命名空间
+            - 例如，把本书当前版本代码都放在一个内联命名空间中，而旧版本的代码都放在非内联的命名空间中
+            ```
+            namespace FourthEd 
+            {
+            class Item_base { /* ... */};
+            class Query_base { /* ... */};
+            // other code from the Fourth Edition
+            }
+            ```
+            - 命名空间`cplusplus_primer`将同时使用这两个命名空间
+            - 假定每个命名空间都定义在同名的头文件中，则可以把命名空间`cplusplus_primer`定义为如下格式
+            ```
+            namespace cplusplus_primer 
+            {
+            #include "FifthEd.h"
+            #include "FourthEd.h"
+            }
+            ```
+            - 由于`FifthEd`是内联的，所以形如`cplusplus_primer::`的代码就可以直接访问到`FifthEd`的成员
+            - 而如果想要使用旧版本的代码，则必须像其他嵌套命名空间一样，加上完整的限定说明符，例如
+            ```
+            cplusplus_primer::FourthEd::Query_base
+            ```
+    - *匿名命名空间* （unnamed namespaces）
+        - 指关键字`namespace`后紧跟花括号括起来的一系列声明语句
+        - *匿名命名空间* 中定义的变量自动具有 *内部链接* 和 *静态存储期* 
+            - 即它们的使用方法和性质就像在外层命名空间（例如全局命名空间）中定义的`static`变量一样
+        - 匿名命名空间可以不连续，但**不能**跨越多个文件
+            - 每个文件定义自己的匿名命名空间，如果两个文件都含有匿名命名空间，
+        ```
+        int i; // global declaration for i
+        
+        namespace 
+        {
+        int i;
+        }
+        
+        // ambiguous: defined globally and in an unnested, unnamed namespace
+        i = 10;
+        ```
 - 使用命名空间成员
 - 类、命名空间与作用域
     - 最开始 *作用域* 那块儿已经讲清楚了 
