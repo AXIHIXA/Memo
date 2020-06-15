@@ -15984,16 +15984,26 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 - 为类型、对象、代码等引入由实现定义的 *属性* 
     - 几乎可以出现于任何地方
     - `[[`只能是属性说明符，`a[[] () { return 0; }]`会报错
+- `C++`标准属性说明符
 ```
 [[noreturn]]
 
-[[maybe_unused]]
+[[carries_dependency]]
 
-[[nodiscard]]                     (since C++17)
-[[nodiscard(string_literal)]]     (since C++20)
+[[deprecated]]                   (since C++14)
+[[deprecated("reason")]]         (since C++14)
 
-[[deprecated]]                    (since C++14)
-[[deprecated(string-literal)]]    (since C++14)
+[[fallthrough]]                  (since C++17)
+
+[[nodiscard]]                    (since C++17)
+[[nodiscard(string_literal)]]    (since C++20)
+
+[[maybe_unused]]                 (since C++17)
+
+[[likely]]                       (since C++20)
+[[unlikely]]                     (since C++20)
+
+[[no_unique_address]]            (since C++20)
 ```
 
 #### [异常处理](https://en.cppreference.com/w/cpp/error)（exception handling）
