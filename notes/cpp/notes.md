@@ -16378,16 +16378,16 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 命名空间分割了全局命名空间，其中每个命名空间都是一个独立的作用域
         - 通过在某个命名空间中定义库的名字，库的作者以及用户就可以有效避免全局名字固有的限制
 - 全部语法速览
-```
-namespace ns_name { declarations }                                        (1)
-inline namespace ns_name { declarations }                                 (2)    (since C++11)
-namespace { declarations }                                                (3)
-ns_name::name                                                             (4)
-using namespace ns_name;                                                  (5)
-using ns_name::name;                                                      (6)
-namespace name = qualified-namespace;                                     (7)
-namespace ns_name::inline(since C++20)(optional) name { declarations }    (8)    (since C++17)
-```
+    ```
+    namespace ns_name { declarations }                                        (1)
+    inline namespace ns_name { declarations }                                 (2)    (since C++11)
+    namespace { declarations }                                                (3)
+    ns_name::name                                                             (4)
+    using namespace ns_name;                                                  (5)
+    using ns_name::name;                                                      (6)
+    namespace name = qualified-namespace;                                     (7)
+    namespace ns_name::inline(since C++20)(optional) name { declarations }    (8)    (since C++17)
+    ```
     1. *具名命名空间* 定义
     2. *内联命名空间* 定义
         - 命名空间`ns_name`内的声明在其外层命名空间中亦可见
