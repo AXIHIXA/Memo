@@ -16380,7 +16380,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 - 全部语法速览
     ```
     namespace ns_name { declarations }                                        (1)
-    inline namespace ns_name { declarations }                                 (2)    (since C++11)
+    inline namespace ns_name { declarations }                                 (2)
     namespace { declarations }                                                (3)
     ns_name::name                                                             (4)
     using namespace ns_name;                                                  (5)
@@ -16402,7 +16402,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 从这条`using`指令开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的名字`name`可见
             - 如同它被声明于包含这条`using`声明的相同的类作用域、块作用域或命名空间作用域中
     7. *命名空间别名* （namespace alias）定义
-    8. *嵌套命名空间* （nested namespace）定义
+    8. *嵌套命名空间* （nested namespace）定义 `(since C++17)`
         - `namespace A::B::C { ... }`等价于`namespace A { namespace B { namespace C { ... } } }`
         - *嵌套`inline`*  `(since C++20)`
             - `inline`可出现于除第一个之外的任何一个命名空间名之前
@@ -16412,9 +16412,63 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     - 定义规则
         - 命名空间**不能**定义于 *函数内部* 
         - 命名空间作用域后面**无需**分号
-
+    - 每个命名空间都是一个作用域
+    - 命名空间可以是不连续的
+        - 命名空间的一部分成员的作用是定义类，以及声明作为类接口的函数及对象，则这些成员应该置于头文件中，这些头文件将被包含在使用了这些成员的文件中
+        - 命名空间成员的定义部分则置于另外的源文件中
+        - 定义多个类型不相关的命名空间应该使用单独的文件分别表示每个类型（或关联类型构成的集合）
+    - 通常**不**把`#include`放在命名空间 *内部* 
+        - 这样做就是把头文件的所有名字定义成该命名空间的成员
+        - 例如，如下代码就是把命名空间`std`嵌套在命名空间`cplusplus_primer`中，程序将报错
+        ```
+        namespace cplusplus_primer
+        {
+        #include <string>
+        }
+        ```
+    - 命名空间与模板特例化
+        - 模板特例化 *必须* 定义在 *原始模板所属的命名空间中* 
+        - 和其他命名空间名字类似，只要我们在命名空间中声明了特例化，就可以在命名空间外定义它了
+        ```
+        // we must declare the specialization as a member of std
+        namespace std 
+        {
+        template <> 
+        struct hash<Sales_data>;
+        }
+        
+        // having added the declaration for the specialization to std
+        // we can define the specialization outside the std namespace
+        template <> 
+        struct std::hash<Sales_data>
+        {
+            size_t operator()(const Sales_data & s) const
+            { 
+                return hash<string>()(s.bookNo) ^ hash<unsigned>()(s.units_sold) ^ hash<double>()(s.revenue); 
+            }
+            
+            // other members as before
+        };
+        ```
+    - *全局命名空间* （global namespace）
+        - *全局作用域* （即，在所有类、函数以及命名空间之外）中定义的名字归属于 *全局命名空间* 
+            - 全局命名空间以 *隐式* 的方式声明，并存在于所有程序之中
+            - 全局作用域的定义被 *隐式* 地添加于全局命名空间中
+        - *域运算符* `::`同样可以作用于全局作用域的成员
+            - 因为全局作用域是隐式的，所以它并没有名字
+            - 全局命名空间中的名字也可以用如下语法显式地访问
+            ```
+            // in global scope
+            // i.e. out of scope of any class, function or namespace
+            member_name      // (global_ns)::member_name
+            
+            // in any scope
+            ::member_name    // (global_ns)::member_name
+            ```
+    - *嵌套命名空间* （nested namespaces）
 - 使用命名空间成员
 - 类、命名空间与作用域
+    - 最开始 *作用域* 那块儿已经讲清楚了 
 - 重载与命名空间
 
 #### 多重继承与虚继承
