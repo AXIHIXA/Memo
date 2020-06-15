@@ -16349,7 +16349,11 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         };
         ```
         - *拷贝控制成员*
-            - 当
+            - 当编译器合成拷贝控制成员时，同时也生成一个异常说明
+            - 如果对所有成员和基类的所有操作都承诺了`noexcept`，则合成的成员也是`noexcept`的
+            - 如果合成成员调用的任意一个函数可能抛出异常，则合成的成员是`noexcept(false)`
+            - 而且，如果我们定义了一个析构函数但没有提供异常说明，则编辑器将合成一个异常说明
+            - 合成的异常说明将于假设由编译器合成析构函数时所得的异常说明一致
 
 #### [命名空间](https://en.cppreference.com/w/cpp/language/namespace)（Namespaces）
 
