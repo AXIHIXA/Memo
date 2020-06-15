@@ -16000,7 +16000,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 - *异常类*
     - `C++`标准异常类
-        - [`std::exception`](https://en.cppreference.com/w/cpp/error/exception)：标准错误。只报告异常的发生，不提供任何额外信息。 *只能* *默认初始化* ，**不能**传参
+        - [`std::exception`](https://en.cppreference.com/w/cpp/error/exception)：标准错误。只报告异常的发生，不提供任何额外信息
             - [`std::logic_error`](https://en.cppreference.com/w/cpp/error/logic_error)：标准逻辑错误
                 - [`std::invalid_argument`](https://en.cppreference.com/w/cpp/error/invalid_argument)
                 - [`std::domain_error`](https://en.cppreference.com/w/cpp/error/domain_error)：参数对应的结果值不存在
@@ -16025,17 +16025,82 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - [`std::bad_any_cast`](https://en.cppreference.com/w/cpp/utility/any/bad_any_cast)
             - [`std::bad_weak_ptr`](https://en.cppreference.com/w/cpp/memory/bad_weak_ptr)
             - [`std::bad_function_call`](https://en.cppreference.com/w/cpp/utility/functional/bad_function_call)
-            - [`std::bad_alloc`](https://en.cppreference.com/w/cpp/memory/new/bad_alloc)：分配内存空间失败。 *只能* *默认初始化* ，**不能**传参 => 12.1.2
+            - [`std::bad_alloc`](https://en.cppreference.com/w/cpp/memory/new/bad_alloc)：分配内存空间失败 => 12.1.2
                 - [`std::bad_array_new_length`](https://en.cppreference.com/w/cpp/memory/new/bad_array_new_length)
             - [`std::bad_exception`](https://en.cppreference.com/w/cpp/error/bad_exception)
             - [`std::bad_variant_access`](https://en.cppreference.com/w/cpp/utility/variant/bad_variant_access) `(since C++17)`
-        - 以上异常除特别说明的，都 *必须* 传参（`C`风格字符串）
-        - 异常类型之定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息
+        - 异常类型都定义了一个名为`what`的成员函数，返回`C`风格字符串`const char *`，提供异常的文本信息
             - 如果此异常传入了初始参数，则返回之
             - 否则，返回值 *由实现决定* 
-        - `std::exception`仅仅定义了 *拷贝构造函数* 、 *拷贝赋值运算符* 、一个 *虚析构函数* 和一个成员函数`virtual const char * what() noexcept`
-        - `std::exception`、``
-    - 
+        - `std::exception`仅仅定义了
+            - *默认构造函数*
+            - *拷贝构造函数* 
+            - *拷贝赋值运算符* 
+            - *虚析构函数* 
+            - 成员函数[`virtual const char * what() noexcept`](https://en.cppreference.com/w/cpp/error/exception/what)
+        - `std::exception`、`std::bad_cast`和`std::bad_alloc`定义了 *默认构造函数* 
+        - `std::runtime_error`以及`std::logic_error`**没有** *默认构造函数* 
+            - 也就是说这俩要抛出、初始化时必须传参（`C`风格字符串或`std::string`）
+            - 由于`what`是虚函数，因此对`what`的调用将执行与异常对象动态类型相对应的版本
+    - 自定义异常类
+    ```
+    // hypothetical exception classes for a bookstore application
+    class out_of_stock : public std::runtime_error 
+    {
+    public:
+        explicit out_of_stock(const std::string & s) : std::runtime_error(s) 
+        { 
+        
+        }
+    };
+    
+    class isbn_mismatch : public std::logic_error 
+    {
+    public:
+        explicit isbn_mismatch(const std::string & s) : std::logic_error(s) 
+        { 
+        
+        }
+        
+        isbn_mismatch(const std::string & s, const std::string & lhs, const std::string & rhs) 
+                : std::logic_error(s), left(lhs), right(rhs) 
+        { 
+        
+        }
+        
+        const std::string left; 
+        const std::string right;
+    };
+    
+    // throws an exception if both objects do not refer to the same book
+    Sales_data & Sales_data::operator+=(const Sales_data & rhs)
+    {
+        if (isbn() != rhs.isbn())
+            throw isbn_mismatch("wrong isbns", isbn(), rhs.isbn());
+        units_sold += rhs.units_sold;
+        revenue += rhs.revenue;
+        return *this;
+    }
+    
+    // use the hypothetical bookstore exceptions
+    Sales_data item1, item2, sum;
+    
+    while (std::cin >> item1 >> item2) 
+    { 
+        // read two transactions
+        try 
+        {
+            sum = item1 + item2; // calculate their sum
+            // use sum
+        } 
+        catch (const isbn_mismatch & e) 
+        {
+            std::cerr << e.what() 
+                      << ": left isbn(" << e.left << ") right isbn(" << e.right << ")" 
+                      << std::endl;
+        }
+    }
+    ```
 - *抛出* 异常
     - `C++`通过 *抛出* （throwing）一条表达式来 *引发* （raising）一个异常
         - 被抛出的表达式的类型以及当前的调用链共同决定了哪段 *处理代码* （handler）将被用来处理该异常
