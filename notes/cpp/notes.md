@@ -12710,28 +12710,36 @@ protected:
         - 当然，这些基类构造函数不是常规继承得来的，不过姑且这么叫
         - 派生类只能继承其直接基类的构造函数，且不继承 *默认* 、 *拷贝* 和 *移动* 构造函数
             - 如派生类没有直接定义这些构造函数，则编译器为它们合成一个
-    - 通过一条`using`语句从直接基类中继承构造函数
-        - 通常的`using`只是令名字可见，但这里的`using`会令编译器 *产生一个对应版本的**派生类**构造函数的代码* 
-        ```
-        class BulkQuote : public DiscQuote 
-        {
-        public:
-            using DiscQuote::DiscQuote;           // inherit Disc_quote's constructors
-            double net_price(std::size_t) const;
-        };
-        ```
-        - 对于基类的每个构造函数，编译器都在派生类中生成一（或多）个形参列表完全相同的构造函数
+        - 编译器还可以根据用户要求，利用基类的构造函数自动为派生类生成构造函数，这种构造函数称作 *继承的构造函数* 
+    - 通过一条`using`声明`using Base::Base;`通知编译器生成 *继承的构造函数* 
+        - 通常的 *`using`声明* 只是令名字可见，但这里的`using`会令编译器 *产生一或多个对应版本的**派生类构造函数**的代码* 
+            - 对于基类的每个构造函数，编译器都在派生类中生成一（或多）个形参列表完全相同的构造函数
             - *默认* 、 *拷贝* 和 *移动* 构造函数**除外**
             - 多个：对于有`n`个默认实参的基类构造函数，编译器生成的派生类构造函数也会有`n`个版本，每个分别省略掉一个有默认实参的形参
             - 继承的构造函数**不会**被作为用户定义的构造函数来使用
                 - 因此，如果一个类只有一个继承的构造函数，则编译器也会为其合成一个默认构造函数
         ```
-        Derived(params) : Base(args) {}
-        
-        BulkQuote(const std::string & book, double price, std::size_t qty, double disc) : 
-            DiscQuote(book, price, qty, disc) 
+        struct B1
         {
-        } 
+            B1() = default;
+            B1(int _a, int _b = 1) : a(_a), b(_b) {}
+            
+            int a {0};
+            int b {1};
+        };
+
+        struct B2 : public B1
+        {
+            using B1::B1;  // compiler generates the following constructors for B2:
+                           // B2(int _a, int _b) : B1(_a, _b)
+                           // B2(int _a)         : B1(_a,  1)
+            
+            int c {2};
+        };
+
+        B2 b2(3, 4);       // ok
+        B2 b3(5);          // ok
+        B2 b4(6, 7, 8);    // error: no matching constructor for initialization of B2
         ```
         - 与通常的`using`不同，构造函数`using`声明**不**改变 *访问控制* 
         - （与通常的`using`相同），`using`**不能**声明`explicit`以及`constexpr`
