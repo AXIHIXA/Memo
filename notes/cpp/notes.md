@@ -10902,18 +10902,20 @@ private:
                     - `C++17`开始， *返回值优化* 已经变成了 *强制消除* 
                 3. `throw`表达式和`catch`子句中某些情况
                 4. *常量表达式* 和 *常量初始化* 中，保证进行`RVO`，但禁止`NRVO` `(since C++14)`
-- 最速形参传递
-    - 平凡参数：直接传 *常量* 就完事了，你搞什么右值引用什么的反而还慢了
-    - 复杂参数：`Clang-Tidy`要求使用传值加`std::move`而**不是**传 *常引用* 
-        - 版本1
-            - 不论实参是左值还是右值，都是一步 *引用初始化* （算是 *移动* ）和一步 *拷贝* 
-        - 版本2：不知道高到哪儿去了
-            - 实参为 *左值* ，一步 *拷贝* 和一步 *移动*
-            - 实参为 *右值* ，两步 *移动*
+- 构造函数中的最速形参传递
+    - 平凡参数：直接传 *常量* 就完事了，你搞什么右值啊引用啊什么的反而还慢了
+    - 复杂参数：`Clang-Tidy`要求使用传 *值* 加`std::move`而**不是**传 *常引用* 
+        - 传 *常引用* 
+            - 不论实参是左值还是右值，都是一步 *引用初始化* 
+            - 接着如果用形参进行赋值，则是一步 *拷贝* 
+        - 传 *值* 加`std::move`：不知道高到哪儿去了
+            - 实参为 *左值* ，一步 *拷贝* 和一步 *移动* （如果用形参赋值）
+            - 实参为 *右值* ，两步 *移动* （如果用形参赋值）
     ```
     struct T
     {
-        T(const std::string & _s, const int _i) : s(_s), i(_i) {}     // Clang-Tidy: not good
+        T(const std::string & _s, const int _i) : s(_s), i(_i) {}     // Clang-Tidy: NOT good
+        
         T(std::string _s, const int _i) : s(std::move(_s)), i(_i) {}  // Clang-Tidy: good
         
         std::string s;
@@ -10948,9 +10950,9 @@ private:
     std::vector<int> &&      rval_ref = return_vector();
     const std::vector<int> & c_ref    = return_vector();
     ```
-    - 如何不乱用`std::move`
+    - 如何做到不乱用`std::move`
         - 很多情况下需要使用`std::move`来提升性能，但不是所有时候都该这么用
-        - 实际情况很复杂，但`gcc 9`开始支持了如下两个[编译器选项](https://developers.redhat.com/blog/2019/04/12/understanding-when-not-to-stdmove-in-c/)来识别
+        - 实际情况很复杂，但`gcc 9`开始支持了[如下两个编译器选项](https://developers.redhat.com/blog/2019/04/12/understanding-when-not-to-stdmove-in-c/)来识别
             - `-Wpessimizing-move`
                 - `std::move`阻碍`NRVO`时报`warning`
                 - 这种情况下是有性能损失的，必须避免
@@ -10959,6 +10961,7 @@ private:
                 - 当满足 *强制拷贝消除* 时还写了`std::move`时报`warning`
                 - 这种情况下没有性能损失，纯粹只是多余而已
                 - 包含在`-Wextra`中，`-Wall`中没有
+        - 所以函数首先不能返回引用，其次返回的临时量时姑且先加上`std::move`，看报不报`warning`好了
         - `CMake`使用示例
         ```
         target_compile_options(${PROJECT_NAME} PUBLIC -Wpessimizing-move -Wredundant-move)
@@ -13644,12 +13647,14 @@ protected:
     f2(5);                                     // a const & parameter can be bound to an rvalue; T is int
     ```
     - 从 *右值引用形参* 推断类型
-        - 正常传递规则：可以传递 *右值* ，`T`推断为该右值实参的类型
+        - 正常传递：可以传递 *右值* ，`T`推断为该右值实参的类型
             - 即`typename std::remove_reference<decltype(argument)>::type`
-    ```
-    template <typename T> void f3(T &&);
-    f3(42);                                    // argument is an rvalue of type int; template parameter T is int
-    ```
+            ```
+            template <typename T> void f3(T &&);
+            f3(42);                                    // argument is an rvalue of type int; template parameter T is int
+            ```
+        - 一条例外：还可以传递 *左值* ，`T`推断为该左值实参类型的引用（保留 *底层`const`* ）
+            - 即`typename std::remove_reference<decltype(argument)>::type &`
     - *引用坍缩* 和 *右值引用形参* （Reference Collapsing and Rvalue Reference Parameters）
         - 正常情况下， *右值引用* **不能**绑定到 *左值* 上，以下 *两种* 情况**例外**
             1. *右值引用的特殊类型推断* 
@@ -13679,7 +13684,8 @@ protected:
     - 编写 *接受右值引用形参的函数模板* 
         - 考虑如下函数
         ```
-        template <typename T> void f3(T && val)
+        template <typename T> 
+        void f3(T && val)
         {
             T t = val;                   // copy or binding a reference?
             t = fcn(t);                  // does the assignment change only t, or both val and t?
@@ -13746,77 +13752,149 @@ protected:
             - 返回`static_cast<std::string &&>(t)`，这步强制类型转换将`t`从`std::string &`转换为`std::string &&`
     - 将 *左值* `static_cast`成 *右值引用* 是允许的
         - 但实际使用时应当使用封装好的`std::move`而**不是**`static_cast`
-- *转发* （forwarding）
+- *完美转发* （perfect forwarding）
     - 某些函数需要将其一个或多个实参原封不动地 *转发* 给其他函数，具体需要保持实参的以下性质
         1. *类型* ，包括底层`cv`限定（对于引用和指针）
         2. *值类别* ，是左值还是右值
-    - *同时* 采取如下措施可以满足上述要求
-        1. 将函数形参定义为指向模板类型参数的右值引用就可以保持实参的所有 *类型信息* 
+    - *完美转发* 具体做法：同时采取如下措施
+        1. 将 *函数形参类型* 定义为 *指向模板类型参数的右值引用* 就可以保持实参的所有 *类型信息* 
             - 使用引用参数还可以保持`const`属性，因为引用中`const`是 *底层* 的
-        2. 在函数调用中使用[`std::forward`](https://en.cppreference.com/w/cpp/utility/forward)保持实参的 *值类别* 
-            - 签名
-            ```
-            template <class T>
-            constexpr T &&
-            forward(std::remove_reference_t<T> & t) noexcept;   (1)
-
-            template <class T>
-            constexpr T &&
-            forward(std::remove_reference_t<T> && t) noexcept;  (2)
-            ```
-            - 保持传入参数的 *值类别* 
-                1. 转发 *左值* 为 *左值或右值* ，依赖于`T`
-                    - 考虑如下例子
-                    ```
-                    template <class T>
-                    void wrapper(T && arg) 
-                    {
-                        // arg is always lvalue
-                        foo(std::forward<T>(arg));  // Forward as lvalue or as rvalue, depending on T
-                    }
-                    ```
-                    - 若对`wrapper`的调用传递 *右值* `std::string`，则推导`T = std::string`（非`std::string &`或`std::string &&`，且`std::forward`确保将 *右值引用* 传递给`foo`
-                    - 若对`wrapper`的调用传递 *`const`左值* `std::string`，则推导`T = const std::string &`，且`std::forward`确保将 *`const`左值引用* 传递给`foo`
-                    - 若对`wrapper`的调用传递 *非`const`左值* `std::string`，则推导`T = std::string &`，且`std::forward`确保将 *非`const`左值引用* 传递给 `foo`
-                2. 转发 *右值* 为 *右值* ，并 *禁止右值转发为左值* 
-                    - 此重载用于 *转发表达式的结果* （如 *函数调用* ），结果可以是 *右值* 或 *左值* ，值类别与实参的原始值相同
-                    - 考虑如下例子
-                    ```                
-                    // transforming wrapper 
-                    template <class T>
-                    void wrapper(T && arg)
-                    {
-                        foo(std::forward<decltype(std::forward<T>(arg).get())>(std::forward<T>(arg).get()));
-                    }
-                    
-                    struct Arg
-                    {
-                        int i = 1;
-                        int   get() && { return i; }  // call to this overload is rvalue
-                        int & get() &  { return i; }  // call to this overload is lvalue
-                    }; 
-                    ```
-                    - 试图转发右值为左值，例如通过以左值引用类型`T`实例化模板`(2)`，会产生 *编译错误*  
+        2. 在函数中 *调用`std::forward`转发实参* 
             - 使用时指明`std::forward`，不使用`using`声明，和`std::move`类似，避免作用域问题
+    - 完美转发语法样例
+    ```
+    template <typename T1, typename T2>
+    void fun1(T1 && t1, T2 && t2)
+    {
+        fun2(std::forward<T1>(t1), std::forward<T2>(t2));
+    }
+    
+    template <typename ... Args>
+    void fun3(Args && ... args)
+    {
+        fun4(std::forward<Args>(args) ...);
+    }
+    ```
+    - 详解[`std::forward`](https://en.cppreference.com/w/cpp/utility/forward)
+        - `g++`的实现
+        ```
+        /// <move.h>
+        /// @brief     Forward an lvalue.
+        /// @return    The parameter cast to the specified type.
+        /// This function is used to implement "perfect forwarding".
+        template <typename T>
+        constexpr T &&
+        forward(typename std::remove_reference<T>::type & t) noexcept
+        { 
+            return static_cast<T &&>(t); 
+        }
+        
+        /// <move.h>
+        /// @brief     Forward an rvalue.
+        /// @return    The parameter cast to the specified type.
+        /// This function is used to implement "perfect forwarding".
+        template <typename T>
+        constexpr T &&
+        forward(typename std::remove_reference<T>::type && t) noexcept
+        {
+            static_assert(!std::is_lvalue_reference<T>::value, 
+                          "template argument substituting T is an lvalue reference type");
+            return static_cast<T &&>(t);
+        }
+        ```
+        - 保持传入参数的 *值类别* 
+            1. 转发 *左值* 为 *左值或右值* ，依赖于`T`
+                - 考虑如下例子
+                ```
+                template <class T>
+                void wrapper(T && arg) 
+                {
+                    // arg is always lvalue
+                    foo(std::forward<T>(arg));  // Forward as lvalue or as rvalue, depending on T
+                }
+                ```
+                - 若对`wrapper`的调用传递 *右值* `std::string`，则推导`T = std::string`，将`std::string &&`类型的 *右值* 传递给`foo`
+                - 若对`wrapper`的调用传递 *`const`左值* `std::string`，则推导`T = const std::string &`，将`const std::string &`类型的 *左值* 传递给`foo`
+                - 若对`wrapper`的调用传递 *非`const`左值* `std::string`，则推导`T = std::string &`，将`std::string &`类型的 *左值* 传递给`foo`
+            2. 转发 *右值* 为 *右值* ，并 *禁止右值转发为左值* 
+                - 此重载用于 *转发表达式的结果* （如 *函数调用* ），结果可以是 *右值* 或 *左值* ，值类别与实参的原始值相同
+                - 考虑如下例子
+                ```                
+                // transforming wrapper 
+                template <class T>
+                void wrapper(T && arg)
+                {
+                    foo(std::forward<decltype(std::forward<T>(arg).get())>(std::forward<T>(arg).get()));
+                }
+                
+                struct Arg
+                {
+                    int i = 1;
+                    int   get() && const { return i; }  // call to this overload is rvalue
+                    int & get() &  const { return i; }  // call to this overload is lvalue
+                }; 
+                ```
+                - 试图转发右值为左值，例如通过以左值引用类型`T`实例化模板`(2)`，会产生 *编译错误*  
     - 考虑如下例子
-    ```
-    template <typename F, typename T1, typename T2>
-    void flip(F f, T1 && t1, T2 && t2)
-    {
-        f(std::forward<T1>(t1), std::forward<T1>(t1));
-    }
-    
-    void f(int v1, int & v2)  // note v2 is a reference
-    {
-        std::cout << v1 << " " << ++v2 << std::endl;
-    }
-    
-    int j = 0;
-    filp(f, j, 42);          // now j == 1
-    ```
-    - 传给`t1`左值`j`，推断出`T1 = int &`，`T1 &&`坍缩为`int &`，原样转发 *左值* `int &`
-    - 传给`t2`右值`42`，推断出`T2 = int`，`T2 &&`就是`int &&`，原样转发 *右值* `int &&`
-    - `f`能够改变`j`
+        - 代码
+        ```
+        template <typename F, typename T1, typename T2>
+        void flip(F f, T1 && t1, T2 && t2)
+        {
+            f(std::forward<T1>(t1), std::forward<T1>(t1));
+        }
+        
+        void f(int v1, int & v2)  // note v2 is a reference
+        {
+            std::cout << v1 << " " << ++v2 << std::endl;
+        }
+        
+        int j = 0;
+        filp(f, j, 42);          // now j == 1
+        ```
+        - 传给`t1`左值`j`，推断出`T1 = int &`，`T1 &&`坍缩为`int &`，原样转发 *左值* `int &`
+        - 传给`t2`右值`42`，推断出`T2 = int`，`T2 &&`就是`int &&`，原样转发 *右值* `int &&`
+        - `f`能够改变`j`
+    - 可变模板完美转发测试
+        - 代码
+        ```
+        template <typename T>
+        void fun4(T && t)
+        {
+            std::cout << "void fun3(T && t) " << t << std::endl;
+        }
+
+        void fun4(std::string && s)
+        {
+            std::cout << "void fun3(std::string && s) " << s << std::endl;
+        }
+
+        template <typename T, typename ... Args>
+        void fun4(T && t, Args && ... args)
+        {
+            std::cout << "void fun4(T && t, Args && ... args) " << t << std::endl;
+            fun4(std::forward<Args>(args) ...);
+        }
+
+        template <typename ... Args>
+        void fun3_1(Args && ... args)
+        {
+            fun4(std::forward<Args>(args) ...);
+        }
+
+        template <typename ... Args>
+        void fun3_2(Args && ... args)
+        {
+            fun4(args ...);
+        }
+        
+        fun3_1(1, std::string {"rval"});  // void fun4(T && t, Args && ... args) 1
+                                          // void fun3(std::string && s) rval
+                                          
+        fun3_2(1, std::string {"rval"});  // void fun4(T && t, Args && ... args) 1
+                                          // void fun3(T && t) rval
+        ```
+        - 可以看到，没有完美转发，就无法匹配到接受右值引用形参的特例化版本`void fun3(std::string && s)`了
 
 #### 模板重载（template overloading）
 
@@ -16796,7 +16874,57 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
                     ```
                     - *`std::complex`字面量* 的操作符也没好到哪儿去
+        - 名字查找与`std::move`和`std::forward`
+            - 通常情况下，如果程序中定义了一个标准库中已有的名字，则将出现以下两种情况中的一种
+                - 根据一般的重载规则确定某次调用应该执行函数的某个版本
+                - 应用程序根本不会执行标准库版本
+            - `std::move`和`std::forward`都是标准库模板函数，都接受一个模板类型参数的右值引用类型形参
+                - 复习`g++`实现
+                ```
+                /// <type_traits>
+                /// remove_reference
+                template <typename T> struct remove_reference       { typedef T type; };
+                template <typename T> struct remove_reference<T &>  { typedef T type; };
+                template <typename T> struct remove_reference<T &&> { typedef T type; };
+                
+                /// <move.h>
+                /// @brief     Convert a value to an rvalue.
+                /// @param  t  A thing of arbitrary type.
+                /// @return    The parameter cast to an rvalue-reference to allow moving it.
+                template <typename T>
+                constexpr typename std::remove_reference<T>::type &&
+                move(T && t) noexcept
+                { 
+                    return static_cast<typename std::remove_reference<T>::type &&>(t); 
+                }
+                
+                /// <move.h>
+                /// @brief     Forward an lvalue.
+                /// @return    The parameter cast to the specified type.
+                /// This function is used to implement "perfect forwarding".
+                template <typename T>
+                constexpr T &&
+                forward(typename std::remove_reference<T>::type & t) noexcept
+                { 
+                    return static_cast<T &&>(t); 
+                }
+                
+                /// <move.h>
+                /// @brief     Forward an rvalue.
+                /// @return    The parameter cast to the specified type.
+                /// This function is used to implement "perfect forwarding".
+                template <typename T>
+                constexpr T &&
+                forward(typename std::remove_reference<T>::type && t) noexcept
+                {
+                    static_assert(!std::is_lvalue_reference<T>::value, 
+                                  "template argument substituting T is an lvalue reference type");
+                    return static_cast<T &&>(t);
+                }
+                ```
+        - 友元声明与实参相关的查找
 - 重载与命名空间
+    - 与实参相关的查找与重载
 
 #### 多重继承与虚继承
 
