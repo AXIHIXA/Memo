@@ -8,7 +8,7 @@
 - 记录一些对`C++`理解得不到位的地方
 - 基于`C++11`的内容提示，例如`(since C++11)`，一般不再明确标注
 - `(until C++11)`、即`C++11`中已经移除的内容，不予收录
-- 这玩意收录好多[`cppreference`](https://en.cppreference.com)上的内容，该部分内容是打算当字典看的，总体来讲似乎比`C++ Primer`还不适合初学者看了
+- 这玩意收录好多[`cppreference`](https://en.cppreference.com)上的内容，该部分内容是打算当字典看的，总体来讲似乎比`C++ Primer`更不适合初学者看了
     - `C++`标准库泛型算法速查：[`Algorithms library - cppreference.com`](https://en.cppreference.com/w/cpp/algorithm)
     - `C++`标准库`<type_traits>`速查：[`Standard library header <type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)
 
@@ -115,6 +115,7 @@
         - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* ， *析构函数* **除外**：顺序和构造是反的，且编译器会自动调用基类析构函数
         - 派生类拷贝或移动构造函数**必须**显式调用基类对应构造函数，否则基类部分将被 *默认初始化* ，产生 *未定义值* 
     - 位于继承体系中间层级的类 *可以* 选择 *虚继承* ，必须在虚派生的真实 *需求出现前* 就已经 *完成虚派生* 的操作
+    - 虽然虚基类的初始化只由最低层派生类独自负责，但 *每个虚派生类* 仍旧都 *必须在构造函数中初始化它的虚基类* 
 - 一些小知识
     - 给`char a`和`unsigned char b`加上 *加号* `+a`，`+b`就把它们提升成了`int`和`unsigned int`，可以用于`std::cout`
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
@@ -17344,6 +17345,78 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - 如果在`D1`和`D2`中都有`x`的定义，则此时直接访问`x`存在二义性
         - 与非虚的多重继承体系一样，解决这种二义性问题的最好方法就是在派生类中为成员自定义一个新的实例
 - 构造函数与虚继承
+    - 在 *虚派生* 中，虚基类是由 *最低层派生类* 独自初始化的
+        - 例如创建`Panda`对象时，`Panda`的构造函数 *独自控制* `ZooAnimal`的初始化过程
+    - 这一规则的原因
+        - 假设以普通规则处理初始化任务
+        - 则虚基类会被派生路径上的多个类重复初始化
+        - 此例中，`ZooAnimal`将被`Bear`和`Raccoon`两个类重复初始化
+    - *每个虚派生类* 都 *必须在构造函数中初始化它的虚基类* 
+        - 这是因为继承体系中每个类都可能在某个时刻成为 *最底层派生类* 
+        - 例如之前的动物继承体系，创建`Bear`或`Raccoon`对象时，它就已经位于派生的最低层，因此`Bear`或`Raccoon`的构造函数将直接初始化其`ZooAnimal`部分
+        ```
+        Bear::Bear(std::string name, bool onExhibit)
+                : ZooAnimal(name, onExhibit, "Bear") 
+        {
+        
+        }
+        
+        Raccoon::Raccoon(std::string name, bool onExhibit)
+                : ZooAnimal(name, onExhibit, "Raccoon") 
+        {
+        
+        }
+        ```
+        - 而当创建一个`Panda`对象时，`Panda`位于派生的最低层，因此由它负责初始化共享的`ZooAnimal`虚基类部分
+            - 即使`ZooAnimal`**不是**`Panda`的直接基类，`Panda`的构造函数也可以初始化`ZooAnimal`
+        ```
+        Panda::Panda(std::string name, bool onExhibit)
+                : ZooAnimal(name, onExhibit, "Panda"),
+                  Bear(name, onExhibit),
+                  Raccoon(name, onExhibit),
+                  Endangered(Endangered::critical),
+                  sleeping flag(false) 
+        {
+        
+        }
+        ```
+    - 虚继承的对象的构造方式
+        - 首先使用提供给最低层派生类构造函数的初始值初始化该对象的虚基类子部分，然后按照直接基类在派生列表中出现的顺序依次对该直接基类进行初始化
+            - 虚基类总是先于非虚基类被构造，与它们在继承体系中的位置和次序**无关**
+        - 例如创建`Panda`对象时
+            - 首先使用`Panda`的构造函数初始值列表中提供的初始值构造虚基类`ZooAnimal`部分
+                - 如果`Panda`**没有**显式地初始化`ZooAnimal`基类，则`ZooAnimal`的默认构造函数将被调用
+                - 如果`ZooAnimal`又**没有**默认构造函数，则程序报错
+            - 接下来构造`Bear`部分
+            - 然后构造`Raccoon`部分
+            - 然后构造`Endangered`部分
+            - 最后构造`Panda`自己的部分
+    - 构造函数与析构函数的次序
+        - 一个类可以有许多个虚基类
+            - 此时这些虚的子对象会按照它们出现在派生列表中的顺序依次被初始化
+            - 之后再正常初始化非虚子对象
+        - 例如
+        ```
+        class Character { /* ... */ };
+        class BookCharacter : public Character { /* ... */ };
+        class ToyAnimal { /* ... */ };
+        class TeddyBear : public BookCharacter, public Bear, public virtual ToyAnimal { /* ... */ };
+        ```
+        - 编译器按照直接基类的声明顺序对其依次进行检查，以确定其中是否含有虚基类
+        - 如果有，则先构造虚基类，然后按照声明逐一构造其它非虚基类
+        - 因此，想要创建一个`TeddyBear`对象，需要按照如下次序调用这些构造函数
+        ```
+        ZooAnimal();      // Bear's virtual base class
+        ToyAnimal();      // direct virtual base class
+        Character();      // indirect base class of first nonvirtual base class
+        BookCharacter();  // first direct nonvirtual base class
+        Bear();           // second direct nonvirtual base class
+        TeddyBear();      // most derived class
+        ```
+        - 合成的拷贝和移动构造函数按照完全相同的顺序执行
+        - 合成的拷贝赋值运算符中的成员也按照该顺序赋值
+        - 和往常一样，对象的销毁顺序与构造顺序正好相反
+            - 即，首先销毁`TeddyBear`部分，最后销毁`ZooAnimal`部分
 
 
 
