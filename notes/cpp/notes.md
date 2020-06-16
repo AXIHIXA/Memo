@@ -81,9 +81,11 @@
     - 应尽量**避免**使用 *`using`指示* 
     - *头文件* 最多只能在它的 *函数或命名空间内* 使用 *`using`指示* 或 *`using`声明* 
 - 跟类有关的一箩筐规则
-    - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
+    - 构造函数**不应**该覆盖掉 *类内初始值* ，除非新值与原值不同；不使用 *类内初始值* 时，则每个构造函数**都应显式初始化**每一个类内成员
+        - 此外，构造函数如果有默认实参，则此默认实参的值**不应**与对应成员的类内初始值相左
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
-    - 对复杂参数，`Clang-Tidy`规定构造函数传参应该是按值传递加`std::move`，而**不是**传常引用
+    - `Clang-Tidy`规定构造函数的非平凡形参应该是 *传值加`std::move`* ，而**不是** *传常引用* 
+        - 对平凡形参，直接传值，搞引用反而麻烦
     - *构造函数初始化器列表* 的顺序**必须**按照类成员被声明的顺序。 *构造函数初始化器列表* 中执行初始化的 *顺序是按照类成员被声明的顺序* ，与其在列表中的顺序**无关**
     - 希望类的所有成员都是`public`时，**应**使用`struct`；只有希望使用`private`成员时才用`class`
     - `class`中的 *私有成员* 之前**应该**显式写出`private`，仅依靠默认会混淆继承关系，容易产生误会
@@ -10903,8 +10905,8 @@ private:
                 3. `throw`表达式和`catch`子句中某些情况
                 4. *常量表达式* 和 *常量初始化* 中，保证进行`RVO`，但禁止`NRVO` `(since C++14)`
 - 构造函数中的最速形参传递
-    - 平凡参数：直接传 *常量* 就完事了，你搞什么右值啊引用啊什么的反而还慢了
-    - 复杂参数：`Clang-Tidy`要求使用传 *值* 加`std::move`而**不是**传 *常引用* 
+    - 平凡形参：直接传 *常量* 就完事了，你搞什么右值啊引用啊什么的反而还慢了
+    - `Clang-Tidy`规定构造函数的非平凡形参应该是 *传值加`std::move`* ，而**不是** *传常引用* 
         - 传 *常引用* 
             - 不论实参是左值还是右值，都是一步 *引用初始化* 
             - 接着如果用形参进行赋值，则是一步 *拷贝* 
@@ -12730,16 +12732,16 @@ protected:
 
         struct B2 : public B1
         {
-            using B1::B1;  // compiler generates the following constructors for B2:
-                           // B2(int _a, int _b) : B1(_a, _b)
-                           // B2(int _a)         : B1(_a,  1)
+            using B1::B1;  // compiler generates the following inherited constructors for B2:
+                           // B2(int _a, int _b) : B1(_a, _b) {}
+                           // B2(int _a)         : B1(_a)     {}
             
             int c {2};
         };
 
-        B2 b2(3, 4);       // ok
-        B2 b3(5);          // ok
-        B2 b4(6, 7, 8);    // error: no matching constructor for initialization of B2
+        B2 obj1(3, 4);     // ok
+        B2 obj2(5);        // ok
+        B2 obj3(6, 7, 8);  // error: no matching constructor for initialization of B2
         ```
         - 与通常的`using`不同，构造函数`using`声明**不**改变 *访问控制* 
         - （与通常的`using`相同），`using`**不能**声明`explicit`以及`constexpr`
@@ -17146,7 +17148,8 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         ```
     - 派生类构造函数初始化所有基类
         - 构造一个派生类的对象将同时构造并初始化它的所有基类子对象
-        - 与单重继承一样，多重继承的派生类的构造函数在初始化列表中调用基类构造函数初始化基类部分
+        - 与单重继承一样，
+            - 多重继承的 *派生类的构造函数* 需要 *自行* 在初始化列表中调用基类构造函数 *初始化基类部分* 
             - 如果没有显式调用基类的构造函数，则此基类对应部分将被 *默认初始化* ，产生 *未定义的值* 
             - 基类的构造顺序与 *派生列表中基类的出现顺序* 保持一致，与初始化列表中基类的顺序**无关**
         ```
@@ -17171,8 +17174,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             - 然后初始化`Panda`的第二个直接基类`Endangered`
             - 最后初始化`Panda`
     - 继承的构造函数与多重继承
-        - 允许派生类从一个或几个基类中继承构造函数
-        - 但如果从多个基类中继承了相同的构造函数（即形参列表完全相同），则将产生错误
+        - 允许派生类从一个或几个基类中继承构造函数；但如果从多个基类中继承了相同的构造函数（即形参列表完全相同），则将产生错误
         ```
         struct Base1 
         {
@@ -17195,6 +17197,46 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             using Base2::Base2;  // inherit constructors from Base2
         };
         ```
+        - 如果一个类从它的多个基类中继承了相同的构造函数，则这个类必须为该构造函数定义它自己的版本
+        ```
+        struct D2: public Base1, public Base2 
+        {
+            using Base1::Base1;  // inherit constructors from Base1
+            using Base2::Base2;  // inherit constructors from Base2
+            
+            // D2 must define its own constructor that takes a string
+            D2(const string & s) : Base1(s), Base2(s) {}
+            D2() = default;      // needed once D2 defines its own constructor
+        }
+        ```
+    - 析构函数与多重继承
+        - 和往常一样
+            - 派生类的 *析构函数* 只需要负责清除派生类本身分配的资源
+            - 派生类的成员会被自动销毁
+            - 基类由编译器自动调用基类析构函数进行销毁
+        - 析构函数调用顺序正好与构造函数相反
+            - 对于`Panda`，构造函数调用顺序为`ZooAnimal -> Bear -> Endangered -> Panda`
+            - 析构函数调用顺序则为`~Panda -> ~Endangered -> ~Bear -> ~ZooAnimal`
+    - 多重继承的派生类拷贝与移动操作
+        - 与单重继承一样
+            - 多重继承的派生类如果定义了自己的拷贝、移动构造函数或赋值运算符，则必须 *自行负责* 拷贝、移动或赋值 *完整的对象* 
+            - 只有当派生类使用的是 *合成版本* 的拷贝、移动或赋值成员时，才会自动对其基类部分执行这些操作
+            - 在合成的拷贝控制成员中，每个基类分别使用自己的对应成员隐式地完成构造、赋值或销毁等工作
+            - 例如
+                - 假设`Panda`使用合成版本的成员`ling_ling`的初始化过程
+                ```
+                Panda ying_yang("ying_yang");
+                Panda ling_ling = ying_yang;  // uses the copy constructor
+                ```
+                - 将调用`Bear`的拷贝构造函数，后者又在执行自己的拷贝任务之前先调用`ZooAnimal`的拷贝构造函数
+                - 一旦`ling_ling`的`Bear`部分构造完成，接着就会调用`Endangered`的拷贝构造函数来创建对象的相应部分
+                - 最后，执行`Panda`的拷贝构造函数
+            - 合成的移动构造函数的工作机制与之类似
+            - 合成的拷贝赋值运算符
+                - 首先赋值`Bear`部分（并通过`Bear`赋值`ZooAnimal`部分）
+                - 然后赋值`Endangered`部分
+                - 最后赋值`Panda`部分
+            - 合成的移动赋值运算符与之类似
 - 类型转换与多个基类
 - 多重继承下的类作用域
 - 虚继承
