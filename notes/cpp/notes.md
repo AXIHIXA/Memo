@@ -114,6 +114,7 @@
     - 派生类 *拷贝控制成员* 应首先 *首先调用基类对应成员* 处理基类部分，再处理自己的部分
         - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* ， *析构函数* **除外**：顺序和构造是反的，且编译器会自动调用基类析构函数
         - 派生类拷贝或移动构造函数**必须**显式调用基类对应构造函数，否则基类部分将被 *默认初始化* ，产生 *未定义值* 
+    - 位于继承体系中间层级的类 *可以* 选择 *虚继承* ，必须在虚派生的真实 *需求出现前* 就已经 *完成虚派生* 的操作
 - 一些小知识
     - 给`char a`和`unsigned char b`加上 *加号* `+a`，`+b`就把它们提升成了`int`和`unsigned int`，可以用于`std::cout`
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
@@ -17130,7 +17131,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             - `::print(long double)`
         - 在 *主函数* 中，当前作用域没有候选函数，然后在上一层全局作用域中找到了如上 *候选函数集* 
 
-#### 多重继承与虚继承
+#### 多重继承与虚继承（multiple inheritance and virtual inheritance）
 
 - *多重继承* （multiple inheritance）
     - *多重继承* 是指从多个直接基类中产生派生类的能力，多重派生类继承了所有父类的属性
@@ -17238,8 +17239,110 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - 最后赋值`Panda`部分
             - 合成的移动赋值运算符与之类似
 - 类型转换与多个基类
+    - 和单重继承时一样
+        - 多重继承的派生类的指针或引用一样可以被隐式转换成可访问基类的指针或引用，且不会导致实际指向的对象被截断
+        - 可以令某个可访问基类的指针或引用直接指向一个派生类对象
+        - 例如，可以将`ZooAnimal`、`Bear`或`Endangered`类型的指针或引用绑定到`Panda`对象上
+        ```
+        // operations that take references to base classes of type Panda
+        void print(const Bear &);
+        void highlight(const Endangered &);
+        ostream & operator<<(ostream &, const ZooAnimal &);
+        
+        Panda ying_yang("ying_yang");
+        print(ying_yang);                     // passes Panda to a reference to Bear
+        highlight(ying_yang);                 // passes Panda to a reference to Endangered
+        std::cout << ying_yang << std::endl;  // passes Panda to a reference to ZooAnimal
+        ```
+        - 编译器**不会**在派生类向基类的几种转换中进行比较和选择，因为在它看来转换到任意的一种基类都一样好
+        - 例如，如下调用会引发 *二义性错误*
+        ```
+        void print(const Bear &);
+        void print(const Endangered &);
+        
+        Panda ying_yang("ying_yang");
+        print(ying_yang);                     // error: ambiguous
+        ```
+    - 基于指针类型或引用类型的查找
+        - 和单重继承时一样
+            - 多重继承的基类的指针或引用的 *静态类型* 决定了哪些成员可见
+            - 当然，对于虚函数是动态绑定的，这一点不会变
 - 多重继承下的类作用域
-- 虚继承
+    - 单重继承
+        - 派生类的作用域嵌套于直接基类和间接基类的作用域中
+        - 查找过程沿着继承体系自底向上进行，直到找到所需的名字
+        - 派生类的名字将隐藏基类的同名成员
+    - 多重继承
+        - 相同的查找过程在所有直接基类中同步进行
+        - 如果名字在多个基类中都被找到，则此使用将引发 *二义性错误* 
+            - 继承含有先沟通名字的多个基类本身是合法的
+            - 此时只需要显式指明 *限定标识符* 
+- *虚继承* （virtual inheritance）
+    - 尽管派生类的派生列表中，同一个基类最多只能出现一次，但实际上派生类可以多次继承同一个基类
+        - 可以通过两个直接基类分别继承同一个间接基类
+        - 也可以直接继承某个基类，然后通过另一个基类再一次间接继承该类
+        - 标准库中的例子：`std::iostream`继承自`std::istream`和`std::ostream`，后两者又都继承了`std::ios_base`，也就是说`std::iostream`继承了`std::ios_base`两次
+    - 默认情况下，派生类中含有继承链上每个类对应的子部分
+        - 如果某个类在派生过程中出现了多次，则派生类中将包含该类的多个子对象
+        - 这显然不是希望看到的
+            - 至少对于`std::iostream`，一个流对象肯定希望在同一个缓冲区中进行读写操作，也会要求条件状态能同时反映输入和输出操作的情况
+            - 假如在`std::iostream`对象中真的包含了`std::ios_base`的两份拷贝，则上述的共享行为就无法实现了
+    - *虚继承* 机制用于解决上述问题
+        - 虚继承的目的是，令某个类作出声明，承诺愿意 *共享它的基类* 
+        - 其中，共享的基类子对象被称作 *虚基类* （virtual base class）
+        - 在这种机制下，不论虚基类在继承体系中出现了多少次，在派生类中都只包含唯一一个共享的虚基类子对象
+    - 必须在虚派生的真实 *需求出现前* 就已经 *完成虚派生* 的操作
+        - 例如，如果定义`std::iostream`时才出现了对虚派生的需求，但是如果`std::istream`和`std::ostream`**不是**从`std::ios_base`虚派生来的，那就没救了
+        - 在实际的编程过程中，位于中间层次的基类将其继承声明为虚继承一般不会带来什么问题
+            - 通常情况下，使用虚继承的类层次是由一个人或一个项目组一次性设计完成的
+            - 对于一个独立开发的类来说，很少需要基类中某一个是虚基类，况且新基类的开发者也无法改变已有的继承体系
+    - 虚派生只影响从制定了虚基类的派生类中进一步派生出的类，**不会**影响派生类本身
+    - 使用虚基类
+        - 指定虚基类的方式时在派生列表中添加关键字`virtual`
+            - `public`和`virtual`的相互顺序随意
+            ```
+            // the order of the keywords public and virtual is not significant
+            class Raccoon : public virtual ZooAnimal { /* ... */ };
+            class Bear : virtual public ZooAnimal { /* ... */ };
+            ```
+        - `virtual`说明符表达了一种愿望，即在后续的派生类当中共享虚基类的同一份实例
+            - 至于什么样的类能够作为虚基类，并没有特殊规定
+        - 如果某个类指定了虚基类，则该类的派生仍按常规方式进行
+            - 例如下面`Panda`类 *只有* `ZooAnimal`一个虚基类部分
+            ```
+            class Panda : public Bear, public Raccoon, public Endangered 
+            {
+                // ...
+            };
+            ```
+    - 支持向基类的常规类型转换
+        - 不论基类是不是虚基类，派生类对象都能被可访问基类的指针或引用操作
+        - 例如，如下从`Panda`向基类类型的转换都是合法的
+        ```
+        void dance(const Bear &);
+        void rummage(const Raccoon &);
+        ostream & operator<<(ostream &, const ZooAnimal &);
+        
+        Panda ying_yang;
+        dance(ying_yang);        // ok: passes Panda object as a Bear
+        rummage(ying_yang);      // ok: passes Panda object as a Raccoon
+        std::cout << ying_yang;  // ok: passes Panda object as a ZooAnimal
+        ```
+    - 虚基类成员的可见性
+        - 因为在每个共享的虚基类中只有唯一一个共享的子对象，所以该基类的成员可以被 *直接访问* ，并且不会产生二义性
+        - 此外，如果虚基类的成员 *只被一条派生路径* *覆盖* ，则我们仍然 *可以直接访问* 这个被覆盖的成员
+        - 但是如果成员被 *多于一个基类* *覆盖* ，则一般情况下派生类 *必须* 为该成员 *自定义一个新的* 版本
+        - 例如
+            - 假定
+                - `class B`定义了一个成员`B::x`
+                - `class D1`和`class D2`均继承自`B`
+                - `class D`多重继承自`D1`和`D2`
+            - 则，在`D`的作用域中，`x`通过`D`的两个基类都是可见的
+            - 此时，如果我们通过`D`的实例使用`x`，则有如下 *三种* 可能性
+                - 如果在`D1`和`D2`中都**没有**`x`的定义，则`x`将被解析为`B`的成员，此时**不**存在二义性
+                - 如果在`D1`和`D2`中有且只有一个有`x`的定义，则同样**没有**二义性，派生类的`x`比共享虚基类`B`的`x`优先级更高
+                - 如果在`D1`和`D2`中都有`x`的定义，则此时直接访问`x`存在二义性
+        - 与非虚的多重继承体系一样，解决这种二义性问题的最好方法就是在派生类中为成员自定义一个新的实例
 - 构造函数与虚继承
 
 
