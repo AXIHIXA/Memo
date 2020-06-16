@@ -16702,12 +16702,17 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         ```
         using ns_name::member_name;
         ```
-        - 一次只引入某命名空间的一个成员
+        - 一次只引入某命名空间的一个 *名字*
             - 从这条`using`声明开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的名字`name`可见
                 - 如同它被声明于包含这条`using`声明的相同的类作用域、块作用域或命名空间作用域中
                 - 有效作用域结束后，想访问这一变量，就必须使用完整的 *限定标识符* ，进行 *限定名字查找*
         - 可以出现于 *全局作用域* 、 *局部作用域* 、 *命名空间作用域* 以及 *类作用域* 中 
             - 在 *类作用域* 中，`using`声明 *只能指向基类成员* 
+        - `using`声明声明的是一个 *名字* ，而**不是**函数
+        ```
+        using NS::print(int);  // error: cannot specify a parameter list
+        using NS::print;       // ok: using declarations specify names only
+        ```
     - *`using`指示* （`using`-directive）
         - 格式
         ```
@@ -16849,7 +16854,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             int A::C1::f3() { return h; }  // ok: returns A::h
             ```
         - 实参相关的查找与类类型形参
-            - 给 *函数* 传递 *类类型实参* 时，在常规的名字查找之后，还会额外查找 *实参类所属的命名空间* 
+            - 给 *函数* 传递 *类类型实参* 时，在常规的名字查找之后，还会额外查找 *实参类及其基类所属的命名空间* 
                 - 这一规则对 *类的引用* 或 *类的指针* 类型的 *函数实参* 同样有效
             - 例如如下程序
             ```
@@ -16940,8 +16945,111 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                         ```
                     - `forward`也一样
         - 友元声明与实参相关的查找
+            - 当类声明了一个友元时，该友元声明并未使友元本身可见
+                - 即使这个友元声明是个定义，也还是不可见
+            - 然而，一个另外的未声明的类或函数如果第一次出现在友元声明中，则我们认为它是上一层命名空间的成员
+            - 这条规则与实参相关的查找规则结合在一起将产生意想不到的效果
+                - 如以下代码
+                ```
+                namespace A
+                {
+                class C
+                {
+                public:
+                    // two friends; neither is declared apart from a friend declaration
+                    // these functions implicitly are members of namespace A
+                    friend void f(const C &) {}  // can be found when being called outside A, by argument-dependent lookup
+
+                    friend void f2() {}          // won't be found when being called outside A, unless otherwise declared
+                };
+                }
+                ```
+                - 此时`f`和`f2`都是`namespace A`的成员，即使`f`**不**存在其它声明，我们也能在`namespace A`之外通过实参相关的查找规则调用`f`
+                ```
+                int main()
+                {
+                    A::C o;
+                    
+                    f(o);                        // ok: finds A::f through the friend declaration in A::C
+                    f2();                        // error: f2 not declared
+                    
+                    A::f(o);                     // error: A::f not declared
+                    A::f2();                     // error: A::f2 not declared
+                }
+                ```
+                - 因为`f`接受一个 *类类型实参* ，所以名字查找流程会额外搜寻`C`所属的`namespace A`，就会找到`f`的 *隐式声明* 
+                    - 由`C`中对`f`的友元声明，编译器认为`f`是`namespace A`的成员，因而产生一个隐式声明
+                - 相反，因为`f2`没有 *类类型实参* ，因此它就不能被找到了
+                - 加入如下声明令`f`和`f2`可见，则可让上面代码直接没事
+                ```
+                namespace A
+                {
+                void f(const C &);
+                voif f2();
+                }
+                ```
 - 重载与命名空间
     - 与实参相关的查找与重载
+        - 给 *函数* 传递 *类类型实参* 时，在常规的名字查找之后，还会额外查找 *实参类及其基类所属的命名空间* 
+        - 这会影响 *候选函数集* 的确定
+        - 我们将在每个实参类及其基类所在的命名空间中搜寻候选函数，这些命名空间中所有同名函数都被加入候选函数集，即使其中某些函数在调用语句处不可见
+        ```
+        namespace NS 
+        {
+        class Quote { /* ... */ };
+        void display(const Quote &) { /* ... */ }
+        }
+        
+        // Bulk_item's base class is declared in namespace NS
+        class Bulk_item : public NS::Quote { /* ... */ };
+        
+        int main() 
+        {
+            Bulk_item book1;
+            display(book1);  // NS::display is not visible here; still, it is added to candidate function set
+            return 0;
+        }
+        ```
+    - 重载与`using`声明
+        - `using`声明声明的是一个 *名字* ，而**不是**函数
+        ```
+        using NS::print(int);  // error: cannot specify a parameter list
+        using NS::print;       // ok: using declarations specify names only
+        ```
+        - 使用`using`声明将把该函数在该命名空间中的所有版本都注入到当前作用域中
+        ```
+        namespace A
+        {
+        void f(int) {}
+        void f(const std::string &) {}
+        }
+
+        namespace B
+        {
+        void f(const std::vector<int> &) {}
+        }
+        
+        void f(const std::list<int> &) {}
+        
+        int main
+        {
+            using A::f;
+        
+            f(1);                           // ok. calls A::f(1)
+            f("hehe");                      // ok. calls A::f(hehe)
+            
+            f(std::list<int> {0, 1, 2});    // error: no matching function call to f
+                                            // current scope: main
+                                            // void f(const std::list<int> &) is in global scope
+                                            // name finding finds name f in current scope and stops
+                                            // thus can't find void f(const std::list<int> &)
+                                            
+            f(std::vector<int> {0, 1, 2});  // error: no matching function call to f
+                                            // B::f is not visible at all
+        }
+        ```
+    - 重载与`using`指示
+    - 跨越多个`using`指示的重载
 
 #### 多重继承与虚继承
 
