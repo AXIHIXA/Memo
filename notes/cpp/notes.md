@@ -110,8 +110,8 @@
         - `delete`非虚析构函数基类的指针是 *未定义行为*
         - 解引用基类指针并赋值是**不好**的
     - 派生类 *拷贝控制成员* 应首先 *首先调用基类对应成员* 处理基类部分，再处理自己的部分
-    - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* ， *析构函数* **除外**：顺序和构造是反的，且编译器会自动调用基类析构函数
-    - 派生类拷贝或移动构造函数**必须**显式调用基类对应构造函数，否则基类部分将被 *默认初始化* ，产生 *未定义值* 
+        - 派生类构造函数应 *首先调用基类构造函数* 初始化 *基类部分* ， *之后* 再按照 *声明的顺序* 依次初始化 *派生类成员* ， *析构函数* **除外**：顺序和构造是反的，且编译器会自动调用基类析构函数
+        - 派生类拷贝或移动构造函数**必须**显式调用基类对应构造函数，否则基类部分将被 *默认初始化* ，产生 *未定义值* 
 - 一些小知识
     - 给`char a`和`unsigned char b`加上 *加号* `+a`，`+b`就把它们提升成了`int`和`unsigned int`，可以用于`std::cout`
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
@@ -12302,6 +12302,9 @@ protected:
 ```
 - *抽象基类* 就是含有 *纯虚函数* 的类
     - 负责定义 *接口* ，后续派生类负责实现接口
+        - 隔壁`Java`更狠，直接搞了个`interface`出来，就相当于`C++`里的 *抽象基类* 
+        - 于是就有了`class Derived extends Base implements Interface`这种操作
+        - 虽说`Java`不能直接搞多重继承，这也算能凑合用了吧
     - **不能**创建纯虚基类的对象
     - 只能定义确实覆盖了纯虚函数的派生类的对象
 ```
@@ -12702,13 +12705,13 @@ protected:
         - 即：基类的构造函数**不能**调用派生类版本的虚函数
             - 派生类对象被构造时，先执行基类构造函数，此时派生类部分 *未定义* 
             - 被委托的基类构造函数如果调用派生类版本的虚函数，则可能访问未定义内容，造成崩溃
-- 继承的构造函数
+- *继承的构造函数* 
     - 派生类能够重用基类的构造函数
         - 当然，这些基类构造函数不是常规继承得来的，不过姑且这么叫
         - 派生类只能继承其直接基类的构造函数，且不继承 *默认* 、 *拷贝* 和 *移动* 构造函数
             - 如派生类没有直接定义这些构造函数，则编译器为它们合成一个
-    - 继承的实现是一条`using`语句，
-        - 通常的`using`只是令名字可见，但这里的`using`会令编译器 *产生一个对应版本的派生类构造函数的代码* 
+    - 通过一条`using`语句从直接基类中继承构造函数
+        - 通常的`using`只是令名字可见，但这里的`using`会令编译器 *产生一个对应版本的**派生类**构造函数的代码* 
         ```
         class BulkQuote : public DiscQuote 
         {
@@ -13880,7 +13883,7 @@ protected:
             fun4(std::forward<Args>(args) ...);
         }
 
-        // this one does perfect forwarding, successfully calling the std::string && specification 
+        // this one does perfect forwarding, successfully calling the std::string && specialization
         template <typename ... Args>
         void fun3_1(Args && ... args)
         {
@@ -17119,7 +17122,71 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 #### 多重继承与虚继承
 
-- 多重继承
+- *多重继承* （multiple inheritance）
+    - *多重继承* 是指从多个直接基类中产生派生类的能力，多重派生类继承了所有父类的属性
+        - 在派生类的派生列表中可以有多个基类
+            - 每个基类包含一个可选的访问说明符
+            - 如果访问说明符被忽略了，则`class`默认`private`，`struct`默认`public`
+            - 和单重继承一样，多重继承的派生列表也只能包含已经定义过的类，而且这些类不能是`final`的
+            - 直接基类的个数不受限，但同一个基类只能出现一次
+        - 体系举例
+            - 抽象基类`ZooAnimal`，保存动物园中动物共有的信息，提供公共接口
+            - 其他辅助类：负责封装不同的抽象，例如`Panda`由`Bear`和`Endangered`共同派生得来
+        ```
+        class Bear : public ZooAnimal { /* ... */ };
+        class Panda : public Bear, public Endangered { /* ... */ };
+        ```
+    - 派生类构造函数初始化所有基类
+        - 构造一个派生类的对象将同时构造并初始化它的所有基类子对象
+        - 与单重继承一样，多重继承的派生类的构造函数在初始化列表中调用基类构造函数初始化基类部分
+            - 如果没有显式调用基类的构造函数，则此基类对应部分将被 *默认初始化* ，产生 *未定义的值* 
+            - 基类的构造顺序与 *派生列表中基类的出现顺序* 保持一致，与初始化列表中基类的顺序**无关**
+        ```
+        // explicitly initialize both base classes
+        Panda::Panda(std::string name, bool onExhibit)
+                : Bear(name, onExhibit, "Panda"), 
+                  Endangered(Endangered::critical) 
+        { 
+        
+        }
+        
+        // implicitly uses the Bear default constructor to initialize the Bear subobject
+        Panda::Panda()
+                : Endangered(Endangered::critical) 
+        { 
+        
+        }
+        ```
+        - 例如，`ZooAnimal`是整个体系的最终基类，`Bear`是`Panda`的直接基类，`ZooAnimal`是`Bear`的基类。因此一个`Panda`对象将按如下次序进行初始化
+            - 首先初始化`ZooAnimal`
+            - 接下来初始化`Panda`的第一个直接基类`Bear`
+            - 然后初始化`Panda`的第二个直接基类`Endangered`
+            - 最后初始化`Panda`
+    - 继承的构造函数与多重继承
+        - 允许派生类从一个或几个基类中继承构造函数
+        - 但如果从多个基类中继承了相同的构造函数（即形参列表完全相同），则将产生错误
+        ```
+        struct Base1 
+        {
+            Base1() = default;
+            Base1(const std::string &);
+            Base1(std::shared_ptr<int>);
+        };
+        
+        struct Base2 
+        {
+            Base2() = default;
+            Base2(const std::string &);
+            Base2(int);
+        };
+        
+        // error: D1 attempts to inherit D1::D1 (const string &) from both base classes
+        struct D1: public Base1, public Base2 
+        {
+            using Base1::Base1;  // inherit constructors from Base1
+            using Base2::Base2;  // inherit constructors from Base2
+        };
+        ```
 - 类型转换与多个基类
 - 多重继承下的类作用域
 - 虚继承

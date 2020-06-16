@@ -3,7 +3,7 @@
 
 
 // variadic template class expansion
-// via partial specification
+// via partial specialization
 template <typename T>
 struct Sum<T>
 {
@@ -105,7 +105,7 @@ void fun4(T && t, Args && ... args)
     fun4(std::forward<Args>(args) ...);
 }
 
-// this one does perfect forwarding, successfully calling the std::string && specification 
+// this one does perfect forwarding, successfully calling the std::string && specialization 
 template <typename ... Args>
 void fun3_1(Args && ... args)
 {
