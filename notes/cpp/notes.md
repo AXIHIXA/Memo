@@ -16958,9 +16958,11 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 public:
                     // two friends; neither is declared apart from a friend declaration
                     // these functions implicitly are members of namespace A
-                    friend void f(const C &) {}  // can be found when being called outside A, by argument-dependent lookup
+                    friend void f(const C &) {}  // can be found when being called outside A
+                                                 // by argument-dependent lookup
 
-                    friend void f2() {}          // won't be found when being called outside A, unless otherwise declared
+                    friend void f2() {}          // won't be found when being called outside A
+                                                 // unless otherwise declared
                 };
                 }
                 ```
@@ -17041,15 +17043,79 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             f(std::list<int> {0, 1, 2});    // error: no matching function call to f
                                             // current scope: main
                                             // void f(const std::list<int> &) is in global scope
-                                            // name finding finds name f in current scope and stops
+                                            // name-lookup finds name f in current scope and stops
                                             // thus can't find void f(const std::list<int> &)
                                             
             f(std::vector<int> {0, 1, 2});  // error: no matching function call to f
                                             // B::f is not visible at all
         }
         ```
+        - 一个`using`声明囊括了重载函数在该命名空间内的所有版本以确保不违反命名空间的接口
+            - 如果库的作者为了某项任务提供了好几个不同的函数、并允许用户选择性地忽略重载函数中的一部分但不是全部，将可能导致意想不到的程序行为
+        - 一个`using`声明引入的函数将重载该声明语句所属作用域中已有的其他同名函数
+        - 如果`using`声明出现在局部作用域中，则引入的名字将隐藏外部作用域的相关声明
+        - 如果`using`声明所在的作用域中已经有一个函数与新引入的函数同名且形参列表相同，则该`using`声明将引发 *重定义错误* 
+        - `using`声明将为引入的名字添加额外的重载实例，并最终扩充 *候选函数集* 的规模
     - 重载与`using`指示
+        - `using`指示将命名空间的全部成员提升到当前作用域的上一层作用域中
+        - 如果此命名空间的某个函数与该命名空间所属的作用域的函数重名，则此命名空间的函数将被添加到 *重载集合* 中
+        ```
+        namespace libs_R_us 
+        {
+        extern void print(int);
+        extern void print(double);
+        }
+        
+        // ordinary declaration
+        void print(const std::string &);
+        
+        // this using directive adds names to the candidate set for calls to print:
+        using namespace libs_R_us;
+        
+        // the candidates for calls to print at this point in the program are:
+        // print(int) from libs_R_us
+        // print(double) from libs_R_us
+        // print(const std::string &) declared explicitly
+        
+        void fooBar(int ival)
+        {
+            print("Value: ");  // calls global print(const string &)
+            print(ival);       // calls libs_R_us::print(int)
+        }
+        ```
+        - 与`using`声明不同的是，对于`using`指示来说，引入一个与已有函数形参列表完全相同的函数并**不会**产生错误
+            - 此时，只要我们指明调用的是命名空间中的版本还是当前作用域的版本即可
     - 跨越多个`using`指示的重载
+        - 如果存在多个`using`指示，则来自每个命名空间的名字都会成为候选函数集的一部分
+        ```
+        namespace AW 
+        {
+        int print(int);
+        }
+        
+        namespace Primer 
+        {
+        double print(double);
+        }
+        
+        // using directives create an overload set of functions from different namespaces
+        using namespace AW;
+        using namespace Primer;
+        
+        long double print(long double);
+        
+        int main() 
+        {
+            print(1);    // calls AW::print(int)
+            print(3.1);  // calls Primer::print(double)
+            return 0;
+        }
+        ``` 
+        - 在全局作用域中，函数`print`的 *重载集合* 包括
+            - `AW::print(int)`
+            - `Primer::print(double)`
+            - `::print(long double)`
+        - 在 *主函数* 中，当前作用域没有候选函数，然后在上一层全局作用域中找到了如上 *候选函数集* 
 
 #### 多重继承与虚继承
 
