@@ -16884,7 +16884,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - 根据一般的重载规则确定某次调用应该执行函数的某个版本
                 - 应用程序根本不会执行标准库版本
             - `std::move`和`std::forward`都是标准库模板函数，都接受一个模板类型参数的右值引用类型形参
-                - 复习`g++`实现
+                - 复习一下`g++`对这俩货的实现
                 ```
                 /// <type_traits>
                 /// remove_reference
@@ -16927,6 +16927,19 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                     return static_cast<T &&>(t);
                 }
                 ```
+                - *模板类型参数的右值引用类型的形参* 事实上可以匹配 *任何类型以及任何值类别的实参* 
+                    - 如果我们的应用程序也定义了一个接受单一形参的`move`函数，则不管该形参是什么类型，都会与`std::move`冲突
+                        - 更糟的是，由于自行定义的一般是更特化的版本
+                        - 因此，一旦形参类型达成精确匹配，根据模板函数重载匹配规则 *匹配特化完犊子* ，如下写法将永远**无法**调用到`std::move`
+                        ```
+                        using std::move;
+                        move(...);
+                        ```
+                        - 这也就解释了为什么调用`std::move`时一定要用如下写法
+                        ```
+                        std::move(...);
+                        ```
+                    - `forward`也一样
         - 友元声明与实参相关的查找
 - 重载与命名空间
     - 与实参相关的查找与重载
