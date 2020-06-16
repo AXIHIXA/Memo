@@ -13858,6 +13858,10 @@ protected:
     - 可变模板完美转发测试
         - 代码
         ```
+        // a test on perfect forwarding of variadic template functions
+
+        // variadic template function expansion
+        // via recursion
         template <typename T>
         void fun4(T && t)
         {
@@ -13876,12 +13880,14 @@ protected:
             fun4(std::forward<Args>(args) ...);
         }
 
+        // this one does perfect forwarding, successfully calling the std::string && specification 
         template <typename ... Args>
         void fun3_1(Args && ... args)
         {
             fun4(std::forward<Args>(args) ...);
         }
 
+        // this one doesn't do perfect forwarding, only calling the template
         template <typename ... Args>
         void fun3_2(Args && ... args)
         {
@@ -13890,7 +13896,6 @@ protected:
         
         fun3_1(1, std::string {"rval"});  // void fun4(T && t, Args && ... args) 1
                                           // void fun3(std::string && s) rval
-                                          
         fun3_2(1, std::string {"rval"});  // void fun4(T && t, Args && ... args) 1
                                           // void fun3(T && t) rval
         ```
