@@ -77,6 +77,9 @@
     - `Clang-Tidy`要求只能`throw`在`throw`子句中临时创建的匿名`std::exception`类及其派生类对象
     - 通常情况下，如果`catch`接受的异常与某个继承体系有关，则通常将其捕获形参定义为引用类型
     - 越是专门的`catch`，就越应该置于整个`catch`列表的前端。如果在多个`catch`语句的类型之间存在着继承关系，则我们应该把继承链最底端的类（most derived type）放在前面，而将继承链最顶端的类（least derived type）放在后面。因为挑选规则是第一个能匹配的，而不是最佳匹配
+    - `C++`应使用 *匿名命名空间* 代替 *文件内`static`声明*
+    - 应尽量**避免**使用 *`using`指示* 
+    - *头文件* 最多只能在它的 *函数或命名空间内* 使用 *`using`指示* 或 *`using`声明* 
 - 跟类有关的一箩筐规则
     - 构造函数**不应**该覆盖掉类内初始值，除非新值与原值不同；不使用类内初始值时，则每个构造函数**都应显式初始化**每一个类内成员
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
@@ -328,7 +331,7 @@
     
     int S::i;                         // 定义 S::i
     ```
-    - `(deprecated since C++17)` 已经在类中用`constexpr`说明符定义过的 *静态数据成员* ，在 *命名空间作用域* 中的声明 
+    - 已经在类中用`constexpr`说明符定义过的 *静态数据成员* ，在 *命名空间作用域* 中的声明 `(deprecated since C++17)` 
     ```
     struct S 
     {
@@ -676,7 +679,7 @@ void g()
 - [*命名空间*](https://en.cppreference.com/w/cpp/language/namespace) 中声明的任何实体的作用域均开始于其声明，并包含
     1. 这个命名空间的 *剩余部分* 
     2. 其后所有 *同名命名空间* 
-    3. 使用了`using`命令 *引入了此实体或整个这个命名空间的域* 
+    3. 使用了 *`using`指令* 或 *`using`声明* *引入了此实体或整个这个命名空间的域* 
 - *翻译单元* （文件）的顶层作用域（即所谓的 *文件作用域* 或 *全局作用域* ）亦为命名空间，被正式称作 *全局命名空间作用域* 
     - 任何声明于 *全局命名空间作用域* 的实体的作用域均开始于其声明，并持续到 *翻译单元的结尾* 
 - 声明于 *无名命名空间* 或 *内联命名空间* 的实体的作用域 *包括外围命名空间* 
@@ -702,7 +705,7 @@ namespace N
 namespace 
 {
     int l = 1;                            // l 的作用域开始
-}                                         // l 的作用域不结束（它是无名命名空间的成员）
+}                                         // l 的作用域不结束（它是匿名命名空间的成员）
  
 namespace N 
 {                                         // i, g, j, q, inl, x, y 的作用域持续
@@ -725,7 +728,7 @@ namespace N
 
 int main() 
 {
-    using namespace N;                    // i, g, j, q, inl, x, y 的作用域恢复
+    using namespace N;                    // i, g, j, q, inl, x, y 的作用域恢复（至全局作用域）
     i = 1;                                // N::i 在作用域中
     x = 1;                                // N::(anonymous)::x 在作用域中
     y = 1;                                // N::inl::y 在作用域中
@@ -1391,11 +1394,13 @@ double (*pf4)(int*) = ff;              // error: return type of ff and pf4 don't
 
 #### （类的）数据成员指针
 
+- `*`表示普通指针，而`Class::*`表示 *成员指针* 
+    - 至于是数据成员指针，还是成员函数指针，那就跟普通函数指针与普通对象指针的区别一样，只看括号了
 - 指向类`C`的 *非静态数据成员* `m`的指针，以`&C::m`初始化
     - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
     - `C`的 *成员函数* 中，`&(C::m)`、`&m`等**不再是**数据成员指针
 - 能用作 [*成员指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数
-    - 使得每个该类的对象都能用这个 *类的数据成员指针* 访问到自己的数据成员
+    - 使得每个 *该类的对象* 都能用这个 *类的数据成员指针* 访问到自己的数据成员
 ```
 struct C { int m; };
 
@@ -1460,11 +1465,11 @@ std::cout << a.**p2 << 'std::endl;     // prints 1
 
 #### （类的）成员函数指针
 
-- 指向类`C`的 *非静态成员函数* `f`的指针，以`&C::f`初始化。在 C 的成员函数内，如 &(C::f) 或 &f 这样的表达式不构成成员函数指针。
+- 指向类`C`的 *非静态成员函数* `f`的指针，以`&C::f`初始化
     - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
     - `C`的 *成员函数* 中，`&(C::f)`、`&f`等**不再是**成员函数指针
 - 能用作 [*成员指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数
-    - 使得每个该类的对象都能用这个 *类的数据成员指针* 访问到自己的数据成员
+    - 使得每个 *该类的对象* 都能用这个 *类的数据成员指针* 访问到自己的数据成员
     - 结果表达式 *只能用作* 函数调用运算符的 *左操作数* 
 ```
 struct C
@@ -1477,7 +1482,7 @@ void (C::* p)(int) = &C::f;            // 指向类 C 的成员函数 f 的指�
 C c;
 (c.*p)(1);                             // 打印 1
 
-C* cp = &c;
+C * cp = &c;
 (cp->*p)(2);                           // 打印 2
 ```
 - *基类的成员函数指针* 可以 *隐式转换* 为 *派生类的成员函数指针*
@@ -15626,14 +15631,25 @@ quizB.reset(27);                  // student number 27 failed
         - `std::chrono::years`：`std::chrono::duration<int64_t, std::ratio<31556952>>` `(since C++20)`
     - `std::chrono::duration`字面量 `(since C++14)`
         - [`std::literals::chrono_literals::operator""h`](https://en.cppreference.com/w/cpp/chrono/operator%22%22h)
-            - 可能的实现
+            - `g++`实现
             ```
-            constexpr std::chrono::hours operator ""h(unsigned long long h)
+            template<typename _Dur, char ... _Digits>
+            constexpr _Dur __check_overflow()
             {
-                return std::chrono::hours(h);
+                using _Val = __parse_int::_Parse_int<_Digits ...>;
+                constexpr typename _Dur::rep __repval = _Val::value;
+                static_assert(__repval >= 0 && __repval == _Val::value,
+                              "literal value cannot be represented by duration type");
+                return _Dur(__repval);
             }
             
-            constexpr std::chrono::duration<long double, ratio<3600, 1>> operator ""h(long double h)
+            template <char ... _Digits>
+            constexpr chrono::hours operator""h()
+            { 
+                return __check_overflow<chrono::hours, _Digits ...>(); 
+            }
+            
+            constexpr std::chrono::duration<long double, ratio<3600, 1>> operator""h(long double h)
             {
                 return std::chrono::duration<long double, std::ratio<3600, 1>>(h);
             }
@@ -15646,15 +15662,22 @@ quizB.reset(27);                  // student number 27 failed
             std::cout << "one day is " << day.count() << " hours\n"             // one day is 24 hours
                       << "half an hour is " << halfhour.count() << " hours\n";  // half an hour is 0.5 hours
             ```
-        - [`std::literals::chrono_literals::operator""min`](https://en.cppreference.com/w/cpp/chrono/operator%22%22min)
-            - 可能的实现
             ```
-            constexpr std::chrono::minutes operator ""min(unsigned long long m)
-            {
-                return std::chrono::minutes(m);
+            std::chrono::hours day = std::chrono_literals::operator""h<'2', '4'>();
+            std::chrono::duration<long double, std::ratio<3600, 1>> halfhour = std::chrono_literals::operator""h(0.5);
+            std::cout << "one day is " << day.count() << " hours\n"             // one day is 24 hours
+                      << "half an hour is " << halfhour.count() << " hours\n";  // half an hour is 0.5 hours
+            ```
+        - [`std::literals::chrono_literals::operator""min`](https://en.cppreference.com/w/cpp/chrono/operator%22%22min)
+            - `g++`实现
+            ```
+            template <char ... _Digits>
+            constexpr chrono::minutes operator""min()
+            { 
+                return __check_overflow<chrono::minutes, _Digits ...>(); 
             }
             
-            constexpr std::chrono::duration<long double, std::ratio<60, 1>> operator ""min(long double m)
+            constexpr std::chrono::duration<long double, std::ratio<60, 1>> operator""min(long double m)
             {
                 return std::chrono::duration<long double, ratio<60, 1>> (m);
             }
@@ -15672,14 +15695,15 @@ quizB.reset(27);                  // student number 27 failed
             std::cout << "half a minute is " << halfmin.count() << " minutes\n";  
             ```
         - [`std::literals::chrono_literals::operator""s`](https://en.cppreference.com/w/cpp/chrono/operator%22%22s)
-            - 可能的实现
+            - `g++`实现
             ```
-            constexpr std::chrono::seconds operator ""s(unsigned long long s)
-            {
-                return std::chrono::seconds(s);
+            template <char ... _Digits>
+            constexpr chrono::seconds operator""s()
+            { 
+                return __check_overflow<chrono::seconds, _Digits ...>(); 
             }
             
-            constexpr std::chrono::duration<long double> operator ""s(long double s)
+            constexpr std::chrono::duration<long double> operator""s(long double s)
             {
                 return std::chrono::duration<long double>(s);
             }
@@ -15696,14 +15720,15 @@ quizB.reset(27);                  // student number 27 failed
             std::cout<< "a minute and a second is " << (1min + 1s).count() << " seconds\n";
             ```
         - [`std::literals::chrono_literals::operator""ms`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ms)
-            - 可能的实现
+            - `g++`实现
             ```
-            constexpr std::chrono::milliseconds operator ""ms(unsigned long long ms)
-            {
-                return std::chrono::milliseconds(ms);
+            template <char ... _Digits>
+            constexpr chrono::milliseconds operator""ms()
+            { 
+                return __check_overflow<chrono::milliseconds, _Digits ...>(); 
             }
             
-            constexpr std::chrono::duration<long double, std::milli> operator ""ms(long double ms)
+            constexpr std::chrono::duration<long double, std::milli> operator""ms(long double ms)
             {
                 return std::chrono::duration<long double, std::milli>(ms);
             }
@@ -15717,14 +15742,15 @@ quizB.reset(27);                  // student number 27 failed
                       << "1s = " << d2.count() << " milliseconds\n";    // 1s = 1000 milliseconds
             ```
         - [`std::literals::chrono_literals::operator""us`](https://en.cppreference.com/w/cpp/chrono/operator%22%22us)
-            - 可能的实现
+            - `g++`实现
             ```
-            constexpr std::chrono::microseconds operator ""us(unsigned long long us)
-            {
-                return std::chrono::microseconds(us);
+            template <char ... _Digits>
+            constexpr chrono::microseconds operator""us()
+            { 
+                return __check_overflow<chrono::microseconds, _Digits ...>(); 
             }
             
-            constexpr std::chrono::duration<long double, std::micro> operator ""us(long double us)
+            constexpr std::chrono::duration<long double, std::micro> operator""us(long double us)
             {
                 return std::chrono::duration<long double, std::micro>(us);
             }
@@ -15738,14 +15764,15 @@ quizB.reset(27);                  // student number 27 failed
                       << "1ms = " << d2.count() << " microseconds\n";   // 1ms = 1000 microseconds
             ```
         - [`std::literals::chrono_literals::operator""ns`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ns)  
-            - 可能的实现
+            - `g++`实现
             ```
-            constexpr std::chrono::nanoseconds operator ""ns(unsigned long long ns)
-            {
-                return std::chrono::nanoseconds(ns);
+            template <char ... _Digits>
+            constexpr chrono::nanoseconds operator""ns()
+            { 
+                return __check_overflow<chrono::nanoseconds, _Digits ...>(); 
             }
             
-            constexpr std::chrono::duration<long double, std::nano> operator ""ns(long double ns)
+            constexpr std::chrono::duration<long double, std::nano> operator""ns(long double ns)
             {
                 return std::chrono::duration<long double, std::nano>(ns);
             }
@@ -16398,14 +16425,14 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 其成员的作用域从声明点开始，到翻译单元结尾为止
         - 其成员具有 *内部链接* 
     4. *命名空间名* （还有 *类名* ）可以出现在 *域运算符左侧* ，作为 *限定名字查找* 的一部分
-    5. *`using`指令* （`using`-directive）
-        - 从这条`using`指令开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的任何名字均可见
-            - 如同它们被声明于同时含有这条`using`指令以及`ns_name`这两者的更外一层的命名空间作用域中
+    5. *`using`指示* （`using`-directive）
+        - 从这条`using`指示开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的任何名字均可见
+            - 如同它们被声明于同时含有这条`using`指示以及`ns_name`这两者的更外一层的命名空间作用域中
     6. *`using`声明* （`using`-declaration）
-        - 从这条`using`指令开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的名字`name`可见
+        - 从这条`using`声明开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的名字`name`可见
             - 如同它被声明于包含这条`using`声明的相同的类作用域、块作用域或命名空间作用域中
     7. *命名空间别名* （namespace alias）定义
-    8. *嵌套命名空间* （nested namespace）定义 `(since C++17)`
+    8. *嵌套命名空间定义* （nested namespace definition） `(since C++17)`
         - `namespace A::B::C { ... }`等价于`namespace A { namespace B { namespace C { ... } } }`
         - *嵌套`inline`*  `(since C++20)`
             - `inline`可出现于除第一个之外的任何一个命名空间名之前
@@ -16543,21 +16570,232 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - *匿名命名空间* 中定义的变量自动具有 *内部链接* 和 *静态存储期* 
             - 即它们的使用方法和性质就像在外层命名空间（例如全局命名空间）中定义的`static`变量一样
         - 匿名命名空间可以不连续，但**不能**跨越多个文件
-            - 每个文件定义自己的匿名命名空间，如果两个文件都含有匿名命名空间，
-        ```
-        int i; // global declaration for i
-        
-        namespace 
-        {
-        int i;
-        }
-        
-        // ambiguous: defined globally and in an unnested, unnamed namespace
-        i = 10;
-        ```
+            - 每个文件定义自己的匿名命名空间，如果两个文件都含有匿名命名空间，则这两个命名空间**无关**
+            - 这两个匿名命名空间中可以定义相同的名字，且这些定义表示的是不同的实体
+            - 如果一个 *头文件* 包含了未命名的命名空间，则该命名空间中定义的名字将在每个包含了该头文件的文件中对应不同的实体
+        - 匿名命名空间中的名字可以直接使用，且**不能**使用域运算符
+        - 匿名命名空间中定义的名字的作用域与该命名空间所在的作用域相同
+            - 如果匿名命名空间定义在文件最外层作用域中，则该命名空间中的名字一定要与全局作用域中的名字有所区别
+            ```
+            int i; // global declaration for i
+            
+            namespace 
+            {
+            int i;
+            }
+            
+            // ambiguous: defined globally and in an unnested, unnamed namespace
+            i = 10;
+            ```
+            - 其他情况下，匿名命名空间中的成员都属于正确的程序实体
+        - 和所有命名空间类似，一个匿名命名空间也能嵌套在其他命名空间中
+            - 此时，匿名命名空间中的成员可以通过外层命名空间的名字来访问
+            ```
+            namespace local 
+            {
+                namespace 
+                {
+                    int i;
+                }
+            }
+            
+            // ok: i defined in a nested unnamed namespace is distinct from global i
+            local::i = 42;
+            ```
+        - 匿名命名空间取代 *文件内`static`声明* 
+            - `C`程序中将名字声明为`static`使其对且只对这整个文件有效
+            - `C++`程序应当使用匿名命名空间取代`C`风格的文件内`static`声明
 - 使用命名空间成员
+    - *命名空间别名* （namespace alias）
+        - 通过 *命名空间别名* 简化很长的名字
+        - 格式
+        ```
+        namespace ns_name = name_of_a_much_longer_ns;
+        ```
+        - **不能**在命名空间还未定义时就声明别名
+        - 一个命名空间可以有好几个别名，所有别名都与原先的命名空间等价
+    - *`using`声明* （`using`-declaration）
+        - 格式
+        ```
+        using ns_name::member_name;
+        ```
+        - 一次只引入某命名空间的一个成员
+            - 从这条`using`声明开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的名字`name`可见
+                - 如同它被声明于包含这条`using`声明的相同的类作用域、块作用域或命名空间作用域中
+                - 有效作用域结束后，想访问这一变量，就必须使用完整的 *限定标识符* ，进行 *限定名字查找*
+        - 可以出现于 *全局作用域* 、 *局部作用域* 、 *命名空间作用域* 以及 *类作用域* 中 
+            - 在 *类作用域* 中，`using`声明 *只能指向基类成员* 
+    - *`using`指示* （`using`-directive）
+        - 格式
+        ```
+        using namespace ns_name;
+        ```
+        - 一次引入一整个命名空间
+            - 从这条`using`指示开始、到其作用域结束为止，进行 *非限定名字查找* 时，来自命名空间`ns_name`的任何名字均可见
+                - 如同它们被声明于同时含有这条`using`指示以及`ns_name`这两者的 *更外一层* 的命名空间作用域中
+        - 位置限制
+            - 可以出现于 *全局作用域* 、 *局部作用域* 、 *命名空间作用域* 中 
+            - **不可以** 出现在 *类作用域* 中
+        - `using`指示**不等于**一大堆`using`声明
+            1. `using`声明只将一个名字的作用域提升至其本身所在的作用域；而`using`指示提升的作用域是其本身所在作用域 *的更外一层* 
+                - 这是因为`using`指示提升的是一整个命名空间的全部成员
+                - 而命名空间中通常包含一些**不能**出现在局部作用域中的定义
+                - 因此`using`指示一般被看做是出现在更外一层的作用域中
+            2. `using`声明如果造成二义性，会立即产生编译错误；而`using`指示如果造成二义性，并**不会立即**导致 *编译错误* 
+                - 对于`using`指示引入的二义性，只有到程序真正直接使用了有二义性的名字时，才会报错
+                - 这一点会造成隐藏问题，难以调试
+        - `例18.1`
+            - 代码
+            ```
+            // namespace A and function f are defined at global scope
+            namespace A
+            {
+            int i = 1;
+            int j = 2;
+            }
+
+            int i = 3;
+            int j = 4;
+
+            void f1()
+            {
+                using namespace A;                      // injects A::i and A::j into GLOBAL scope
+                std::cout << i * j << std::endl;        // error: reference to i and j is ambiguous
+            }
+
+            void f2()
+            {
+                using namespace A;                      // injects A::i and A::j into GLOBAL scope
+                std::cout << A::i * A::j << std::endl;  // ok: uses A::i and A::j
+                std::cout << ::i * ::j << std::endl;    // ok: uses ::i and ::j
+            }
+
+            void f3()
+            {
+                using A::i;                             // injects A::i into f3's scope
+                using A::j;                             // injects A::j into f3's scope
+                std::cout << i * j << std::endl;        // ok: uses A::i and A::j
+                std::cout << A::i * A::j << std::endl;  // ok: uses A::i and A::j
+                std::cout << ::i * ::j << std::endl;    // ok: uses ::i and ::j
+            }
+            ```
+            - `f1`和`f2`
+                - `using namespace A`会将`A::i`和`A::j`提升至 *全局作用域* ，而**不是**函数作用域
+                - 因此在`f1`和`f2`中，全局命名空间中就同时有了 *两个* `i`和`j`，但着**并不立即**造成冲突
+                - `f1`中直接使用`i`和`j`，造成了二义性冲突
+                - 而`f2`中并未使用有二义性的名字，所以程序相安无事，炸弹被隐藏起来了
+            - `f3`
+                - `using A::i`和`using A::j`只将`A::i`和`A::j`提升至函数作用域
+                - 因此直接使用`i`和`j`时，函数作用域覆盖了外层作用域的同名实体，没有问题
+        - 头文件与`using`声明或指示
+            - 头文件如果在其顶层作用域中含有`using`指示或`using`声明，则会将名字注入到所有包含了该头文件的文件中
+            - 通常情况下，头文件应该只负责定义接口部分的名字，而不定义实现部分的名字
+            - 因此，*头文件* 最多只能在它的 *函数或命名空间内* 使用 *`using`指示* 或 *`using`声明* 
+        - 应尽量**避免**使用 *`using`指示* 
+            - 造成的坏处
+                - 会造成 *全局命名空间污染* 
+                - `using`指示引起的二义性错误直到使用到二义性的名字时才会被发现，此时距`using`指示的引入可能已经很久了，导致程序难以调试
+            - 相比于`using`指示，对命名空间的每个成员分别使用`using`声明效果更好
+                - 这么做可以减少注入到命名空间中的名字的数量
+                - `using`声明引起的二义性错误 *在声明处就能发现* ，更利于程序调试
+            - `using`指示也不是一无是处，例如在命名空间本身的实现文件中，就可以使用`using`指示
 - 类、命名空间与作用域
-    - 最开始 *作用域* 那块儿已经讲清楚了 
+    - 对命名空间内部名字的查找遵循常规的查找规则
+        - 即由内向外依次查找每个外层作用域
+            - 外层作用域也可能是一个或多个嵌套的命名空间
+            - 直到最外层的全局命名空间查找过程终止
+        - 只有位于开放的块中、且在使用点之前声明的名字才被考虑
+        ```
+        namespace A 
+        {
+            int i;
+            
+            namespace B 
+            {
+                int i;         // hides A::i within B
+                int j;
+                
+                int f1()
+                {
+                    int j;     // j is local to f1 and hides A::B::j
+                    return i;  // returns B::i
+                }
+            } // namespace B is closed and names in it are no longer visible
+                
+            int f2()
+            {
+                return j;      // error: j is not defined
+            }
+            
+            int j = i;         // initialized from A::i
+        }
+        ```
+        - 对于命名空间中的 *类* 来说，常规的查找规则仍然适用
+            - 当成员函数使用某个名字时
+                - 首先在该成员中进行查找
+                - 然后在类中查找（包括基类）
+                - 接着在外层作用域中查找
+                    - 这时一个或几个外层作用域可能就是命名空间
+            - 除了类内部出现的成员函数定义之外，总是向上查找作用域
+            - 可以从函数的 *限定标识符* 推断出名字查找是检查作用域的次序
+                - 限定名以 *相反* 次序指出被查找的作用域
+            ```
+            namespace A 
+            {
+            int i;
+            int k;
+            
+            class C1 
+            {
+            public:
+                C1() : i(0), j(0) { }      // ok: initializes C1::i and C1::j
+                
+                int f1() { return k; }     // returns A::k
+                int f2() { return h; }     // error: h is not defined
+                int f3();
+                
+            private:
+                int i;                     // hides A::i within C1
+                int j;
+            };
+            
+            int h = i;                     // initialized from A::i
+            }
+            
+            // member f3 is defined outside class C1 and outside namespace A
+            int A::C1::f3() { return h; }  // ok: returns A::h
+            ```
+        - 实参相关的查找与类类型形参
+            - 给 *函数* 传递 *类类型实参* 时，在常规的名字查找之后，还会额外查找 *实参类所属的命名空间* 
+                - 这一规则对 *类的引用* 或 *类的指针* 类型的 *函数实参* 同样有效
+            - 例如如下程序
+            ```
+            int a = 1;
+            std::cout << a;
+            ```
+            - `std::cout << a;`其实是调用的是`std::operator<<(std::cout, a);`
+            - 由于其接受了类类型实参，因此名字查找时会在普通查找无果后额外查找`namespace std`
+                - 这就是我们不用特别加`std::`或`using std::operator<<;`的原因
+            - 查找规则的这个例外允许概念上作为类接口一部分的非成员函数无需单独的`using`声明就能被程序使用
+                - 假如此例外不存在，就不得不
+                    - 为`<<`单独提供一个`using`声明`using std::operator<<;`，或
+                    - 显式调用函数：`std::operator<<(std::cout, a);`
+                - 然而躲得过初一躲不过十五，该来的总会来的 
+                    - *`std::chrono_literals`字面量* 的操作符，例如`operator""h`就只能提供`using`声明或者显式调用了
+                    ```
+                    {
+                        using std::chrono_literals::operator""min;
+                        std::chrono::minutes _1_hour {60min};
+                        std::cout << "1 hour is " << _1_hour.count() << " minute(s)" << std::endl;
+                    }
+
+                    {
+                        std::chrono::minutes _1_hour = std::chrono_literals::operator""min<'6', '0'>();
+                        std::cout << "1 hour is " << _1_hour.count() << " minute(s)" << std::endl;
+                    }
+
+                    ```
+                    - *`std::complex`字面量* 的操作符也没好到哪儿去
 - 重载与命名空间
 
 #### 多重继承与虚继承
