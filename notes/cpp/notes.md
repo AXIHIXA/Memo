@@ -117,11 +117,12 @@
     - 位于继承体系中间层级的类 *可以* 选择 *虚继承* ，必须在虚派生的真实 *需求出现前* 就已经 *完成虚派生* 的操作
     - 虽然虚基类的初始化只由最低层派生类独自负责，但 *每个虚派生类* 仍旧都 *必须在构造函数中初始化它的虚基类* 
 - 一些小知识
-    - 函数的各色说明符限定符相对顺序完整版
+    - 类成员函数的各色说明符限定符相对顺序完整版
     ```
     struct ABase                  { virtual auto fun(int) const && noexcept -> void          = 0; }
     struct Derived : public ABase {         auto fun(int) const &&          -> void override {}   }
     ```
+    - *多态* （polymorphism）指类定义了 *虚函数* ； *抽象基类* （abstract base class）指定义了 *纯虚函数* 的基类； *虚基类* （virtual base class）指 *被虚继承* 的基类。这仨货可别给弄混了
     - 给`char a`和`unsigned char b`加上 *加号* `+a`，`+b`就把它们提升成了`int`和`unsigned int`，可以用于`std::cout`
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
