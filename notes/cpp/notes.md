@@ -127,8 +127,8 @@
         - *抽象基类* （abstract base class）指定义了 *纯虚函数* （pure virtual function）的基类
         - *虚基类* （virtual base class）指被 *虚继承* （virtual inheritance）的基类
     - 概念辨析二
-        - *类型* （type）是一个对象的值的性质，例如`const int &`，`int &&`等等
-        - *值类别* （value category）指一个对象本身的性质，一个对象一定是 *左值* `lvalue`、 *纯右值* `prvalue`或 *将亡值* `xvalue`之一
+        - *类型* （type）是对象的值的性质，例如`const int &`，`int &&`等等
+        - *值类别* （value category）是对象本身的性质，一个对象一定是 *左值* `lvalue`、 *纯右值* `prvalue`或 *将亡值* `xvalue`三者之一
     - 给`char a`和`unsigned char b`加上 *加号* `+a`，`+b`就把它们提升成了`int`和`unsigned int`，可以用于`std::cout`
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
