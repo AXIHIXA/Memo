@@ -119,8 +119,8 @@
 - 一些小知识
     - 函数的各色说明符限定符相对顺序完整版
     ```
-    struct Base                  { virtual auto fun(int) const && noexcept -> void          = 0; }
-    struct Derived : public Base {         auto fun(int) const &&          -> void override {}   }
+    struct ABase                  { virtual auto fun(int) const && noexcept -> void          = 0; }
+    struct Derived : public ABase {         auto fun(int) const &&          -> void override {}   }
     ```
     - 给`char a`和`unsigned char b`加上 *加号* `+a`，`+b`就把它们提升成了`int`和`unsigned int`，可以用于`std::cout`
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
