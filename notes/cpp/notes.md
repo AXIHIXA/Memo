@@ -17460,8 +17460,131 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 否则，编译器在全局作用域查找匹配的函数
         - 此时如果编译器找到了用户自定义的版本，则使用该版本执行`new`表达式或`delete`表达式
         - 如果没找到，则使用标准库定义的版本
-    - 
-- *定位`new`* （placement `new`）表达式
+    - 我们可以使用 *域运算符* `::`令`new`表达式或`delete`表达式忽略定义在类中的函数，直接执行全局作用域中的版本
+        - 例如，`::new`只在全局作用域中查找匹配的`operator new`函数
+        - `::delete`与之类似
+    - *`operator new`接口* 和 *`operator delete`接口* 
+        - 标准库定义了`operator new`函数和`operator delete`函数的如下重载版本
+        ```
+        // replaceable (de)allocation functions 
+        void * operator new     (size_t);
+        void * operator new[]   (size_t);
+        void   operator delete  (void *) noexcept;
+        void   operator delete[](void *) noexcept;
+        void   operator delete  (void *, size_t) noexcept;  (since C++14)
+        void   operator delete[](void *, size_t) noexcept;  (since C++14)
+        
+        // replaceable non-throwing (de)allocation functions 
+        void * operator new     (size_t, std::nothrow_t &) noexcept;
+        void * operator new[]   (size_t, std::nothrow_t &) noexcept;
+        void   operator delete  (void *, std::nothrow_t &) noexcept;
+        void   operator delete[](void *, std::nothrow_t &) noexcept;
+        
+        // non-allocating placement allocation functions
+        void * operator new     (size_t, void *) noexcept;
+        void * operator new[]   (size_t, void *) noexcept;
+        void   operator delete  (void *, void *);	
+        void   operator delete[](void *, void *);
+            
+        // user-defined placement (de)allocation functions
+        void * operator new     (size_t, args ...);
+        void * operator new[]   (size_t, args ...);
+        void   operator delete  (void *, args ...);	
+        void   operator delete[](void *, args ...);
+        
+        // class-specific (de)allocation functions
+        void * T::operator new     (size_t);
+        void * T::operator new[]   (size_t);           
+        void   T::operator delete  (void *);
+        void   T::operator delete[](void *);
+        void   T::operator delete  (void *, size_t);
+        void   T::operator delete[](void *, size_t);
+        
+        // class-specific placement (de)allocation functions
+        void * T::operator new     (size_t, args ...);	
+        void * T::operator new[]   (size_t, args ...);	
+        void   T::operator delete  (void *, args ...);
+        void   T::operator delete[](void *, args ...);
+        ```
+        - 其中`std::throw_t`是一个空的`struct`，还有一个常量实例`std::nothrow`
+        ```
+        // if allocation fails, new returns a null pointer
+        int * p1 = new int;                 // if allocation fails, new throws std::bad_alloc
+        int * p2 = new (std::nothrow) int;  // if allocation fails, new returns a null pointer
+        ```
+        - 应用程序可以自定义上面函数版本中的任意一个
+            - 前提是自定义的版本必须位于 *全局作用域* 或者 *类作用域* 中
+            - 当我们将上述运算符定义为类的成员时，它们是 *隐式静态* 的
+                - 我们无需显式声明`static`，当然这么做也不会引发错误
+                - 因为`operator new`用在对象构造之前，而`operator delete`用在对象析构之后，所以这两个成员必须是 *静态* 的，而且他们**不能**操纵类的任何数据成员
+            - 对于`operator new`或`operator new[]`来说，它的返回类型必须是`void *`。第一个形参必须是`size_t`类型，且**不能**有默认实参
+                - 当我们动态分配单个对象时，使用`operator new`；动态分配数组时，使用`operator new[]`
+                - 当编译器调用`operator new`时，把存储 *指定类型对象* 所需的字节数传给`size_t`形参
+                - 当编译器调用`operator new`时，把存储 *该数组所有对象* 所需的字节数传给`size_t`形参
+                - 如果我们想要自定义`operator new`函数，则可以提供 *额外形参* 
+                    - 此时，用到这些自定义函数的`new`表达式必须使用 *定位形式* （placement version），将实参传递给新增的形参
+                    - 尽管在一般情况下我们可以自定义具有任何形参的`operator new`，但下面这个函数不论如何**不允许**被重载，只能由标准库使用
+                    ```
+                    void * operator new(size_t, void *);  // this version may NOT be redefined
+                    ```
+            - 对于`operator delete`函数或者`operator delete[]`函数来说，它们的返回类型必须是`void`，第一个形参必须是`void *`类型
+                - 执行一条`delete`表达式将调用相应的`operator`函数，并用指向待释放内存的指针来初始化`void *`形参
+                - 当我们将`operator delete`函数或者`operator delete[]`函数定义成类的成员时，该函数可以包含另外一个类型为`size_t`的形参
+                    - 此时，该形参的初始值时第一个形参所指对象的字节数
+                    - `size_t`形参用于删除继承体系中的对象
+                        - 如果基类有一个 *虚析构函数* ，则传递给`operator delete`的字节数将因待删除指针所指对象的动态类型不同而有所区别
+                        - 而且，实际运行的`operator delete`函数版本也由对象的动态类型决定
+    - `术语`：`new`表达式和`operator new`函数
+        - 标准库函数`operator new`和`operator delete`的名字容易让人误解
+        - 和其他`operator`函数**不同**，这两个函数并**没有** *重载* `new`运算符和`delete`运算符
+        - 实际上，我们根本无法自定义`new`表达式或`delete`表达式的行为
+            - 一条`new`表达式的执行过程是固定的，总是先调用`operator new`函数以获取内存空间，然后在得到的内存空间中构造对象
+            - 一条`delete`表达式的执行过程也是固定的，总是先销毁对象，再调用`operator delete`函数释放对象所占的空间
+        - 我们提供新的`operator new`和`operator delete`函数的目的在于改变内存的分配方式
+        - 但不管怎样，我们都不能改变`new`运算符和`delete`运算符的基本含义
+    - `malloc`函数与`free`函数
+        - 继承自`C`语言
+        - 编写`operator new`和`operator delete`的一种简单方式
+        ```
+        void * operator new(size_t size) 
+        {
+            if (void * mem = malloc(size))
+            {
+                return mem;
+            }
+            else
+            {
+                throw std::bad_alloc();
+            }  
+        }
+        
+        void operator delete(void * mem) noexcept 
+        { 
+            free(mem); 
+        }
+        ```
+- *定位`new`表达式* （placement `new` expression）
+    - 调用格式
+    ```
+    new (place_address) type
+    new (place_address) type (initializers)
+    new (place_address) type [size]
+    new (place_address) type [size] { braced initializer list }
+    ```
+    - 当只传入一个指针类型的实参时，定位`new`表达式构造对象但是不分配内存
+        - 此时 *定位`new`* 调用`operator new(size_t, void *)`
+        - 这是一个我们**无法**自定义的`operator new`版本
+        - 该函数**不**分配任何内存，它只是简单地返回指针实参
+        - 然后由`new`表达式负责在指定的地址初始化对象以完成整个工作
+        - 事实上，定位`new`允许我们在一个特定的、预先分配的内存地址上构造对象
+    - 传给定位`new`的指针甚至不必须指向动态内存
+    - 显式的析构函数调用
+        - 例子
+        ```
+        std::string * sp = new std::string("a value");  // allocate and initialize a string
+        sp->~string();
+        ```
+        - 调用析构函数会销毁对象，但**不会**释放内存
 
 #### [运行时类型识别](https://en.cppreference.com/w/cpp/types)（Run-time Type Identification，`RTTI`）
 
