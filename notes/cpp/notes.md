@@ -17588,8 +17588,22 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 #### [运行时类型识别](https://en.cppreference.com/w/cpp/types)（Run-time Type Identification，`RTTI`）
 
-- `dynamic_cast`运算符
-- `typeid`运算符
+- 概述
+    - *运行时类型实别* 的功能由如下 *两个* 运算符实现
+        - *`dynamic_cast`运算符* 
+        - *`typeid`运算符* 
+    - 当我们把这两个运算符用于某种类型的 *指针或引用* ，并且该类型含有 *虚函数* 时，运算符将使用指针或引用所绑定对象的 *动态类型* 
+    - 这两个运算符特别适用于以下情况
+        - 我们想使用基类对象的指针或引用执行某个派生类操作并且该操作**不是**虚函数
+        - 一般来说，只要有可能，我们都应该尽量使用虚函数
+            - 当操作被定义成虚函数时，编译器将根据对象的动态类型自动地选择正确的函数版本
+        - 然而，并非任何时候都能定义一个虚函数
+        - 假设我们无法使用虚函数，则可以使用`RTTI`运算符
+        - 另一方面，与虚成员函数相比，使用`RTTI`运算符蕴含着更多的潜在风险
+            - 程序员必须清楚地知道转换的目标类型，并且必须检查类型转换是否被成功执行
+    - 使用`RTTI`运算符必须倍加小心。在可能的情况下，最好定义虚函数而非直接接管类型管理的责任
+- *`dynamic_cast`运算符* 
+- *`typeid`运算符* 
     - `demangle`
     ```
     // typename demangle is needed for g++
@@ -17605,7 +17619,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     std::cout << boost::core::demangle(typeid(typeof(t1)).name()) 
               << std::endl;  // std::tuple<int&&, char const (&) [5], double&&>
     ```
-- *运行时类型识别* `RTTI`（run-time type identification）
+- 使用`RTTI`
 - [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info)
 - [`<type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)支持更多运行时类型识别
 
