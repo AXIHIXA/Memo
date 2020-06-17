@@ -117,6 +117,11 @@
     - 位于继承体系中间层级的类 *可以* 选择 *虚继承* ，必须在虚派生的真实 *需求出现前* 就已经 *完成虚派生* 的操作
     - 虽然虚基类的初始化只由最低层派生类独自负责，但 *每个虚派生类* 仍旧都 *必须在构造函数中初始化它的虚基类* 
 - 一些小知识
+    - 函数的各色说明符限定符相对顺序完整版
+    ```
+    struct Base                  { virtual auto fun(int) const && noexcept -> void          = 0; }
+    struct Derived : public Base {         auto fun(int) const &&          -> void override {}   }
+    ```
     - 给`char a`和`unsigned char b`加上 *加号* `+a`，`+b`就把它们提升成了`int`和`unsigned int`，可以用于`std::cout`
     - 如果两个字符串字面值位置紧邻且仅由 *空格* 、 *缩进* 以及 *换行符* 分隔，则它们是 *一个整体* 
     - `C++11`规定整数除法商一律向0取整（即：**直接切除小数部分**）
@@ -164,6 +169,7 @@
     - 无论何时使用一个类模板，都必须在模板名后面接上尖括号`<>`。对于全默认实参的类模板，也要带一个空尖括号
     - 函数模板的匹配规则一句话：形参匹配，特例化（非模板才是最特例化的），完犊子
     - 所有标准库类型都能确保它们的析构函数**不会**引发异常
+    - 当且仅当`e`是 *多态类类型的引用左值或解引用指针* 时，`typeid(e)`的 *动态类型* ；否则，返回 *静态类型* 
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
@@ -972,14 +978,14 @@ Class::Class(...) : member{} { ... }    (7)
 ```
 - 初始化流程
     1. 若`T`是 *聚合体* 且使用的是花括号，执行 *聚合初始化* 
-    2. 若`T`是**没有** *默认构造函数* ，或拥有 *用户提供的或被删除的默认构造函数* 的类类型，则 *默认初始化* 对象
-    3. 若`T`是拥有 *默认构造函数* 的类类型，而 *默认构造函数既非用户提供亦未被删除* （即 *隐式定义* 的或`= default;`的）
+    2. 若`T`是**没有** *合成的默认构造函数* 的类类型，则 *默认初始化* 对象
+    3. 若`T`是拥有 *合成默认构造函数* 的类类型
         1. *零初始化* 对象的数据成员
-        2. 然后，若数据成员拥有 *非平凡的默认构造函数* ，则 *默认初始化* 
+        2. 然后，若数据成员拥有 *非合成的默认构造函数* ，则在上一条的基础上再执行一次 *默认初始化* 
     4. 若`T`是 *数组类型* ，则 *值初始化* 数组的 *每个元素* 
     5. 否则， *零初始化* 对象
 - 注意事项
-    - 若 *构造函数* 是 *用户声明* 的，且**未在**其 *首个声明上显式`= default;`* ，则它是 *用户提供* 的 
+    - *合成的默认构造函数* 指 *隐式定义* （用户**未定义**）或 *显式合成* （在首个用户定义处`= default;`）的 ***没有**形参* 的构造函数
     - 语法`T object();`声明的是 *函数* 
     - **不能**值初始化 *引用*
     - 语法`T() (1)`对于 *数组* **禁止**，但允许`T{} (5)`
@@ -1237,7 +1243,7 @@ int * py = &c.y;                        // py  的值为 指向 c.y 的指针
 
 assert(pxe == py);                      // 测试两个指针是否表示相同地址
                                         // 这条 assert 可能被触发，也可能不被触发
-                                        // 至少 g++ version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04) 上实测没有触发
+                                        // 至少 gcc version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04) 上实测没有触发
  
 *pxe = 1;                               // 既使上面的 assert 未被触发，亦为未定义行为
 ```
@@ -1898,10 +1904,10 @@ using intptr2 = int *;
 
 int a = 1;
 const intptr p = &a;             // "const (int *)", i.e. `int * const`. NOT `const int *`!!!
-const intptr2 p2 = &a, p3 = &a;  // 注意这里p3已经是指针了，不需要再加*
+const intptr2 p2 = &a, p3 = &a;  // 注意这里 p3 已经是指针了，不需要再加 *
 ```
 
-#### [`auto`类型说明符](https://en.cppreference.com/w/cpp/language/auto)
+#### [`auto`](https://en.cppreference.com/w/cpp/language/auto)
 
 - `auto`定义的变量必须有初始值
     - 编译器通过初始值来推算类型
@@ -1914,32 +1920,32 @@ auto sz = 0, pi = 3.14;  // 错误，sz和pi类型不同
     - 对于引用，`auto`推导为被引用对象的类型（使用引用实际上是使用被引用的对象，特别是引用被用作初始值时，参与初始化的是被引用对象的值）
     ```
     int a = 0, &r = i;
-    auto b = r;                  // b为int，而不是int &
+    auto b = r;                  // b 为 int ，而不是 int &
     ```
     - 对于`const`：`auto`会忽略顶层`const`
     ```
     int i = 1;
     const int ci = i, &cr = ci;
-    auto b = ci;                 // b为int（ci为顶层const）
-    auto c = cr;                 // c为int（cr为ci的别名, ci本身是顶层const）
-    auto d = &i;                 // d为int *（&i为const int *，）
-    auto e = &ci;                // e为const int *（对常量对象取地址是底层const）
+    auto b = ci;                 // b为int（ ci 为顶层 const ）
+    auto c = cr;                 // c为int（ cr 为 ci 的别名,  ci 本身是顶层 const ）
+    auto d = &i;                 // d为int *（&i 为 const int * ）
+    auto e = &ci;                // e为const int *（对常量对象取地址是底层 const ）
     ```
     - 如果希望`auto`推断出引用或者顶层常量，则声明`auto`时必须加上相应的描述符
     ```
-    const auto f = ci;           // f为const int
-    auto & g = ci;               // g为const int &
+    const auto f = ci;           // f 为 const int
+    auto & g = ci;               // g 为 const int &
     auto & h = 42;               // 错误：不能为非常量引用绑定字面值
     const auto & j = 42;         // 正确：可以为常量引用绑定字面值
     ```
     - `auto`一句话定义多个变量时，所有变量类型必须一样。注意`*`和`*`是从属于声明符的，而不是基本数据类型的一部分
     ```
-    auto k = ci, &l = ci;        // k为int，l为int &
-    auto & m = ci, *p2 = &ci;    // m为const int &，p2为const int *
-    auto & n = i, *p2 = &ci;     // 错误：i的类型为int，而&ci的类型为const int
+    auto k = ci, &l = ci;        // k 为 int，l 为 int &
+    auto & m = ci, *p2 = &ci;    // m 为 const int & ，p2 为 const int *
+    auto & n = i, *p2 = &ci;     // 错误： i 的类型为 int ，而 &ci 的类型为 const int
     ```
 
-#### [`decltype`类型指示符](https://en.cppreference.com/w/cpp/language/decltype)（`decltype` specifier）
+#### [`decltype`](https://en.cppreference.com/w/cpp/language/decltype)
 
 - `decltype(expr)`在不对`expr`进行求值的情况下分析并返回`expr`的数据类型
 ```
@@ -1955,6 +1961,10 @@ decltype(cj) y = x;          // y为const int &
 decltype(cj) z;              // 错误：z为const int &，必须被初始化
 ```
 - `decltype((...))`（双层括号）的结果永远是引用，而`decltype(...)`（单层括号）当且仅当`...`是引用类型时才是引用
+- `typeof`是`gcc`自己搞的村规，**不是**`C++`标准
+    - `decltype`是`C++11`才有的
+    - `typeof`特性跟`decltype`不一样，而且不能跨平台，**不要用**
+    - 另外，别把它和`RTTI`运算符`typeid`给搞混了 => 19.2.2
 
 
 
@@ -1997,7 +2007,7 @@ sizeof expr   // 返回表达式 结果类型 大小
         2. 返回类型为左值引用的函数调用或重载运算符表达式，例如`std::getline(std::cin, str)`、`std::cout << 1`、`str1 = str2`或`++it`
         3. `a = b`，`a += b`，`a %= b`，以及所有其他内建的赋值及复合赋值表达式
         4. `++a`和`--a`，内建的前置自增与前置自减表达式
-        5. `*p`，内建的间接寻址表达式
+        5. `*p`，解引用指针
         6. `a[n]`和`n[a]`，内建的下标表达式，但`a[n]`中的一个操作数应为 *数组左值* 
         7. `a.m`，对象成员表达式，以下两种情况**除外**
             - `m`为 *成员枚举项* 或 *非静态成员函数* （这玩意儿是 *纯右值* 中的一大奇葩）
@@ -2273,9 +2283,9 @@ if (x) printf("x\n");                                   // OK
             - *函数头到指针* 转换
         2. 零或一个 *数值提升* 或 *数值转换* 
         3. 零或一个 *函数指针转换* `(since C++17)`
-        4. 零或一个 *`cv`限定调整* 
+        4. 零或一个 *限定调整* 
     2. 零或一个 *用户定义转换* 
-        - 零或一个非`explicit`单实参构造函数或非`explicit`转换函数的调用构成
+        - 零或一个非`explicit` *单实参构造函数* 或非`explicit` *类型转换运算符* 的调用构成
         - 表达式被用作 *条件* 时， *类型转换运算符* 既使是`explicit`的，仍会被 *隐式应用* => 14.9.1
     3. 零或一个 *标准转换序列* 
         - 当考虑用户定义的 *构造函数* 或 *类型转换运算符* 时， *只允许一个* 标准转换序列
@@ -2654,7 +2664,14 @@ useBigger(s1, s2, pf);
 
 #### [合成的默认构造函数](https://en.cppreference.com/w/cpp/language/default_constructor)（Synthesized default constructor）
 
-- 按如下规则初始化类成员
+- 什么是 *默认构造函数* 
+    - 没有任何形参的构造函数
+- 什么是 *合成的默认构造函数* 
+    - 如果用户没有显式定义任何构造函数，则编译器在满足 *生成条件* 时，会自动 *隐式定义* 一个 *合成的默认构造函数* 
+    - 如果用户定义了构造函数，可以使用`= default;`显式要求编译器生成一个  *合成的默认构造函数* 
+        - `= default;`用于既定义了自己的构造函数，又需要默认构造函数的情况
+        - 作为声明写在类内部，则构造函数默认`inline`；或作为定义写在类外部，则构造函数不`inline`
+- 合成的默认构造函数按如下规则初始化类成员
     - 存在类内初始值，则以其初始化对应成员
         - 类内初始值可接受的语法
         ```
@@ -2664,23 +2681,23 @@ useBigger(s1, s2, pf);
         int a4(0);     // 错误！
         ```
     - 否则，执行 *默认初始化* 或者 *值初始化* 
-- 生成条件：
+- 合成的默认构造函数的生成条件
     - 只有类**没有声明任何构造函数**时，编译器才会自动生成默认构造函数
     - 如果类中包含其他类类型成员，且它没有默认构造函数，则这个类**不能**生成默认构造函数
     - => 13.1.6
 - 如果类内包含内置类型或复合类型的变量，则只有当这些成员全部被赋予了类内初始值时，这个类才适合于使用默认构造函数
     - 注意：类成员变量从属于内部作用域，默认初始化是 *未定义* 的，不能指望！
 - 类必须包含默认构造函数以便在上述情况下使用。实际应用中，如果提供了其他构造函数，最好也提供一个默认构造函数
-    - `= default;`
-        - 用于既定义了自己的构造函数，又需要默认构造函数的情况
-        - 作为声明写在类内部，则构造函数默认`inline`；或作为定义写在类外部，则构造函数不`inline`
+    - 比如 *值初始化* 时，对于有合成的默认构造函数的类类型，会首先对所有数据成员零初始化
+    - 如果没有合成的默认构造函数，则直接 *默认初始化* ，很多情况下就是什么也不做，这将产生 *未定义的值* 
 
-#### [成员初始化器列表](https://en.cppreference.com/w/cpp/language/constructor)（Member initializer lists）
+#### [初始化列表](https://en.cppreference.com/w/cpp/language/constructor)（Member initializer lists）
 
+- 又称 *成员初始化器列表* 
 - 初始化器列表接受的初始化语法
     1. `Constructor() : x(?), ... { }`
     2. `Constructor() : x{?}, ... { }`
-- 如果成员是`const`、 *引用* 或者 *没有默认构造函数的类类型* ，如没有类内初始值，则 *必须* 在成员初始化器列表中初始化，而**不能**等到函数体中赋值
+- 如果成员是`const`、 *引用* 或者 *没有默认构造函数的类类型* ，如没有类内初始值，则 *必须* 在初始化列表中初始化，而**不能**等到函数体中赋值
 - 初始化的 *顺序是按照类成员被声明的顺序* ，与其在列表中的顺序**无关**
     - 最好令构造函数初始化列表的顺序与成员声明的顺序保持一致
     - 尽量避免用某些成员初始化其他成员，最好用构造函数的参数作为初始值
@@ -2763,7 +2780,8 @@ item.combine(std::cin);                                  // 错误，对应构�
 
 #### 友元
 
-- 友元不是类的成员，不受`public`、`private`以及`protected`这些访问限制的约束
+- 友元**不是**类的成员，**不**受`public`、`private`以及`protected`这些访问限制的约束
+    - 也就是说，在类的`public`、`protected`或`private`区域声明友元效果完全**没有**区别
 - 友元**不具有**传递性。每个类**单独**负责控制自己的友元类或友元函数
     - `B`有友元`A`，`C`有友元`B`，则`A`能访问`B`的私有成员，但不能访问`C`的私有成员
 - 在类定义开始或结束的地方**集中声明**友元
@@ -3175,7 +3193,7 @@ out2 = print(out2);             // error: cannot copy stream objects
 ```
 - *条件状态* （conditional states）
     - `C++ I/O`库定义了`4`个与机器无关的`stream::iostate`类型的`constexpr`值，代表流对象的 *条件状态* 
-        - `g++`实现
+        - `gcc`实现
         ```
         // <bits/ios_base.h>
         // class ios_base
@@ -3558,7 +3576,7 @@ for (const PersonInfo & entry : people)
 #### 格式化`I/O`（formatted `I/O`）
 
 - 除了 *条件状态* 之外，每个`std::iostream`对象还维护一个 *格式标记* （format flags）来控制`I/O`如何控制格式化的细节
-    - `g++`实现为[`std::ios_base::fmtflags`](https://en.cppreference.com/w/cpp/io/ios_base/fmtflags)
+    - `gcc`实现为[`std::ios_base::fmtflags`](https://en.cppreference.com/w/cpp/io/ios_base/fmtflags)
     ```
     // <bits/ios_base.h>
     // class ios_base
@@ -3956,7 +3974,7 @@ c
 #### 流随机访问
 
 - *定位标记*
-    - `g++`实现
+    - `gcc`实现
     ```
     // <bits/base_ios.h>
     // class base_ios
@@ -5827,7 +5845,7 @@ bool (*)(int, int)
     });
     
     // error. refers returning void but returns int -- from C++ Primer 5th Edition
-    // note: at least on g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0 this one runs correctly with -std=c++11
+    // note: at least on gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0 this one runs correctly with -std=c++11
     std::transform(vec.begin(), vec.end(), vec.begin(), [] (int i)  
     {
         if (i < 0) return -i; else return i;
@@ -5952,7 +5970,7 @@ auto wc2 = std::find_if(words.begin(), words.end(), std::bind(checkSize, _1, 6))
 - `iter->mem`：解引用`iter`并获取该元素名为`mem`的成员，等价于`(*iter).mem`
 - `++iter`，`iter++`：令`iter`指向容器中的下一个元素
     - 尾后迭代器并不实际指向元素，**不能**递增或递减
-    - 至少`g++`允许自减尾后迭代器`--c.end()`获取尾元素
+    - 至少`gcc`允许自减尾后迭代器`--c.end()`获取尾元素
 - `--iter`，`iter--`：令`iter`指向容器中的上一个元素
 - `iter1 == iter2`，`iter1 != iter2`：判断两个迭代器是否相等（不相等）。
                                       如果两个迭代器指向的是同一个元素，或者它们是同一个容器的尾后迭代器，
@@ -11146,7 +11164,7 @@ private:
 
 #### 交换操作
 
-- `std::swap`会产生三次 *移动* 赋值，例如`g++`的实现可以约等价为
+- `std::swap`会产生三次 *移动* 赋值，例如`gcc`的实现可以约等价为
 ```
 template <class T>
 void
@@ -12231,17 +12249,17 @@ print_total(std::cout, derived, 10);  // calls BulkQuote::net_price
         ```
         struct B 
         {
-            virtual void f1(int) const;
+            virtual auto f1(int) const & -> void;
             virtual void f2();
             void f3();
         };
         
         struct D1 : B 
         {
-            void f1(int) const override;  // ok: f1 matches f1 in the base
-            void f2(int) override;        // error: B has no f2(int) function
-            void f3() override;           // error: f3 not virtual
-            void f4() override;           // error: B doesn't have a function named f4
+            auto f1(int) const & -> void override;  // ok: f1 matches f1 in the base
+            void f2(int) override;                  // error: B has no f2(int) function
+            void f3() override;                     // error: f3 not virtual
+            void f4() override;                     // error: B doesn't have a function named f4
         }
         ```
         - `final`说明符用于指定此函数**不能**被派生类覆盖
@@ -13725,7 +13743,7 @@ protected:
         template <typename T> void f(const T &);  // lvalues and const rvalues
         ```
 - 详解[`std::move`](https://en.cppreference.com/w/cpp/utility/move)
-    - `g++`的实现
+    - `gcc`的实现
     ```
     /// <type_traits>
     /// remove_reference
@@ -13791,7 +13809,7 @@ protected:
     }
     ```
     - 详解[`std::forward`](https://en.cppreference.com/w/cpp/utility/forward)
-        - `g++`的实现
+        - `gcc`的实现
         ```
         /// <move.h>
         /// @brief     Forward an lvalue.
@@ -15716,7 +15734,7 @@ quizB.reset(27);                  // student number 27 failed
         typedef ratio<   1000000000000000, 1> peta;
         typedef ratio<1000000000000000000, 1> exa;
         ```
-    - 预定义好的`duration`类型及其`g++`实现
+    - 预定义好的`duration`类型及其`gcc`实现
         - `std::chrono::nanoseconds`：`std::chrono::duration<int64_t, std::nano>`
         - `std::chrono::microseconds`：`std::chrono::duration<int64_t, std::micro>`
         - `std::chrono::milliseconds`：`std::chrono::duration<int64_t, std::milli>`
@@ -15729,7 +15747,7 @@ quizB.reset(27);                  // student number 27 failed
         - `std::chrono::years`：`std::chrono::duration<int64_t, std::ratio<31556952>>` `(since C++20)`
     - `std::chrono::duration`字面量 `(since C++14)`
         - [`std::literals::chrono_literals::operator""h`](https://en.cppreference.com/w/cpp/chrono/operator%22%22h)
-            - `g++`实现
+            - `gcc`实现
             ```
             template<typename _Dur, char ... _Digits>
             constexpr _Dur __check_overflow()
@@ -15767,7 +15785,7 @@ quizB.reset(27);                  // student number 27 failed
                       << "half an hour is " << halfhour.count() << " hours\n";  // half an hour is 0.5 hours
             ```
         - [`std::literals::chrono_literals::operator""min`](https://en.cppreference.com/w/cpp/chrono/operator%22%22min)
-            - `g++`实现
+            - `gcc`实现
             ```
             template <char ... _Digits>
             constexpr chrono::minutes operator""min()
@@ -15793,7 +15811,7 @@ quizB.reset(27);                  // student number 27 failed
             std::cout << "half a minute is " << halfmin.count() << " minutes\n";  
             ```
         - [`std::literals::chrono_literals::operator""s`](https://en.cppreference.com/w/cpp/chrono/operator%22%22s)
-            - `g++`实现
+            - `gcc`实现
             ```
             template <char ... _Digits>
             constexpr chrono::seconds operator""s()
@@ -15818,7 +15836,7 @@ quizB.reset(27);                  // student number 27 failed
             std::cout<< "a minute and a second is " << (1min + 1s).count() << " seconds\n";
             ```
         - [`std::literals::chrono_literals::operator""ms`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ms)
-            - `g++`实现
+            - `gcc`实现
             ```
             template <char ... _Digits>
             constexpr chrono::milliseconds operator""ms()
@@ -15840,7 +15858,7 @@ quizB.reset(27);                  // student number 27 failed
                       << "1s = " << d2.count() << " milliseconds\n";    // 1s = 1000 milliseconds
             ```
         - [`std::literals::chrono_literals::operator""us`](https://en.cppreference.com/w/cpp/chrono/operator%22%22us)
-            - `g++`实现
+            - `gcc`实现
             ```
             template <char ... _Digits>
             constexpr chrono::microseconds operator""us()
@@ -15862,7 +15880,7 @@ quizB.reset(27);                  // student number 27 failed
                       << "1ms = " << d2.count() << " microseconds\n";   // 1ms = 1000 microseconds
             ```
         - [`std::literals::chrono_literals::operator""ns`](https://en.cppreference.com/w/cpp/chrono/operator%22%22ns)  
-            - `g++`实现
+            - `gcc`实现
             ```
             template <char ... _Digits>
             constexpr chrono::nanoseconds operator""ns()
@@ -16013,10 +16031,10 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 - *文件系统库* 提供在文件系统与其组件，例如路径、常规文件与目录上进行操作的设施
     - 文件系统库原作为`boost.filesystem`开发，并最终从`C++17`开始并入`ISO C++`
     - 定义于头文件`<filesystem>`、命名空间`std::filesystem`
-        - `ubuntu 18.04 LTS`默认的`g++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0`自然还不支持这东西
+        - `ubuntu 18.04 LTS`默认的`gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0`自然还不支持这东西
             - 实测直接用`boost`的`<boost/filesystem.hpp>`仍旧可以，但怎么用`boost`就是另外一个故事了
             - 具体配置见 [`CMakeList.txts`](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Boost/CMakeLists.txt)
-        - `ubuntu 20.04 LTS`默认的`g++ (Ubuntu 9.3.0-10ubuntu2) 9.3.0`自然就可以了
+        - `ubuntu 20.04 LTS`默认的`gcc (Ubuntu 9.3.0-10ubuntu2) 9.3.0`自然就可以了
     - 使用此库可能要求额外的 *编译器/链接器选项* 
         - `GNU < 9.1`实现要求用`-lstdc++fs`链接
         - `LLVM < 9.0`实现要求用`-lc++fs`链接 
@@ -16158,8 +16176,8 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - [`std::nonexist_local_time`](https://en.cppreference.com/w/cpp/chrono/nonexistent_local_time) `(since C++20)`
                 - [`std::ambiguous_local_time`](https://en.cppreference.com/w/cpp/chrono/ambiguous_local_time) `(since C++20)`
                 - [`std::format_error`](https://en.cppreference.com/w/cpp/utility/format/format_error) `(since C++20)`
-            - [`std::bad_typeid`](https://en.cppreference.com/w/cpp/types/bad_typeid)
-            - [`std::bad_cast`](https://en.cppreference.com/w/cpp/types/bad_cast)：非法的类型转换。 => 19.2
+            - [`std::bad_typeid`](https://en.cppreference.com/w/cpp/types/bad_typeid)：`typeid(*p)`运行时解引用了非法多态指针 => 19.2
+            - [`std::bad_cast`](https://en.cppreference.com/w/cpp/types/bad_cast)：非法的`dynamic_cast` => 19.2
                 - [`std::bad_any_cast`](https://en.cppreference.com/w/cpp/utility/any/bad_any_cast)
             - [`std::bad_weak_ptr`](https://en.cppreference.com/w/cpp/memory/bad_weak_ptr)
             - [`std::bad_function_call`](https://en.cppreference.com/w/cpp/utility/functional/bad_function_call)
@@ -16396,7 +16414,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 函数`try`语句块只能处理构造函数开始执行之后发生的异常
         - 和其他函数调用一样，如果在参数初始化过程中发生了异常，则该异常属于调用表达式的一部分，并将在调用者的上下文中处理
     - 处理构造函数初始值异常的 *唯一方法* 就是将构造函数写成函数`try`语句块
-- *`noexcept`异常说明* （`noexcept` specification）
+- *`noexcept`说明符* （`noexcept` specification）
     - 对于用户以及编译器来说，预先知道某个函数不会抛出异常显然大有裨益
         - 首先，有益于简化调用该函数的代码
         - 其次，如果编译器确认函数不会抛出异常，它就能执行某些不适用于可能出错的代码的特殊优化操作
@@ -16904,7 +16922,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - 根据一般的重载规则确定某次调用应该执行函数的某个版本
                 - 应用程序根本不会执行标准库版本
             - `std::move`和`std::forward`都是标准库模板函数，都接受一个模板类型参数的右值引用类型形参
-                - 复习一下`g++`对这俩货的实现
+                - 复习一下`gcc`对这俩货的实现
                 ```
                 /// <type_traits>
                 /// remove_reference
@@ -17590,8 +17608,8 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 - 概述
     - *运行时类型实别* 的功能由如下 *两个* 运算符实现
-        - *`dynamic_cast`运算符* 
-        - *`typeid`运算符* 
+        - [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
+        - [`typeid`](https://en.cppreference.com/w/cpp/language/typeid)
     - 当我们把这两个运算符用于某种类型的 *指针或引用* ，并且该类型含有 *虚函数* 时，运算符将使用指针或引用所绑定对象的 *动态类型* 
     - 这两个运算符特别适用于以下情况
         - 我们想使用基类对象的指针或引用执行某个派生类操作并且该操作**不是**虚函数
@@ -17602,7 +17620,12 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 另一方面，与虚成员函数相比，使用`RTTI`运算符蕴含着更多的潜在风险
             - 程序员必须清楚地知道转换的目标类型，并且必须检查类型转换是否被成功执行
     - 使用`RTTI`运算符必须倍加小心。在可能的情况下，最好定义虚函数而非直接接管类型管理的责任
-- *`dynamic_cast`运算符* 
+- [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
+    - 常常用于 *向下转换* （downcasting）
+        - 指 *多态基类* （带有虚函数）的引用或指针向其 *派生类* 的引用或指针的类型转换
+        - *向下转换* 也能通过`static_cast`实现
+            - `static_cast`**不**进行 *运行时类型检查* （runtime type check）
+            - 虽然节省时间，但程序员必须自行保证被转换的引用或指针的动态类型必须就是目标类型或其公有派生类型，否则程序不安全
     - 使用形式
     ```
     dynamic_cast<Type *>(e)     (1)
@@ -17614,31 +17637,172 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 在形式`(1)`中，`e`必须是一个 *合法指针* 的 *纯右值* ，转换结果为 *纯右值* 
         - 在形式`(2)`中，`e`必须是一个 *泛左值* ，转换结果为 *左值* 
         - 在形式`(3)`中，`e`必须是一个`左值或右值 (until C++17)` `泛左值 (since C++17)`，转换结果为 *将亡值* 
-        - 在上面所有形式中，`e`的类型必须符合以下三个条件中的任意一个
+        - 在上面所有形式中，`e`的 *动态类型* 必须符合以下三个条件中的任意一个
             - `e`的类型是`Type`的 *公有派生类* 
             - `e`的类型就是`Type`
         - 如果符合，则转换可以成功；否则，转换失败
             - 如果目标是 *指针* 类型，则结果为`0`
             - 如果目标是 *引用* 类型，则还会抛出`std::bad_cast`异常
+        - 执行 *向下转换* 时，`e`的静态类型必须是多态的，否则会报编译错误
     - 指针类型的`dynamic_cast`
+        - 例如
+            - `class Base`至少含有一个虚函数
+            - `class Derived : public Base`
+            - 如果有`Base * bp`，则可在运行时将其转换成`Derived *`
+            ```
+            if (Derived * dp = dynamic_cast<Derived *>(bp))
+            {
+                // use the Derived object to which dp points
+            } 
+            else 
+            { 
+                // bp points at a Base object
+                // use the Base object to which bp points
+            }
+            ```
+            - 如果`bp`实际指向`Derived`对象，则上述类型转换初始化`dp`并令其指向`bp`所指的`Derived`对象
+                - 此时，`if`语句内部使用`Derived`操作的代码时安全的
+            - 否则，类型转换的结果为`0`，意味着条件失败，此时`else`执行相应的`Base`操作
+        - 我们可以对 *空指针* 执行`dynamic_cast`，结果是所需类型的空指针
+        - *在条件部分执行`dynamic_cast`* 定义`dp`的好处
+            - 是可以在一个操作中同时完成类型转换和条件检查两项任务
+            - `dp`在`if`语句外不可访问，一旦转换失败，即使后面的代码忘了做判断，也不会接触到这个野指针，从而确保程序安全
     - 引用类型的`dynamic_cast`
-- *`typeid`运算符* 
-    - `demangle`
+        - 引用类型的`dynamic_cast`和指针类型的`dynamic_cast`在表示错误发生的方式上略有不同
+        - 因为不存在所谓的空引用，所以对于引用类型来说**无法**适用于指针类型完全相同的错误报告策略
+        - 当对引用类型的类型转换失败时，程序抛出一个`std::bad_cast`异常
+        ```
+        try 
+        {
+            const Derived & d = dynamic_cast<const Derived &>(b);
+            // use the Derived object to which b referred
+        } 
+        catch (std::bad_cast & e) 
+        {
+            // handle the fact that the cast failed
+        }
+        ```
+- [`typeid`](https://en.cppreference.com/w/cpp/language/typeid)
+    - 使用形式
     ```
-    // typename demangle is needed for g++
+    typeid(e)
+    ```
+    - 其中，`e`可以是任意类型的表达式或类型的名字
+    - `typeid`返回值类型为`const std::type_info &`，或`std::type_info`的公有派生类型的常引用 => 19.2.4
+        - 顶层`const`将被忽略
+        - 对于引用，返回值代表其所绑定到的对象的类型
+        - 对于数组或函数，**不会**执行向指针的隐式类型转换，例如`int a[10]`，则`typeid(a)`是数组类型而**不是**指针
+    - 当且仅当`e`是 *多态类类型的引用左值或解引用指针* 时，`typeid`返回`e`实际指向的对象的 *动态类型* ；否则，返回其本身的 *静态类型* 
+        - 解引用指针的结果的类型是 *左值引用* ，其值类别一定是 *左值* 
+        - 指针本身也是对象，如果不解引用指针，则判断的就是指针本身而**不是**其指向的对象了
+            - 此时当然就只是此指针的静态类型了，一般不是我们所希望的
+    - `注意`
+        - `typeid`是否需要执行运行时检查决定了表达式 *是否会被求值* 
+            - 只有当类型是多态的（含有虚函数）时，编译器才会对表达式求值
+            - 反之，则`typeid`返回表达式的静态类型
+                - 编译器**不需**对表达式求值就能知道表达式的静态类型
+        - 如果表达式的动态类型和静态类型不同，则必须在运行时对表达式求值以确定返回的类型
+            - 适用于`typeid(*ptr)`的情况
+            - 如果`ptr`的静态类型不含有虚函数，则`ptr`不必是有效指针
+            - 否则，`*ptr`将在运行时被求值，此时`ptr`就必须是一个有效的指针了
+            - 如果`ptr`是空指针或野指针，则`typeid(*ptr)`将抛出`std::bad_typeid`异常
+    ```
+    Derived * dp = new Derived();
+    Base * bp = dp;                // both pointers point to a Derived object
+    
+    // compare the type of two objects at run time
+    if (typeid(*bp) == typeid(*dp)) 
+    {
+        // bp and dp point to objects of the same type
+    }
+    
+    // test whether the run-time type is a specific type
+    if (typeid(*bp) == typeid(Derived)) 
+    {
+        // bp actually points to a Derived
+    }
+    
+    // test always fails: the type of bp is pointer to Base
+    if (typeid(bp) == typeid(Derived)) 
+    {
+        // code never executed
+    }
+    ```
+    - `demangle`：对于`gcc`的实现，`std::type_info::name`是经过特殊编码的，需要 *还原* （demangle）才能使人可读
+    ```
+    // typename demangle is needed for gcc
     
     #include <bits/stdc++.h>
     #include <boost/core/demangle.hpp>
-
+              
+    struct A            { virtual void fun() {} };
+    struct B : public A {                       };
+    struct C            {                       };
+    struct D : public C {                       };
+    
+    A * p1 = new B();
+    std::cout << boost::core::demangle(typeid( p1).name()) << '\n';  // A*
+    std::cout << boost::core::demangle(typeid(*p1).name()) << '\n';  // B
+    
+    C * p2 = new D();
+    std::cout << boost::core::demangle(typeid( p2).name()) << '\n';  // C*
+    std::cout << boost::core::demangle(typeid(*p2).name()) << '\n';  // C
+    
     auto t0 = std::make_tuple(10, "hehe", 3.14);
-    std::cout << boost::core::demangle(typeid(typeof(t0)).name()) 
-              << std::endl;  // std::tuple<int, char const*, double>
+    std::cout << boost::core::demangle(typeid(t0).name()) 
+              << '\n';  // std::tuple<int, char const*, double>
 
     auto t1 = std::forward_as_tuple(10, "hehe", 3.14);
-    std::cout << boost::core::demangle(typeid(typeof(t1)).name()) 
-              << std::endl;  // std::tuple<int&&, char const (&) [5], double&&>
+    std::cout << boost::core::demangle(typeid(t1).name()) 
+              << '\n';  // std::tuple<int&&, char const (&) [5], double&&>
     ```
-- 使用`RTTI`
+- 使用`RTTI`的一个例子：动态类型敏感的对象判等
+    - 类的层次关系
+    ```
+    class Base 
+    {
+    public:
+        friend bool operator==(const Base &, const Base &);
+    
+        // interface members for Base
+        
+    protected:
+        virtual bool equal(const Base &) const;
+        
+        // data and other implementation members of Base
+    };
+    
+    class Derived : public Base 
+    {
+    public:
+        // other interface members for Derived
+        
+    protected:
+        bool equal(const Base &) const;
+        
+        // data and other implementation members of Derived
+    };
+    ```
+    - 动态类型敏感的`operator ==`
+    ```
+    bool operator==(const Base & lhs, const Base & rhs)
+    {
+        // returns false if typeids are different; otherwise makes a virtual call to equal
+        return typeid(lhs) == typeid(rhs) && lhs.equal(rhs);
+    }
+    ```
+    - 虚`equal`函数
+    ```
+    bool Derived::equal(const Base & rhs) const
+    {
+        // as this function is called only by operator== and only when typeid(lhs) == typeid(rhs)
+        // we know the types are equal, so the cast won't throw
+        auto r = dynamic_cast<const Derived &>(rhs);
+        
+        // do the work to compare two Derived objects and return the result
+        return ...
+    }
+    ```
 - [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info)
 - [`<type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)支持更多运行时类型识别
 
