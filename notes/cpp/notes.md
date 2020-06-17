@@ -17425,12 +17425,45 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 ### 🌱 [Chap 19] 特殊工具与技术
 
-#### 控制内存分配
+#### 控制内存分配（Controlling Memory Allocation）
 
-- 重载`new`和`delete`
+- 重载`new`和`delete`表达式
+    - `new`和`delete`表达式的工作机理
+        - 使用一条`new`表达式时
+        ```
+        // new expressions
+        std::string * sp = new std::string("a value");  // allocate and initialize a string
+        std::string * arr = new std::string[10];        // allocate ten default-initialized strings
+        ```
+        - 实际上执行了 *三步* 操作
+            1. `new`表达式调用标准库函数`operator new`或`operator new[]`
+                - 该函数分配一块足够大的、原始的、未命名的内存空间，用于存储特定类型的对象或对象的数组
+            2. 编译器运行相应的构造函数以构造这些对象，并为其传入初始值
+            3. 对象被分配了空间并构造完成，返回一个指向该对象的指针
+        - 当我们使用一条`delete`表达式时
+        ```
+        delete sp;      // destroy *sp and free the memory to which sp points
+        delete [] arr;  // destroy the elements in the array and free the memory
+        ```
+        - 实际执行了 *两步* 操作
+            1. 对`sp`所指对象或者`arr`所指的数组中的元素执行对应的析构函数
+            2. 编译器调用名为`operator delete`或`operator delete[]`的标准库函数释放内存空间
+    - 如果应用程序希望控制内存分配的过程，则其需要定义自己的`operator new`和`operator delete`函数
+        - 即使在标准库中已经存在这两个函数的定义，我们仍旧可以定义自己的版本
+        - 编译器**不会**对这种重复的定义提出异议；相反，编译器将使用我们自定义的版本 *替换* 标准库定义的版本
+        - 当自定义了全局的`operator new`和`operator delete`函数后，我们就负担起了控制动态内存分配的职责
+        - 这两个函数必须是正确的，因为它们是程序处理过程中至关重要的一部分
+    - 应用程序可以在 *全局作用域* 定义`operator new`和`operator delete`函数，也可以将它们声明为 *成员函数* 
+        - 当编译器发现一条`new`或`delete`表达式后，将在程序中查找可用的`operator`函数
+        - 如果被分配或释放的对象是 *类类型* ，则编译器首先在类及其基类的作用域中查找
+        - 此时如果该类含有`operator new`或`operator delete`成员函数，则相应的表达式将调用这些成员
+        - 否则，编译器在全局作用域查找匹配的函数
+        - 此时如果编译器找到了用户自定义的版本，则使用该版本执行`new`表达式或`delete`表达式
+        - 如果没找到，则使用标准库定义的版本
+    - 
 - *定位`new`* （placement `new`）表达式
 
-#### [运行时类型识别](https://en.cppreference.com/w/cpp/types)（run-time type identification，`RTTI`）
+#### [运行时类型识别](https://en.cppreference.com/w/cpp/types)（Run-time Type Identification，`RTTI`）
 
 - `dynamic_cast`运算符
 - `typeid`运算符
@@ -17465,7 +17498,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 - `PLACEHOLDER`
 
-#### `union`
+#### 联合体（`union`）
 
 - `PLACEHOLDER`
 
@@ -17541,7 +17574,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         int a;
         const int b = 0;
         
-        struct S 
+        struct S
         {
             // simple cases
             // even these cases are undefined behavior before C++20
@@ -17558,7 +17591,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 #### [`cv`限定](https://en.cppreference.com/w/cpp/language/cv)（`cv` type qualifiers）
 
-- 可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性* （constness）或 *易变性* （volatility）。
+- 可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性* （constness）或 *易变性* （volatility）
     1. `const`对象
         - 包含
             - `const`限定的对象
