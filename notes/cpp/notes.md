@@ -77,7 +77,7 @@
     - `Clang-Tidy`要求只能`throw`在`throw`子句中临时创建的匿名`std::exception`类及其派生类对象
     - 通常情况下，如果`catch`接受的异常与某个继承体系有关，则通常将其捕获形参定义为引用类型
     - 越是专门的`catch`，就越应该置于整个`catch`列表的前端。如果在多个`catch`语句的类型之间存在着继承关系，则我们应该把继承链最底端的类（most derived type）放在前面，而将继承链最顶端的类（least derived type）放在后面。因为挑选规则是第一个能匹配的，而不是最佳匹配
-    - `C++`应使用 *匿名命名空间* 代替 *文件内`static`声明*
+    - `C++`应使用 *无名命名空间* 代替 *文件内`static`声明*
     - 应尽量**避免**使用 *`using`指示* 
     - *头文件* 最多只能在它的 *函数或命名空间内* 使用 *`using`指示* 或 *`using`声明* 
 - 跟类有关的一箩筐规则
@@ -451,7 +451,7 @@
 
 #### [链接](https://en.cppreference.com/w/cpp/language/storage_duration#Linkage)（Linkage）
 
-所有变量都具有如下四种 *链接* 之一，用于调节变量在不同文件（ *翻译单元* ）之间的可见性：
+所有变量都具有如下四种 *链接* 之一，用于调节变量在不同 *翻译单元* （文件）之间的可见性
 
 1. *无链接* （No linkage）
     - 名字只能从 *其所在的作用域* 使用
@@ -480,7 +480,15 @@
         extern const int BUF_SIZE;          // globals.h
         extern const int BUF_SIZE;          // sth.h （其他要用到`BUF_SIZE`的头文件）
         ```
-        - 编译器在编译过程中会把所有的`const`变量都替换成相应的字面值（这一步骤实际上是 [*默认初始化*](https://en.cppreference.com/w/cpp/language/initialization) 过程中的 [*常量初始化*](https://en.cppreference.com/w/cpp/language/constant_initialization)（Constant initialization））。为了执行上述替换，编译器必须知道变量的初始值。如果程序包含多个文件，则每个用了`const`对象的文件都必须得能访问到它的初始值才行。要做到这一点，就必须在每一个用到变量的文件之中都有它的定义。为了支持这一用法，同时避免对同一变量的重复定义，默认情况下，`const`对象被设定为仅在文件内有效。当多个文件中出现了同名的`const`变量时，其实等同于在不同文件中分别定义了**独立的**变量。如果希望`const`对象只在一个文件中定义一次，而在多个文件中声明并使用它，则需采用上述操作。
+        - 为什么`const`需要默认内部链接
+            - 编译器在编译过程中会把所有的`const`变量都替换成相应的字面值
+                - 这一步骤实际上是 [*默认初始化*](https://en.cppreference.com/w/cpp/language/initialization) 过程中的 [*常量初始化*](https://en.cppreference.com/w/cpp/language/constant_initialization)（Constant initialization））
+            - 为了执行上述替换，编译器必须知道变量的初始值
+                - 如果程序包含多个文件，则每个用了`const`对象的文件都必须得能访问到它的初始值才行
+                - 要做到这一点，就必须在每一个用到变量的文件之中都有它的定义
+            - 在此基础上，为了避免出现对同一变量的重复定义，`const`对象被设定为仅在文件内有效
+                - 当多个文件中出现了同名的`const`变量时，其实等同于在不同文件中分别定义了**独立的**变量
+                - 如果希望`const`对象只在一个文件中定义一次，而在多个文件中声明并使用它，则需采用上述操作。
 3. *外部链接* （External linkage）
     - 名字能从 *其他翻译单元* 中的作用域使用
         - 具有 *外部链接* 的变量和函数亦具有 [*语言链接*](https://en.cppreference.com/w/cpp/language/language_linkage)（Language linkage），这使得可以链接到以 *不同编程语言* 编写的 *翻译单元* 
@@ -516,6 +524,55 @@
 4. *模块链接* （Module linkage） `(since C++20)`
     - 名字 *只能* 从 *同一模块单元* 或 *同一具名模块中的其他翻译单元* 的作用域指代
     - 声明于 *命名空间作用域* 中的 *具名模块* 且 *不被导出* ，且无内部链接，则该名字拥有 *模块链接*
+
+#### 从作用域和存储期看变量
+
+- *全局非静态变量* 
+    - 包括
+        - 定义于所有函数之外的非静态变量
+    - 具有 *（全局）命名空间作用域* 
+    - 默认具有 *内部链接* ，但可以显式添加 *外部链接* 从而实现跨文件
+        - 只需在一个源文件中定义，就可以作用于所有的源文件
+        - 当其他不包含全局变量定义的源文件中，使用前需用`extern`再次声明这个全局变量
+    - 存储于 *静态存储区*
+- *全局静态变量* 
+    - 包括
+        - 定义于所有函数之外的 *静态变量* 
+        - 定义于所有函数之外的 *非`extern`常量* 
+    - 具有 *（全局）命名空间作用域* 
+    - 具有 *内部链接* （因为`static`和`extern`是冲突的，所以这些肯定是定死了内部链接、这辈子是跨不了文件了）
+        - 如果程序包含多个文件，则 *仅作用于定义它的文件* ，**不能**作用于其他文件
+        - 天坑：如果两个不同的源文件都定义了相同名字的 *全局静态变量* 或者 *全局非外连常量*， 那么它们是**不同的变量**   
+    - 存储于 *静态存储区* 
+- *局部非静态变量* 
+    - 包括
+        - 函数体内定义的非静态变量
+        - 块语句内定义的非静态变量
+        - 函数形参
+    - 具有 *块作用域* ，存储于 *自动存储区*
+        - 是 *自动对象* （automatic object）
+            - 每当函数控制路径经过变量定义语句时创建该对象并初始化，当到达定义所在块末尾时销毁之
+            - 自然，只存在于块执行期间
+- *局部静态变量* 
+    - 具有 *块作用域* ，但存储于 *静态存储区* 
+        - 是 *局部静态对象* （local static object）
+            - 在程序的执行路径第一次经过对象定义语句时初始化，并且直到整个程序终止时才被销毁。
+            - 在此期间，对象所在函数执行完毕也不会对它有影响。
+            - 如没有显式初始化，则会执行 *默认初始化* （内置类型隐式初始化为`0`）
+        - 和 *全局变量* 的区别
+            - 全局变量对所有的函数可见的
+            - 静态局部变量只对定义自己的函数可见
+    ```
+    size_t countCalls()
+    {
+        static size_t ctr = 0;  // 调用结束后这个值依然有效，且初始化会且只会在第一次调用时执行一次。
+                                // 内置类型的局部静态对象隐式初始化为0，即：这里的显式初始化为0其实是不必要的。
+        return ++ctr;
+    }
+    ```
+- *静态函数* 
+    - 函数的返回值类型前加上`static`关键字
+    - 只在声明它的文件当中可见，**不能**被其他文件使用
 
 
 
@@ -723,7 +780,7 @@ namespace N
 namespace 
 {
     int l = 1;                            // l 的作用域开始
-}                                         // l 的作用域不结束（它是匿名命名空间的成员）
+}                                         // l 的作用域不结束（它是无名命名空间的成员）
  
 namespace N 
 {                                         // i, g, j, q, inl, x, y 的作用域持续
@@ -797,9 +854,9 @@ auto X::g() -> r                          // OK ：尾随返回类型 X::r 在�
 
 #### [枚举作用域](https://en.cppreference.com/w/cpp/language/scope#Enumeration_scope)（Enumeration scope）
 
-- *有作用域枚举* （即`enum class T`）中引入的枚举项的名字的作用域开始于其声明点，并 *终止于* `enum` *说明符末尾* 
-    - *有作用域枚举* 使得枚举类型必须带着枚举作用域，避免混淆
-- *无作用域枚举* （即传统的`enum T`）中引入的枚举项的名字的作用域在`enum` *说明符结尾后仍在作用域中* 
+- *限定作用域枚举* （scoped enumeration，`enum class T`或`enum struct T`）中引入的 *枚举成员* （enumerator）的名字的作用域开始于其声明点，并 *终止于* `enum` *说明符末尾* 
+    - *限定作用域枚举* 使得枚举类型必须带着枚举作用域，避免混淆
+- *非限定作用域枚举* （unscoped enumeration，`enum T`）中引入的 *枚举成员* 的名字的作用域在`enum` *说明符结尾后仍在作用域中* 
 ```
 enum e1_t 
 {                                         // 无作用域枚举
@@ -888,51 +945,6 @@ struct Item
 Item t;
 t.print1(0);  // 0 1 2
 ```
-
-#### 从作用域和存储期看变量
-
-- *全局非静态变量* 
-    - 包括
-        - 定义于所有函数之外的非静态变量
-    - 具有 *命名空间作用域* （可以通过 *链接* 跨文件），存储于 *静态存储区*
-        - 只需在一个源文件中定义，就可以作用于所有的源文件
-        - 当其他不包含全局变量定义的源文件中，使用前需用`extern`再次声明这个全局变量
-- *全局静态变量* 
-    - 包括
-        - 定义于所有函数之外的 *静态变量* 
-        - 定义于所有函数之外的 *非外连常量* 
-    - 具有 *命名空间作用域* （但**不能**跨文件），存储于 *静态存储区*
-        - 如果程序包含多个文件，则 *仅作用于定义它的文件* ，**不能**作用于其他文件
-        - 天坑：如果两个不同的源文件都定义了相同名字的 *全局静态变量* 或者 *全局非外连常量*， 那么它们是**不同的变量**    
-- *局部非静态变量* 
-    - 包括
-        - 函数体内定义的非静态变量
-        - 块语句内定义的非静态变量
-        - 函数形参
-    - 具有 *块作用域* ，存储于 *自动存储区*
-        - 是 *自动对象* （automatic object）
-            - 每当函数控制路径经过变量定义语句时创建该对象并初始化，当到达定义所在块末尾时销毁之
-            - 自然，只存在于块执行期间
-- *局部静态变量* 
-    - 具有 *块作用域* ，存储于 *静态存储区*
-        - 是 *局部静态对象* （local static object）
-            - 在程序的执行路径第一次经过对象定义语句时初始化，并且直到整个程序终止时才被销毁。
-            - 在此期间，对象所在函数执行完毕也不会对它有影响。
-            - 如没有显式初始化，则会执行 *默认初始化* （内置类型隐式初始化为`0`）
-        - 和 *全局变量* 的区别
-            - 全局变量对所有的函数可见的
-            - 静态局部变量只对定义自己的函数可见
-    ```
-    size_t countCalls()
-    {
-        static size_t ctr = 0;  // 调用结束后这个值依然有效，且初始化会且只会在第一次调用时执行一次。
-                                // 内置类型的局部静态对象隐式初始化为0，即：这里的显式初始化为0其实是不必要的。
-        return ++ctr;
-    }
-    ```
-- *静态函数* 
-    - 函数的返回值类型前加上`static`关键字
-    - 只在声明它的文件当中可见，**不能**被其他文件使用
 
 
 
@@ -10736,7 +10748,7 @@ private:
     - 大多数类应该定义默认构造函数、拷贝构造函数和拷贝赋值运算符，不论是隐式地还是显式地
     - 有些情况反而应当 *阻止* 拷贝或赋值，方法有
         - 对应控制成员定义为 *删除* 的函数（正确做法）
-        - 对应控制成员 *声明但不定义* 为 *私有* 的函数（没有`= delete;`时的做法，现在**不应**这么干）
+        - 对应控制成员 *声明但不定义* 为 *私有* 的函数（早期没有`= delete;`时的做法，现在**不应**这么干）
             - *声明但不定义成员函数* 是合法操作，除一个**例外** => 15.2.1
                 - 试图访问未定义的成员将导致 *链接时错误* （link-time failure）
             - 试图拷贝对象的用户代码将产生 *编译错误* 
@@ -16545,7 +16557,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     1. *具名命名空间* 定义
     2. *内联命名空间* 定义
         - 命名空间`ns_name`内的声明在其外层命名空间中亦可见
-    3. *匿名命名空间* 定义
+    3. *无名命名空间* 定义
         - 其成员的作用域从声明点开始，到翻译单元结尾为止
         - 其成员具有 *内部链接* 
     4. *命名空间名* （还有 *类名* ）可以出现在 *域运算符左侧* ，作为 *限定名字查找* 的一部分
@@ -16689,17 +16701,17 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             ```
             cplusplus_primer::FourthEd::Query_base
             ```
-    - *匿名命名空间* （unnamed namespaces）
+    - *无名命名空间* （unnamed namespaces）
         - 指关键字`namespace`后紧跟花括号括起来的一系列声明语句
-        - *匿名命名空间* 中定义的变量自动具有 *内部链接* 和 *静态存储期* 
+        - *无名命名空间* 中定义的变量自动具有 *内部链接* 和 *静态存储期* 
             - 即它们的使用方法和性质就像在外层命名空间（例如全局命名空间）中定义的`static`变量一样
-        - 匿名命名空间可以不连续，但**不能**跨越多个文件
-            - 每个文件定义自己的匿名命名空间，如果两个文件都含有匿名命名空间，则这两个命名空间**无关**
-            - 这两个匿名命名空间中可以定义相同的名字，且这些定义表示的是不同的实体
+        - 无名命名空间可以不连续，但**不能**跨越多个文件
+            - 每个文件定义自己的无名命名空间，如果两个文件都含有无名命名空间，则这两个命名空间**无关**
+            - 这两个无名命名空间中可以定义相同的名字，且这些定义表示的是不同的实体
             - 如果一个 *头文件* 包含了未命名的命名空间，则该命名空间中定义的名字将在每个包含了该头文件的文件中对应不同的实体
-        - 匿名命名空间中的名字可以直接使用，且**不能**使用域运算符
-        - 匿名命名空间中定义的名字的作用域与该命名空间所在的作用域相同
-            - 如果匿名命名空间定义在文件最外层作用域中，则该命名空间中的名字一定要与全局作用域中的名字有所区别
+        - 无名命名空间中的名字可以直接使用，且**不能**使用域运算符
+        - 无名命名空间中定义的名字的作用域与该命名空间所在的作用域相同
+            - 如果无名命名空间定义在文件最外层作用域中，则该命名空间中的名字一定要与全局作用域中的名字有所区别
             ```
             int i; // global declaration for i
             
@@ -16711,9 +16723,9 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             // ambiguous: defined globally and in an unnested, unnamed namespace
             i = 10;
             ```
-            - 其他情况下，匿名命名空间中的成员都属于正确的程序实体
-        - 和所有命名空间类似，一个匿名命名空间也能嵌套在其他命名空间中
-            - 此时，匿名命名空间中的成员可以通过外层命名空间的名字来访问
+            - 其他情况下，无名命名空间中的成员都属于正确的程序实体
+        - 和所有命名空间类似，一个无名命名空间也能嵌套在其他命名空间中
+            - 此时，无名命名空间中的成员可以通过外层命名空间的名字来访问
             ```
             namespace local 
             {
@@ -16726,9 +16738,9 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             // ok: i defined in a nested unnamed namespace is distinct from global i
             local::i = 42;
             ```
-        - 匿名命名空间取代 *文件内`static`声明* 
+        - 无名命名空间取代 *文件内`static`声明* 
             - `C`程序中将名字声明为`static`使其对且只对这整个文件有效
-            - `C++`程序应当使用匿名命名空间取代`C`风格的文件内`static`声明
+            - `C++`程序应当使用无名命名空间取代`C`风格的文件内`static`声明
 - 使用命名空间成员
     - *命名空间别名* （namespace alias）
         - 通过 *命名空间别名* 简化很长的名字
@@ -17736,34 +17748,6 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         // code never executed
     }
     ```
-    - `demangle`：对于`gcc`的实现，`std::type_info::name`是经过特殊编码的，需要 *还原* （demangle）才能使人可读
-    ```
-    // typename demangle is needed for gcc
-    
-    #include <bits/stdc++.h>
-    #include <boost/core/demangle.hpp>
-              
-    struct A            { virtual void fun() {} };
-    struct B : public A {                       };
-    struct C            {                       };
-    struct D : public C {                       };
-    
-    A * p1 = new B();
-    std::cout << boost::core::demangle(typeid( p1).name()) << '\n';  // A*
-    std::cout << boost::core::demangle(typeid(*p1).name()) << '\n';  // B
-    
-    C * p2 = new D();
-    std::cout << boost::core::demangle(typeid( p2).name()) << '\n';  // C*
-    std::cout << boost::core::demangle(typeid(*p2).name()) << '\n';  // C
-    
-    auto t0 = std::make_tuple(10, "hehe", 3.14);
-    std::cout << boost::core::demangle(typeid(t0).name()) 
-              << '\n';  // std::tuple<int, char const*, double>
-
-    auto t1 = std::forward_as_tuple(10, "hehe", 3.14);
-    std::cout << boost::core::demangle(typeid(t1).name()) 
-              << '\n';  // std::tuple<int&&, char const (&) [5], double&&>
-    ```
 - 使用`RTTI`的一个例子：动态类型敏感的对象判等
     - 类的层次关系
     ```
@@ -17812,9 +17796,131 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     }
     ```
 - [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info)
-- [`<type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)支持更多运行时类型识别
+    - `C++`标准只规定此类必须定义于头文件`<typeinfo>`、并具有如下接口，其他内容均 *由实现定义* 
+        - `t1 == t2`：如果`t1`和`t2`表示同一种类型，则返回`true`
+        - `t1 != t2`：如果`t1`和`t2`表示不同种类型，则返回`true`
+        - `t.name()`：返回一个`C`风格字符串，表示类型名字的可打印形式，具体内容 *由实现定义* 
+        - `t1.before(t2)`：返回一个`bool`值，表示`t1`是否位于`t2` *之前* 。 *之前* 具体是什么 *由实现定义* 
+    - 除此之外，因为`std::type_info`一般作为基类出现，所以它还应该提供一个公有的虚析构函数。当编译器希望提供额外的类型信息时，通常在`std::type_info`的派生类中完成
+    - `std::type_info`的默认构造函数、拷贝构造函数、移动构造函数和赋值运算符均是`= delete;`的
+        - 因此，无法定义或拷贝`std::type_info`类的对象，也不能对其赋值
+        - 唯一获取途径就是`typeid`运算符
+    - `demangle`：`gcc`的实现中，`std::type_info::name`是经过特殊编码的，需要 *还原* （demangle）才能使人可读
+    ```
+    // typename demangle is needed for gcc
+    
+    #include <bits/stdc++.h>
+    #include <boost/core/demangle.hpp>
+              
+    struct A            { virtual void fun() {} };
+    struct B : public A {                       };
+    struct C            {                       };
+    struct D : public C {                       };
+    
+    A * p1 = new B();
+    std::cout << boost::core::demangle(typeid( p1).name()) << '\n';  // A*
+    std::cout << boost::core::demangle(typeid(*p1).name()) << '\n';  // B
+    
+    C * p2 = new D();
+    std::cout << boost::core::demangle(typeid( p2).name()) << '\n';  // C*
+    std::cout << boost::core::demangle(typeid(*p2).name()) << '\n';  // C
+    
+    auto t0 = std::make_tuple(10, "hehe", 3.14);
+    std::cout << boost::core::demangle(typeid(t0).name()) 
+              << '\n';  // std::tuple<int, char const*, double>
 
-#### 枚举类型
+    auto t1 = std::forward_as_tuple(10, "hehe", 3.14);
+    std::cout << boost::core::demangle(typeid(t1).name()) 
+              << '\n';  // std::tuple<int&&, char const (&) [5], double&&>
+    ```
+
+#### 枚举类型（enumeration）
+
+- 将一组常量组织在一起
+- 和类一样，每个枚举类型分别定义了一种新的类型
+- 枚举属于 *字面值常量* 类型
+- `C++`包含 *两种* 枚举
+    - *限定作用域枚举* （scoped enumeration）
+        - 使用关键字`enum class`或`enum struct`
+        - 随后是枚举名字
+        - 然后是用 *花括号* 括起来的 *枚举成员列表* （enumerator list）
+        - 最后是一个 *分号* 
+        ```
+        enum class open_modes 
+        {
+            input, 
+            output, 
+            append
+        };
+        ```
+    - *非限定作用域枚举* （unscoped enumeration）
+        - 省略掉`class`或`struct`
+        - 枚举类型的名字是可选的
+        ```
+        // unscoped enumeration
+        enum color 
+        {
+            red, 
+            yellow, 
+            green
+        }; 
+        
+        // unnamed, unscoped enum
+        enum 
+        {
+            floatPrec         = 6, 
+            doublePrec        = 10, 
+            double_doublePrec = 10
+        };
+        ```
+        - 如果`enum`是 *匿名* 的，则只能在定义时定义它的对象
+        - 和类的定义类似，我们需要在`enum`定义的右侧花括号和最后的分号之间提供逗号分隔的声明列表
+- *枚举成员* （enumerator）
+    - 枚举成员的作用域
+        - 在 *限定作用域枚举* 的 *枚举成员* 的名字遵循常规的作用域准则，并且在枚举类型的作用域外是不可访问的
+        - 与之相反，在 *非限定作用域枚举* 的 *枚举成员* 的作用域与 *枚举本身的作用域* 相同
+        ```
+        enum color {red, yellow, green};          // unscoped enumeration
+        enum stoplight {red, yellow, green};      // error: redefines enumerators
+        enum class peppers {red, yellow, green};  // ok: enumerators are hidden
+        
+        color eyes = green;                       // ok: enumerators are in scope for an unscoped enumeration
+        peppers p = green;                        // error: enumerators from peppers are not in scope
+                                                  // color::green is in scope but has the wrong type
+                                                  
+        color hair = color::red;                  // ok: we can explicitly access the enumerators
+        peppers p2 = peppers::red;                // ok: using red from peppers
+        ```
+    - 枚举值
+        - 默认情况下，枚举值从`0`开始，依次比上一项的值多`1`
+        - 也能为一个或几个枚举成员指定专门的值
+            - 此时未指定专门值的枚举成员的值遵循默认规则
+        - 枚举值**不一定**唯一
+        ```
+        enum class TYPE_SIZE
+        {
+            TEST_0,             // 0
+            TEST_1,             // 1
+            CHAR         = 1,   // 1
+            INT          = 4,   // 4
+            FLOAT        = 4,   // 4
+            LONG         = 8,   // 8
+            LONG_LONG    = 8,   // 8
+            DOUBLE       = 8,   // 8
+            LONG_DOUBLE  = 16,  // 16
+            TEST_17             // 17
+        };
+        ```
+    - 枚举成员是`const`，因此初始化枚举成员的值必须是 *常量表达式* 
+        - 也就是说，每个枚举成员本身就是一条常量表达式
+        - 可以在任何需要常量表达式的地方使用枚举成员
+        ```
+        constexpr intTypes charbits = intTypes::charTyp;
+        ```
+
+
+
+
 
 #### 类成员指针
 
