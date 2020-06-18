@@ -17836,7 +17836,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
               << '\n';  // std::tuple<int&&, char const (&) [5], double&&>
     ```
 
-#### 枚举类型（enumeration）
+#### 枚举（enumeration）
 
 - 将一组常量组织在一起
 - 和类一样，每个枚举类型分别定义了一种新的类型
@@ -17976,14 +17976,42 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         enum intValues : long;            // error: intValues previously declared as int
         ```
 - 形参匹配与枚举类型
-    - 
-
-
-
-
-
-
-
+    - 即使某个整型值恰好和枚举成员的值相等，它也**不能**作为`enum`类型形参的实参传入
+        - 要想初始化`enum`对象或者为`enum`对象赋值， *必须* 使用该类型的一个 *枚举成员* 或者该类型的 *另一个对象* 
+    ```
+    // unscoped enumeration; the underlying type is machine dependent
+    enum Tokens 
+    {
+        INLINE = 128, 
+        VIRTUAL = 129
+    };
+    
+    void ff(Tokens);
+    void ff(int);
+    
+    int main() 
+    {
+        Tokens curTok = INLINE;
+        
+        ff(128);                 // exactly matches ff(int)
+        ff(INLINE);              // exactly matches ff(Tokens)
+        ff(curTok);              // exactly matches ff(Tokens)
+        
+        return 0;
+    }
+    ```
+    - 尽管**不能**直接将整型值传给`enum`形参，但可以将 *非限定作用域枚举* 类型的对象或枚举成员传给整形对象
+        - 此时`enum`的值 *提升* 成`int`或更大的类型，实际提升效果由枚举类型的潜在类型定义
+        - 特别地：枚举类型永远**不会**被提升成`unsigned char`，即使枚举值可以用`unsigned char`存储也不行
+    ```
+    void newf(unsigned char);
+    void newf(int);
+    
+    unsigned char uc = VIRTUAL;
+    
+    newf(VIRTUAL);               // calls newf(int)
+    newf(uc);                    // calls newf(unsigned char)
+    ```
 
 #### 类成员指针
 
