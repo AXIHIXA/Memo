@@ -4988,6 +4988,8 @@ if (cancelEntry)
         - 示例
         ```
         printf(    "[% 15lf, % 15lf]\n", 10.1234, -10.1234);  // [      10.123400,      -10.123400]
+        printf("[%# 15.lf, %# 15.lf]\n",    10.0,    -10.0);  // [            10.,            -10.]
+        printf(  "[% 15.lf, % 15.lf]\n",    10.0,    -10.0);  // [             10,             -10]
         printf("[% 15.8lf, % 15.8lf]\n", 10.1234, -10.1234);  // [    10.12340000,    -10.12340000]
         printf(  "[% 15.8d, % 15.8d]\n",      10,      -10);  // [       00000010,       -00000010]
         printf("[%+15.8lf, %+15.8lf]\n", 10.1234, -10.1234);  // [   +10.12340000,    -10.12340000]
@@ -17897,26 +17899,87 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             - 此时未指定专门值的枚举成员的值遵循默认规则
         - 枚举值**不一定**唯一
         ```
-        enum class TYPE_SIZE
+        enum TypeSize
         {
-            TEST_0,             // 0
-            TEST_1,             // 1
-            CHAR         = 1,   // 1
-            INT          = 4,   // 4
-            FLOAT        = 4,   // 4
-            LONG         = 8,   // 8
-            LONG_LONG    = 8,   // 8
-            DOUBLE       = 8,   // 8
-            LONG_DOUBLE  = 16,  // 16
-            TEST_17             // 17
+            TEST_0,               // 0
+            TEST_1,               // 1
+            BOOL         = 1,     // 1
+            CHAR         = 1,     // 1
+            WCHAR_T      = 4,     // 4
+            INT          = 4,     // 4
+            FLOAT        = 4,     // 4
+            LONG         = 8,     // 8
+            LONG_LONG    = 8,     // 8
+            DOUBLE       = 8,     // 8
+            LONG_DOUBLE  = 16,    // 16
+            TEST_17               // 17
         };
         ```
-    - 枚举成员是`const`，因此初始化枚举成员的值必须是 *常量表达式* 
+    - 枚举成员是`const`
         - 也就是说，每个枚举成员本身就是一条常量表达式
+        - 因此初始化枚举成员的值必须是 *常量表达式* 
         - 可以在任何需要常量表达式的地方使用枚举成员
         ```
         constexpr intTypes charbits = intTypes::charTyp;
         ```
+        - 类似地，也可以将一个`enum`作为`switch`语句的条件，将枚举值作为`case`标签
+        - 出于同样的原因，还可以将枚举类型作为非类型模板形参使用，或在类中初始化枚举类型的静态数据成员
+    - *非限定作用域枚举* 的 *对象* 或 *枚举成员* 可以被 *隐式转换成`int`* 
+        - 因此我们可以在任何需要`int`的地方使用它们
+        - *限定作用域枚举* 是**没有**这种好事或坏事的
+        ```
+        int i = color::red;    // ok: unscoped enumerator implicitly converted to int
+        int j = peppers::red;  // error: scoped enumerations are NOT implicitly converted
+        ```
+- 和类一样，枚举也定义新的类型
+    - 只要`enum`有名字，就能定义并初始化该类型的成员
+    - 要想初始化`enum`对象或者为`enum`对象赋值， *必须* 使用该类型的一个 *枚举成员* 或者该类型的 *另一个对象* 
+        - 即使这是能自动转`int`的 *非限定作用域枚举* 也一样
+    ```
+    TypeSize ts = 16;                   // error: 16 is not of type TypeSize
+    TypeSize ts = LONG_DOUBLE;          // ok: input is an enumerator of TypeSize
+    
+    open_modes om = 2;                  // error: 2 is not of type open_modes
+    open_modes om = open_modes::input;  // ok: input is an enumerator of open_modes
+    ```
+- 指定`enum`的大小
+    - 尽管每个`enum`都定义了唯一的类型，但实际上`enum`是由某种 *整数类型* 表示的
+    - 可以在`enum`的名字后面加上 *冒号* `:`以及我们想在该`enum`中使用的类型
+    ```
+    enum intValues : unsigned long long 
+    {
+        charTyp      = 255, 
+        shortTyp     = 65535, 
+        intTyp       = 65535,
+        longTyp      = 4294967295UL,
+        long_longTyp = 18446744073709551615ULL
+    };
+    ```
+    - 如果我们**没有**显式指定`enum`的潜在类型，则默认情况下
+        - *非限定作用域枚举* **不**存在默认类型，只知道其足够容纳枚举值
+        - *限定作用域枚举* 默认`int`
+    - 一旦指定了潜在类型（包括对 *限定作用域枚举* 的 *隐式指定* ），则一旦枚举成员的值爆表，则将报 *编译错误* 
+- 枚举类型的前置声明
+    - 前置声明枚举类型 *必须* （显式或隐式）指定其大小
+    ```
+    // forward declaration of unscoped enum named intValues
+    enum intValues : unsigned long long;  // unscoped, must specify a type
+    enum class open_modes;                // scoped enums can use int by default
+    ```
+    - 和其他声明一样，`enum`的声明和定义必须匹配
+        - 该`enum`的所有声明和定义中成员的大小必须一致
+        - **不能**在同一个上下文中先声明一个 *非限定作用域枚举* ，再声明一个同名的 *限定作用域枚举* 
+        ```
+        // error: declarations and definition must agree whether the enum is scoped or unscoped
+        enum class intValues;
+        enum intValues;                   // error: intValues previously declared as scoped enum
+        enum intValues : long;            // error: intValues previously declared as int
+        ```
+- 形参匹配与枚举类型
+    - 
+
+
+
 
 
 
@@ -17932,7 +17995,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 - `PLACEHOLDER`
 
-#### 联合体（`union`）
+#### 联合体`union`
 
 - `PLACEHOLDER`
 
