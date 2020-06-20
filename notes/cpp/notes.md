@@ -81,8 +81,7 @@
     - 应尽量**避免**使用 *`using`指示* 
     - *头文件* 最多只能在它的 *函数或命名空间内* 使用 *`using`指示* 或 *`using`声明* 
 - 跟类有关的一箩筐规则
-    - 构造函数**不应**该覆盖掉 *类内初始值* ，除非新值与原值不同；不使用 *类内初始值* 时，则每个构造函数**都应显式初始化**每一个类内成员
-        - 此外，构造函数如果有默认实参，则此默认实参的值**不应**与对应成员的类内初始值相左
+    - 构造函数**不应**该覆盖掉 *类内初始值* ，除非新值与原值不同；不使用 *类内初始值* 时，则每个构造函数**都应显式初始化**每一个类内成员。此外，构造函数如果有默认实参，则此默认实参的值**不应**与对应成员的类内初始值相左
     - `Clang-Tidy`直接规定只有一个实参的构造函数必须是`explicit`的
     - `Clang-Tidy`规定构造函数的非平凡形参应该是 *传值加`std::move`* ，而**不是** *传常引用* 
         - 对平凡形参，直接传值，搞引用反而麻烦
@@ -1766,7 +1765,7 @@ std::vector<int> v2(std::move(v));  // binds an rvalue reference to v
 assert(v.empty());
 ```
 
-#### 转发引用（Forwarding references） => 16.2.7
+#### 转发引用（Forwarding Reference） => 16.2.7
 
 - 转发引用是一种特殊的引用，它保持函数实参的 *值类别* ，使得能利用`std::forward`转发实参
 - 转发引用是下列之一 
@@ -1817,7 +1816,7 @@ assert(v.empty());
     auto && z = {1, 2, 3};     // NOT a forwarding reference (special case for initializer lists)
     ```
 
-#### 悬垂引用（Dangling references）
+#### 悬垂引用（Dangling References）
 
 - 但有可能创建一个程序，被指代对象的生存期结束，但引用仍保持可访问（ *悬垂* ）
     - 访问悬垂引用是 *未定义行为* 
@@ -1850,7 +1849,7 @@ std::string && h()
 
 
 
-### 🌱 复合类型（指针和引用）
+### 🌱 复合类型
 
 - 指针`*`以及引用`&`只从属于某个声明符，而不是基本数据类型的一部分
 - 指针解引用的结果是被引用对象的左值引用
@@ -18303,17 +18302,152 @@ private:
         f(&svec[0]);       // ok: argument is std::string *, f will use .-> to call empty
         ```
 
-#### 嵌套类
+#### 嵌套类（Nested Class）
 
-- `PLACEHOLDER`
+- 概述
+    - *嵌套类* 是指定义在 *另一个类内部* 的类，常用于定义作为实现部分的类，又称 *嵌套类型* （Nested Type）
+    - 嵌套类是一个独立的类，与外部的类基本没有关系
+        - 特别是，外层类的对象和嵌套类的对象是相互独立的
+        - 嵌套类中的对象**不**包含任何外层类定义的成员，反之亦然
+    - 嵌套类的名字在外层类作用域中可见，在外层类作用域之外**不**可见
+        - 和其他嵌套的名字一样，嵌套类的名字**不会**和别的作用域中的同一个名字冲突
+    - 嵌套类中成员的种类与非嵌套类是一样的
+        - 与其他类类似，嵌套类也使用 *访问限定符* 来控制外接对其成员的访问权限
+        - 外层类对嵌套类的成员**没有**特殊的访问权限，反之亦然
+    - 嵌套类在其外层类中定义了一个 *类型成员* 
+        - 和其他成员类似，该类型的访问权限是由外层类决定的
+        - 位于外层类`public`部分的嵌套类实际上定义了一种可以随处访问的类型
+        - 位于外层类`protected`部分的嵌套类定义的类型只能被外层类自己、它的友元以及它的派生类访问
+        - 位于外层类`private`部分的嵌套类实际上定类型只能被外层类自己以及它的友元访问
+- 声明嵌套类
+    - 嵌套类和成员函数一样
+        - 必须声明在类的内部
+        - 但可以定义在类内或类外
+    - 如需在外层类外定义嵌套类，则仍需先在外层类内声明此嵌套类，而后再使用
+    ```
+    class TextQuery 
+    {
+    public:
+        // nested class to be defined later
+        class QueryResult;  
+        
+        // other members as in § 12.3.2
+    };
+    ```
+- 在外层类之外定义嵌套类
+    - 在嵌套类在其外层类之外完成真正的定义之前，它都是一个 *不完全类型* 
+    - 在外层类之外定义嵌套类时，必须以外层类的名字限定嵌套类的名字
+    ```
+    // we're defining the QueryResult class that is a member of class TextQuery
+    class TextQuery::QueryResult 
+    {
+    public:
+        // in class scope, we don't have to qualify the name of the QueryResult parameters
+        friend std::ostream & print(std::ostream &, const QueryResult &);
+    
+        // no need to define QueryResult::line_no; a nested class can use a member
+        // of its enclosing class without needing to qualify the member's name
+        QueryResult(std::string, std::shared_ptr<std::set<line_no>>, std::shared_ptr<std::vector<std::string>>);
+        
+        // other members as in § 12.3.2
+    };
+    ```
+    - 定义嵌套类的成员
+    ```
+    // defining the member named QueryResult for the class named QueryResult
+    // that is nested inside the class TextQuery
+    TextQuery::QueryResult::QueryResult(std::string s, 
+                                        std::shared_ptr<std::set<line_no>> p, 
+                                        std::shared_ptr<std::vector<std::string>> f)
+            : sought(s), lines(p), file(f) 
+    { 
+
+    }
+    ```
+    - 嵌套类 *静态成员* 的定义
+    ```
+    // defines an int static member of QueryResult
+    // which is a class nested inside TextQuery
+    int TextQuery::QueryResult::static_mem = 1024;
+    ```
+- 嵌套类作用域中的名字查找
+    - 嵌套类的作用域嵌套在了其外层类的作用域之中
+    - 名字查找的一般规则在此同样适用
 
 #### 联合体`union`
 
 - `PLACEHOLDER`
 
-#### 局部类
+#### 局部类（Local Class）
 
-- `PLACEHOLDER`
+- 类可以定义在 *函数内部* ，这样的类称为 *局部类* 
+- 局部类只在定义它的作用域内可见
+- 局部类的成员受到严格控制
+    - 局部类的 *所有成员* （包括 *成员函数* 在内）都必须完整地定义在类的内部
+    - 因此，自然也就**无法**定义 *静态成员* 
+- 局部类对其外部作用域的名字的访问权限受到很多限制
+    - 局部类只能访问外层作用域中的 *类型名* 、 *静态变量* 以及 *枚举成员* 
+    - 局部类中**不能**使用其外层函数的普通局部变量
+    ```
+    void foo(int val)
+    {
+        static int si;
+        enum Loc { a = 1024, b };
+        
+        // Bar is local to foo
+        struct Bar 
+        {
+            Loc locVal;  // ok: uses a local type name
+            int barVal;
+            
+            void fooBar(Loc l = a)  // ok: default argument is Loc::a
+            {
+                barVal = val;       // error: val is local to foo
+                barVal = ::val;     // ok: uses a global object
+                barVal = si;        // ok: uses a static local object
+                locVal = b;         // ok: uses an enumerator
+            }
+        };
+        
+        // . . .
+    }
+    ```
+- 常规的访问保护规则对局部类同样适用
+    - 外层函数对于局部类的私有成员**没有**任何访问特权
+    - 局部类可以将外层函数声明为 *友元* 
+    - 局部类已经只对它自己的外层函数可见了，再封装也没什么意义，一般就直接全部公有了
+- 局部类中的名字查找
+    - 局部类内部的名字查找次序与其他类类似
+    - 在声明类的成员时，必须确保用到的名字位于作用域中，然后再使用该名字
+    - 定义成员时用到的名字可以出现在类的任何位置
+    - 如果某个名字**不是**局部类的成员，则继续在外层函数中查找
+    - 如果还没有找到，则外外层函数所在的作用域中查找
+- *嵌套的局部类* 
+    - 可以在局部类内部再嵌套一个类
+    - *嵌套的局部类* 的定义可以出现在 *局部类之外* 
+    - 不过，局部类的嵌套类必须定义在与局部类相同的作用域中
+    ```
+    void foo()
+    {
+        class Bar 
+        {
+        public:
+            // ...
+            class Nested;  // declares class Nested
+        };
+        
+        // definition of Nested
+        class Bar::Nested 
+        {
+        // ...
+        };
+    }
+    ```
+    - 和往常一样，在类的外部定义成员时，必须指明该成员所属的作用域
+        - 因此在上面的例子中，`Bar::Nested`的例子是说`Nested`是定义在`Bar`的作用域内的一个类
+    - 局部类的嵌套类也是一个局部类，必须遵循局部类的各种规定
+        - 嵌套类的所有成员都必须定义在嵌套类内部
+
 
 #### [位域](https://en.cppreference.com/w/cpp/language/bit_field)（Bit Field）
 
@@ -18325,6 +18459,7 @@ private:
             - *超越类型极限* 的位域仍 *只容许类型能容纳的最大值* ，剩下的空间就是 *白吃白占* 
                 - `C`语言中干脆规定位域的宽度不能超过底层类型的宽度
         - 整个结构的实际大小
+            - 位域的实际大小和在内存中的分布是 *由实现定义* 的
             - `16`、`32`、`64`位的处理器一般按照`2`、`4`、`8`字节 *对齐* 
             - 实际大小可能比位域总宽度要大
         - *相邻* 的位域成员一般 *按定义顺序打包* ，可以 *共享跨过字节*
@@ -18335,6 +18470,7 @@ private:
         - **不能定义** 指向位域的 *指针* 和 *非常量引用* 
         - 从位域初始化 *常量引用* 时，将绑定到一个 *临时副本* 上
     - 位域的类型只能是 *整型* 或 *枚举类型* 
+        - 最好将位域设为 *无符号类型* ，使用存储在 *带符号类型* 中的位域是 *未定义行为* 
     - 位域**不能是** *静态数据成员* 
     - **没有**位域 *纯右值* 。左值到右值转换始终生成位域底层类型的对象
     - 位域 *类内初始值*
