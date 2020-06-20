@@ -18013,7 +18013,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     newf(uc);                    // calls newf(unsigned char)
     ```
 
-#### 类成员指针
+#### 类成员指针（Pointer to Class Member）
 
 - *成员指针* （pointer to member）是指可以指向类的非静态成员的指针
     - 一般情况下，指针指向对象
@@ -18039,7 +18039,7 @@ private:
     pos height, width;
 };
 ```
-- *数据成员指针* 
+- *数据成员指针* （Pointers to Data Members）
     - 定义
         - 定义指向`const std::string`的`Screen`类数据成员指针
         ```
@@ -18087,7 +18087,7 @@ private:
             // fetch the contents of the object named myScreen
             std::string s = myScreen.*pdata;
             ```
-- *成员函数指针* 
+- *成员函数指针* （Pointers to Member Functions）
     - 定义
         - 使用`auto`或显式接收
             - 如果 *成员函数存在重载* 的问题，则必须显式声明函数类型以明确指出想要使用的是哪个函数
@@ -18153,6 +18153,61 @@ private:
         action(myScreen);                // uses the default argument
         action(myScreen, get);           // uses the variable get that we previously defined
         action(myScreen, &Screen::get);  // passes the address explicitly
+        ```
+    - *成员指针函数表* （Pointer-to-Member Function Tables）
+        - 对于普通函数指针和成员函数指针来说，一种常见的用法是将其存入一个 *函数表* 当中
+            - 如果一个类含有几个相同类型的成员，则这样一张表可以帮助我们从这些成员中选择一个
+        ```
+        class Screen 
+        {
+        public:
+            // other interface and implementation members as before
+            
+            // Action is a pointer that can be assigned any of the cursor movement members
+            using Action = Screen & (Screen::*)();
+            
+            // specify which direction to move
+            enum Directions 
+            { 
+                HOME, 
+                FORWARD, 
+                BACK, 
+                UP, 
+                DOWN 
+            };
+        
+        public:
+            Screen & move(Directions cm)
+            {
+                // run the element indexed by cm on this object
+                return (this->*Menu[cm])();  // Menu[cm] points to a member function
+            }
+        
+        private:
+            // cursor movement functions
+            Screen & home();     
+            Screen & forward();
+            Screen & back();
+            Screen & up();
+            Screen & down();
+            
+        private: 
+            // function table
+            static Action Menu[];
+        };
+        
+        Screen::Action Screen::Menu[] = 
+        { 
+            &Screen::home,
+            &Screen::forward,
+            &Screen::back,
+            &Screen::up,
+            &Screen::down,
+        };
+        
+        Screen myScreen;
+        myScreen.move(Screen::HOME);  // invokes myScreen.home
+        myScreen.move(Screen::DOWN);  // invokes myScreen.down
         ```
 - 将成员函数用作可调用对象
 
