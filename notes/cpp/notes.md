@@ -2803,7 +2803,7 @@ item.combine(std::cin);                                  // 错误，对应构�
 - 友元**不是**类的成员，**不**受`public`、`private`以及`protected`这些访问限制的约束
     - 也就是说，在类的`public`、`protected`或`private`区域声明友元效果完全**没有**区别
 - 友元**不具有**传递性。每个类**单独**负责控制自己的友元类或友元函数
-    - `B`有友元`A`，`C`有友元`B`，则`A`能访问`B`的私有成员，但不能访问`C`的私有成员
+    - `C`有友元`B`、`B`有友元`A`，则`A`能访问`B`的私有成员，但不能访问`C`的私有成员
 - 在类定义开始或结束的地方**集中声明**友元
 - *友元函数*
     - 友元函数的声明仅仅是指定访问权限，并不是真正的函数声明。想要使用友元，仍**另需一单独的函数声明**
@@ -17924,7 +17924,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         ```
         - 类似地，也可以将一个`enum`作为`switch`语句的条件，将枚举值作为`case`标签
         - 出于同样的原因，还可以将枚举类型作为非类型模板形参使用，或在类中初始化枚举类型的静态数据成员
-    - *非限定作用域枚举* 的 *对象* 或 *枚举成员* 可以被 *隐式转换成`int`* 
+    - *非限定作用域枚举* 的对象或枚举成员可以被 *隐式转换成`int`* 
         - 因此我们可以在任何需要`int`的地方使用它们
         - *限定作用域枚举* 是**没有**这种好事或坏事的
         ```
@@ -18015,8 +18015,145 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 #### 类成员指针
 
-- 数据成员指针
-- 成员函数指针
+- *成员指针* （pointer to member）是指可以指向类的非静态成员的指针
+    - 一般情况下，指针指向对象
+    - 成员指针指向的是对象的成员，而不是对象本身
+    - 类的静态成员**不**属于任何对象因此无须特殊的指向静态成员的指针，普通指针即可胜任
+- 成员指针的类型囊括了类的类型以及成员的类型
+    - 初始化一个这样的指针时，我们令其指向类的某个成员，但是不指定该成员所属的对象
+    - 直到使用成员指针时，才提供成员所属的对象
+- 示例类
+```
+class Screen 
+{
+public:
+    typedef std::string::size_type pos;
+    
+    char get_cursor() const { return contents[cursor]; }
+    char get() const;
+    char get(pos ht, pos wd) const;
+
+private:
+    std::string contents;
+    pos cursor;
+    pos height, width;
+};
+```
+- *数据成员指针* 
+    - 定义
+        - 定义指向`const std::string`的`Screen`类数据成员指针
+        ```
+        const std:string Screen::* pdata;
+        ```
+        - 初始化或赋值时需指定它所指的成员
+        ```
+        pdata = &Screen::contents;
+        ```
+        - 还可以使用`auto`或`decltype`
+        ```
+        auto pdata = &Screen::contents;
+        ```
+    - 使用
+        - 当初始化成员指针或为其赋值时，它**并未**指向任何数据
+            - 成员指针定义了成员而非该成员所属的对象
+            - 只有当需要解引用成员指针时，我们才需要提供对象
+        - *成员指针访问运算符* `.*` `->*`
+        ```
+        Screen myScreen, 
+        // .* dereferences pdata to fetch the contents member from the object myScreen
+        const std::string s1 = myScreen.*pdata;
+        
+        // ->* dereferences pdata to fetch contents from the object to which pScreen points
+        Screen * pScreen = &myScreen;
+        const std::string s2 = pScreen->*pdata;
+        ```
+    - 返回数据成员指针的函数
+        - 常规的访问控制规则对成员指针同样有效
+            - 例如，先前的`Screen`类的`content`成员为私有的，因此之前对于`pdata`的使用必须位于`Screen`类内部或其友元中，否则将报错
+        - 获取私有数据成员指针
+            - 因为数据成员一般是私有的，所以我们通常不能直接获取数据成员的指针
+            - 如果一个像`Screen`这样的类希望我们可以访问它的`content`成员，最好定义一个函数，令其返回值是指向该成员的指针
+            ```
+            class Screen 
+            {
+            public:
+                // data is a static member that returns a pointer to member
+                static const std::string Screen::* data() { return &Screen::contents; }
+                // other members as before
+            };
+            
+            // data() returns a pointer to the contents member of class Screen
+            const std::string Screen::* pdata = Screen::data();
+            // fetch the contents of the object named myScreen
+            std::string s = myScreen.*pdata;
+            ```
+- *成员函数指针* 
+    - 定义
+        - 使用`auto`或显式接收
+            - 如果 *成员函数存在重载* 的问题，则必须显式声明函数类型以明确指出想要使用的是哪个函数
+        ```
+        // pmf is a pointer that can point to a Screen member function that is const
+        // that returns a char and takes no arguments
+        auto pmf = &Screen::get_cursor;
+
+        char (Screen::* pmf2)(Screen::pos, Screen::pos) const;
+        pmf2 = &Screen::get;
+        ```
+        - 由于优先级问题，和普通函数指针一样，括号必不可少
+        ```
+        // error: 
+        // nonmember function p(Screen::pos, Screen::pos) returning char Screen::* 
+        // cannot have a const qualifier
+        char Screen::* p(Screen::pos, Screen::pos) const;
+        ```
+        - 成员函数和指向该成员的指针之间**不**存在自动转换规则
+        ```
+        // pmf points to a Screen member that takes no arguments and returns char
+        pmf = &Screen::get;  // must explicitly use the address-of operator
+        pmf = Screen::get;   // error: no conversion to pointer for member functions
+        ```
+    - 使用
+        - 同样使用 *成员指针访问运算符* `.*` `->*`作用于指向成员函数的指针，以及调用类的成员函数
+        ```
+        // passes the arguments 0, 0 to the two-parameter version of get on the object myScreen
+        Screen myScreen；
+        char c1 = (myScreen.*pmf2)(0, 0);
+        
+        // call the function to which pmf points on the object to which pScreen points
+        Screen * pScreen = &myScreen;
+        char c2 = (pScreen->*pmf)();
+        ```
+        - 同样，由于优先级问题，括号必不可少
+        ```
+        // this one
+        myScreen.*pmf()
+        
+        // is equivalent to
+        myScreen.*(pmf())
+        ```
+        - 因为函数调用优先级比交个哦，所以在声明指向成员的函数指针并使用这样的指针进行函数调用时，括号必不可少
+            - `(C::*p)(params)`
+            - `(obj.*p)(params)`
+    - 成员指针类型别名
+        - 使用`typedef`或 *类型别名* 可以让成员指针更容易理解
+        ```
+        // Action is a type that can point to a member function of Screen
+        // that returns a char and takes two pos arguments
+        using Action = char (Screen::*)(Screen::pos, Screen::pos) const;
+        
+        // get points to the get member of Screen
+        Action get = &Screen::get;
+        
+        // action takes a reference to a Screen and a pointer to a Screen member function
+        Screen & action(Screen &, Action = &Screen::get);
+        
+        Screen myScreen;
+        
+        // equivalent calls:
+        action(myScreen);                // uses the default argument
+        action(myScreen, get);           // uses the variable get that we previously defined
+        action(myScreen, &Screen::get);  // passes the address explicitly
+        ```
 - 将成员函数用作可调用对象
 
 #### 嵌套类
