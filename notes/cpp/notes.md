@@ -5737,9 +5737,11 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - 默认情况下，从`lambda`生成的类都包含 *对应所捕获变量* 的 *数据成员* 
     - `lambda`的数据成员和普通的类一样，也在对象被创建时初始化
     ```
-    // The lambda expression is a prvalue expression of unique unnamed non-union non-aggregate class type, 
+    // The lambda expression 
+    // is a prvalue expression of unique unnamed non-union non-aggregate class type, 
     // known as closure type, 
-    // which is declared (for the purposes of ADL) in the smallest block scope, class scope, or namespace scope 
+    // which is declared (for the purposes of ADL) in the smallest 
+    // block scope, class scope, or namespace scope 
     // that contains the lambda expression. 
     
     // the keyword mutable was not used
@@ -5763,11 +5765,12 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 ```
 auto f1 = [capture_list] (paramater_list) -> return_type { function_body; };
 
-// equivalent type casts
-return_type                               (*f2)(paramater_list) = f1;
-std::function<return_type (paramater_list)> f3                  = f1;
+// type casts
+// do NOT use these!!!
+std::function<return_type (paramater_list)> f2                  = f1;
+return_type                               (*f3)(paramater_list) = f1;
 ```
-- 注意`lambda`的实际类型就是匿名类型`lambda`，既**不是**`std::function`也**不是**函数指针
+- `注意`：`lambda`的实际类型就是匿名类型`lambda`，既**不是**`std::function`也**不是**函数指针
 ```
 #include <bits/stdc++.h>
 #include <boost/core/demangle.hpp>
@@ -5791,9 +5794,10 @@ std::function<bool (int, int)>
 bool (*)(int, int)
 ```
 - **应该**使用`auto`接收`lambda`表达式
-    - 乱用`std::function`或 *函数指针* 接收`lambda`表达式会导致类型转换和其他严重的性能损失！
+    - 乱用`std::function`或 *函数指针* 接收`lambda`表达式将会导致类型转换和其他严重的性能损失！
     - 例如，使用`std::bind`的时候，乱用`std::function`会导致严重的性能损失
     ```
+    using std::placeholders::_1, std::placeholders::_2;
     std::function<bool(T, T)> cmp1 = std::bind(f, _2, 10, _1);  // bad
     auto cmp2 = std::bind(f, _2, 10, _1);                       // good
     auto cmp3 = [] (T a, T b) { return f(b, 10, a); };          // also good
@@ -5803,8 +5807,8 @@ bool (*)(int, int)
     - 对于`cmp2`和`cmp3`，泛型算法能够`inline`谓词调用
     - 但对于`cmp1`
         - 首先，显式创建函数对象有类型转换的性能损失
-        - 其次，本来能`inline`的这回也不能`inline`了
-        - 最后，函数对象内部类型是多态的，还搭上了 *运行时类型识别* 耗费的时间
+        - 其次，本来能`inline`的这回也`inline`不了了
+        - 最后，`std::function`内部是 *多态* 的，还搭上了 *运行时类型识别* 耗费的时间
 
 #### 内容物
 
@@ -18209,7 +18213,95 @@ private:
         myScreen.move(Screen::HOME);  // invokes myScreen.home
         myScreen.move(Screen::DOWN);  // invokes myScreen.down
         ```
-- 将成员函数用作可调用对象
+- 将成员函数用作 *可调用对象* 
+    - 成员指针**不是** *可调用对象* 
+        - 要想通过一个指向成员函数的指针进行函数调用，必须首先利用 *成员指针访问运算符* `.*` `->*`将该指针绑定到特定对象上
+        - 因此，与普通函数指针不同，成员指针不是可调用对象，**不**支持函数调用运算符
+    - 使用[`std::function`](https://en.cppreference.com/w/cpp/utility/functional/function)生成可调用对象
+        - 示例
+        ```
+        std::vector<std::string> svec {"", "s1", "s2"};
+        std::function<bool (const std::string &)> fcn = &std::string::empty;
+        std::find_if(svec.begin(), svec.end(), fcn);
+        ```
+        - 当一个`std::function`对象中封装了 *成员函数指针* 时
+            - `std::function`类将使用正确的 *成员指针访问运算符* 来执行函数调用
+            - 通常情况下，执行成员函数的对象被传给隐式的`this`形参
+            - 即：`std::function<ret, (obj, ...)> fcn = &Class::fun;`，则
+                - `fcn(obj, ...)`将实际调用`obj.*fun(...)`
+                - `fcn(ptr, ...)`将实际调用`ptr->*fun(...)`
+            - 例如如下代码
+            ```
+            struct S
+            {
+                S() = default;
+                S(int _a) : a(_a) {}
+
+                void add(int b) const { std::cout <<  a + b << '\n'; }
+
+                int a {0};
+            };
+            
+            std::vector<S> sv {0, 1, 2};
+            std::function<void (const S &, int)> fcn = &S::add;
+
+            for (auto it = sv.begin(), end = sv.end(); it!= end; ++it)
+            {
+                fcn(*it, 10);
+            }
+            ```
+            - 再例如，对于上面的`std::find_if`例子
+                - 标准库算法中本来含有类似于如下形式的代码
+                ```
+                // assuming it is the iterator inside find_if, so *it is an object in the given range
+                if (fcn(*it))      // assuming fcn is the name of the callable inside find_if
+                ```
+                - 其中，`std::function`将使用正确的 *成员指针访问运算符* ，即：将函数调用转化为了如下形式
+                ```
+                // assuming it is the iterator inside find_if, so *it is an object in the given range
+                if (((*it).*p)())  // assuming p is the pointer to member function inside fcn
+                ```
+        - `std::function`必须明确知道可调用对象的调用签名，包括返回值以及接受的参数
+            - 在此例中，就是对象是否是以 *引用* 或 *指针* 的形式传入的
+                - 对于`const`成员函数的指针， 则传入对象最好设为 *常量引用* 或 *常量指针* 
+                - 因为常量对象能够调用`const`成员函数，但却无法调用非`const`的
+                - 传入对象设为常量可以保证常量对象和非常量对象都能使用这个`std::function`
+            - 对于前面的例子，解引用`std::vector<T>::iterator`迭代器的结果将是`T &`
+            - 对于下面的例子，由于`std::vector`中保存的是`std::string &`，就必须定义`std::function`接受指针
+            ```
+            std::vector<std::string *> pvec;
+            std::function<bool (const std::string *)> fp = &std::string::empty;
+            
+            // fp takes a pointer to string and uses the ->* to call empty
+            std::find_if(pvec.begin(), pvec.end(), fp);
+            ```
+    - 使用[`std::mem_fn`](https://en.cppreference.com/w/cpp/utility/functional/mem_fn)生成可调用对象
+        - 使用`std::mem_fn`来从成员函数指针生成函数对象，且成员类型由编译器自动推断，无需用户自行指定
+        ```
+        std::find_if(svec.begin(), svec.end(), std::mem_fn(&std::string::empty));
+        ```
+        - `std::mem_fn`生成的可调用对象可以通过对象调用，也可以通过指针调用
+        ```
+        auto f = mem_fn(&string::empty);  // f takes a std::string or a std::string *
+        f(*svec.begin());                 // ok: passes std::string &; f uses .* to call empty
+        f(&svec[0]);                      // ok: passes std::string *; f uses .-> to call empty
+        ```
+        - 实际上，我们可以认为`std::mem_fn`生成的可调用对象含有一对 *重载的函数调用运算符* 
+            - 一个接受`std::string &`实参
+            - 另一个接受`std::string *`实参
+    - 使用[`std::bind`](https://en.cppreference.com/w/cpp/utility/functional/bind)生成可调用对象
+        - 还可以使用`std::bind`从成员函数生成可调用对象
+        ```
+        // bind each string in the range to the implicit first argument to empty
+        auto it = std::find_if(svec.begin(), svec.end(), std::bind(&std::string::empty, std::placeholders_1));
+        ```
+        - 和`std::function`类似的地方是，当我们使用`std::bind`时，必须将函数中用于表示执行对象的隐式形参转换成显式的
+        - 和`std::mem_fn`类似的地方是，`std::bind`生成的可调用对象的第一个实参既可以是`std::string &`，又可以是`std::string *`
+        ```
+        auto f = std::bind(&std::string::empty, std::placeholders::_1);
+        f(*svec.begin());  // ok: argument is std::string &, f will use .* to call empty
+        f(&svec[0]);       // ok: argument is std::string *, f will use .-> to call empty
+        ```
 
 #### 嵌套类
 
