@@ -31,7 +31,7 @@
     - 认定应为常量表达式的变量应当声明为`constexpr`类型
     - 凡是不修改类数据成员的成员函数函数一律定义成常成员函数
     - `constexpr`函数、静态`constexpr`成员、`inline`函数（包括类的`inline`成员函数）以及 *模板* （ *函数* 和 *类* ）的**定义和实现都应**写进头文件
-    - `using`声明（`using std::string`、`using namespace std`、`using intptr = int *`等）**不应**写进头文件
+    - `using`声明（`using std::string`、`using namespace std`、`using ns_name = long_namespace`、`using intptr = int *`等）**不应**写进头文件
     - `for each`循环内以及使用迭代器时**不能**改变被遍历的容器的大小
     - 现代`C++`应使用标准库类型配合迭代器，而**不是**`C`风格的数组和指针。数组也是一种迭代器
     - 现代`C++`**不应**使用旧式的强制类型转换，应当明确调用对应的`xx_cast<T>(expr)`
@@ -515,10 +515,10 @@
         - 名字声明于 *无名命名空间或内嵌于无名命名空间的命名空间* ，则该名字拥有 *内部链接* 
         - 声明于 *命名空间作用域* 中的 *具名模块* 且 *不被导出* ，且无内部链接，则该名字拥有 *模块链接* `(since C++20)`
     ```
-    int a;             // 这其实是声明并定义了变量a
+    int a;             // 这其实是声明并定义了变量 a
     extern int a;      // 这才是仅仅声明而不定义
-    extern int a = 1;  // 这是声明并定义了变量a并初始化为1。
-                       // 任何包含显式初始化的声明即成为定义，如有extern则其作用会被抵消
+    extern int a = 1;  // 这是声明并定义了变量 a 并初始化为 1
+                       // 任何包含显式初始化的声明即成为定义，如有 extern 则其作用会被抵消
     ```
 4. *模块链接* （Module linkage） `(since C++20)`
     - 名字 *只能* 从 *同一模块单元* 或 *同一具名模块中的其他翻译单元* 的作用域指代
@@ -18381,11 +18381,65 @@ private:
         - 给`union`的某个成员赋值之后，该`union`的其他成员就变成 *未定义* 的状态了
         - 分配给一个`union`对象的存储空间至少要容纳它的最大的数据成员
     - 和其他类一样，一个`union`也定义了一种新的类型
-    - `union`的成员
+    - `union`的数据成员
         - `union`**不能**含有 *引用类型* 的成员
         - 含有构造函数或析构函数的类类型也可以作为`union`成员类型
-    - `union`可以为其成员指定`public`、`protected`或`private`等访问控制标记
+    - `union`的成员函数
+        - `union`可以定义包括构造函数和析构函数在内的成员函数
+        - `union`中**不能**含有 *虚函数*
+            - 这是因为`union`既不能继承自其他类，也不能作为基类使用
+    - `union`的访问控制
+        - `union`可以为其成员指定`public`、`protected`或`private`等访问控制标记
         - `union`成员默认 *公有* ，和`struct`一样
+- 定义`union`
+```
+// objects of type Token have a single member, which could be of any of the listed types
+union Token 
+{
+    // members are public by default
+    char   cval;
+    int    ival;
+    double dval;
+};
+```
+- 使用`union`
+    - `union`的名字是一个 *类型名* 
+    - 和其他内置类型一样，默认情况下`union`是未初始化的
+    - 我们可以像显式地初始化聚合类一样使用一对花括号内的初始值显式地初始化一个`union`
+    ```
+    Token first_token = {'a'};  // initializes the cval member
+    Token last_token;           // uninitialized Token object
+    Token * pt = new Token;     // pointer to an uninitialized Token object
+    ```
+    - 如果提供了初始值，则该初始值被用于初始化 *第一个* 成员
+    - 因此，`first_token`的初始化过程实际上是给`cval`成员赋了一个初值
+    - 我们使用通用的 *成员访问运算符* `.` `->`访问一个`union`对象的成员
+    ```
+    last_token.cval = 'z';
+    pt->ival = 42;
+    ```
+    - 为`union`的一个数据成员赋值会令其他数据成员变成 *未定义状态* 
+        - 因此，当我们使用`union`时，必须清楚地知道当前存储在`union`中的值到底是什么类型
+        - 如果我们使用错误的数据成员或者为错误的数据成员赋值，则程序可能崩溃或出现异常行为，具体的情况根据成员的类型而有所不同
+- *匿名`union`* （anonymous union）
+    - 未命名的`union`，并且在右花括号和分号之间没有任何声明
+    - 一旦我们定义了一个匿名`union`，编译器就自动地为该`union`创建一个匿名对象
+    ```
+    union             // anonymous union
+    { 
+        char   cval;
+        int    ival;
+        double dval;
+    };                // defines an unnamed object, whose members we can access directly
+    
+    cval = 'c';       // assigns a new value to the unnamed, anonymous union object
+    ival = 42;        // that object now holds the value 42
+    ```
+    - 在匿名`union`**不能**包含 *受保护* 的成员或 *私有* 成员，也**不能**定义 *成员函数* 
+- 含有类类型成员的`union`
+- 使用类管理`union`成员
+- 管理 *判别式* 并销毁`std::string`
+- 管理需要拷贝控制的联合成员
 
 #### 局部类（Local Class）
 
