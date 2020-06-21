@@ -18436,10 +18436,157 @@ union Token
     ival = 42;        // that object now holds the value 42
     ```
     - 在匿名`union`**不能**包含 *受保护* 的成员或 *私有* 成员，也**不能**定义 *成员函数* 
-- 含有类类型成员的`union`
-- 使用类管理`union`成员
-- 管理 *判别式* 并销毁`std::string`
-- 管理需要拷贝控制的联合成员
+- 使用类和 *判别式* （discriminant）管理含有 *类类型成员* 的`union`
+    - `union`可以含有定义了构造函数或拷贝控制成员的类类型成员
+        - 但此时编译器会将`union`的对应拷贝控制成员合成为 *删除的* 
+        - 这类成员在构造和析构时必须显式调用构造函数或析构函数
+    - 通常把含有类成员的`union`内嵌在另一个类中
+        - 这个类可以管理并控制与`union`的类类型有关的状态转换
+        - 例如，为匿名`union`添加`std::string`成员，并将此匿名`union`作为`Token`类的成员
+    - 为了追踪`union`中到底存储了什么类型的值，通常定义一个独立的对象，该对象被称作`union`的 *判别式* 
+        - 我们可以使用判别式辨认`union`存储的值
+        - 为了保持`union`与其判别式同步，我们将判别式也作为`Token`的成员
+        - 我们的类将定义一个 *枚举类型* 的成员来追踪其`union`成员的状态
+```
+class Token
+{
+public:
+    // copy control needed because our class has a union with a string member
+    // defining the move constructor and move-assignment operator is left as an exercise
+    Token() : tok{INT}, ival{0}
+    {
+
+    }
+
+    Token(const Token & t) : tok(t.tok)
+    {
+        copyUnion(t);
+    }
+
+    // if the union holds a string, we must destroy it
+    ~Token()
+    {
+        if (tok == STR)
+        {
+            using std::string;
+            sval.~string();
+        }
+    }
+
+    // copy assignment
+    Token & operator=(const Token & t)
+    {
+        // if this object holds a string and t doesn't, we have to free the old string
+        if (tok == STR && t.tok != STR)
+        {
+            using std::string;
+            sval.~string();
+        }
+
+        if (tok == STR && t.tok == STR)
+        {
+            sval = t.sval;   // no need to construct a new string
+        }
+        else
+        {
+            copyUnion(t);    // will construct a string if t.tok is STR
+        }
+
+        tok = t.tok;
+        return *this;
+    }
+
+    // assignment operators to set the differing members of the union
+    Token & operator=(const std::string & s)
+    {
+        if (tok == STR)      // if we already hold a string, just do an assignment
+        {
+            sval = s;
+        }
+        else                 // otherwise construct a string
+        {
+            new (&sval) std::string(s);
+        }
+
+        tok = STR;           // update the discriminant
+        return *this;
+    }
+
+    Token & operator=(char c)
+    {
+        if (tok == STR)      // if we have a string, free it
+        {
+            using std::string;
+            sval.~string();
+        }
+
+        cval = c;            // assign to the appropriate member
+        tok = CHAR;          // update the discriminant
+        return *this;
+    }
+
+    Token & operator=(int i)
+    {
+        if (tok == STR)      // if we have a string, free it
+        {
+            using std::string;
+            sval.~string();
+        }
+
+        ival = i;            // assign to the appropriate member
+        tok = INT;           // update the discriminant
+        return *this;
+    }
+
+    Token & operator=(double d)
+    {
+        if (tok == STR)      // if we have a string, free it
+        {
+            using std::string;
+            sval.~string();
+        }
+
+        dval = d;            // assign to the appropriate member
+        tok = DBL;           // update the discriminant
+        return *this;
+    }
+
+private:
+    // check the discriminant and copy the union member as appropriate
+    void copyUnion(const Token & t)
+    {
+        switch (t.tok)
+        {
+        case Token::INT:
+            ival = t.ival;
+            break;
+        case Token::CHAR:
+            cval = t.cval;
+            break;
+        case Token::DBL:
+            dval = t.dval;
+            break;
+        case Token::STR:
+            // to copy a string, construct it using placement new
+            new (&sval) std::string(t.sval);
+            break;
+        }
+    }
+
+private:
+    enum {INT, CHAR, DBL, STR} tok; // discriminant
+
+    // anonymous union
+    // each Token object has an unnamed member of this unnamed union type
+    union
+    {
+        char        cval;
+        int         ival;
+        double      dval;
+        std::string sval;
+    };
+};
+```
 
 #### 局部类（Local Class）
 
@@ -18449,8 +18596,7 @@ union Token
     - 局部类的 *所有成员* （包括 *成员函数* 在内）都必须完整地定义在类的内部
     - 因此，自然也就**无法**定义 *静态成员* 
 - 局部类对其外部作用域的名字的访问权限受到很多限制
-    - 局部类只能访问外层作用域中的 *类型名* 、 *静态变量* 以及 *枚举成员* 
-    - 局部类中**不能**使用其外层函数的普通局部变量
+89    - 局部类中**不能**使用其外层函数的普通局部变量
     ```
     void foo(int val)
     {
