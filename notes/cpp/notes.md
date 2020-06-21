@@ -18596,7 +18596,7 @@ private:
     - 局部类的 *所有成员* （包括 *成员函数* 在内）都必须完整地定义在类的内部
     - 因此，自然也就**无法**定义 *静态成员* 
 - 局部类对其外部作用域的名字的访问权限受到很多限制
-89    - 局部类中**不能**使用其外层函数的普通局部变量
+    - 局部类中**不能**使用其外层函数的普通局部变量
     ```
     void foo(int val)
     {
@@ -18744,7 +18744,57 @@ private:
 
 #### [`cv`限定](https://en.cppreference.com/w/cpp/language/cv)（`cv` type qualifiers）
 
-- 可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性* （constness）或 *易变性* （volatility）
+- `volatile`限定符
+    - `volatile`**不**跨平台
+        - `volatile`的确切含义与机器相关，只能通过阅读编译器文档来理解
+        - 想要让使用了`volatile`的程序在移植到新机器或新编译器后仍然有效，通常需要对该程序做出某些改变
+    - 当对象的值可能在程序的控制或检测之外被改变时，应该将对象声明为`volatile`
+        - `volatile`告诉编译器：**不应**对此对象进行优化
+    - `volatile`和`const`在使用上很相似
+    ```
+    volatile int display_register;  // int value that might change
+    volatile Task * curr_task;      // curr_task points to a volatile object
+    volatile int iax[max_size];     // each element in iax is volatile
+    volatile Screen bitmapBuf;      // each member of bitmapBuf is volatile
+    ```
+    - `volatile`也可以用于修饰类的 *成员函数* 
+        - 类似于`const`成员函数
+            - `volatile`对象实例将只能调用`volatile`成员函数
+    - `volatile`可以用于修饰 *指针* 或 *引用*
+        - 类似于`const`
+            - `volatile`指针一样分顶层和底层
+            - `volatile`对象将只能由`volatile`指针或引用指向
+    ```
+    volatile int v;                 // v is a volatile int
+    int * volatile vip;             // vip is a volatile pointer to int
+    volatile int * ivp;             // ivp is a pointer to volatile int
+    
+    volatile int * volatile vivp;   // vivp is a volatile pointer to volatile int
+    int * ip = &v;                  // error: must use a pointer to volatile
+    *ivp = &v;                      // ok: ivp is a pointer to volatile
+    vivp = &v;                      // ok: vivp is a volatile pointer to volatile
+    ```
+    - *合成的拷贝* 对`volatile`**无效**
+        - `const`和`volatile`的一个重要区别就是我们**不能**使用 *合成的拷贝、移动构造函数及赋值运算符* 初始化`volatile`对象或从其赋值
+        - 合成的成员接受的形参类型是**非**`volatile`的常量引用，显然**不能**将非`volatile`引用绑定到`volatile`对象上
+        - 如果一个类希望拷贝、移动或赋值其`volatile`对象，则该类必须 *自定义拷贝或移动操作* 
+        ```
+        class Foo 
+        {
+        public:
+            // copy from a volatile object
+            Foo(const volatile Foo &); 
+            
+            // assign from a volatile object to a nonvolatile object
+            Foo & operator=(volatile const Foo &);
+            
+            // assign from a volatile object to a volatile object
+            Foo & operator=(volatile const Foo &) volatile;
+            
+            // remainder of class Foo
+        };
+        ```
+- *`cv`限定* 可出现于任何类型说明符中，以指定被声明对象或被命名类型的 *常量性* （constness）或 *易变性* （volatility）
     1. `const`对象
         - 包含
             - `const`限定的对象
@@ -18769,9 +18819,125 @@ private:
             - `const`对象的非`mutable volatile`子对象
         - 同时表现为`const`对象与`volatile`对象 
 
-#### 链接指示`extern "C"`
+#### 链接指示`extern "C"`（Linkage Directives）
 
-- `PLACEHOLDER`
+- `C++`程序调用其他语言（包括`C`语言）的函数时，一样需要先声明再使用，且声明必须制定返回类型和形参列表
+    - 编译器检查其调用的方式与普通`C++`函数的方式相同，但生成的代码有区别
+        - 具体到`C/C++`，由于`C++`函数可以重载，因此生成的名字比`C`要复杂一点
+    - 要想把`C++`代码和其他语言（包括`C`语言）编写的代码放在一起使用，要求我们必须有权访问该语言的编译器，且该编译器与当前的`C++`编译器兼容
+        - 当然了，比如在`ubuntu 20.04 LTS`上，`C`和`C++`的默认编译器压根就是同一个（`gcc (Ubuntu 9.3.0-10ubuntu2) 9.3.0`），所以上一条自然是满足的
+- *链接指示* 用于声明非`C++`函数
+    - 链接指示可以有 *两种* 形式： *单个* 的和 *复合* 的
+        - 链接指示**不能**出现在 *类定义* 或 *函数定义* 的 *内部* 
+        - `举例`：`<cstring>`头文件中某些`C`函数是如何声明的
+        ```
+        // illustrative linkage directives that might appear in the C++ header <cstring>
+        
+        // single-statement linkage directive
+        extern "C" 
+        size_t strlen(const char *);
+        
+        // compound-statement linkage directive
+        extern "C" 
+        {
+        int strcmp(const char *, const char *);
+        char * strcat(char *, const char *);
+        }
+        ```
+        - `extern`后面的字符串字面值常量指出了编写函数所用的语言
+            - 编译器应当支持对`C`语言的链接指示
+            - 可能还支持其他的，例如`extern "Ada"`、`extern "FORTRAN"`等
+- *链接指示* 与头文件
+    - 可以令链接指示后面跟上 *花括号* `{}`括起来的若干函数的声明，从而一次性建立多个链接
+    - 花括号的作用是将适用于该链接指示的多个声明聚合在一起
+    - 否则，花括号就会被忽略，花括号中生命的函数的名字就是可见的，就好像是在花括号之外声明的一样
+    - *多重声明* 的形式可以应用于整个头文件，例如，`C++`的`<cstring>`头文件就可能形如
+    ```
+    // compound-statement linkage directive
+    extern "C" 
+    {
+    #include <string.h>  // C functions that manipulate C-style strings
+    }
+    ```
+    - 当一个`#include`指示被放置在复合链接指示的花括号中时，头文件中的所有普通函数声明都被认为是由链接指示的语言编写的
+    - 链接指示 *可以嵌套* 
+        - 因此如果头文件包含 *自带链接指示的函数* ，则该函数的链接**不**受影响
+    - `C++`从`C`语言继承的标准库函数可以定义成`C`函数，但并非必须
+        - 具体使用`C`还是`C++`实现`C`标准库，是 *由实现定义* 的 
+- 指向`extern "C"`函数的指针
+    - 编写函数所用的语言是 *函数类型* 的一部分
+        - 因此，对于使用链接指示定义的函数来说，它的每个声明都必须使用相同的链接指示
+        - 而且，指向其他语言编写的 *函数的指针* 必须与函数本身 *使用相同的链接指示* 
+        ```
+        // pf points to a C function that returns void and takes an int
+        extern "C" void (*pf)(int);
+        ```
+        - 当我们使用`pf`调用函数时，编译器认定当前调用的是一个`C`函数
+        - 指向`C`函数的指针与指向`C++`函数的指针是**不一样**的类型
+            - 指向`C`函数的指针**不能**指向`C++`函数，反之亦然
+            - 就像其他类型不匹配的问题一样，对不同链接指示的指针之间进行赋值将引发 *编译错误* 
+            ```
+            void (*pf1)(int);             // points to a C++ function
+            extern "C" void (*pf2)(int);  // points to a C function
+            pf1 = pf2;                    // error: pf1 and pf2 have different types
+            ```
+            - 虽然有的编译器允许这种赋值，但这是村规，按照`C++`标准这是 *非法行为* 
+- *链接指示* 对整个声明都有效
+    - 当我们使用链接指示时，它不仅对函数有效，而且对作为返回值类型或形参类型的函数指针也有效
+    ```
+    // f1 is a C function; its parameter is a pointer to a C function
+    extern "C" void f1(void(*)(int));
+    ```
+    - 这条声明语句指出`f1`是一个不返回任何值的`C`函数
+        - 它有一个类型为`extern "C" void(*)(int)`的`C`函数指针形参
+    - 因为链接指示同时作用于声明语句中的所有函数，所以如果我们希望给`C++`函数传入一个指向`C`函数的指针，则必须使用 *类型别名* 
+    ```
+    // FC is a pointer to a C function
+    extern "C" typedef void FC(int);
+    // f2 is a C++ function with a parameter that is a pointer to a C function
+    void f2(FC *);
+    ```
+- 导出`C++`函数到其他语言
+    - 通过使用链接指示对函数进行定义，我们可以令一个`C++`函数在其他语言编写的程序中可用
+    ```
+    // the calc function can be called from C programs
+    extern "C" double calc(double dparm) { /* ... */ }
+    ```
+    - 编译器将生成适合于指定语言的代码
+    - 值得注意的是，可被多种语言共享的函数的返回类型或形参类型受到很多限制
+        - 例如，不大可能把一个`C++`类的对象传给`C`程序
+    - 预处理器对`extern "C"`的特殊支持
+        - 有时需要在`C`和`C++`中编译同一个源文件
+        - 编译`C++`版本的程序时，预处理器定义`__cplusplus`宏
+        - 利用这个宏，可以在编译程序时有条件地包含代码
+        ```
+        #ifdef __cplusplus
+        // ok: we're compiling C++
+        extern "C"
+        #endif
+        int strcmp(const char *, const char *);
+        ```
+- 重载函数与 *链接指示* 
+    - 链接指示与重载函数的相互作用依赖于目标语言
+        - 如果目标语言支持重载函数，则为该语言实现链接指示的编译器很可能也支持重载这些`C++`的函数
+    - `C`语言**不**支持重载函数，因此一个`C`链接指示只能用于说明一组重载函数中的某一个
+    ```
+    // error: two extern "C" functions with the same name
+    extern "C" void print(const char *);
+    extern "C" void print(int);
+    ```
+    - 如果一组重载函数中有一个是`C`函数，则其余的必定都是`C++`函数
+    ```
+    class SmallInt { /* . . . */ };
+    class BigNum { /* . . . */ };
 
+    // the C function can be called from C and C++ programs
+    // the C++ functions overload that function and are callable from C++
+    extern "C" double calc(double);
+    extern SmallInt calc(const SmallInt &);
+    extern BigNum calc(const BigNum &);
+    ```
+    - `C`版本的`calc`函数可以在`C`或`C++`程序中调用，而使用了类类型形参的`C++`函数只能在`C++`程序中调用。
+    - 上述性质与 *声明的顺序* **无关**
 
 
