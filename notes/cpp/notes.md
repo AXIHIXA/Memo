@@ -16056,12 +16056,116 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 - *线程* ：使得程序能在数个处理器核心同时执行
     - 线程类，定义于`<thread>`
         - [`std::thread`](https://en.cppreference.com/w/cpp/thread/thread)
-        - [`std::jthread`](https://en.cppreference.com/w/cpp/thread/jthread)：支持自动`join`以及`cancel`的`std::join` `(since C++20)`
+            - 综述
+                - 表示一个线程，在与其关联的线程对象被构造之后立即开始执行
+                    - 以被提供给其构造函数的顶层函数作为入口
+                    - 顶层函数的返回值被忽略
+                    - 如果顶层函数以抛异常终止，则程序将调用[`std::terminate`](https://en.cppreference.com/w/cpp/error/terminate)
+                    - 顶层函数可以通过[`std::promise`](https://en.cppreference.com/w/cpp/thread/promise))，或修改 *共享变量* 将其返回值或异常传递给调用方
+                - 在以下情况下，`std::thread`对象将处于**不**表示任何线程的状态，从而可安全销毁
+                    - 被默认构造
+                    - 已被移动
+                    - 已被[`detach`](https://en.cppreference.com/w/cpp/thread/thread/detach)
+                    - 已被[`join`](https://en.cppreference.com/w/cpp/thread/thread/join)
+                - 没有两个`std::thread`会表示同一线程
+                    - `std::thread`**不可**复制构造、**不可**复制赋值
+                    - `std::thread`可移动构造、可移动赋值
+            - 构造和赋值
+                - `std::thread t;`：默认构造**不**表示线程的新`std::thread`对象
+                - `std::thread t1(t2);`：移动构造
+                - `std::thread t(fun, ...)`：显式构造，传入顶层函数`fun`和其参数`...`
+                - `t1 = t2;`：移动赋值
+            ```
+            int n = 0;
+            foo f;
+            baz b;
+            
+            std::thread t1;                   // t1 不是线程
+            std::thread t2(f1, 233);          // 按值传递
+            std::thread t3(f2, std::ref(n));  // 按引用传递
+            std::thread t4(std::move(t3));    // t4 现在运行 f2() 。 t3 不再是线程
+            std::thread t5(&foo::bar, &f);    // t5 在对象 f 上运行 foo::bar()
+            std::thread t6(std::ref(b));      // t6 在对象 b 上运行 baz::operator()
+            ```
+            - 观察器
+                - `t.joinable()`：返回线程是否 *可合并* 
+                    - 返回
+                        - 若`t`标识活跃的执行线程，即`get_id() != std::thread::id()`，则返回`true`
+                            - 因此， *默认构造* 的`std::thread` ***不**可合并* 
+                        - 已结束执行、但仍未被合并的线程仍被当作活跃的执行线程，从而 *可合并* 
+                    - 示例
+                    ```
+                    std::thread t;
+                    std::cout << t.joinable() << '\n';  // false
+                 
+                    t = std::thread([] () { std::this_thread::sleep_for(std::chrono::seconds(1)); });
+                    std::cout << t.joinable() << '\n';  // true
+                    
+                    t.join();
+                    std::cout << t.joinable() << '\n';  // false
+                    ```
+                - `t.get_id()`：返回线程`id`
+                    - 返回
+                        - 返回一个`std::thread::id`，表示与`t`关联的线程的`id`
+                        - 若**无**关联的线程，则返回默认构造的`std::thread::id()`
+                    - [`std::thread::id`](https://en.cppreference.com/w/cpp/thread/thread/id)
+                        - 轻量的可频繁复制类，它作为`std::thread`对象的 *唯一标识符* 工作
+                        - *默认构造* 的实例保有不表示任何线程的特殊辨别值
+                        - 一旦线程结束，则`std::thread::id`的值可为另一线程复用
+                        - 还被用于有序和无序 *关联容器* 的键值
+                - `t.native_handle()`：返回实现定义的底层线程柄
+                - `std::thread::hardware_concurrency()`：返回`unsigned int`，代表实现支持的并发线程数
+                    - 应该只把该值当做提示
+                    - 若该值非良定义或不可计算，则返回`0​` 
+            - 支持的操作
+                - `t.join()`： *合并* 线程
+                    - 阻塞 *当前线程* `std::this_thread`，直至`t`关联的线程结束
+                        - `t`所关联的线程的结束 *同步* 于对应的`join()`成功返回
+                        - `t`自身**不**进行 *同步* ，同时从多个线程对同一个`std::thread`调用`join`构成 *数据竞争* ，是 *未定义行为* 
+                        - `t.join`之后，`t.joinable()`为`false`
+                    - 出现异常，则抛出`std::system_error`
+                        - 若`t.get_id() == std::this_thread::get_id()`（检测到死锁），则抛出`std::resource_deadlock_would_occur`
+                        - 若线程非法，则抛出`std::no_such_process`
+                        - 若`!t.joinable()`，则抛出`std::invalid_argument`
+                - `t.detach()`： *分离* 线程
+                    - 将`t`关联的线程从`t`中 *分离* ，独立地执行
+                        - 一旦该线程退出，则释放任何分配的资源
+                        - `t.detach()`后，`t`不再占有任何线程，`t.joinable()`为`false`
+                    - 异常
+                        - 若`!t.joinable()`或出现任何错误，则抛出`std::system_error`
+                - `t1.swap(t2)`，`std::swap(t1, t2)`： *交换* 线程
+                    - 交换二个`std::thread`对象的底层柄
+                    - 示例
+                    ```
+                    std::thread t1([] () { std::this_thread::sleep_for(std::chrono::seconds(1)); });
+                    std::thread t2([] () { std::this_thread::sleep_for(std::chrono::seconds(1)); });
+                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 1 2
+                 
+                    std::swap(t1, t2);
+                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 2 1
+                 
+                    t1.swap(t2);
+                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 1 2
+                 
+                    t1.join();
+                    t2.join();
+                    ```
+        - [`std::jthread`](https://en.cppreference.com/w/cpp/thread/jthread)：支持自动`join`以及`cancel`的`std::thread` `(since C++20)`
     - 管理 *当前线程* `std::this_thread`的静态函数，定义于`<this_thread>`
-        - [`std::this_thread::yield`](https://en.cppreference.com/w/cpp/thread/yield)
-        - [`std::this_thread::get_id`](https://en.cppreference.com/w/cpp/thread/get_id)
-        - [`std::this_thread::sleep_for`](https://en.cppreference.com/w/cpp/thread/sleep_for)
-        - [`std::this_thread::sleep_until`](https://en.cppreference.com/w/cpp/thread/sleep_until)
+        - [`std::this_thread::yield`](https://en.cppreference.com/w/cpp/thread/yield)：提供提示给实现，以重调度线程的执行，允许其他线程运行
+        - [`std::this_thread::get_id`](https://en.cppreference.com/w/cpp/thread/get_id)：返回当前线程的`id`
+        - [`std::this_thread::sleep_for`](https://en.cppreference.com/w/cpp/thread/sleep_for)：阻塞当前线程执行，至少经过指定的`sleep_duration`
+            - 签名
+            ```
+            template <class Rep, class Period>
+            void sleep_for(const std::chrono::duration<Rep, Period> & sleep_duration);
+            ```
+        - [`std::this_thread::sleep_until`](https://en.cppreference.com/w/cpp/thread/sleep_until)：阻塞当前线程，直至抵达指定的`sleep_time`
+            - 签名
+            ```
+            template <class Clock, class Duration>
+            void sleep_until(const std::chrono::time_point<Clock, Duration> & sleep_time);
+            ```
     - 线程取消（thread cancellation），定义于`<stop_token>`
         - [`std::stop_token`](https://en.cppreference.com/w/cpp/thread/stop_token) `(since C++20)`
         - [`std::stop_source`](https://en.cppreference.com/w/cpp/thread/stop_source) `(since C++20)`
@@ -16071,15 +16175,90 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 - *互斥* （mutual exclusion），定义于`<mutex>`
     - 互斥锁，定义于`<mutex>`
         - [`std::mutex`](https://en.cppreference.com/w/cpp/thread/mutex)
+            - 互斥锁，具有如下特性
+                - 调用方线程从它成功调用`mutex.lock()`或`mutex.try_lock()`开始，直到它调用`mutex.unlock()`为止占用`mutex`
+                - 线程占有`mutex`时，所有其他线程若试图要求占有此`mutex`，则将
+                    - 被阻塞，对于`mutex.lock()`
+                    - 收到`false`返回值，对于`mutex.try_lock()`
+                - 再次锁定已经被自己锁定的锁，或解锁不是被自己锁定的锁都是 *未定义行为* 
+                - `std::mutex`既**不可** *复制* 亦**不可** *移动*  
+            - 操作
+                - `mutex.lock()`
+                - `mutex.try_lock()`
+                - `mutex.unlock()`
         - [`std::timed_mutex`](https://en.cppreference.com/w/cpp/thread/timed_mutex)
+            - 限时互斥锁
+                - `mutex.lock()`
+                - `mutex.try_lock()`：如不能立即获得锁，则返回`false`
+                - `mutex.try_lock_for(timeout_duration)`：如不能在`timeout_duration`时间内获得锁，则返回`false`
+                - `mutex.try_lock_until(timeout_time_point)`：如不能在`timeout_time_point`时刻前获得锁，则返回`false`
+                - `mutex.unlock()`
         - [`std::recursive_mutex`](https://en.cppreference.com/w/cpp/thread/recursive_mutex)
+            - 递归互斥锁，允许已获得锁的线程递归获得锁，之后需调用相应次数的`unlock`来释放
+            - 操作
+                - `mutex.lock()`
+                - `mutex.try_lock()`
+                - `mutex.unlock()`
         - [`std::recursive_timed_mutex`](https://en.cppreference.com/w/cpp/thread/recursive_timed_mutex)
-    - 共享锁，定义于`<shared_mutex>`
+            - 递归限时互斥锁
+            - 操作
+                - `mutex.lock()`
+                - `mutex.try_lock()`：如不能立即获得锁，则返回`false`
+                - `mutex.try_lock_for(timeout_duration)`：如不能在`timeout_duration`时间内获得锁，则返回`false`
+                - `mutex.try_lock_until(timeout_time_point)`：如不能在`timeout_time_point`时刻前获得锁，则返回`false`
+                - `mutex.unlock()`
+    - 共享互斥锁，定义于`<shared_mutex>`
         - [`std::shared_mutex`](https://en.cppreference.com/w/cpp/thread/shared_mutex) `(since C++17)`
+            - 共享互斥锁
+                - 拥有二个访问级别
+                    - *共享* ：多个线程能共享同一互斥的所有权
+                    - *独占* ：仅一个线程能占有互斥
+                - 若一个线程已获取独占性锁（通过`lock`、`try_lock`），则无其他线程能获取该锁（包括共享的）
+                - 仅当任何线程均未获取独占性锁时，共享锁能被多个线程获取（通过`lock_shared`、`try_lock_shared`）
+                - 在一个线程内，同一时刻只能获取一个锁（共享或独占性）
+                - 共享互斥锁在能由任何数量的线程同时读共享数据，但一个线程只能在无其他线程同时读写时写同一数据时特别有用
+            - 共享锁定
+                - `mutex.lock()`
+                - `mutex.try_lock()`
+                - `mutex.unlock()`
+            - 互斥锁定
+                - `mutex.lock_shared()`
+                - `mutex.try_lock_shared()`
+                - `mutex.unlock_shared()`
         - [`std::shared_timed_mutex`](https://en.cppreference.com/w/cpp/thread/shared_timed_mutex) `(since C++14)`
+            - 限时共享互斥锁
+            - 共享锁定
+                - `mutex.lock()`
+                - `mutex.try_lock()`
+                - `mutex.try_lock_for(timeout_duration)`
+                - `mutex.try_lock_until(timeout_time_point)`
+                - `mutex.unlock()`
+            - 互斥锁定
+                - `mutex.lock_shared()`
+                - `mutex.try_lock_shared_for(timeout_duration)`
+                - `mutex.try_lock_shared_until(timeout_time_point)`
+                - `mutex.try_lock_shared()`
+                - `mutex.unlock_shared()`
     - 通用互斥管理
         - [`std::lock_guard`](https://en.cppreference.com/w/cpp/thread/lock_guard)
+            - 签名
+            ```
+            template <class Mutex>
+            class lock_guard;
+            ```
+            - 互斥锁封装器，提供[`RAII`](https://en.cppreference.com/w/cpp/language/raii)（Resource Acquisition Is Initialization）风格的块作用域内的互斥锁获取
+                - 实例被创建时，将获取互斥锁
+                - 块作用域结束，实例被析构时，将释放互斥锁
+            - **不可**复制
         - [`std::scoped_lock`](https://en.cppreference.com/w/cpp/thread/scoped_lock) `(since C++17)`
+            - 签名
+            ```
+            template <class ... MutexTypes>
+            class scoped_lock;
+            ```
+            - [`RAII`]风格互斥锁封装器，在块作用域存在期间占有一个或多个互斥
+            - 采用 *免死锁* 算法，如同`std::lock`
+            - **不可**复制
         - [`std::unique_lock`](https://en.cppreference.com/w/cpp/thread/unique_lock)
         - [`std::shared_lock`](https://en.cppreference.com/w/cpp/thread/shared_lock) `(since C++14)`
         - [`std::defer_lock_t`，`std::try_to_lock_t`，`std::adopt_to_lock_t`](https://en.cppreference.com/w/cpp/thread/lock_tag_t)
