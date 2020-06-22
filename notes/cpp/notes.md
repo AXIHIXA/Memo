@@ -38,7 +38,7 @@
     - 除非必须，**不要**使用自增自减运算符的后置版本（会造成性能浪费）
     - **不在**内部作用域声明函数（内部作用域生命的东西会覆盖外部作用域的同名东西，可能会影响函数重载的使用）
     - *交互式* 系统通常应该 *关联输入流和输出流* ，这意味着所有输出，包括用户提示信息，都会在读操作之前被打印出来
-    - 在对诸如`std::string`、`std::vector`等`C++`容器进行 *索引* 操作时，正确的类型是该容器的成员`typedef size_type`，而该类型通常被定义为与 `std::size_t`相同
+    - 在对诸如`std::string`、`std::vector`等`C++`容器进行 *索引* 操作时，正确的类型是该容器的静态类型成员`std::vector::size_type`，而该类型通常是`size_t`的别名
     - 不需要写访问时，应当使用`const_iterator`
     - 改变容器 *大小* 之后，则 *所有* 指向此容器的迭代器、引用和指针都 *可能* 失效，所以一律更新一波才是 *坠吼的* 。此外，永远**不要缓存**尾后迭代器（这玩意常年变来变去），现用现制，用后即弃
     - 泛型编程要求：**应当**统一使用非成员版本的`swap`，即`std::swap(c1, c2);`
@@ -402,7 +402,8 @@
     ```
     - 不是定义的模板特例化声明 
     ```
-    template<> struct A<int>;         // 声明但不定义 A<int>
+    template <> 
+    struct A<int>;                    // 声明但不定义 A<int>
     ```
 
 
@@ -15734,7 +15735,7 @@ quizB.reset(27);                  // student number 27 failed
         - 在这里用来表示此`std::duration`的时长单位（period），是一个[`std::ratio`](https://en.cppreference.com/w/cpp/numeric/ratio/ratio)类型，单位为秒
         - `std::ratio`是一个模板类，代表一个 *分数值* `Num / Denom`
         ```
-        template<std::intmax_t Num, std::intmax_t Denom = 1> 
+        template <std::intmax_t Num, std::intmax_t Denom = 1> 
         class ratio;
         ```
         - 预定义好的`std::ratio`类型
@@ -15929,13 +15930,13 @@ quizB.reset(27);                  // student number 27 failed
         - 一元操作
             - `std::chrono::duration<Rep, Period> t;`：默认构造
             - `std::chrono::duration<Rep, Period> t(r);`：创建时长为`r`个`Period`的`std::chrono::duration`。是`explicit`的
-            - `t.count()`：返回其`Ref`的值
             - `std::chrono::duration::zero()`：返回一个零长度时间间隔
             - `std::chrono::duration::min()`：返回此时间间隔的最小值
             - `std::chrono::duration::max()`：返回此时间间隔的最大值
+            - `t.count()`：返回其`Ref`的值
             - `t++`，`++t`
             - `t--`，`--t`
-            - `std::chrono::duration_cast<Duration>(t)`
+            - `std::chrono::duration_cast<Duration>(t)`：有精度损失的时间间隔转换不能自动执行，必须显式调用`std::chrono::duration_cast`
             ```
             void f()
             {
@@ -15974,11 +15975,14 @@ quizB.reset(27);                  // student number 27 failed
 - [`std::chrono::time_point`](https://en.cppreference.com/w/cpp/chrono/time_point)
     - 定义
     ```
-    template<class Clock, class Duration = typename Clock::duration> class time_point;
+    template <class Clock, class Duration = typename Clock::duration> 
+    class time_point;
     ```
     - `std::chrono::time_point`表示一个时刻
         - 这个时刻具体到什么程度，由选用的单位决定
-    - 一个`std::chrono::time_point`必须有一个 *时钟* 计时
+        - 一个`std::chrono::time_point`必须有一个 *时钟* 计时
+            - 实际上应该说 *时刻* 是 *时钟* 的属性
+            - 有意义的获取时刻对象的方式也是通过时钟的`time_point`类型成员
     - 支持的操作
         - 构造
             - 默认构造：构造时钟零时`epoch`
@@ -15987,7 +15991,9 @@ quizB.reset(27);                  // student number 27 failed
         ```
         std::chrono::time_point<std::chrono::high_resolution_clock> t0;                             // 0ms
         std::chrono::time_point<std::chrono::high_resolution_clock> t4  {std::chrono::seconds(4)};  // 4ms
-        std::chrono::time_point<std::chrono::high_resolution_clock> now \
+        std::chrono::time_point<std::chrono::high_resolution_clock> now  \
+                                                      {std::chrono::high_resolution_clock::now()};  // now
+        std::chrono::high_resolution_clock::time_point              now2 \ 
                                                       {std::chrono::high_resolution_clock::now()};  // now
         ```
         - 一元操作
@@ -16000,7 +16006,7 @@ quizB.reset(27);                  // student number 27 failed
             using Ms = std::chrono::milliseconds;
             using Sec = std::chrono::seconds;
              
-            template<class Duration>
+            template <class Duration>
             using TimePoint = std::chrono::time_point<Clock, Duration>;
             
             TimePoint<Sec> time_point_sec(Sec(4));
@@ -16024,7 +16030,7 @@ quizB.reset(27);                  // student number 27 failed
     - 三种时钟
         1. [`std::chrono::system_clock`](https://en.cppreference.com/w/cpp/chrono/system_clock)
             - 系统时钟
-            - 记录距1970年1月1日（周四）协调世界时零时（00:00:00 Coordinated Universal Time (UTC)）`epoch`的时间间隔
+            - 记录距协调世界时零时`epoch`（Thu Jan 1 1970 00:00:00 UTC±00:00）的时间间隔
             - 系统中运行的所有进程使用`now()`得到的时间是一致的
         2. [`std::chrono::steady_clock`](https://en.cppreference.com/w/cpp/chrono/steady_clock)
             - 稳定时钟
@@ -16034,20 +16040,18 @@ quizB.reset(27);                  // student number 27 failed
             - 系统可用的最高精度的时钟
             - 实际上只是`std::chrono::system_clock`或者`std::chrono::steady_clock`的`typedef`
     - 常用的操作
-        - `std::chrono::steady_clock::now()`：返回记录当前时刻的`std::chrono::time_point`
+        - `std::chrono::high_resolution_clock::now()`：返回记录当前时刻的`std::chrono::time_point`
     - 类型成员
-        - `std::chrono::steady_clock::time_point`
-        - `std::chrono::steady_clock::duration`
+        - `std::chrono::high_resolution_clock::time_point`
+        - `std::chrono::high_resolution_clock::duration`
 - 整体使用示例
 ```
 using CLK = std::chrono::high_resolution_clock;
-using TP = CLK::time_point;
-using TD = CLK::duration;
 
-TP t0 {CLK::now()};
+CLK::time_point t0 {CLK::now()};
 using namespace std::chrono_literals;
 std::this_thread::sleep_for(1234.56ms);
-TP t1 {CLK::now()};
+CLK::time_point t1 {CLK::now()};
 std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;  // 1235
 ```
 
@@ -16152,26 +16156,14 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                     ```
         - [`std::jthread`](https://en.cppreference.com/w/cpp/thread/jthread)：支持自动`join`以及`cancel`的`std::thread` `(since C++20)`
     - 管理 *当前线程* `std::this_thread`的静态函数，定义于`<this_thread>`
-        - [`std::this_thread::yield`](https://en.cppreference.com/w/cpp/thread/yield)：提供提示给实现，以重调度线程的执行，允许其他线程运行
-        - [`std::this_thread::get_id`](https://en.cppreference.com/w/cpp/thread/get_id)：返回当前线程的`id`
-        - [`std::this_thread::sleep_for`](https://en.cppreference.com/w/cpp/thread/sleep_for)：阻塞当前线程执行，至少经过指定的`sleep_duration`
-            - 签名
-            ```
-            template <class Rep, class Period>
-            void sleep_for(const std::chrono::duration<Rep, Period> & sleep_duration);
-            ```
-        - [`std::this_thread::sleep_until`](https://en.cppreference.com/w/cpp/thread/sleep_until)：阻塞当前线程，直至抵达指定的`sleep_time`
-            - 签名
-            ```
-            template <class Clock, class Duration>
-            void sleep_until(const std::chrono::time_point<Clock, Duration> & sleep_time);
-            ```
+        - [`std::this_thread::yield()`](https://en.cppreference.com/w/cpp/thread/yield)：提供提示给实现，以重调度线程的执行，允许其他线程运行
+        - [`std::this_thread::get_id()`](https://en.cppreference.com/w/cpp/thread/get_id)：返回当前线程的`id`
+        - [`std::this_thread::sleep_for(duration)`](https://en.cppreference.com/w/cpp/thread/sleep_for)：阻塞当前线程执行，至少经过指定的`duration`
+        - [`std::this_thread::sleep_until(time_point)`](https://en.cppreference.com/w/cpp/thread/sleep_until)：阻塞当前线程，直至抵达指定的`time_point`
     - 线程取消（thread cancellation），定义于`<stop_token>`
         - [`std::stop_token`](https://en.cppreference.com/w/cpp/thread/stop_token) `(since C++20)`
         - [`std::stop_source`](https://en.cppreference.com/w/cpp/thread/stop_source) `(since C++20)`
         - [`std::stop_callback`](https://en.cppreference.com/w/cpp/thread/stop_callback) `(since C++20)`
-- *缓存大小访问* 
-    - [`std::hardware_destructive_interference_size`，`std::hardware_constructive_interference_size`](https://en.cppreference.com/w/cpp/thread/hardware_destructive_interference_size)
 - *互斥* （mutual exclusion），定义于`<mutex>`
     - 互斥锁，定义于`<mutex>`
         - [`std::mutex`](https://en.cppreference.com/w/cpp/thread/mutex)
@@ -16246,29 +16238,196 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             template <class Mutex>
             class lock_guard;
             ```
-            - 互斥锁封装器，提供[`RAII`](https://en.cppreference.com/w/cpp/language/raii)（Resource Acquisition Is Initialization）风格的块作用域内的互斥锁获取
-                - 实例被创建时，将获取互斥锁
-                - 块作用域结束，实例被析构时，将释放互斥锁
-            - **不可**复制
+            - 特性
+                - 互斥锁封装器，提供[`RAII`](https://en.cppreference.com/w/cpp/language/raii)（Resource Acquisition Is Initialization）风格的块作用域内的互斥锁获取
+                    - 实例被创建时，将获取互斥锁
+                    - 块作用域结束，实例被析构时，将释放互斥锁
+                - **不可**复制
+            - 构造
+                - `std::lock_guard<Mutex> lock(mutex);`：构造关联到`mutex`上的`std::lock_guard`，并调用`mutex.lock()`获得互斥。若`mutex`不是递归锁且当前线程已获得此锁，则 *行为未定义* 。若`mutex`先于`lock`被销毁，则 *行为未定义* 
+                - `std::lock_guard<Mutex> lock(mutex, std::adopt_lock);`：构造关联到`mutex`上的`std::lock_guard`，且假设当前线程已经获得`mutex`。若实际未占有，则 *行为未定义* 
+            - 用例
+            ```
+            int g_i = 0;
+            std::mutex g_i_mutex;  // 保护 g_i
+             
+            void safe_increment()
+            {
+                std::lock_guard<std::mutex> lock(g_i_mutex);
+                ++g_i;
+             
+                std::cout << std::this_thread::get_id() << ": " << g_i << '\n';
+             
+                // g_i_mutex 在锁离开作用域时自动释放
+            }
+             
+            int main()
+            {
+                std::cout << "main: " << g_i << '\n';
+             
+                std::thread t1(safe_increment);
+                std::thread t2(safe_increment);
+             
+                t1.join();
+                t2.join();
+             
+                std::cout << "main: " << g_i << '\n';
+            }
+            ```
         - [`std::scoped_lock`](https://en.cppreference.com/w/cpp/thread/scoped_lock) `(since C++17)`
             - 签名
             ```
             template <class ... MutexTypes>
             class scoped_lock;
             ```
-            - [`RAII`]风格互斥锁封装器，在块作用域存在期间占有一个或多个互斥
-            - 采用 *免死锁* 算法，如同`std::lock`
-            - **不可**复制
+            - 特性
+                - [`RAII`]风格互斥锁封装器，在块作用域存在期间占有 *一或多个* 互斥
+                - 采用 *免死锁* 算法，如同`std::lock`
+                - **不可**复制
+            - 构造
+                - `std::lock_guard<Mutex> lock(m1, m2, ...);`：构造关联到`mutex`上的`std::lock_guard`，并调用`mutex.lock()`获得互斥。若`mutex`不是递归锁且当前线程已获得此锁，则 *行为未定义* 。若`mutex`先于`lock`被销毁，则 *行为未定义* 
+                - `std::lock_guard<Mutex> lock(std::adopt_lock, m1, m2, ...);`：构造关联到`mutex`上的`std::lock_guard`，且假设当前线程已经获得`mutex`。若实际未占有，则 *行为未定义* 
         - [`std::unique_lock`](https://en.cppreference.com/w/cpp/thread/unique_lock)
+            - 签名
+            ```
+            template <class Mutex>
+            class unique_lock;
+            ```
+            - 特性
+                - 互斥锁封装器，根据封装的互斥锁，还会允许
+                    - 延迟锁定`defer_lock`
+                    - 锁定的有时限尝试`try_to_lock`
+                    - 递归锁定
+                    - 所有权转移
+                    - 与条件变量一同使用  
+                - 可 *移动* ，但**不可** *复制* 
+            - 构造和赋值
+                - `std::unique_lock<Mutex> u;`：默认构造关联类型为`Mutex`类型、且目前无关联互斥的`std::unique_lock`
+                - `std::unique_lock<Mutex> u(mutex);`：显式构造与`mutex`关联的`std::unique_lock`，并调用`mutex.lock()`获得互斥的所有权。此构造函数为`explicit`的
+                - `std::unique_lock<Mutex> u(mutex, tag);`：显式构造与`mutex`关联的`std::unique_lock`，同时遵循如下 *三种* `tag`
+                    - `std::defer_lock`：`std::defer_lock_t`类型的内联字面值常量，不获得互斥的所有权
+                    - `std::try_to_lock`：`std::try_to_lock_t`类型的内联字面值常量，调用`mutex.try_lock()`尝试获得互斥的所有权而不阻塞
+                    - `std::adopt_lock`：`std::adopt_lock_t`类型的内联字面值常量，假设调用方线程已拥有互斥的所有权
+                - `std::unique_lock<Mutex> u(mutex, duration)`：创建`std::unique_lock`并调用`mutex.try_lock_for(duration)`
+                - `std::unique_lock<Mutex> u(mutex, time_point)`：创建`std::unique_lock`并调用`mutex.try_lock_until(time_point)`
+                - `std::unique_lock<Mutex> u1(u2)`，`u1 = u2;`：移动构造和移动赋值
+            - 操作
+                - `u.lock()`
+                - `u.try_lock()`
+                - `u.try_lock_for(duration)`
+                - `u.try_lock_until(time_point)`
+                - `u.unlock()`
+                - `u1.swap(ul2)`，`std::swap(u1, u2)`
+                - `u.release()`：将关联的互斥锁解关联，但并不释放它
+                - `u.mutex()`：返回指向其关联的互斥的指针。若无关联，则返回 *空指针* 
+                - `u.owns_lock()`：返回其是否占有关联互斥
+                - `operator bool()`：作为条件使用时，返回其是否占有关联互斥
         - [`std::shared_lock`](https://en.cppreference.com/w/cpp/thread/shared_lock) `(since C++14)`
-        - [`std::defer_lock_t`，`std::try_to_lock_t`，`std::adopt_to_lock_t`](https://en.cppreference.com/w/cpp/thread/lock_tag_t)
-        - [`std::defer_lock`，`std::try_to_lock`，`std::adopt_to_lock`](https://en.cppreference.com/w/cpp/thread/lock_tag)
+            - 签名
+            ```
+            template <class Mutex>
+            class shared_lock;
+            ```
+            - 特性
+                - 互斥锁封装器，根据封装的互斥锁，还会允许
+                    - 延迟锁定
+                    - 锁定的有时限尝试
+                    - 所有权转移
+                - 锁定`std::shared_lock`将 *共享锁定* 与其关联的互斥锁
+                    - 想要独占锁定，可以使用`std::unique_lock`
+                - 可 *移动* ，但**不可** *复制* 
+            - 构造和赋值
+                - `std::shared_lock<Mutex> s;`：默认构造关联类型为`Mutex`类型、且目前无关联互斥的`std::shared_lock`
+                - `std::shared_lock<Mutex> s(mutex);`：显式构造与`mutex`关联的`std::shared_lock`，并调用`mutex.lock_shared()`获得互斥的所有权。此构造函数为`explicit`的
+                - `std::shared_lock<Mutex> s(mutex, tag);`：显式构造与`mutex`关联的`std::shared_lock`，同时遵循如下 *三种* `tag`
+                    - `std::defer_lock`：`std::defer_lock_t`类型的内联字面值常量，不获得互斥的所有权
+                    - `std::try_to_lock`：`std::try_to_lock_t`类型的内联字面值常量，调用`mutex.try_lock_shared()`尝试获得互斥的所有权而不阻塞
+                    - `std::adopt_lock`：`std::adopt_lock_t`类型的内联字面值常量，假设调用方线程已拥有互斥的所有权
+                - `std::shared_lock<Mutex> s(mutex, duration)`：创建`std::shared_lock`并调用`mutex.try_lock_shared_for(duration)`
+                - `std::shared_lock<Mutex> s(mutex, time_point)`：创建`std::shared_lock`并调用`mutex.try_lock_shared_until(time_point)`
+                - `std::shared_lock<Mutex> s1(s2)`，`s1 = s2;`：移动构造和移动赋值
+            - 操作
+                - `s.lock()`
+                - `s.try_lock()`
+                - `s.try_lock_for(duration)`
+                - `s.try_lock_until()`
+                - `s.unlock()`
+                - `s1.swap(s2)`，`std::swap(s1, s2)`
+                - `s.release()`：将关联的互斥锁解关联，但并不释放它
+                - `s.mutex()`：返回指向其关联的互斥的指针。若无关联，则返回 *空指针* 
+                - `s.owns_lock()`：返回其是否占有关联互斥
+                - `operator bool()`：作为条件使用时，返回其是否占有关联互斥
     - 通用锁定算法
         - [`std::try_lock`](https://en.cppreference.com/w/cpp/thread/try_lock)
+            - 签名
+            ```
+            template <class Lockable1, class Lockable2, class ... LockableN>
+            int try_lock(Lockable1 & lock1, Lockable2 & lock2, LockableN & ... lockn);
+            ```
+            - 功能
+                - 尝试锁定每个给定的锁，通过以从头开始的顺序调用`lockn.try_lock()`
+                - 若调用`try_lock`失败，则不再进一步调用`try_lock`，并对任何已锁对象调用`unlock`，返回锁定失败对象的下标
+                - 若调用`try_lock`抛出异常，则在重新抛出之前对任何已锁对象调用`unlock`
+            - 返回值
+                - 成功时为`-1`
+                - 否则为锁定失败对象的下标值 
         - [`std::lock`](https://en.cppreference.com/w/cpp/thread/lock)
+            - 签名
+            ```
+            template <class Lockable1, class Lockable2, class ... LockableN>
+            void lock(Lockable1 & lock1, Lockable2 & lock2, LockableN & ... lockn);
+            ```
+            - 功能
+                - 尝试锁定每个给定的锁，通过 *免死锁* 算法避免死锁的出现 
+                - 给定的锁将以`lock`、`try_lock`和`unlock`的未给定序列锁定
+                - 若上述过程中抛出异常，则在重新抛出之前对任何已锁对象调用`unlock`
+            - 注意
+                - 前面讲过的[`std::scoped_lock`](https://en.cppreference.com/w/cpp/thread/scoped_lock)提供此函数的`RAII`包装，通常它比裸调用`std::lock`更好
     - 单次调用
-        - [`std::once_flag`](https://en.cppreference.com/w/cpp/thread/once_flag)
         - [`std::call_once`](https://en.cppreference.com/w/cpp/thread/call_once)
+            - 签名
+            ```
+            template <class Callable, class ... Args>
+            void call_once(std::once_flag & flag, Callable && f, Args && ... args);
+            ```
+            - 保证准确执行一次`f`
+                - *消极* ：若在调用时刻`flag`指示已经调用了`f`，则什么也不做
+                - *积极* ：否则，调用`std::invoke(std::forward<Callable>(f), std::forward<Args>(args) ...)`
+                    - 不同于`std::thread`的构造函数或`std::async`，不移动或复制参数，因为不需要将它们转移至另一线程
+                    - *异常* ：如果调用出现异常，则传播异常给`call_once`的调用方，且不反转`flag`
+                    - *返回* ：若调用正常返回，则反转`flag`，并保证其它调用为 *消极* 
+            - 注解
+                - 同一`flag`上的所有 *积极调用* 组成单独全序，它们由零或多个异常调用后随一个 *返回调用* 组成
+                    - 该顺序中，每个 *积极调用* 的结尾同步于下个积极调用
+                - 从 *返回调用* 的返回同步于同一`flag`上的所有 *消极调用* 
+                    - 这表示保证所有对`call_once`的同时调用都能观察到积极调用产生的副效应，而无需额外同步 
+                - 若对`call_once`的同时调用传递不同的`f`，则调用哪个`f`是 *未指定* 的
+            - [`std::once_flag`](https://en.cppreference.com/w/cpp/thread/once_flag)
+                - `std::call_once`的辅助类
+                    - 一个`std::once_flag`实例将被传递给多个`std::call_once`实例，用于多个`std::call_once`实例之间相互协调，保证最终只有一个`std::call_once`真正被完整执行
+                - **不可** *复制* ，**不可** *移动*  
+                - 默认构造函数：`constexpr once_flag() noexcept;`：默认构造一个指示目前还没有一个函数被调用的`std::once`实例
+            - 示例
+            ```
+            std::once_flag flag;
+            
+            void simple_do_once()
+            {
+                std::call_once(flag1, [](){ std::cout << "Simple example: called once\n"; });
+            }
+            
+            std::thread st1(simple_do_once);
+            std::thread st2(simple_do_once);
+            std::thread st3(simple_do_once);
+            std::thread st4(simple_do_once);
+            st1.join();
+            st2.join();
+            st3.join();
+            st4.join();
+            
+            // OUTPUT: 
+            Simple example: called once
+            ```
 - *条件变量* （condition variable），定义于`<condition_variable>`
     - [`std::condition_variable`](https://en.cppreference.com/w/cpp/thread/condition_variable)
     - [`std::condition_variable_any`](https://en.cppreference.com/w/cpp/thread/condition_variable_any)
