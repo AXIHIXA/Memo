@@ -16158,8 +16158,8 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     - 管理 *当前线程* `std::this_thread`的静态函数，定义于`<this_thread>`
         - [`std::this_thread::yield()`](https://en.cppreference.com/w/cpp/thread/yield)：提供提示给实现，以重调度线程的执行，允许其他线程运行
         - [`std::this_thread::get_id()`](https://en.cppreference.com/w/cpp/thread/get_id)：返回当前线程的`id`
-        - [`std::this_thread::sleep_for(duration)`](https://en.cppreference.com/w/cpp/thread/sleep_for)：阻塞当前线程执行，至少经过指定的`duration`
-        - [`std::this_thread::sleep_until(time_point)`](https://en.cppreference.com/w/cpp/thread/sleep_until)：阻塞当前线程，直至抵达指定的`time_point`
+        - [`std::this_thread::sleep_for(duration)`](https://en.cppreference.com/w/cpp/thread/sleep_for)：阻塞当前线程执行，至少经过指定的`std::chrono::duration`
+        - [`std::this_thread::sleep_until(time_point)`](https://en.cppreference.com/w/cpp/thread/sleep_until)：阻塞当前线程，直至抵达指定的`std::chrono::time_point`
     - 线程取消（thread cancellation），定义于`<stop_token>`
         - [`std::stop_token`](https://en.cppreference.com/w/cpp/thread/stop_token) `(since C++20)`
         - [`std::stop_source`](https://en.cppreference.com/w/cpp/thread/stop_source) `(since C++20)`
