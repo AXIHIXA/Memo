@@ -16051,7 +16051,76 @@ TP t1 {CLK::now()};
 std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;  // 1235
 ```
 
-#### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem library） `(since C++17)`
+#### [线程库](https://en.cppreference.com/w/cpp/thread)（Thread Support Library）
+
+- *线程* ：使得程序能在数个处理器核心同时执行
+    - 类，定义于`<thread>`
+        - `std::thread`
+        - `std::jthread` `(since C++20)`
+    - 管理 *当前线程* 的函数，定义于`<this_thread>`
+        - `yield`
+        - `get_id`
+        - `sleep_for`
+        - `sleep_until`
+    - 线程取消（thread cancellation），定义于`<stop_token>`
+        - `stop_token` `(since C++20)`
+        - `stop_source` `(since C++20)`
+        - `stop_callback` `(since C++20)`
+- *缓存大小访问* 
+    - `hardware_destructive_interference_size`
+    - `hardware_constructive_interference_size`
+- *互斥* （mutual exclusion），定义于`<mutex>`
+    - 互斥锁，定义于`<mutex>`
+        - `mutex`
+        - `timed_mutex`
+        - `recursive_mutex`
+        - `recursive_timed_mutex`
+    - 共享锁，定义于`<shared_mutex>`
+        - `shared_mutex`
+        - `shared_timed_mutex`
+    - 通用互斥管理
+        - `lock_guard`
+        - `scoped_lock` `(since C++17)`
+        - `unique_lock`
+        - `shared_lock` `(since C++14)`
+        - `defer_lock_t`，`try_to_lock_t`，`adopt_to_lock_t`
+        - `defer_lock`，`try_to_lock`，`adopt_to_lock`
+    - 通用锁定算法
+        - `try_lock`
+        - `lock`
+    - 单次调用
+        - `once_flag`
+        - `call_once`
+- *条件变量* （condition variable），定义于`<condition_variable>`
+    - `condition_variable`
+    - `condition_variable_any`
+    - `notify_all_at_thread_exit`
+    - `cv_status`
+- *信号量* （semaphore），定义于`<semaphore>`
+    - `counting_semaphore` `(since C++20)`
+    - `binary_semaphore` `(since C++20)`
+- *闩与屏障* （Latches and Barriers），定义于`<latch>`
+    - `latch` `(since C++20)`
+    - `barrier` `(since C++20)`
+- `future`，定义于`<future>`
+    - 标准库提供了一些工具来获取 *异步任务* （即，在单独的线程中启动的函数）的返回值，并捕捉其抛出的异常
+    - 这些值在 *共享状态* （shared state）中传递
+        - 其中异步任务可以写入其返回值或存储异常
+        - 而且可以被其他同样持有引用了此共享状态的`std::future`或`std::shared_future`的实例的线程 *检验* 、 *等待* 或 *修改* 
+    - 操作，定义于`<future>`
+        - `promise`
+        - `packaged_task`
+        - `future`
+        - `shared_future`
+        - `async`
+        - `launch`
+        - `future_status`
+    - 错误
+        - `future_error`
+        - `future_category`
+        - `future_errc`
+
+#### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem Library） `(since C++17)`
 
 - *文件系统库* 提供在文件系统与其组件，例如路径、常规文件与目录上进行操作的设施
     - 文件系统库原作为`boost.filesystem`开发，并最终从`C++17`开始并入`ISO C++`
@@ -18819,7 +18888,7 @@ private:
             - `const`对象的非`mutable volatile`子对象
         - 同时表现为`const`对象与`volatile`对象 
 
-#### 链接指示`extern "C"`（Linkage Directives）
+#### 链接指示（Linkage Directives）
 
 - `C++`程序调用其他语言（包括`C`语言）的函数时，一样需要先声明再使用，且声明必须制定返回类型和形参列表
     - 编译器检查其调用的方式与普通`C++`函数的方式相同，但生成的代码有区别
