@@ -16051,74 +16051,72 @@ TP t1 {CLK::now()};
 std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;  // 1235
 ```
 
-#### [线程库](https://en.cppreference.com/w/cpp/thread)（Thread Support Library）
+#### [线程支持库](https://en.cppreference.com/w/cpp/thread)（Thread Support Library）
 
 - *线程* ：使得程序能在数个处理器核心同时执行
-    - 类，定义于`<thread>`
-        - `std::thread`
-        - `std::jthread` `(since C++20)`
-    - 管理 *当前线程* 的函数，定义于`<this_thread>`
-        - `yield`
-        - `get_id`
-        - `sleep_for`
-        - `sleep_until`
+    - 线程类，定义于`<thread>`
+        - [`std::thread`](https://en.cppreference.com/w/cpp/thread/thread)
+        - [`std::jthread`](https://en.cppreference.com/w/cpp/thread/jthread)：支持自动`join`以及`cancel`的`std::join` `(since C++20)`
+    - 管理 *当前线程* `std::this_thread`的静态函数，定义于`<this_thread>`
+        - [`std::this_thread::yield`](https://en.cppreference.com/w/cpp/thread/yield)
+        - [`std::this_thread::get_id`](https://en.cppreference.com/w/cpp/thread/get_id)
+        - [`std::this_thread::sleep_for`](https://en.cppreference.com/w/cpp/thread/sleep_for)
+        - [`std::this_thread::sleep_until`](https://en.cppreference.com/w/cpp/thread/sleep_until)
     - 线程取消（thread cancellation），定义于`<stop_token>`
-        - `stop_token` `(since C++20)`
-        - `stop_source` `(since C++20)`
-        - `stop_callback` `(since C++20)`
+        - [`std::stop_token`](https://en.cppreference.com/w/cpp/thread/stop_token) `(since C++20)`
+        - [`std::stop_source`](https://en.cppreference.com/w/cpp/thread/stop_source) `(since C++20)`
+        - [`std::stop_callback`](https://en.cppreference.com/w/cpp/thread/stop_callback) `(since C++20)`
 - *缓存大小访问* 
-    - `hardware_destructive_interference_size`
-    - `hardware_constructive_interference_size`
+    - [`std::hardware_destructive_interference_size`，`std::hardware_constructive_interference_size`](https://en.cppreference.com/w/cpp/thread/hardware_destructive_interference_size)
 - *互斥* （mutual exclusion），定义于`<mutex>`
     - 互斥锁，定义于`<mutex>`
-        - `mutex`
-        - `timed_mutex`
-        - `recursive_mutex`
-        - `recursive_timed_mutex`
+        - [`std::mutex`](https://en.cppreference.com/w/cpp/thread/mutex)
+        - [`std::timed_mutex`](https://en.cppreference.com/w/cpp/thread/timed_mutex)
+        - [`std::recursive_mutex`](https://en.cppreference.com/w/cpp/thread/recursive_mutex)
+        - [`std::recursive_timed_mutex`](https://en.cppreference.com/w/cpp/thread/recursive_timed_mutex)
     - 共享锁，定义于`<shared_mutex>`
-        - `shared_mutex`
-        - `shared_timed_mutex`
+        - [`std::shared_mutex`](https://en.cppreference.com/w/cpp/thread/shared_mutex) `(since C++17)`
+        - [`std::shared_timed_mutex`](https://en.cppreference.com/w/cpp/thread/shared_timed_mutex) `(since C++14)`
     - 通用互斥管理
-        - `lock_guard`
-        - `scoped_lock` `(since C++17)`
-        - `unique_lock`
-        - `shared_lock` `(since C++14)`
-        - `defer_lock_t`，`try_to_lock_t`，`adopt_to_lock_t`
-        - `defer_lock`，`try_to_lock`，`adopt_to_lock`
+        - [`std::lock_guard`](https://en.cppreference.com/w/cpp/thread/lock_guard)
+        - [`std::scoped_lock`](https://en.cppreference.com/w/cpp/thread/scoped_lock) `(since C++17)`
+        - [`std::unique_lock`](https://en.cppreference.com/w/cpp/thread/unique_lock)
+        - [`std::shared_lock`](https://en.cppreference.com/w/cpp/thread/shared_lock) `(since C++14)`
+        - [`std::defer_lock_t`，`std::try_to_lock_t`，`std::adopt_to_lock_t`](https://en.cppreference.com/w/cpp/thread/lock_tag_t)
+        - [`std::defer_lock`，`std::try_to_lock`，`std::adopt_to_lock`](https://en.cppreference.com/w/cpp/thread/lock_tag)
     - 通用锁定算法
-        - `try_lock`
-        - `lock`
+        - [`std::try_lock`](https://en.cppreference.com/w/cpp/thread/try_lock)
+        - [`std::lock`](https://en.cppreference.com/w/cpp/thread/lock)
     - 单次调用
-        - `once_flag`
-        - `call_once`
+        - [`std::once_flag`](https://en.cppreference.com/w/cpp/thread/once_flag)
+        - [`std::call_once`](https://en.cppreference.com/w/cpp/thread/call_once)
 - *条件变量* （condition variable），定义于`<condition_variable>`
-    - `condition_variable`
-    - `condition_variable_any`
-    - `notify_all_at_thread_exit`
-    - `cv_status`
+    - [`std::condition_variable`](https://en.cppreference.com/w/cpp/thread/condition_variable)
+    - [`std::condition_variable_any`](https://en.cppreference.com/w/cpp/thread/condition_variable_any)
+    - [`std::notify_all_at_thread_exit`](https://en.cppreference.com/w/cpp/thread/notify_all_at_thread_exit)
+    - [`std::cv_status`](https://en.cppreference.com/w/cpp/thread/cv_status)
 - *信号量* （semaphore），定义于`<semaphore>`
-    - `counting_semaphore` `(since C++20)`
-    - `binary_semaphore` `(since C++20)`
+    - [`std::counting_semaphore`，`std::binary_semaphore`](https://en.cppreference.com/w/cpp/thread/counting_semaphore) `(since C++20)`
 - *闩与屏障* （Latches and Barriers），定义于`<latch>`
-    - `latch` `(since C++20)`
-    - `barrier` `(since C++20)`
+    - [`std::latch`](https://en.cppreference.com/w/cpp/thread/latch) `(since C++20)`
+    - [`std::barrier`](https://en.cppreference.com/w/cpp/thread/barrier) `(since C++20)`
 - `future`，定义于`<future>`
     - 标准库提供了一些工具来获取 *异步任务* （即，在单独的线程中启动的函数）的返回值，并捕捉其抛出的异常
     - 这些值在 *共享状态* （shared state）中传递
         - 其中异步任务可以写入其返回值或存储异常
         - 而且可以被其他同样持有引用了此共享状态的`std::future`或`std::shared_future`的实例的线程 *检验* 、 *等待* 或 *修改* 
     - 操作，定义于`<future>`
-        - `promise`
-        - `packaged_task`
-        - `future`
-        - `shared_future`
-        - `async`
-        - `launch`
-        - `future_status`
-    - 错误
-        - `future_error`
-        - `future_category`
-        - `future_errc`
+        - [`std::promise`](https://en.cppreference.com/w/cpp/thread/promise)
+        - [`std::packaged_task`](https://en.cppreference.com/w/cpp/thread/packaged_task)
+        - [`std::future`](https://en.cppreference.com/w/cpp/thread/future)
+        - [`std::shared_future`](https://en.cppreference.com/w/cpp/thread/shared_future)
+        - [`std::async`](https://en.cppreference.com/w/cpp/thread/async)
+        - [`std::launch`](https://en.cppreference.com/w/cpp/thread/launch)
+        - [`std::future_status`](https://en.cppreference.com/w/cpp/thread/future_status)
+    - 线程异常
+        - [`std::future_error`](https://en.cppreference.com/w/cpp/thread/future_error)
+        - [`std::future_category`](https://en.cppreference.com/w/cpp/thread/future_category)
+        - [`std::future_errc`](https://en.cppreference.com/w/cpp/thread/future_errc)
 
 #### [文件系统库](https://en.cppreference.com/w/cpp/filesystem)（Filesystem Library） `(since C++17)`
 
