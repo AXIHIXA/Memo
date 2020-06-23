@@ -6500,7 +6500,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - [`std::bit_xor`](https://en.cppreference.com/w/cpp/utility/functional/bit_xor)：`x ^ y`
         - [`std::bit_not`](https://en.cppreference.com/w/cpp/utility/functional/bit_not)：`~x`
 
-### 🌱 [Appendix A] [标准库](https://en.cppreference.com/w/cpp/algorithm)
+### 🌱 [Appendix A] [算法标准库`<algorithm>`](https://en.cppreference.com/w/cpp/algorithm)
 
 #### 只读算法（Non-modifying sequence operations）
     
@@ -16502,19 +16502,84 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                     return true;
                     ```
     - [`std::condition_variable_any`](https://en.cppreference.com/w/cpp/thread/condition_variable_any)
+        - `std::condition_variable`的泛化
+        - `std::condition_variable_any`能与`std::shared_lock`一同使用，从而实现在`std::shared_mutex`上以 *共享* 模式等待
     - [`std::notify_all_at_thread_exit`](https://en.cppreference.com/w/cpp/thread/notify_all_at_thread_exit)
 - *信号量* （semaphore），定义于`<semaphore>`
     - [`std::counting_semaphore`，`std::binary_semaphore`](https://en.cppreference.com/w/cpp/thread/counting_semaphore) `(since C++20)`
 - *闩与屏障* （Latches and Barriers），定义于`<latch>`
     - [`std::latch`](https://en.cppreference.com/w/cpp/thread/latch) `(since C++20)`
     - [`std::barrier`](https://en.cppreference.com/w/cpp/thread/barrier) `(since C++20)`
-- `future`，定义于`<future>`
-    - 标准库提供了一些工具来获取 *异步任务* （即，在单独的线程中启动的函数）的返回值，并捕捉其抛出的异常
-    - 这些值在 *共享状态* （shared state）中传递
-        - 其中异步任务可以写入其返回值或存储异常
-        - 而且可以被其他同样持有引用了此共享状态的`std::future`或`std::shared_future`的实例的线程 *检验* 、 *等待* 或 *修改* 
+- *线程间通讯* ，定义于`<future>`
+    - `C++`线程支持库还提供`std::promise -> std::future`传递链，用于进程间共享信息
+        - 没有这一功能时
+            - 信息只能通过指针和动态存储区中的`volatile`变量传递
+            - 而且还必须等待异步线程结束后，才能安全地获得这些信息
+        - 当`std::promise`写入信息时，信息立即可访问，不必等待该线程结束
+        - 这些信息在 *共享状态* （shared state）中传递
+            - 其中异步任务可以写入信息或存储异常
+            - *共享状态* 可以与数个`std::future`或`std::shared_future`实例关联，从而被它们所在的线程 *检验* 、 *等待* 或 *修改* 
     - 操作，定义于`<future>`
         - [`std::promise`](https://en.cppreference.com/w/cpp/thread/promise)
+            - 签名
+            ```
+            template <class R> class promise;          (1) 空模板
+            template <class R> class promise<R &>;     (2) 非 void 特化，用于在线程间交流对象
+            template <>        class promise<void>;    (3) void 特化，用于交流无状态事件
+            ```
+            - 特性
+                - 类模板`std::promise`提供存储值或异常的设施，之后通过`std::promise`对象所创建的`std::future`对象异步获得结果
+                    - 注意`std::promise`只应当使用一次
+                - 每个`promise`与 *共享状态* 关联
+                    - 共享状态含有一些状态信息和可能仍未求值的结果
+                    - 它求值为值（可能为`void`）或求值为异常
+                - `promise`可以对共享状态做三件事：
+                    - *就绪* ：`promise`存储结果或异常于共享状态。标记共享状态为就绪，并解除阻塞任何等待于与该共享状态关联的`future`上的线程
+                    - *释放* ：`promise`放弃其对共享状态的引用。若这是最后一个这种引用，则销毁共享状态。除非这是`std::async`所创建的未就绪的共享状态，否则此操作**不**阻塞
+                    - *抛弃* ：`promise`存储以`std::future_errc::broken_promise`为`error_code`的`std::future_error`类型异常，令共享状态为就绪，然后释放它
+            - 构造和赋值
+                - `std::promise<T> p;`： *默认构造* 一个共享状态为空的`std::promise`
+                - `std::promise<T> p1(p2)`，`p1 = p2`：移动构造和移动赋值
+            - 操作
+                - `p1.swap(p2)`，`std::swap(p1, p2)`：交换二个`std::promise`对象 
+                - `std::future<T> f = p.get_future();`：返回与`std::promise<T> p`的结果关联的`std::future<T>`对象。若无共享状态或已调用过`get_future`，则抛出异常。对此函数的调用与对`set_value`、`set_exception`、`set_value_at_thread_exit`或 `set_exception_at_thread_exit`的调用**不**造成数据竞争（但它们不必彼此同步）
+                - `p.set_value(val)`：原子地存储`val`到共享状态，并令状态就绪
+                - `p.set_value()`：仅对`std::promise<void>`特化成员，使状态就绪
+                - `p.set_value_at_thread_exit(val)`：原子地存储`val`到共享状态，而不立即令状态就绪。在当前线程退出时，销毁所有拥有线程局域存储期的对象后，再令状态就绪。若无共享状态或共享状态已存储值或异常，则抛出异常
+                - `p.set_value_at_thread_exit(ptr)`：存储`std::exception_ptr ptr`到共享状态中，并令状态就绪
+                    - 异常指针
+                    ```
+                    std::exception_ptr eptr;
+                    
+                    try 
+                    {
+                        std::string().at(1);              // 这生成一个 std::out_of_range
+                    } 
+                    catch(...)
+                    {
+                        eptr = std::current_exception();  // 捕获
+                    }
+                    ```
+                - `p.set_exception_at_thread_exit(ptr)`：存储`std::exception_ptr ptr`到共享状态中，而不立即使状态就绪。在当前线程退出时，销毁所有拥有线程局域存储期的变量后，再零状态就绪
+            - 示例
+            ```
+            void asyncFunc(std::promise<int> & prom)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                prom.set_value(200);
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+            }
+            
+            int main()
+            {
+                std::promise<int> prom;
+                std::future<int> fut = prom.get_future();
+                std::thread t1 {asyncFunc, std::ref(prom)};
+                std::cout << fut.get() << std::endl;         
+                t1.join();                                   // 2s later, print 200
+                return 0;                                    // another 2s later, thread end
+            }
+            ```
         - [`std::packaged_task`](https://en.cppreference.com/w/cpp/thread/packaged_task)
         - [`std::future`](https://en.cppreference.com/w/cpp/thread/future)
         - [`std::shared_future`](https://en.cppreference.com/w/cpp/thread/shared_future)
