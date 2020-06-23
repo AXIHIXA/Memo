@@ -16464,10 +16464,9 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - 当前线程阻塞直至条件变量被通知，或伪唤醒发生
                     - 原子地解锁`unique_lock`，阻塞当前线程，并将它添加到`cv`的等待列表上
                     - 当前线程被唤醒时，将自动获得`unique_lock`并退出`wait`
-                        - `若此函数通过异常退出，当前线程也会获得 unique_lock (until C++14)`
-                - 谓词`pred`为可选的，如提供，则循环至满足`pred == true`
-                    - 等价于`while (!pred) { cv.wait(unique_lock); }`
-                    - 用于在特定条件为`true`时忽略伪唤醒
+                        - 若此函数通过异常退出，当前线程也会获得`unique_lock` `(until C++14)`
+                - 谓词`pred`为可选的，用于在特定条件为`true`时忽略伪唤醒
+                    - 如提供，则等价于`while (!pred) { cv.wait(unique_lock); }`
                 - 若此函数不能满足后置条件`unique_lock.owns_lock()`、且调用方线程持有`unique_locl.mutex()`，则调用`std::terminate()` `(since C++14)`
                 - 注解
                     - 若当前线程未获得`unique_lock.mutex()`，则调用此函数是 *未定义行为* 
