@@ -16281,7 +16281,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             class scoped_lock;
             ```
             - 特性
-                - [`RAII`]风格互斥锁封装器，在块作用域存在期间占有 *一或多个* 互斥
+                - `RAII`风格互斥锁封装器，在块作用域存在期间占有 *一或多个* 互斥
                 - 采用 *免死锁* 算法，如同`std::lock`
                 - **不可**复制
             - 构造
@@ -16430,9 +16430,80 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             ```
 - *条件变量* （condition variable），定义于`<condition_variable>`
     - [`std::condition_variable`](https://en.cppreference.com/w/cpp/thread/condition_variable)
+        - 特性
+            - 条件变量**不**包含 *互斥锁* 的 *条件* 
+                - *互斥锁* 的 *条件* 需要被单独定义，并配合 *条件变量* 一同使用
+                - 条件变量实现的是 *等待队列* 和 *广播* 功能
+                - 线程还可以等待在条件变量上，并在需要时通过广播被唤醒
+            - 条件变量用于阻塞一个线程或同时阻塞多个线程，直至另一线程修改共享 *条件* 、并 *通知* 此条件变量
+                - 任何有意 *修改条件变量* 的线程必须
+                    - 获得`std::mutex`（常通过`std::lock_guard`）
+                    - 在保有锁时进行修改
+                        - 即使共享变量是原子的，也必须在互斥下修改它，以正确地发布修改到等待的线程
+                    - 在`std::condition_variable`上执行`notify_one`或`notify_all`（**不**需要为通知保有锁）
+                - 任何有意 *在条件变量上等待* 的线程必须
+                    - 在用于保护此条件变量的`std::mutex`上获得封装器`std::unique_lock<std::mutex>`
+                    - 执行如下两种操作中的一种
+                        - 第一种
+                            - 检查 *条件* 是否为 *已更新* 或 *已被提醒* 
+                            - 执行`wait`、`wait_for`或`wait_until`
+                                - 等待操作将自动释放互斥锁，并挂起此线程
+                            - 当此条件变量 *被通知* 、 *超时* 或 *伪唤醒* （被唤醒但条件仍不满足时），于此等待的线程被唤醒，并自动获得互斥锁
+                                - 此线程应自行检查 *条件* ，如果是 *伪唤醒* ，则应继续进行一轮 *等待*  
+                        - 第二种
+                            - 使用`wait`、`wait_for`及`wait_until`的 *有谓词重载* ，它们包揽以上三个步骤 
+            - 只工作于`std::unique_lock<std::mutex>`上的条件变量，在一些平台上此配置可以达到效率最优
+                - 想用其他的互斥封装器，可以用楼下的[`std::condition_variable_any`](https://en.cppreference.com/w/cpp/thread/condition_variable_any)
+            - 容许`wait`、`wait_for`、`wait_until`、`notify_one`及`notify_all`的并发调用
+            - **不可** *复制* 、**不可** *移动* 
+        - 操作
+            - `std::conditional_variable cv;`：默认构造
+            - `cv.notify_one()`：唤醒一个在`cv`上等待的线程
+            - `cv.notify_all()`：唤醒全部在`cv`上等待的线程
+            - `cv.wait(unique_lock, pred)`
+                - 当前线程阻塞直至条件变量被通知，或伪唤醒发生
+                    - 原子地解锁`unique_lock`，阻塞当前线程，并将它添加到`cv`的等待列表上
+                    - 当前线程被唤醒时，将自动获得`unique_lock`并退出`wait`
+                        - `若此函数通过异常退出，当前线程也会获得 unique_lock (until C++14)`
+                - 谓词`pred`为可选的，如提供，则循环至满足`pred == true`
+                    - 等价于`while (!pred) { cv.wait(unique_lock); }`
+                    - 用于在特定条件为`true`时忽略伪唤醒
+                - 若此函数不能满足后置条件`unique_lock.owns_lock()`、且调用方线程持有`unique_locl.mutex()`，则调用`std::terminate()` `(since C++14)`
+                - 注解
+                    - 若当前线程未获得`unique_lock.mutex()`，则调用此函数是 *未定义行为* 
+                    - 若`unique_lock.mutex()`与所有当前等待在此条件变量上的线程所用`std::mutex`不是同一个，则 *行为未定义* 
+            - [`cv.wait_for`](https://en.cppreference.com/w/cpp/thread/condition_variable/wait_for)
+                - `cv.wait_for(unique_lock, duration)`
+                    - 返回`enum std::cv_status {no_timeout, timeout}`。
+                        - 若经过`duration`所指定的关联时限，则为 `std::cv_status::timeout`
+                        - 否则为`std::cv_status::no_timeout`
+                - `cv.wait_for(unique_lock, duration, pred)`
+                    - 返回`bool`
+                        - 如未超时，则为`true`
+                        - 否则，为经过`duration`时限后谓词`pred`的值
+                    - 等价于`return wait_until(lock, std::chrono::steady_clock::now() + rel_time, std::move(pred));`
+            - [`cv.wait_until`](https://en.cppreference.com/w/cpp/thread/condition_variable/wait_until)
+                - `cv.wait_until(unique_lock, time_point)`
+                    - 返回`enum std::cv_status {no_timeout, timeout}`
+                        - 若经过`time_point`所指定的关联时限，则为 `std::cv_status::timeout`
+                        - 否则为`std::cv_status::no_timeout`
+                - `cv.wait_until(unique_locl, time_point, pred)`
+                    - 返回`bool`
+                        - 如未超时，则为`true`
+                        - 否则，为经过时限后谓词`pred`的值
+                    - 等价于
+                    ```
+                    while (!pred()) 
+                    {
+                        if (wait_until(lock, timeout_time) == std::cv_status::timeout) 
+                        {
+                            return pred();
+                        }
+                    }
+                    return true;
+                    ```
     - [`std::condition_variable_any`](https://en.cppreference.com/w/cpp/thread/condition_variable_any)
     - [`std::notify_all_at_thread_exit`](https://en.cppreference.com/w/cpp/thread/notify_all_at_thread_exit)
-    - [`std::cv_status`](https://en.cppreference.com/w/cpp/thread/cv_status)
 - *信号量* （semaphore），定义于`<semaphore>`
     - [`std::counting_semaphore`，`std::binary_semaphore`](https://en.cppreference.com/w/cpp/thread/counting_semaphore) `(since C++20)`
 - *闩与屏障* （Latches and Barriers），定义于`<latch>`
