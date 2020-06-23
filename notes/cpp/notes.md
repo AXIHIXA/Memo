@@ -16553,7 +16553,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                     
                     try 
                     {
-                        std::string().at(1);              // 这生成一个 std::out_of_range
+                        // throw something...
                     } 
                     catch(...)
                     {
@@ -16582,12 +16582,84 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             ```
         - [`std::packaged_task`](https://en.cppreference.com/w/cpp/thread/packaged_task)
         - [`std::future`](https://en.cppreference.com/w/cpp/thread/future)
+            - 签名
+            ```
+            template <class T> class future;          (1)
+            template <class T> class future<T &>;     (2)
+            template <>        class future<void>;    (3)
+            ```
+            - 特性
+                - 类模板`std::future`提供访问异步操作结果的机制
+                    - 通过`std::async`、`std::packaged_task`或`std::promise`创建的异步操作能提供一个`std::future`对象给该异步操作的创建者 
+                    - 然后，异步操作的创建者能用各种方法查询、等待或从`std::future`提取值。若异步操作仍未提供值，则这些方法可能阻塞
+                    - 异步操作准备好发送结果给创建者时，它能通过修改链接到创建者的`std::future`的共享状态（例如`std::promise::set_value`）进行
+                - 注意，`std::future`所引用的共享状态不与另一异步返回对象共享（与`std::shared_future`相反） 
+                - 可 *移动* ，**不可** *复制* 
+            - 构造和赋值
+                - `std::future<T> fut;`：默认构造
+                - `std::future<T> f1(f2);`，`f1 = f2`：默认构造
+            - 操作
+                - `std::shared_future<T> sf = f.share();`：将`f`的共享状态转移至`shared_future`中。多个`td::shared_future `对象可引用同一共享对象，这对于`std::future`不可能。在`std::future`上调用`share`后`valid() == false`
+                - `T t = f.get();`：等待直至`future`拥有合法结果并获取它。它等效地调用`wait()`等待结果。 若调用此函数前`valid()`为`false`则 *行为未定义* 
+                - `f.get();`：仅对`std::future<void>`。释放任何共享状态。调用此方法后`valid()`为`false`
+                - `f.valid()`：返回是否有合法结果
+                - `f.wait()`：阻塞直至结果可用
+                - `f.wait_for(duration)`：阻塞一段时间至结果可用或超时。返回`enum class future_status {ready, timeout, deferred}`
+                - `f.wait_until(time_point)`：阻塞至结果可用或超时。返回`enum class future_status {ready, timeout, deferred}`
         - [`std::shared_future`](https://en.cppreference.com/w/cpp/thread/shared_future)
-        - [`std::async`](https://en.cppreference.com/w/cpp/thread/async)
-        - [`std::launch`](https://en.cppreference.com/w/cpp/thread/launch)
-        - [`std::future_status`](https://en.cppreference.com/w/cpp/thread/future_status)
+            - 提供的操作接口与`std::future`一样
+            - 类模板`std::shared_future`提供访问异步操作结果的机制，类似`std::future`，除了允许多个线程等候同一共享状态
+            - 不同于仅可移动的`std::future`（故只有一个实例能指代任何特定的异步结果），`std::shared_future`可复制而且多个`shared_future` 对象能指代同一共享状态
+            - 若每个线程通过其自身的`shared_future`对象副本访问，则从多个线程访问同一共享状态是安全的
+        - [`std::async`](https://en.cppreference.com/w/cpp/thread/async)：异步运行一个函数（有可能在新线程中执行），并返回保有其结果的 `std::future`
+            - 签名
+            ```
+            template <class Function, class ... Args>
+            std::future<std::invoke_result_t<std::decay_t<Function>, std::decay_t<Args> ...>>
+            async(Function && f, Args && ... args);
+
+            template <class Function, class ... Args>
+            std::future<std::invoke_result_t<std::decay_t<Function>, std::decay_t<Args> ...>>
+            async(std::launch policy, Function && f, Args && ... args);
+            ```
+            - [`std::launch`](https://en.cppreference.com/w/cpp/thread/launch)类型对象
+                - `std::launch::async`：运行新线程，以异步执行任务
+                - `std::launch::deferred`：调用方线程上首次请求其结果时执行任务（惰性求值） 
+            - `例1`
+            ```
+            void asyncFunc()
+            {
+                std::cout << "async thread id# " << std::this_thread::get_id() << std::endl;
+            }
+            
+            int main()
+            {
+                std::cout << "main thread id# " << std::this_thread::get_id() << std::endl;
+                std::future<void> fut = std::async(std::launch::async, asyncFunc);
+                return 0;
+            }
+            ```
+            - `例2`
+            ```
+            void asyncFunc(int val)
+            {
+                std::cout << "async thread id# " << std::this_thread::get_id() << std::endl;
+                return val + 100;
+            }
+            
+            int main()
+            {
+                std::cout << "main thread id# " << std::this_thread::get_id() << std::endl;
+                std::future<void> fut = std::async(std::launch::async, asyncFunc, 200);
+                
+                if (fut.valid())
+                {
+                    std::cout << fut.get() << std::endl;
+                }
+            }
+            ```
     - 线程异常
-        - [`std::future_error`](https://en.cppreference.com/w/cpp/thread/future_error)
+        - [`std::future_error`](https://en.cppreference.com/w/cpp/thread/future_error)：继承自`std::logic_error`
         - [`std::future_category`](https://en.cppreference.com/w/cpp/thread/future_category)
         - [`std::future_errc`](https://en.cppreference.com/w/cpp/thread/future_errc)
 
