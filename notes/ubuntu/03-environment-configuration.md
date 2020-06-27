@@ -204,6 +204,16 @@ apt policy <package>
 sudo glxinfo | grep "OpenGL"
 ```
 
+### `OpenMesh`
+
+```
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/home/ax/lib/OpenMesh
+make -j4
+make install
+```
+
 ## 🌱 Javascript
 
 ### `Node.js`

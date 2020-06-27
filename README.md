@@ -15,12 +15,12 @@
     
 ### 🌱 Sample Code
 
-- `CMakeList`
+- `CMakeLists`
 
-    - [Boost](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Boost/CMakeLists.txt)
-    - [CppDemo](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/CppDemo/CMakeLists.txt)
-    - [Criterion](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/Criterion/CMakeLists.txt)
-    - [OpenXX](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeList/OpenXX/CMakeLists.txt)
+    - [Boost](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/Boost/CMakeLists.txt)
+    - [CppDemo](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/CppDemo/CMakeLists.txt)
+    - [Criterion](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/Criterion/CMakeLists.txt)
+    - [OpenXX](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/OpenXX/CMakeLists.txt)
     
 - `C/C++` Code
     - [debug.h](https://github.com/AXIHIXA/Memo/blob/master/code/debug.h)
