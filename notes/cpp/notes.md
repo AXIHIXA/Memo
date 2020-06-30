@@ -179,7 +179,8 @@
     - 当且仅当`e`是 *多态类类型的引用左值或解引用指针* 时，`typeid(e)`的 *动态类型* ；否则，返回 *静态类型* 
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
-    - [如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)
+    - 如何理解`C`声明
+        - 参考了`Expert C Programming - Deep C Secrets`一书`pp.76`的神图[`Magic Decoder Ring for C Declarations`]()
         - `C`声明遵循以下规则
             - 优先级从高到低
                 1. 用于 *分组* 的括号（Parentheses grouping together a part of the declaration）
@@ -187,18 +188,20 @@
                 3. 前缀操作符（例如`*`表示指针）
             - `cv`限定如出现于`*`之前，则作用于指向的类型；如出现于`*`之后，则作用于指针本身
         - 如何理解复杂声明
-            1. 从名字`p`开始，说`declare p as...`，之后按照如上优先级解读名字周边的内容
+            1. 从 *最左侧* 的 *标识符* （名字）`p`开始，说`declare p as...`，之后按照如上优先级解读名字周边的内容
             2. 如果`p`右边是`[n]`，则说`array n of...`
             3. 如果`p`右边是表示函数的括号`(param_list)`（例如`()`，`(float, int)`），则说`function (param_list) returning...
             4. 如果`p`左边是`*`（可能还有`cv`限定），则说`xx pointer to...`（例如`int const * const`说成`const pointer to const int`）
-            5. 跳出这一层 *分组* 括号（如有），重复`(2) - (5)`
+            5. 跳出这一层 *分组* 括号（如有），重复`b. - e.`
         - 举例：`int (*(*pf)(int, int (*(*)(int))[20]))[10]`：
             - 按顺序翻译为
             ```
             declare pf as pointer to function (int, pointer to function (int) returning pointer to array 20 of int) 
                                      returning pointer to array 10 of int
             ```
-        - 大宝贝：[cdecl](https://cdecl.org/) ，帮你干这些破事儿，安装：`sudo apt install cdecl`
+        - 大宝贝：[cdecl](https://cdecl.org/) 
+            - 自动帮你干这些破事儿
+            - `ubuntu`下一键安装：`sudo apt install cdecl`
 
 
 
@@ -1371,17 +1374,17 @@ std::cout << *p2 << std::endl;         // 1
     int *(p3)[10] = &arr;              // 正确，指向数组
     ```
 - 不同于 *函数* 或 *函数的引用* ， 函数指针是 *对象* ，从而能 *存储于数组* 、 *被复制* 、 *被赋值* 等
-    - 这些玩意儿的解释方法和文法参见开篇章节中的[如何理解`C`声明](https://en.cppreference.com/w/cpp/language/declarations#https://en.cppreference.com/w/cpp/language/declarations#Understanding_C_Declarations)一块儿
-```
-int (*f)()                  f as pointer to function () returning int
-int (*f())()                f as function () returning pointer to function () returning int
-int * f()                   f as function returning pointer to int
-int (*a[])()                a as array of pointer to function returning int
-int (*f())[]                f as function () returning pointer to array of int
-int (f[])()                 ARRAY OF FUNCTION IS NOT ALLOWED!!!
-                            f as array of function () returning int, which, again, is NOT ALLOWED
-int * const *(*g)(float)    g as pointer to function (float) returning pointer to const pointer to int
-```
+    - 这些玩意儿的解释方法和文法参见开篇章节中的如何理解`C`声明
+    ```
+    int (*f)()                  f as pointer to function () returning int
+    int (*f())()                f as function () returning pointer to function () returning int
+    int * f()                   f as function returning pointer to int
+    int (*a[])()                a as array of pointer to function returning int
+    int (*f())[]                f as function () returning pointer to array of int
+    int (f[])()                 ARRAY OF FUNCTION IS NOT ALLOWED!!!
+                                f as array of function () returning int, which, again, is NOT ALLOWED
+    int * const *(*g)(float)    g as pointer to function (float) returning pointer to const pointer to int
+    ```
 - 函数指针可用作 *函数调用运算符* 的左操作数，这会调用被指向的函数
 ```
 int f(int n)
