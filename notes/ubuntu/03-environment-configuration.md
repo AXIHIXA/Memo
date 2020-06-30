@@ -154,6 +154,7 @@ export PATH=${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}
 - 运行：运行程序Alt+Shift+F10，启动调试Shift+F9
 - 方法分隔符：【File】→【Settings...】→【Editor】→【General】→【Appearance】→【Show method separators】
 - 模板提示：`Ctrl + J`即可选择插入根据上下文预定义好的代码片段
+- Surround With: in the Code menu, click Surround With `Ctrl + Alt + T`.
 
 #### heap size
 
