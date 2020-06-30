@@ -180,7 +180,7 @@
 - 读代码标准操作
     - 判断复杂类型`auto`变量的类型：先扒掉引用，再扒掉被引用者的顶层`const`
     - 如何理解`C`声明
-        - 参考了`Expert C Programming - Deep C Secrets`一书`pp.76`的神图[`Magic Decoder Ring for C Declarations`]()
+        - 参考了`Expert C Programming - Deep C Secrets`一书`pp.76`的神图[`Magic Decoder Ring for C Declarations`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/fig_3_3.pdf)
         - `C`声明遵循以下规则
             - 优先级从高到低
                 1. 用于 *分组* 的括号（Parentheses grouping together a part of the declaration）
