@@ -190,7 +190,7 @@
         - 如何理解复杂声明
             1. 从 *最左侧* 的 *标识符* （名字）`p`开始，说`declare p as...`，之后按照如上优先级解读名字周边的内容
             2. 如果`p`右边是`[n]`，则说`array n of...`
-            3. 如果`p`右边是表示函数的括号`(param_list)`（例如`()`，`(float, int)`），则说`function (param_list) returning...
+            3. 如果`p`右边是表示函数的括号`(param_list)`（例如`()`，`(float, int)`），则说`function (param_list) returning...`
             4. 如果`p`左边是`*`（可能还有`cv`限定），则说`xx pointer to...`（例如`int const * const`说成`const pointer to const int`）
             5. 跳出这一层 *分组* 括号（如有），重复`(b) - (e)`
         - 举例：`int (*(*pf)(int, int (*(*)(int))[20]))[10]`：
