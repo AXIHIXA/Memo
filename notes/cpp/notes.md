@@ -192,7 +192,7 @@
             2. 如果`p`右边是`[n]`，则说`array n of...`
             3. 如果`p`右边是表示函数的括号`(param_list)`（例如`()`，`(float, int)`），则说`function (param_list) returning...
             4. 如果`p`左边是`*`（可能还有`cv`限定），则说`xx pointer to...`（例如`int const * const`说成`const pointer to const int`）
-            5. 跳出这一层 *分组* 括号（如有），重复`b. - e.`
+            5. 跳出这一层 *分组* 括号（如有），重复`(b) - (e)`
         - 举例：`int (*(*pf)(int, int (*(*)(int))[20]))[10]`：
             - 按顺序翻译为
             ```
