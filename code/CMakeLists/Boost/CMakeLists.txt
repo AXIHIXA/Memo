@@ -4,7 +4,9 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Boost REQUIRED COMPONENTS filesystem)
 
-aux_source_directory(src/main/src MAIN)
+set(MAIN
+        src/main/src/main.cpp
+        )
 
 set(ALL_SOURCE_FILES
         ${MAIN}

@@ -26,7 +26,9 @@ set(OPENMESH_LIBRARIES
 
 # all sources
 
-aux_source_directory(src/main/src MAIN)
+set(MAIN
+        src/main/src/main.cpp
+        )
 
 set(ALL_SOURCE_FILES
         ${MAIN}

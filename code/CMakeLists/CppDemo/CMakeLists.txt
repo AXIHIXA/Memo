@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 project(CppDemo)
 set(CMAKE_CXX_STANDARD 17)
 
-aux_source_directory(src/main/src MAIN)
+set(MAIN
+        src/main/src/main.cpp
+        )
 
 set(ALL_SOURCE_FILES
         ${MAIN}
