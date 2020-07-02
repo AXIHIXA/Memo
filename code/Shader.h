@@ -1,8 +1,8 @@
 ///
-/// @file           Shaders.h
+/// @file           Shader.h
 /// @from           https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/shader.h
 /// @modifier       Xi Han
-/// @date           07/02/2020
+/// @date           Jul 02 2020
 /// @description    OpenGL shader auto compiler & loader
 ///
 
