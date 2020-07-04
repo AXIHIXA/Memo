@@ -3970,6 +3970,18 @@ if (std::ifstream fin {"input.txt", std::ifstream::in})
 }
 ```
 
+#### `C++`风格读取文件全部内容
+
+```
+if (std::ifstream fin {"input.txt", std::ifstream::in})
+{
+    std::stringstream sin;
+    sin >> fin.rdbuf();
+    std::string fileBuf = sin.str();
+    std::cout << fileBuf << std::endl;
+}
+```
+
 #### `C++`段子：`std::cout`真比`printf`慢吗
 
 - 你要是乱用`std::endl`天天刷缓冲区玩，那肯定真是慢死了
@@ -4079,7 +4091,6 @@ if (cancelEntry)
     int main()
     {
         // open for input and output and preposition file pointers to end-of-file
-        // file mode argument see § 8.4 (p. 319)
         fstream inOut("copyOut", fstream::ate | fstream::in | fstream::out);
         if (!inOut) 
         {
@@ -4108,11 +4119,11 @@ if (cancelEntry)
                 inOut << " ";
             }
             
-            inOut.seekg(mark);         // restore the read position
+            inOut.seekg(mark);             // restore the read position
         }
         
-        inOut.seekp(0, fstream::end);  // seek to the end
-        inOut << "\n";  // write a newline at end-offile
+        inOut.seekp(0, fstream::end);      // seek to the end
+        inOut << "\n";                     // write a newline at end-offile
         
         return 0;
     }
