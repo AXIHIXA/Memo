@@ -20,7 +20,8 @@
     - [Boost](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/Boost/CMakeLists.txt)
     - [CppDemo](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/CppDemo/CMakeLists.txt)
     - [Criterion](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/Criterion/CMakeLists.txt)
-    - [OpenXX](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/OpenXX/CMakeLists.txt)
+    - [OpenCV](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/OpenCV/CMakeLists.txt)
+    - [OpenGL](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/OpenGL/CMakeLists.txt)
     
 - `C/C++` Code
     - [debug.h](https://github.com/AXIHIXA/Memo/blob/master/code/debug.h)
