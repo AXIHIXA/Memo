@@ -3,7 +3,7 @@ project(CppDemo)
 set(CMAKE_CXX_STANDARD 17)
 
 set(MAIN
-        src/main/src/main.cpp
+        src/main/main.cpp
         )
 
 set(ALL_SOURCE_FILES
@@ -11,7 +11,7 @@ set(ALL_SOURCE_FILES
         )
 
 set(ALL_INCLUDE_DIRS
-        src/main/include
+        include
         )
 
 set(ALL_LIBRARIES
