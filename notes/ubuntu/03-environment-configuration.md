@@ -178,7 +178,7 @@ sudo apt install libeigen3-dev
 sudo apt install libopencv-dev
 
 # OpenGL
-sudo apt install freeglut3-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev
+sudo apt install libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev
 
 # Qt
 sudo apt install qt5-default
@@ -191,7 +191,7 @@ sudo apt install libtbb-dev
 sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 
 # one-key w/o qtcreator
-sudo apt install libeigen3-dev libopencv-dev freeglut3-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev qt5-default libtbb-dev libboost-all-dev libcgal-dev libcgal-qt5-dev
+sudo apt install libeigen3-dev libopencv-dev libglm-dev libglew-dev libglfw3-dev libxmu-dev libxi-dev qt5-default libtbb-dev libboost-all-dev libcgal-dev libcgal-qt5-dev
 ```
 
 ### `OpenGL`
