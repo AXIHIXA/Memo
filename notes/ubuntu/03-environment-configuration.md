@@ -210,7 +210,7 @@ sudo glxinfo | grep "OpenGL"
 ```
 mkdir build
 cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/home/ax/lib/OpenMesh
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ax/lib/OpenMesh
 make -j4
 make install
 ```
