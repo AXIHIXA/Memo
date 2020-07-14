@@ -16730,16 +16730,14 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     - [`file_time_type`](https://en.cppreference.com/w/cpp/filesystem/file_time_type)：表示文件时间值
 - 非成员函数
     - [`absolute`](https://en.cppreference.com/w/cpp/filesystem/absolute)：组成一个绝对路径
-    - [`canonicalweakly_canonical`](https://en.cppreference.com/w/cpp/filesystem/canonicalweakly_canonical)：组成一个规范路径
-    - [`relativeproximate`](https://en.cppreference.com/w/cpp/filesystem/relativeproximate)：组成一个相对路径
+    - [`canonical`, `weakly_canonical`](https://en.cppreference.com/w/cpp/filesystem/canonical)：组成一个规范路径
+    - [`relative`, `proximate`](https://en.cppreference.com/w/cpp/filesystem/relative)：组成一个相对路径
     - [`copy`](https://en.cppreference.com/w/cpp/filesystem/copy)：复制文件或目录
     - [`copy_file`](https://en.cppreference.com/w/cpp/filesystem/copy_file)：复制文件内容
     - [`copy_symlink`](https://en.cppreference.com/w/cpp/filesystem/copy_symlink)：复制一个符号链接
-    - [`create_directory`](https://en.cppreference.com/w/cpp/filesystem/create_directory)：创建新目录
-    - [`create_directories`](https://en.cppreference.com/w/cpp/filesystem/create_directories)：创建新目录
+    - [`create_directory`, `create_directories`](https://en.cppreference.com/w/cpp/filesystem/create_directory)：创建新目录
     - [`create_hard_link`](https://en.cppreference.com/w/cpp/filesystem/create_hard_link)：创建一个硬链接
-    - [`create_symlink`](https://en.cppreference.com/w/cpp/filesystem/create_symlink)：创建一个符号链接
-    - [`create_directory_symlink`](https://en.cppreference.com/w/cpp/filesystem/create_directory_symlink)：创建一个符号链接
+    - [`create_symlink`, `create_directory_symlink`](https://en.cppreference.com/w/cpp/filesystem/create_symlink)：创建一个符号链接
     - [`current_path`](https://en.cppreference.com/w/cpp/filesystem/current_path)：返回或设置当前工作目录
     - [`exists`](https://en.cppreference.com/w/cpp/filesystem/exists)：检查路径是否指代既存的文件系统对象
     - [`equivalent`](https://en.cppreference.com/w/cpp/filesystem/equivalent)：检查两个路径是否指代同一文件系统对象
@@ -16749,12 +16747,12 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     - [`permissions`](https://en.cppreference.com/w/cpp/filesystem/permissions)：修改文件访问权限
     - [`read_symlink`](https://en.cppreference.com/w/cpp/filesystem/read_symlink)：获得符号链接的目标
     - [`remove`](https://en.cppreference.com/w/cpp/filesystem/remove)：移除一个文件或空目录
-    - [`remove_all`](https://en.cppreference.com/w/cpp/filesystem/remove_all)：移除一个文件或递归地移除一个目录及其所有内容
+    - [`remove_all`](https://en.cppreference.com/w/cpp/filesystem/remove)：移除一个文件或递归地移除一个目录及其所有内容
     - [`rename`](https://en.cppreference.com/w/cpp/filesystem/rename)：移动或重命名一个文件或目录
     - [`resize_file`](https://en.cppreference.com/w/cpp/filesystem/resize_file)：以截断或填充零更改一个常规文件的大小
     - [`space`](https://en.cppreference.com/w/cpp/filesystem/space)：确定文件系统上的可用空闲空间
     - [`status`](https://en.cppreference.com/w/cpp/filesystem/status)：确定文件属性
-    - [`symlink_status`](https://en.cppreference.com/w/cpp/filesystem/symlink_status)：确定文件属性，检查符号链接目标
+    - [`symlink_status`](https://en.cppreference.com/w/cpp/filesystem/status)：确定文件属性，检查符号链接目标
     - [`temp_directory_path`](https://en.cppreference.com/w/cpp/filesystem/temp_directory_path)：返回一个适用于临时文件的目录
 - 文件类型判断
     - [`is_block_file`](https://en.cppreference.com/w/cpp/filesystem/is_block_file)：检查给定的路径是否表示块设备
