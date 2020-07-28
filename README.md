@@ -5,6 +5,11 @@
 - `C/C++`
 
     - [`C++ Primer 5th Edition` Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
+
+- `python`
+
+    - [`python` Offical Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/py.md)
+    - [`numpy` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/numpy.md)
     
 - `ubuntu` Management
 
