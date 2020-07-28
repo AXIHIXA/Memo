@@ -52,6 +52,7 @@ set(ALL_LIBRARIES
         OpenGL::GL
         OpenGL::OpenGL
         OpenGL::GLU
+        OpenGL::GLX
         OpenGL::EGL
         pthread
         )
