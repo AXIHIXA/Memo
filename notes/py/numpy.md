@@ -85,7 +85,7 @@
     >>> dt
     int32
     
-    >>> #int8, int16, int32, int64 can be replaced by equivalent string 'i1', 'i2','i4', etc.
+    >>> # int8, int16, int32, int64 can be replaced by equivalent string 'i1', 'i2','i4', etc.
     >>> dt = np.dtype('i4')
     >>> dt
     int32
@@ -101,26 +101,27 @@
     [('age', 'i1')]
     
     >>> # now apply it to ndarray object
-    >>> dt = np.dtype([('age',np.int8)])
-    >>> a = np.array([(10,),(20,),(30,)], dtype=dt)
+    >>> a = np.array([(10,), (20,), (30,)], dtype=dt)
     >>> a
     [(10,) (20,) (30,)]
+    
+    >>> # file name can be used to access content of age column
+    >>> a['age']
+    [10 20 30]
+    
+    >>> # The following examples define a structured data type called student 
+    >>> # with a string field 'name', an integer field 'age' and a float field 'marks'
+    >>> # This dtype is applied to ndarray object
+    >>> student = np.dtype([('name', 'S20'), ('age', 'i1'), ('marks', 'f4')])
+    >>> student
+    [('name', 'S20'), ('age', 'i1'), ('marks', '<f4')])
+    
+    >>> a = np.array([('abc', 21, 50),('xyz', 18, 75)], dtype=student)
+    >>> a
+    [('abc', 21, 50.0), ('xyz', 18, 75.0)]
     ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
+### 🌱 Array Attributes
 
 
 
