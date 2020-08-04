@@ -38,11 +38,11 @@
     - `ndarray.data` 
         - the buffer containing the actual elements of the array. Normally, we won’t need to use this attribute because we will access the elements in an array using indexing facilities.
 - Array creation
-    - `numpy.array` function
+    - `numpy.array`
         - from regular Python list or tuple
             - must feed single sequence rather than multiple numeric arguments
-        - type of resulting array is deduced from that of elements in sequence
-            - type of the array can also be explicitly specified at creation time
+        - `dtype` is deduced from that of elements in sequence
+            - can also be explicitly specified at creation time
         ```
         >>> import numpy as np
         >>> a = np.array([2, 3, 4])
@@ -63,6 +63,19 @@
     - `numpy.zeros`, `numpy.ones`
         - create arrays with initial placeholder content
         - `dtype` by default is `float64`
+        ```
+        >>> np.zeros((3, 4))
+        array([[ 0., 0., 0., 0.],
+        [ 0., 0., 0., 0.],
+        [ 0., 0., 0., 0.]])
+        >>> np.ones((2, 3, 4), dtype=np.int16) # dtype can also be specified
+        array([[[ 1, 1, 1, 1],
+        [ 1, 1, 1, 1],
+        [ 1, 1, 1, 1]],
+        [[ 1, 1, 1, 1],
+        [ 1, 1, 1, 1],
+        [ 1, 1, 1, 1]]], dtype=int16)
+        ```
     - `numpy.empty`
         - initial content is random and depends on the state of the memory
         - `dtype` by default is `float64`
