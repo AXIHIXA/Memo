@@ -76,8 +76,61 @@
         [[ 1, 1, 1, 1],
         [ 1, 1, 1, 1],
         [ 1, 1, 1, 1]]], dtype=int16)
-        >>> np.empty( (2,3) ) # uninitialized, output may vary
+        >>> np.empty((2, 3)) # uninitialized, output may vary
         array([[ 3.73603959e-262, 6.02658058e-154, 6.55490914e-260],
         [ 5.30498948e-313, 3.14673309e-307, 1.00000000e+000]])
         ```
+    - `numpy.zeros_like`, `numpy.ones_like`, `numpy.empty_like`
+    - `numpy.arange`, `numpy.linspace`
+        - analogous to range that returns arrays instead of lists
+        ```
+        >>> np.arange(10, 30, 5)
+        array([10, 15, 20, 25])
+        >>> np.arange(0, 2, 0.3) # it accepts float arguments
+        array([ 0. , 0.3, 0.6, 0.9, 1.2, 1.5, 1.8])
+        ```
+        - use `numpy.linspace` with floating point arguments (floating point steps will generate inaccurate results due to finite floating point precision)
+        ```
+        >>> from numpy import pi
+        >>> np.linspace(0, 2, 9) # 9 numbers from 0 to 2
+        array([ 0. , 0.25, 0.5 , 0.75, 1. , 1.25, 1.5 , 1.75, 2. ])
+        >>> x = np.linspace( 0, 2*pi, 100 ) # useful to evaluate function at lots of points
+        >>> f = np.sin(x)
+        ```
+    - `numpy.random.RandomState.rand`, `numpy.random.RandomState.randn` 
+    - `fromfunction`, `fromfile`
+- Printing arrays
+    - schema
+        - the last axis is printed from left to right
+        - the second-to-last is printed from top to bottom
+        - the rest are also printed from top to bottom, with each slice separated from the next by an empty line
+    ```
+    >>> a = np.arange(6) # 1d array
+    >>> print(a)
+    [0 1 2 3 4 5]
+    >>>
+    >>> b = np.arange(12).reshape(4,3) # 2d array
+    >>> print(b)
+    [[ 0 1 2]
+     [ 3 4 5]
+     [ 6 7 8]
+     [ 9 10 11]]
+    >>>
+    >>> c = np.arange(24).reshape(2,3,4) # 3d array
+    >>> print(c)
+    [[[ 0 1 2 3]
+      [ 4 5 6 7]
+      [ 8 9 10 11]]
+    [[12 13 14 15]
+     [16 17 18 19]
+     [20 21 22 23]]]
+    ```
+    - automatically skips the central part of the big arrays and only prints the corners
+        - use `numpy.set_printoptions` to override this rule
+    ```
+    >>> np.set_printoptions(threshold=sys.maxsize) # sys module should be imported
+    ```
+- Basic operations
+
+
 ### 🌱 Introduction
