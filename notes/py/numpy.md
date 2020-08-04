@@ -555,29 +555,59 @@ UPDATEIFCOPY : False
     - `x[(1, 2, 3), ]` is different from `x[(1, 2, 3)]`. The former triggers *advanced indexing*, while the latter one equals to `x[1, 2, 3]` and triggers *basic indexing*
     - Also recognize that `x[[1, 2, 3]]` will trigger *advanced indexing*, whereas due to the deprecated Numeric compatibility mentioned above, `x[[1, 2, slice(None)]]` will trigger *basic slicing* 
 - two types of advanced indexing: 
-    - *Integer Indexing* 
-    - *Boolean Indexing* 
-- Integer Indexing
-    - selecting any arbitrary item in an array based on its `N`-dimensional index
-    - Each integer array represents the number of indexes into that
-dimension
-        - When the index consists of as many integer arrays as the dimensions of the target ndarray, it becomes straightforward
+    - *Integer Array Indexing* 
+    - *Boolean Array Indexing* 
+- Integer Array Indexing
+    - Index is a tuple of `x.ndim` `ndarray`s, all in same shape (same as output shape). for the following
+    ```
+    res = x[a_1, ..., a_N]  # N == x.ndim
+                            # M == res.ndim
+                            # res.shape == a_k.shape, k = 0, 1, ..., N
+    ```
+    - we have the `[i_1, ..., i_M]-th` scalar element
+    ```
+    res[i_1, ..., i_M] == x[a_1[i_1, ..., i_M], a_2[i_1, ..., i_M],
+                           ..., a_N[i_1, ..., i_M]]
+    ```
+    - Example 1: From each row, a specific element should be selected. The row index is just `[0, 1, 2]` and the column index specifies the element to choose for the corresponding row, here `[0, 1, 0]`
     ```
     >>> import numpy as np
     >>> x = np.array([[1, 2], [3, 4], [5, 6]])
     >>> y = x[[0, 1, 2], [0, 1, 0]]
     >>> y
     [1 4 5]
-    
-    >>> x = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]])
+    ```
+    - Example 2: from a `4 * 3` array the corner elements should be selected using advanced indexing. Thus all elements for which the column is one of `[0, 2]` and the row is one of `[0, 3]` need to be selected. To use advanced indexing one needs to select all elements explicitly.
+    ```
+    >>> x = np.array([[ 0,  1,  2], 
+                      [ 3,  4,  5], 
+                      [ 6,  7,  8], 
+                      [ 9, 10, 11]])
     >>> rows = np.array([[0, 0], [3, 3]])
     >>> cols = np.array([[0, 2], [0, 2]])
     >>> y = x[rows, cols]
     >>> y
     [[ 0,  2],
-     [ 9, 11]])
+     [ 9, 11]]
     ```
-- Boolean Indexing
+    - Example 3: Advanced and basic indexing can be combined by using one *slice* `:` or *ellipsis* `...` with an index array. The following example uses slice for row and advanced index for column. The result is the same when slice is used for both. But advanced index results in copy and may have different memory layout.
+    ```
+    >>> x = np.array([[ 0,  1,  2], 
+                      [ 3,  4,  5], 
+                      [ 6,  7,  8], 
+                      [ 9, 10, 11]])
+                      
+    >>> x[1:4, 1:3]
+    [[ 4  5]
+     [ 7  8]
+     [10 11]]
+    
+    >>> x[1:4, [1, 2]]
+    [[ 4  5]
+     [ 7  8]
+     [10 11]]
+    ```
+- Boolean Array Indexing
     - 
 
 
