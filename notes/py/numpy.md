@@ -12,7 +12,7 @@
     - Each element in `ndarray` is an object of data-type object (called `dtype`)
     - Any item extracted from `ndarray` object (by *slicing*) is represented by a `Python` object of one of array scalar types
 
-![](https://www.tutorialspoint.com/numpy/images/ndarray.jpg)
+![https://www.tutorialspoint.com/numpy/images/ndarray.jpg](https://www.tutorialspoint.com/numpy/images/ndarray.jpg)
 
 
 
