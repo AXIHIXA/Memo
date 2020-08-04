@@ -123,32 +123,87 @@
 
 ### 🌱 Array Attributes
 
+- `ndarray.shape`
+    - returns a tuple consisting of array dimensions
+    - It can also be used to resize the array
+```
+>>> import numpy as np
+>>> a = np.array([[1, 2, 3], [4, 5, 6]])
+>>> a.shape
+(2, 3)
 
+>>> # this resizes the ndarray
+>>> a.shape = (3, 2)
+>>> a
+[[1 2]
+ [3 4]
+ [5 6]]
 
+>>> # reshape function
+>>> a = np.array([[1, 2, 3], [4, 5, 6]])
+>>> b = a.reshape(3, 2)
+>>> b
+[[1 2]
+ [3 4]
+ [5 6]]
+```
+- `ndarray.ndim`
+    - returns the number of array dimensions
+```
+>>> import numpy as np
+>>> a = np.arange(24)
+>>> a
+[0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+>>> a.ndim
+1
 
+>>> b = a.reshape(2, 4, 3)
+>>> b
+[[[ 0, 1, 2]
+  [ 3, 4, 5]
+  [ 6, 7, 8]
+  [ 9, 10, 11]]
+  
+ [[12, 13, 14]
+  [15, 16, 17]
+  [18, 19, 20]
+  [21, 22, 23]]]
+```
+- `ndarray.itemsize`
+    - returns the length of each element of array in bytes
+```
+>>> # dtype of array is int8 (1 byte)
+>>> import numpy as np
+>>> x = np.array([1, 2, 3, 4, 5], dtype=np.int8)
+>>> x.itemsize
+1
 
+>>> # dtype of array is now float32 (4 bytes)
+>>> x = np.array([1, 2, 3, 4, 5], dtype=np.float32)
+>>> x.itemsize
+4
+```
+- `ndarray.flags`
+    - `C_CONTIGUOUS (C)`: The data is in a single, `C`-style row-major contiguous segment
+    - `F_CONTIGUOUS (F)`: The data is in a single, `Fortran`-style column-major contiguous segment
+    - `OWNDATA (O)`: The array owns the memory it uses or borrows it from another object
+    - `WRITEABLE (W)`: The data area can be written to. Setting this to `False` locks the data, making it read-only
+    - `ALIGNED (A)`: The data and all elements are aligned appropriately for the hardware
+    - `UPDATEIFCOPY (U)`: This array is a copy of some other array. When this array is deallocated, the base array will be updated with the contents of this array
+```
+>>> import numpy as np
+>>> x = np.array([1, 2, 3, 4, 5])
+>>> x.flags
+C_CONTIGUOUS : True
+F_CONTIGUOUS : True
+OWNDATA : True
+WRITEABLE : True
+ALIGNED : True
+WRITEBACKIFCOPY : False
+UPDATEIFCOPY : False
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
+### 🌱 Array Creation Routines
 
 
 
