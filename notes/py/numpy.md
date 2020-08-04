@@ -131,7 +131,7 @@
     >>> np.set_printoptions(threshold=sys.maxsize) # sys module should be imported
     ```
 - Basic operations
-    - Arithmetic operators on arrays apply *elementwise* . A new array is created and filled with the result
+    - Arithmetic operators on arrays apply *elementwise*. A new array is created and filled with the result
     ```
     >>> a = np.array( [20,30,40,50] )
     >>> b = np.arange( 4 )
@@ -200,5 +200,40 @@
     >>> d.dtype.name
     'complex128'
     ```
+    - Many *unary operations*, such as computing the sum of all the elements in the array, are implemented as methods of the `ndarray` class
+        - e.g. 
+        ```
+        >>> a = np.random.random((2, 3))
+        >>> a
+        array([[ 0.18626021, 0.34556073, 0.39676747],
+               [ 0.53881673, 0.41919451, 0.6852195 ]])
+        >>> a.sum()
+        2.5718191614547998
+        >>> a.min()
+        0.1862602113776709
+        >>> a.max()
+        0.6852195003967595
+        ```
+        - By default, these operations apply to the array as though it were a list of numbers, *regardless* of its shape. However,
+by specifying the `axis` parameter you can apply an operation *along the specified axis* of an array
+        ```
+        >>> b = np.arange(12).reshape(3,4)
+        >>> b
+        array([[ 0, 1, 2, 3],
+               [ 4, 5, 6, 7],
+               [ 8, 9, 10, 11]])
+        >>>
+        >>> b.sum(axis=0) # sum of each column
+        array([12, 15, 18, 21])
+        >>>
+        >>> b.min(axis=1) # min of each row
+        array([0, 4, 8])
+        >>>
+        >>> b.cumsum(axis=1) # cumulative sum along each row
+        array([[ 0, 1, 3, 6],
+               [ 4, 9, 15, 22],
+               [ 8, 17, 27, 38]])
+        ```
+
 
 ### 🌱 Introduction
