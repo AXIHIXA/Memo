@@ -73,7 +73,7 @@
         ```
         np.dtype(object, align, copy)
         ```
-        - paramters:
+        - parameters:
             - `object`: To be converted to data type object
             - `align`: If `True`, adds padding to the field to make it similar to `C` `struct`
             - `copy`: Makes a new copy of `dtype` object. If `False`, the result is reference to builtin data type object
@@ -272,6 +272,7 @@ UPDATEIFCOPY : False
 
 ### 🌱 Array from Existing Data
 
+- `np.array`
 - `np.asarray`
     - similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`
     - signature
@@ -291,6 +292,7 @@ UPDATEIFCOPY : False
 >>> a
 [1 2 3]
 
+>>> # dtype is set
 >>> a = np.asarray(x, dtype=float)
 >>> a
 [ 1. 2. 3.]
@@ -307,52 +309,141 @@ UPDATEIFCOPY : False
 >>> a
 [(1, 2, 3) (4, 5)]
 ```
+- `np.frombuffer`
+    - This function interprets a buffer as 1D array. Any object that exposes the buffer interface is used as parameter to return an `ndarray`
+    - signature
+    ```
+    numpy.frombuffer(buffer, dtype=float, count=-1, offset=0)
+    ```
+    - parameters
+        - `buffer`: Any object that exposes buffer interface
+        - `dtype`: Data type of returned ndarray. Defaults to `float`
+        - `count`: The number of items to read, default `-1` means all data
+        - `offset`: The starting position to read from. Default is `0`
+```
+>>> import numpy as np
+>>> s = 'Hello World'
+>>> a = np.frombuffer(s, dtype='S1')
+>>> a
+['H' 'e' 'l' 'l' 'o' ' ' 'W' 'o' 'r' 'l' 'd']
+```
+- `np.fromiter`
+    - This function builds an ndarray object from any iterable object. A new 1D array is returned by this function
+- signature
+    ```
+    numpy.fromiter(buffer, dtype=float, count=-1)
+    ```
+    - parameters
+        - `buffer`: Any iterable object
+        - `dtype`: Data type of returned ndarray. Defaults to `float`
+        - `count`: The number of items to be read from iterator. Default is `-1` which means all data to be read
+```
+>>> # create list object using range function
+>>> import numpy as np
+>>> lst = range(5)
+>>> lst
+[0, 1, 2, 3, 4]
 
+>>> # use iterator to create ndarray
+>>> it = iter(list)
+>>> x = np.fromiter(it, dtype=float)
+>>> x
+[0. 1. 2. 3. 4.]
+```
 
+### 🌱 Array from Numerical Ranges
 
+- `np.arange`
+    - This function returns an `ndarray` object containing evenly spaced values within a given range
+    - signature
+    ```
+    numpy.arange(start, stop, step, dtype)
+    ```
+    - parameters
+        - `start`: *Optional*. The start of an interval. If omitted, defaults to `0`
+        - `end`: The end of an interval (**NOT** including this number)
+        - `step`: Spacing between values, default is `1`
+        - `dtype`: Data type of resulting ndarray. If not given, data type of input is used
+```
+>>> import numpy as np
+>>> x = np.arange(5)
+>>> x
+[0 1 2 3 4]
 
+>>> # dtype set
+>>> x = np.arange(5, dtype=float)
+>>> x
+[0. 1. 2. 3. 4.]
 
+>>> # start and stop parameters set
+>>> x = np.arange(10, 20, 2)
+>>> x
+[10 12 14 16 18]
+```
+- `np.linspace`
+    - This function is similar to `numpy.arange` function. In this function, instead of step size, the *number* of evenly spaced values between the interval is specified
+    - signature
+    ```
+    numpy.linspace(start, stop, num, endpoint, retstep, dtype)
+    ```
+    - parameters
+        - `start`: The starting value of the sequence
+        - `stop`: The end value of the sequence, included in the sequence if endpoint set to `True`
+        - `num`: The number of evenly spaced samples to be generated. Default is `50`
+        - `endpoint`: `True` by default, hence the stop value is included in the sequence. If `False`, it is **NOT** included
+        - `retstep`: If `True`, returns a tuple of (samples, step between the consecutive numbers)
+        - `dtype`: Data type of output `ndarray`
+```
+>>> import numpy as np
+>>> x = np.linspace(10, 20, 5)
+>>> x
+[10. 12.5 15. 17.5 20.]
 
+>>> # endpoint set to false
+>>> x = np.linspace(10, 20, 5, endpoint=False)
+>>> x
+[10. 12. 14. 16. 18.]
 
+>>> # find retstep value
+>>> x = np.linspace(1, 2, 5, retstep=True)
+>>> x
+(array([ 1. , 1.25, 1.5 , 1.75, 2. ]), 0.25)
+```
+- `np.logspace`
+    - This function returns an `ndarray` object that contains the numbers that are evenly spaced on a log scale. `start` and `stop` endpoints of the scale are indices of the base, usually `10`
+    - signature
+    ```
+    numpy.logscale(start, stop, num, endpoint, base, dtype)
+    ```
+    - parameters
+        - `start`: The starting point of the sequence is basestart
+        - `stop`: The final value of sequence is basestop
+        - `num`: The number of values between the range. Default is `50`
+        - `endpoint`: If `True`, `stop` is the last value in the range
+        - `base`: Base of log space, default is `10`
+        - `dtype`: Data type of output array. If not given, it depends upon other input arguments
+```
+>>> # default base is 10
+>>> import numpy as np
+>>> a = np.logspace(1.0, 2.0, num=10)
+>>> a
+[ 10.         12.91549665 16.68100537 21.5443469  27.82559402
+  35.93813664 46.41588834 59.94842503 77.42636827 100.        ]
+  
+>>> # set base of log space to 2
+>>> a = np.logspace(1, 10, num=10, base=2)
+>>> a
+[ 2. 4. 8. 16. 32. 64. 128. 256. 512. 1024.]
+```
 
+### 🌱 Indexing & Slicing
 
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
+- Contents of `ndarray` object can be accessed and modified by *indexing* or *slicing* 
+    - items in `ndarray` object follows *zero-based index* 
+    - three types of indexing methods
+        - *field access* 
+        - *basic slicing* 
+        - *advanced indexing* 
 
 
 
