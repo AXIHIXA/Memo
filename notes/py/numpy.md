@@ -10,9 +10,9 @@
     - Fixed size at creation
         - Changing size will create a new array and delete the original
     - All elements be of the same data type, and thus same size
-        - Exception: array of (Python, NumPy, ...) objects 
+        - Exception: array of (`Python`, `NumPy`, ...) objects 
     - Faster operations
-        - e.g. `c = a * b` in NumPy expands into precompiles index-based C loop
+        - e.g. `c = a * b` in `NumPy` expands into precompiles index-based C loop
             - vectorization
             - boardcasting
     - Good eco-system
@@ -23,7 +23,7 @@
     - table of elements (usually numbers)
     - all of the same type
     - indexed by a tuple of non-negative integers 
-    - In NumPy, dimensions are called `axes`
+    - In `NumPy`, dimensions are called `axes`
 - Attributes: 
     - `ndarray.ndim` 
         - the number of axes (dimensions) of the array.
@@ -32,7 +32,7 @@
     - `ndarray.size` 
         - the total number of elements of the array. This is equal to the product of the elements of shape. 
     - `ndarray.dtype` 
-        - an object describing the type of the elements in the array. One can create or specify dtype’s using standard Python types. Additionally NumPy provides types of its own. `numpy.int32`, `numpy.int16`, and `numpy.float64` are some examples.
+        - an object describing the type of the elements in the array. One can create or specify dtype’s using standard Python types. Additionally `NumPy` provides types of its own. `numpy.int32`, `numpy.int16`, and `numpy.float64` are some examples.
     - `ndarray.itemsize` 
         - the size in bytes of each element of the array. For example, an array of elements of type `float64` has `itemsize` 8 (=64/8), while one of type `complex32` has `itemsize` 4 (=32/8). It is equivalent to `ndarray.dtype.itemsize`.
     - `ndarray.data` 
@@ -57,7 +57,7 @@
         >>> c = np.array([[1, 2], [3, 4]], dtype=complex)
         >>> c
         array([[ 1.+0.j, 2.+0.j],
-        [ 3.+0.j, 4.+0.j]])
+               [ 3.+0.j, 4.+0.j]])
         ```
         - transform sequence of sequence into 2D arrays, sequence of sequence of sequence into 3D arrays, and so on
     - `numpy.zeros`, `numpy.ones`, `numpy.empty`
@@ -67,18 +67,18 @@
         ```
         >>> np.zeros((3, 4))
         array([[ 0., 0., 0., 0.],
-        [ 0., 0., 0., 0.],
-        [ 0., 0., 0., 0.]])
+               [ 0., 0., 0., 0.],
+               [ 0., 0., 0., 0.]])
         >>> np.ones((2, 3, 4), dtype=np.int16) # dtype can also be specified
         array([[[ 1, 1, 1, 1],
-        [ 1, 1, 1, 1],
-        [ 1, 1, 1, 1]],
-        [[ 1, 1, 1, 1],
-        [ 1, 1, 1, 1],
-        [ 1, 1, 1, 1]]], dtype=int16)
+                [ 1, 1, 1, 1],
+                [ 1, 1, 1, 1]],
+               [[ 1, 1, 1, 1],
+                [ 1, 1, 1, 1],
+                [ 1, 1, 1, 1]]], dtype=int16)
         >>> np.empty((2, 3)) # uninitialized, output may vary
         array([[ 3.73603959e-262, 6.02658058e-154, 6.55490914e-260],
-        [ 5.30498948e-313, 3.14673309e-307, 1.00000000e+000]])
+               [ 5.30498948e-313, 3.14673309e-307, 1.00000000e+000]])
         ```
     - `numpy.zeros_like`, `numpy.ones_like`, `numpy.empty_like`
     - `numpy.arange`, `numpy.linspace`
@@ -131,6 +131,74 @@
     >>> np.set_printoptions(threshold=sys.maxsize) # sys module should be imported
     ```
 - Basic operations
-
+    - Arithmetic operators on arrays apply *elementwise* . A new array is created and filled with the result
+    ```
+    >>> a = np.array( [20,30,40,50] )
+    >>> b = np.arange( 4 )
+    >>> b
+    array([0, 1, 2, 3])
+    >>> c = a - b
+    >>> c
+    array([20, 29, 38, 47])
+    >>> b ** 2
+    array([0, 1, 4, 9])
+    >>> 10 * np.sin(a)
+    array([ 9.12945251, -9.88031624, 7.4511316 , -2.62374854])
+    >>> a < 35
+    array([ True, True, False, False])
+    ```
+    - Product operator `*` operates *elementwise* in `NumPy` arrays 
+        - The matrix product can be performed using the `@` operator (in `python >= 3.5`), or 
+        - the `dot` function or method
+    ```
+    >>> A = np.array([[1, 1],
+    ...               [0, 1]])
+    >>> B = np.array([[2,0],
+    ...               [3, 4]])
+    >>> A * B # elementwise product
+    array([[2, 0],
+           [0, 4]])
+    >>> A @ B # matrix product
+    array([[5, 4],
+           [3, 4]])
+    >>> A.dot(B) # another matrix product
+    array([[5, 4],
+           [3, 4]])
+    ```
+    - Some operations, such as `+=` and `*=`, act *in place* to modify an existing array rather than create a new one
+    ```
+    >>> a = np.ones((2, 3), dtype=int)
+    >>> b = np.random.random((2, 3))
+    >>> a *= 3
+    >>> a
+    array([[3, 3, 3],
+           [3, 3, 3]])
+    >>> b += a
+    >>> b
+    array([[ 3.417022 , 3.72032449, 3.00011437],
+           [ 3.30233257, 3.14675589, 3.09233859]])
+    >>> a += b # b is not automatically converted to integer type
+    Traceback (most recent call last):
+    ...
+    TypeError: Cannot cast ufunc add output from dtype('float64') to dtype('int64') with casting rule 'same_kind'
+    ```
+    - When operating with arrays of different types, the type of the resulting array is *upcasted* to the more general or precise one
+    ```
+    >>> a = np.ones(3, dtype=np.int32)
+    >>> b = np.linspace(0, pi, 3)
+    >>> b.dtype.name
+    'float64'
+    >>> c = a + b
+    >>> c
+    array([ 1. , 2.57079633, 4.14159265])
+    >>> c.dtype.name
+    'float64'
+    >>> d = np.exp(c * 1j)
+    >>> d
+    array([ 0.54030231+0.84147098j, -0.84147098+0.54030231j,
+           -0.54030231-0.84147098j])
+    >>> d.dtype.name
+    'complex128'
+    ```
 
 ### 🌱 Introduction
