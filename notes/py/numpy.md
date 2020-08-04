@@ -558,13 +558,13 @@ UPDATEIFCOPY : False
     - *Integer Array Indexing* 
     - *Boolean Array Indexing* 
 - Integer Array Indexing
-    - Index is a tuple of `x.ndim` `ndarray`s, all in same shape (same as output shape). for the following
+    - Index is a tuple of `x.ndim` `ndarray`s, all in same shape (same as output shape). For the following
     ```
     res = x[a_1, ..., a_N]  # N == x.ndim
                             # M == res.ndim
                             # res.shape == a_k.shape, k = 0, 1, ..., N
     ```
-    - we have the `[i_1, ..., i_M]-th` scalar element
+    - We have: `res`'s `[i_1, ..., i_M]-th` scalar element
     ```
     res[i_1, ..., i_M] == x[a_1[i_1, ..., i_M], a_2[i_1, ..., i_M],
                            ..., a_N[i_1, ..., i_M]]
