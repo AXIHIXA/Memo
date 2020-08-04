@@ -66,8 +66,8 @@
         - Type of data (integer, float or Python object)
         - Size of data
         - Byte order (little-endian or big-endian)
-        - In case of structured type, the names of fields, data type of each field and part of the memory block taken by each field
-        - If data type is a subarray, its shape and data type
+        - In case of *structured type*, the names of *fields*, data type of each field and part of the memory block taken by each field
+        - If data type is a *subarray*, its shape and data type
     - Byte order is decided by prefixing `<` (little-endian) or `>` (big-endian) to data type
     - `dtype` object construction
         - constructor signature
