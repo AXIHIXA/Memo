@@ -324,19 +324,62 @@ def f(pos1, pos2, /, pos_or_kwd, *, kwd1, kwd2):
 
 #### 函数标注
 
-- *装饰器* 
+- *装饰器* （decorator）
     - *装饰器* 是返回函数的函数
-    - 通常使用`@wrapper`语法形式来进行函数变换 
     - 装饰器的常见例子包括`classmethod()`和`staticmethod()`
     - 装饰器语法只是一种语法糖，以下两个函数定义在语义上完全等价
-    ```
-    def fun(...):
-        ...
-    fun = wrapper(arg)(fun)
+        - 无参数装饰器
+        ```
+        def f(...):
+            ...
+        f = staticmethod(f)
 
-    @wrapper(arg)
-    def fun(...):
-        ...
+        @staticmethod
+        def f(...):
+            ...
+        ```
+        - 带参数装饰器
+        ```
+        def fun(...):
+            ...
+        fun = wrapper(arg)(fun)
+
+        @wrapper(arg)
+        def fun(...):
+            ...  
+        ```
+    - 一个函数定义可以被一个或多个`@decorator`表达式所包装。 当函数被定义时将在包含该函数定义的作用域中对装饰器表达式求值。 求值结果必须是一个可调用对象，它会以该函数对象作为唯一参数被发起调用。其返回值将被绑定到函数名称而非函数对象。 多个装饰器会以嵌套方式被应用。
+    ```
+    @f1(arg)
+    @f2
+    def func(): pass
+
+    def func(): pass
+    func = f1(arg)(f2(func))
+    ```
+    - 装饰器常见定义方法：
+    ```
+    def log(func):
+        def wrapper(*args, **kwds):
+            print('{}()'.format(func.__name__))
+            return func(*args, **kwds)
+        return wrapper
+    
+    @log
+    def now():
+        print('2015-3-25')
+        
+    def log(text):
+        def decorator(func):
+            def wrapper(*args, **kwds):
+                print('{} {}()'.format(text, func.__name__))
+                return func(*args, **kwds)
+            return wrapper
+        return decorator
+        
+    @log('execute')
+    def now():
+        print('2015-3-25')
     ```
         
 #### `lambda`表达式
