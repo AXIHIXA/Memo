@@ -29,9 +29,9 @@
 
 ### 🌱 Data Types
 
-- Scalar data types:
+- Scalar Data Types
     - `np.bool_`: Boolean (`True` or `False`) stored as a byte
-    - `np.int_`: Default integer type (same as `C` long; normally either int64 or int32)
+    - `np.int_`: Default integer type (same as `C` long; normally either `np.int64` or `np.int32`)
     - `np.intc`: Identical to `C` `int` (normally `np.int32` or `np.int64`)
     - `np.intp`: Integer used for indexing (same as `C` `ssize_t`; normally either `np.int32` or `np.int64`)
     - `np.int8`: Byte (-128 to 127)
@@ -49,10 +49,63 @@
     - `np.complex_`: Shorthand for `np.complex128`
     - `np.complex64`: Complex number, represented by two 32-bit floats (real and imaginary components)
     - `np.complex128`: Complex number, represented by two 64-bit floats (real and imaginary components)
-
-
-
-
+- Each built-in data type has a character code that uniquely identifies it
+    - `b`: boolean
+    - `i`: (signed) integer
+    - `u`: unsigned integer
+    - `f`: floating-point
+    - `c`: complex-floating point
+    - `m`: timedelta
+    - `M`: datetime
+    - `O`: (Python) objects
+    - `S`, `a`: (byte-)string
+    - `U`: Unicode
+    - `V`: raw data (void)
+- Data Type Objects (`dtype`)
+    - A data type object describes interpretation of fixed block of memory corresponding to an array, depending on the following aspects
+        - Type of data (integer, float or Python object)
+        - Size of data
+        - Byte order (little-endian or big-endian)
+        - In case of structured type, the names of fields, data type of each field and part of the memory block taken by each field
+        - If data type is a subarray, its shape and data type
+    - Byte order is decided by prefixing `<` (little-endian) or `>` (big-endian) to data type
+    - `dtype` object construction
+        - constructor signature
+        ```
+        np.dtype(object, align, copy)
+        ```
+        - paramters:
+            - `object`: To be converted to data type object
+            - `align`: If `True`, adds padding to the field to make it similar to `C` `struct`
+            - `copy`: Makes a new copy of `dtype` object. If `False`, the result is reference to builtin data type object
+    ```
+    >>> # using array-scalar type
+    >>> import numpy as np
+    >>> dt = np.dtype(np.int32)
+    >>> dt
+    int32
+    
+    >>> #int8, int16, int32, int64 can be replaced by equivalent string 'i1', 'i2','i4', etc.
+    >>> dt = np.dtype('i4')
+    >>> dt
+    int32
+    
+    >>> # using endian notation
+    >>> dt = np.dtype('>i4')
+    >>> dt
+    >i4
+    
+    >>> # first create structured data type
+    >>> dt = np.dtype([('age', np.int8)])
+    >>> dt
+    [('age', 'i1')]
+    
+    >>> # now apply it to ndarray object
+    >>> dt = np.dtype([('age',np.int8)])
+    >>> a = np.array([(10,),(20,),(30,)], dtype=dt)
+    >>> a
+    [(10,) (20,) (30,)]
+    ```
 
 
 
