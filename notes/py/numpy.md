@@ -62,7 +62,7 @@
     - `V`: raw data (void)
 - Data Type Objects (`dtype`)
     - A data type object describes interpretation of fixed block of memory corresponding to an array, depending on the following aspects
-        - Type of data (integer, float or Python object)
+        - Type of data (`int`, `float` or `Python` *object*)
         - Size of data
         - Byte order (little-endian or big-endian)
         - In case of *structured type*, the names of *fields*, data type of each field and part of the memory block taken by each field
@@ -115,7 +115,7 @@
     >>> student
     [('name', 'S20'), ('age', 'i1'), ('marks', '<f4')])
     
-    >>> a = np.array([('abc', 21, 50),('xyz', 18, 75)], dtype=student)
+    >>> a = np.array([('abc', 21, 50), ('xyz', 18, 75)], dtype=student)
     >>> a
     [('abc', 21, 50.0), ('xyz', 18, 75.0)]
     ```
@@ -439,22 +439,39 @@ UPDATEIFCOPY : False
 ### 🌱 Basic Indexing & Slicing
 
 - Contents of `ndarray` object can be accessed and modified by *indexing* or *slicing* 
-    - items in `ndarray` object follows *zero-based index* 
+    - items in `ndarray` object follows *zero-based index*, can be indexed using `x[obj]` syntax 
     - three types of indexing methods
         - *field access* 
         - *basic slicing* 
         - *advanced indexing* 
+- *Field Access* 
+    - If the ndarray object is a *structured array*, the *fields* of the array can be accessed by indexing the array with strings, dictionary-like
+    - Indexing `x['field-name']` returns a new `view` to the array, which is of the same shape as `x` (except when the field is a sub-array) but of data type `x.dtype['field-name']` and contains only the part of the data in the specified field
+    ```
+    >>> x = np.zeros((2, 2), dtype=[('a', np.int32), ('b', np.float64, (3, 3))])
+    >>> x['a'].shape
+    (2, 2)
+    >>> x['a'].dtype
+    dtype('int32')
+    >>> x['b'].shape
+    (2, 2, 3, 3)
+    >>> x['b'].dtype
+    dtype('float64')
+    ```
 - *Basic Slicing* 
-    - a *slice tuple* object is constructed by giving `start`, `stop`, and `step` parameters to the built-in `slice` function. This slice object is passed to the array to extract a part of array
+    - Basic slicing occurs when `obj` is
+        - a *slice object*, or 
+        - an *integer*, or 
+        - a *tuple* of *slice objects* and *integers*, or 
+        - *Ellipsis* `...` and `np.newaxis` objects can be interspersed with these as well
+    - a *slice object* is constructed by giving `start`, `stop`, `step` parameters to the built-in `slice` function, or by `(start:stop:step)` syntax directly. This slice object is passed to the array to extract a part of array
     ```
     >>> import numpy as np
     >>> a = np.arange(10)
     >>> s = slice(2, 7, 2)
     >>> a[s]
     [2 4 6]
-    ```
-    - same result can also be obtained by giving the slicing parameters separated by a *colon* `:`, in form `(start:stop:step)` directly to the ndarray object
-    ```
+
     >>> a[2:7:2]
     [2 4 6]
     
@@ -524,10 +541,10 @@ UPDATEIFCOPY : False
 - Advanced indexing is triggered when the selection object `obj` is:
     - a *non-tuple sequence object*, or 
     - an `ndarray` (whose `dtype` is `int` or `bool`), or
-    - a *tuple* with `1+` *sequence object* or `ndarray` (whose `dtype` is `int` or `bool`l)
+    - a *tuple* with `1+` *sequence object* or `ndarray` (whose `dtype` is `int` or `bool`)
 - Warning
-    - `x[(1, 2, 3), ]` is different from `x[(1, 2, 3)]`. The former triggers advanced indexing, while the latter one triggers basic indexing
-    - Also recognize that `x[[1, 2, 3]]` will trigger advanced indexing, whereas due to the deprecated Numeric compatibility mentioned above, `x[[1, 2, slice(None)]]` will trigger basic slicing
+    - `x[(1, 2, 3), ]` is different from `x[(1, 2, 3)]`. The former triggers *advanced indexing*, while the latter one equals to `x[1, 2, 3]` and triggers *basic indexing*
+    - Also recognize that `x[[1, 2, 3]]` will trigger *advanced indexing*, whereas due to the deprecated Numeric compatibility mentioned above, `x[[1, 2, slice(None)]]` will trigger *basic slicing* 
 - two types of advanced indexing: 
     - *Integer Indexing* 
     - *Boolean Indexing* 
