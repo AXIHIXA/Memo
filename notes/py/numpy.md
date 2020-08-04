@@ -60,8 +60,9 @@
         [ 3.+0.j, 4.+0.j]])
         ```
         - transform sequence of sequence into 2D arrays, sequence of sequence of sequence into 3D arrays, and so on
-    - `numpy.zeros`, `numpy.ones`
-        - create arrays with initial placeholder content
+    - `numpy.zeros`, `numpy.ones`, `numpy.empty`
+        - create arrays with initial placeholder content, or 
+        - initial content is random and depends on the state of the memory
         - `dtype` by default is `float64`
         ```
         >>> np.zeros((3, 4))
@@ -75,8 +76,8 @@
         [[ 1, 1, 1, 1],
         [ 1, 1, 1, 1],
         [ 1, 1, 1, 1]]], dtype=int16)
+        >>> np.empty( (2,3) ) # uninitialized, output may vary
+        array([[ 3.73603959e-262, 6.02658058e-154, 6.55490914e-260],
+        [ 5.30498948e-313, 3.14673309e-307, 1.00000000e+000]])
         ```
-    - `numpy.empty`
-        - initial content is random and depends on the state of the memory
-        - `dtype` by default is `float64`
 ### 🌱 Introduction
