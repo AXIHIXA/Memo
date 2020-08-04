@@ -1,4 +1,4 @@
-# `numpy` Tutorial Notes
+# `NumPy` Tutorial Notes
 
 - Notes of reading:
     - [`Numpy User Guide`](https://numpy.org/doc/1.18/numpy-user.pdf)
@@ -38,12 +38,14 @@
     - `ndarray.data` 
         - the buffer containing the actual elements of the array. Normally, we won’t need to use this attribute because we will access the elements in an array using indexing facilities.
 - Array creation
-    - From regular Python list or tuple
-        - using `array` function
+    - `numpy.array` function
+        - from regular Python list or tuple
+            - must feed single sequence rather than multiple numeric arguments
         - type of resulting array is deduced from that of elements in sequence
+            - type of the array can also be explicitly specified at creation time
         ```
         >>> import numpy as np
-        >>> a = np.array([2,3,4])
+        >>> a = np.array([2, 3, 4])
         >>> a
         array([2, 3, 4])
         >>> a.dtype
@@ -51,6 +53,17 @@
         >>> b = np.array([1.2, 3.5, 5.1])
         >>> b.dtype
         dtype('float64')
+        
+        >>> c = np.array([[1, 2], [3, 4]], dtype=complex)
+        >>> c
+        array([[ 1.+0.j, 2.+0.j],
+        [ 3.+0.j, 4.+0.j]])
         ```
-
+        - transform sequence of sequence into 2D arrays, sequence of sequence of sequence into 3D arrays, and so on
+    - `numpy.zeros`, `numpy.ones`
+        - create arrays with initial placeholder content
+        - `dtype` by default is `float64`
+    - `numpy.empty`
+        - initial content is random and depends on the state of the memory
+        - `dtype` by default is `float64`
 ### 🌱 Introduction
