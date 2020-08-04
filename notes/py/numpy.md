@@ -444,7 +444,68 @@ UPDATEIFCOPY : False
         - *field access* 
         - *basic slicing* 
         - *advanced indexing* 
+- *Basic Slicing* 
+    - an extension of `Python`'s basic concept of slicing to `n`dimensions
+    - a `Python` slice object is constructed by giving `start`, `stop`, and `step` parameters to the built-in `slice` function. This slice object is passed to the array to extract a part of array
+    ```
+    >>> import numpy as np
+    >>> a = np.arange(10)
+    >>> s = slice(2, 7, 2)
+    >>> a[s]
+    [2 4 6]
+    ```
+    - same result can also be obtained by giving the slicing parameters separated by a *colon* `:`, in form `(start:stop:step)` directly to the ndarray object
+    ```
+    >>> a[2:7:2]
+    [2 4 6]
+    
+    >>> a[5]
+    5
+    
+    >>> a[2:]
+    [2 3 4 5 6 7 8 9]
+    
+    >>> a[2:5]
+    [2 3 4]
+    ```
+    - The above description applies to multi-dimensional `ndarray` too
+    ```
+    >>> import numpy as np
+    >>> a = np.array([[1, 2, 3], [3, 4, 5], [4, 5, 6]])
+    >>> a
+    [[1 2 3]
+     [3 4 5]
+     [4 5 6]]
 
+    >>> # slice items starting from index
+    >>> a[1:]
+    [[3 4 5]
+     [4 5 6]]
+    ```
+    - Slicing can also include *ellipsis* `...` to make a selection tuple of the same length as the dimension of an array. If *ellipsis* is used at the row position, it will return an `ndarray` comprising of items in rows
+    ```
+    >>> # array to begin with
+    >>> import numpy as np
+    >>> a = np.array([[1, 2, 3], [3, 4, 5], [4, 5, 6]])
+    >>> a
+    [[1 2 3]
+     [3 4 5]
+     [4 5 6]]
+    
+    >>> # this returns array of items in the second column
+    >>> a[..., 1]
+    [2 4 5]
+    
+    >>> # Now we will slice all items from the second row
+    >>> a[1, ...]
+    [3 4 5]
+    
+    >>> # Now we will slice all items from column 1 onwards
+    >>> a[..., 1:]
+    [[2 3]
+     [4 5]
+     [5 6]]
+    ```
 
 
 
