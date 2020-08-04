@@ -507,33 +507,34 @@ UPDATEIFCOPY : False
      [5 6]]
     ```
 
+### 🌱 Advanced Indexing
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
+- Advanced indexing always returns a *copy* of the data. As against this, the slicing only presents a *view* 
+- two types of advanced indexing: 
+    - *Integer Indexing* 
+    - *Boolean Indexing* 
+- Integer Indexing
+    - selecting any arbitrary item in an array based on its `N`-dimensional index
+    - Each integer array represents the number of indexes into that
+dimension
+        - When the index consists of as many integer arrays as the dimensions of the target ndarray, it becomes straightforward
+    ```
+    >>> import numpy as np
+    >>> x = np.array([[1, 2], [3, 4], [5, 6]])
+    >>> y = x[[0, 1, 2], [0, 1, 0]]
+    >>> y
+    [1 4 5]
+    
+    >>> x = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]])
+    >>> rows = np.array([[0, 0], [3, 3]])
+    >>> cols = np.array([[0, 2], [0, 2]])
+    >>> y = x[rows, cols]
+    >>> y
+    [[0 2]
+     [9 11]]
+    ```
+- Boolean Indexing
+    - 
 
 
 
