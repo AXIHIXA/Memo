@@ -566,8 +566,7 @@ UPDATEIFCOPY : False
     ```
     - We have: `res`'s `[i_1, ..., i_M]-th` scalar element
     ```
-    res[i_1, ..., i_M] == x[a_1[i_1, ..., i_M], a_2[i_1, ..., i_M],
-                           ..., a_N[i_1, ..., i_M]]
+    res[i_1, ..., i_M] == x[a_1[i_1, ..., i_M], a_2[i_1, ..., i_M], ..., a_N[i_1, ..., i_M]]
     ```
     - Example 1: From each row, a specific element should be selected. The row index is just `[0, 1, 2]` and the column index specifies the element to choose for the corresponding row, here `[0, 1, 0]`
     ```
