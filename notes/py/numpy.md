@@ -1,7 +1,6 @@
 # `NumPy` Tutorial Notes
 
 - Notes of reading:
-    - [`Numpy User Guide`](https://numpy.org/doc/1.18/numpy-user.pdf)
     - [`Numpy Tutorial - Tutorialspoint`](https://www.tutorialspoint.com/numpy/index.htm)
 
 ### 🌱 `ndarray` Object
@@ -14,16 +13,16 @@
 
 ![](https://www.tutorialspoint.com/numpy/images/ndarray.jpg)
 
-- The basic ndarray is created using an `array` function in `NumPy`, creating an `ndarray` from any object exposing array interface, or from any method that returns an array
+- The basic ndarray is created using `np.array` function in `NumPy`, creating an `ndarray` from any object exposing array interface, or from any method that returns an array
     - signature
     ```
-    np.array(object, dtype=None, copy=True, order=None, subok=False, ndmin=0)
+    numpy.array(object, dtype=None, copy=True, order=None, subok=False, ndmin=0)
     ```
     - parameters
         - `object`: Any object exposing the array interface method returns an array, or any (nested) sequence
         - `dtype`: *Optional*. Desired data type of array
         - `copy`: *Optional*. By default (true), the object is copied 
-        - `order`: `C` (`C`-style, row major) or `F` (`Fortan / MATLAB`-style, column major) or `A` (any) (default)
+        - `order`: `C` (`C`-style, row major) or `F` (`FORTRAN`-style, column major) or `A` (any) (default)
         - `subok`: By default, returned array forced to be a base class array. If true, sub-classes passed through
         - `ndimin`: Specifies minimum dimensions of resultant array
 
@@ -101,7 +100,7 @@
     [('age', 'i1')]
     
     >>> # now apply it to ndarray object
-    >>> a = np.array([(10,), (20,), (30,)], dtype=dt)
+    >>> a = np.array([(10, ), (20, ), (30, )], dtype=dt)
     >>> a
     [(10,) (20,) (30,)]
     
@@ -205,33 +204,109 @@ UPDATEIFCOPY : False
 
 ### 🌱 Array Creation Routines
 
+- `np.empty`
+    - creates an *uninitialized* array of specified `shape` and `dtype`
+    - signature
+    ```
+    numpy.empty(shape, dtype=float, order='C')
+    ```
+    - parameters
+        - `shape`: int, or tuple of int. shape of an empty array
+        - `dtype`: desired output data type. *Optional*
+        - `order`: `'C'` for `C`-style row-major array, `'F'` for `FORTRAN`-style column-major array
+```
+>>> import numpy as np
+>>> x = np.empty([3, 2], dtype=int)
+>>> x
+[[22649312   1701344351]
+ [1818321759 1885959276]
+ [16779776   156368896]]
+```
+- `np.zeros`
+    - returns a new array of specified size, filled with zeros
+        - signature
+    ```
+    numpy.zeros(shape, dtype=float, order='C')
+    ```
+    - parameters
+        - `shape`: int, or tuple of int. shape of an empty array
+        - `dtype`: desired output data type. *Optional*
+        - `order`: `'C'` for `C`-style row-major array, `'F'` for `FORTRAN`-style column-major array
+```
+>>> import numpy as np
+>>> x = np.zeros(5)
+>>> x
+[ 0. 0. 0. 0. 0.]
 
+>>> x = np.zeros((5, ), dtype=np.int)
+>>> x
+[0 0 0 0 0]
 
+>>> # custom type
+>>> x = np.zeros((2, 2), dtype=[('x', 'i4'), ('y', 'i4')])
+>>> x
+[[(0, 0) (0, 0)]
+ [(0, 0) (0, 0)]]
+```
+- `np.ones`
+    - returns a new array of specified size, filled with ones
+        - signature
+    ```
+    numpy.ones(shape, dtype=float, order='C')
+    ```
+    - parameters
+        - `shape`: int, or tuple of int. shape of an empty array
+        - `dtype`: desired output data type. *Optional*
+        - `order`: `'C'` for `C`-style row-major array, `'F'` for `FORTRAN`-style column-major array
+```
+>>> import numpy as np
+>>> x = np.ones(5)
+>>> x
+[ 1. 1. 1. 1. 1.]
 
+>>> x = np.ones([2, 2], dtype=int)
+>>> x
+[[1 1]
+ [1 1]]
+```
 
+### 🌱 Array from Existing Data
 
+- `np.asarray`
+    - similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`
+    - signature
+    ```
+    numpy.asarray(a, dtype=None, order=None)
+    ```
+    - parameters
+        - `a`: Input data in any form such as list, list of tuples, tuples, tuple of tuples or tuple of lists
+        - `dtype`: *Optional*. Desired data type of array. By default, data type of input data is applied
+        - `copy`: *Optional*. By default (true), the object is copied 
+        - `order`: `C` (`C`-style, row major) or `F` (`FORTRAN`-style, column major) or `A` (any) (default)
+```
+>>> # convert list to ndarray
+>>> import numpy as np
+>>> x = [1, 2, 3]
+>>> a = np.asarray(x)
+>>> a
+[1 2 3]
 
+>>> a = np.asarray(x, dtype=float)
+>>> a
+[ 1. 2. 3.]
 
+>>> # ndarray from tuple
+>>> x = (1, 2, 3)
+>>> a = np.asarray(x)
+>>> a
+[1 2 3]
 
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
+>>> # ndarray from list of tuples
+>>> x = [(1, 2, 3), (4, 5)]
+>>> a = np.asarray(x)
+>>> a
+[(1, 2, 3) (4, 5)]
+```
 
 
 
