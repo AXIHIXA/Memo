@@ -564,14 +564,14 @@ UPDATEIFCOPY : False
     ```
     res[i_1, ..., i_M] == x[a_1[i_1, ..., i_M], a_2[i_1, ..., i_M], ..., a_N[i_1, ..., i_M]]
     ```
-    - Example 1: From each row, a specific element should be selected. The row index is just `[0, 1, 2]` and the column index specifies the element to choose for the corresponding row, here `[0, 1, 0]`
+    - **Example 1**: From each row, a specific element should be selected. The row index is just `[0, 1, 2]` and the column index specifies the element to choose for the corresponding row, here `[0, 1, 0]`
     ```
     >>> import numpy as np
     >>> x = np.array([[1, 2], [3, 4], [5, 6]])
     >>> x[[0, 1, 2], [0, 1, 0]]
     [1 4 5]
     ```
-    - Example 2: from a `4 * 3` array the corner elements should be selected using advanced indexing. Thus all elements for which the column is one of `[0, 2]` and the row is one of `[0, 3]` need to be selected. To use advanced indexing one needs to select all elements explicitly.
+    - **Example 2**: from a `4 * 3` array the corner elements should be selected using advanced indexing. Thus all elements for which the column is one of `[0, 2]` and the row is one of `[0, 3]` need to be selected. To use advanced indexing one needs to select all elements explicitly.
     ```
     >>> x = np.array([[ 0,  1,  2], 
                       [ 3,  4,  5], 
@@ -583,7 +583,7 @@ UPDATEIFCOPY : False
     [[ 0,  2],
      [ 9, 11]]
     ```
-    - Example 2.1: we can make use of *broadcasting* to generate `rows`, `cols` from simpler `ndarray`s
+    - **Example 2.1**: we can make use of *broadcasting* to generate `rows`, `cols` from simpler `ndarray`s
     ```
     >>> x = np.array([[ 0,  1,  2], 
                       [ 3,  4,  5], 
@@ -599,7 +599,7 @@ UPDATEIFCOPY : False
     [[ 0,  2],
      [ 9, 11]]
     ```
-    - Example 2.2: use of `np.ix_` function
+    - **Example 2.2**: use of `np.ix_` function
         - `numpy.ix_(*args)`: take `N` 1D arrays, return tuple of `N` arrays s.t. they can automatically broadcast into proper index array
     ```
     >>> x = np.array([[ 0,  1,  2], 
@@ -620,7 +620,7 @@ UPDATEIFCOPY : False
      [ 9, 11]]
     ```
 - Combining Advanced And Basic Indexing
-    - Example 3: Advanced and basic indexing can be combined by using one *slice* `:` or *ellipsis* `...` with an index array. The following example uses slice for row and advanced index for column. The result is the same when slice is used for both. But advanced index results in copy and may have different memory layout.
+    - **Example 3**: Advanced and basic indexing can be combined by using one *slice* `:` or *ellipsis* `...` with an index array. The following example uses slice for row and advanced index for column. The result is the same when slice is used for both. But advanced index results in copy and may have different memory layout.
     ```
     >>> x = np.array([[ 0,  1,  2], 
                       [ 3,  4,  5], 
@@ -646,7 +646,7 @@ UPDATEIFCOPY : False
     - If `obj.ndim == x.ndim`, `x[obj]` returns a 1D array filled with the elements of `x` corresponding to the `True` values of `obj`. The search order will be row-major, `C`-style. 
         - If `obj` has True values at entries that are outside of the bounds of `x`, then an `IndexError` will be raised.
         - If `obj` is smaller than `x`, it is identical to filling it with `False`.
-    - Example 4: In this example, items greater than 5 are returned as a result of Boolean indexing
+    - **Example 4**: In this example, items greater than 5 are returned as a result of Boolean indexing
     ```
     >>> x = np.array([[ 0,  1,  2], 
                       [ 3,  4,  5], 
@@ -655,13 +655,13 @@ UPDATEIFCOPY : False
     >>> x[x > 5]
     [6 7 8 9 10 11]
     ```
-    - Example 5: In this example, `NaN` (Not a Number) elements are omitted
+    - **Example 5**: In this example, `NaN` (Not a Number) elements are omitted
     ```
     >>> a = np.array([np.nan, 1, 2, np.nan, 3, 4, 5])
     >>> a[~np.isnan(a)]
     [ 1. 2. 3. 4. 5.]
     ```
-    - Example 6: The following example adds a constant to all negative elements
+    - **Example 6**: The following example adds a constant to all negative elements
     ```
     >>> x = np.array([1., -1., -2., 3])
     >>> x[x < 0] += 20
@@ -669,7 +669,7 @@ UPDATEIFCOPY : False
     array([  1.,  19.,  18.,   3.])
     ```
     - If an index includes a Boolean array, the result will be identical to inserting `obj.nonzero()` into the same position and using the integer array indexing mechanism. `x[a_1, boolean_array, a_2]` is equivalent to `x[(ind_1,) + boolean_array.nonzero() + (ind_2,)]`.
-    - Example 7: 
+    - **Example 7**: 
     ```
     >>> x = np.array([[0, 1], [1, 1], [2, 2]])
     >>> rowsum = x.sum(-1)
@@ -699,7 +699,7 @@ UPDATEIFCOPY : False
 - Iterator object `np.nditer`: 
     - efficient multidimensional iterator object using which it is possible to iterate over an array. 
     - Each element of an array is visited using Python’s standard Iterator interface.
-    - Example 1
+    - **Example 1**
     ```
     >>> import numpy as np
     >>> a = np.arange(0, 60, 5).reshape(3, 4)
@@ -712,7 +712,7 @@ UPDATEIFCOPY : False
     ...     print(x, end=' ')
     0 5 10 15 20 25 30 35 40 45 50 55
     ```
-    - Example 2: The order of iteration is chosen to match the *memory layout* of an array, **without** considering a particular ordering. This can be seen by iterating over the transpose of the above array: 
+    - **Example 2**: The order of iteration is chosen to match the *memory layout* of an array, **without** considering a particular ordering. This can be seen by iterating over the transpose of the above array: 
     ```
     >>> a = np.arange(0, 60, 5).reshape(3, 4)
     >>> b = a.T
@@ -727,7 +727,7 @@ UPDATEIFCOPY : False
     0 5 10 15 20 25 30 35 40 45 50 55
     ```
 - Iteration Order
-    - Example 3: If the same elements are stored using `F`-style order, the iterator chooses the more efficient way of iterating over an array.
+    - **Example 3**: If the same elements are stored using `F`-style order, the iterator chooses the more efficient way of iterating over an array.
     ```
     >>> a = np.arange(0, 60, 5).reshape(3, 4)
     >>> a
@@ -764,7 +764,7 @@ UPDATEIFCOPY : False
     ...     print(x, end=' ')
     0 5 10 15 20 25 30 35 40 45 50 55
     ```
-    - Example 4: It is possible to force nditer object to use a specific order by explicitly mentioning it.
+    - **Example 4**: It is possible to force nditer object to use a specific order by explicitly mentioning it.
     ```
     >>> a = np.arange(0, 60, 5).reshape(3, 4)
     >>> a
@@ -782,7 +782,7 @@ UPDATEIFCOPY : False
     ```
 - Modifying Array Values
     - The `nditer` object has another optional parameter called `op_flags`. Its default value is `'read-only'`, but can be set to `'read-write'` or `'write-only'` mode. This will enable modifying array elements using this iterator.
-    - Example 5: 
+    - **Example 5**: 
     ```
     >>> a = np.arange(0, 60, 5).reshape(3, 4)
     >>> a
@@ -804,7 +804,7 @@ UPDATEIFCOPY : False
         - `f_index`: `Fortran`-order index is tracked
         - `multi-index`: Type of indexes with one per iteration can be tracked
         - `external_loop`: Causes values given to be one-dimensional arrays with multiple values instead of zero-dimensional array
-    - Example 6: In the following example, one-dimensional arrays corresponding to each column is traversed by the iterator.
+    - **Example 6**: In the following example, one-dimensional arrays corresponding to each column is traversed by the iterator.
     ```
     >>> a = np.arange(0, 60, 5).reshape(3, 4)
     >>> a
@@ -818,7 +818,7 @@ UPDATEIFCOPY : False
     ```
 - Broadcasting Iteration
     - If two arrays are *broadcastable*, a combined `nditer` object is able to iterate upon them concurrently.
-    - Example 7: Assuming that an array `a` has dimension `3 * 4`, and there is another array `b` of dimension `1 * 4`, the iterator of following type is used (array `b` is broadcast to size of `a`).
+    - **Example 7**: Assuming that an array `a` has dimension `3 * 4`, and there is another array `b` of dimension `1 * 4`, the iterator of following type is used (array `b` is broadcast to size of `a`).
     ```
     >>> a = np.arange(0, 60, 5).reshape(3, 4)
     >>> a
@@ -840,6 +840,27 @@ UPDATEIFCOPY : False
 - Several routines are available for manipulation of elements in `ndarray`: 
     - Changing Shape
         - `np.reshape`: Gives a new shape to an array without changing its data
+            - This function gives a new shape to an array without changing the data. 
+            - Signature: 
+            ```
+            numpy.reshape(arr, newshape, order')
+            ```
+            - Parameters: 
+                - `arr`: Array to be reshaped
+                - `newshape`: `int` or `Tuple[int]`. New shape should be compatible to the original shape
+                - `order`: `'C'` for `C` style, `'F'` for `Fortran` style, `'A'` means `Fortran` like order if an array is stored in `Fortran`-like contiguous memory, `C` style otherwise
+            ```
+            >>> a = np.arange(8)
+            >>> a
+            [0 1 2 3 4 5 6 7]
+            
+            >>> b = a.reshape(4, 2)
+            >>> b
+            [[0 1]
+             [2 3]
+             [4 5]
+             [6 7]]
+            ```
         - `np.flat`: A 1D iterator over the array
         - `np.flatten`: Returns a copy of the array collapsed into one dimension
         - `np.ravel`: Returns a contiguous flattened array
@@ -854,20 +875,20 @@ UPDATEIFCOPY : False
         - `np.exapnd_items`: Expands the shape of an array
         - `np.squeeze`: Removes single-dimensional entries from the shape of an array
     - Joining Arrays
-        - `concatenate`: Joins a sequence of arrays along an existing axis
-        - `stack`: Joins a sequence of arrays along a new axis
-        - `hstack`: Stacks arrays in sequence horizontally (column wise)
-        - `vstack`: Stacks arrays in sequence vertically (row wise)
+        - `np.concatenate`: Joins a sequence of arrays along an existing axis
+        - `np.stack`: Joins a sequence of arrays along a new axis
+        - `np.hstack`: Stacks arrays in sequence horizontally (column wise)
+        - `np.vstack`: Stacks arrays in sequence vertically (row wise)
     - Splitting Arrays
-        - `split`: Splits an array into multiple sub-arrays
-        - `hsplit`: Splits an array into multiple sub-arrays horizontally (column-wise)
-        - `vsplit`: Splits an array into multiple sub-arrays vertically (row-wise)
+        - `np.split`: Splits an array into multiple sub-arrays
+        - `np.hsplit`: Splits an array into multiple sub-arrays horizontally (column-wise)
+        - `np.vsplit`: Splits an array into multiple sub-arrays vertically (row-wise)
     - Adding / Removing Elements
-        - `resize`: Returns a new array with the specified shape
-        - `append`: Appends the values to the end of an array
-        - `insert`: Inserts the values along the given axis before the given indices
-        - `delete`: Returns a new array with sub-arrays along an axis deleted
-        - `unique`: Finds the unique elements of an array
+        - `np.resize`: Returns a new array with the specified shape
+        - `np.append`: Appends the values to the end of an array
+        - `np.insert`: Inserts the values along the given axis before the given indices
+        - `np.delete`: Returns a new array with sub-arrays along an axis deleted
+        - `np.unique`: Finds the unique elements of an array
 
 
 
