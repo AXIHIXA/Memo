@@ -599,6 +599,26 @@ UPDATEIFCOPY : False
     [[ 0,  2],
      [ 9, 11]]
     ```
+    - Example 2.2: use of `np.ix_` function
+        - `numpy.ix_(*args)`: take `N` 1D arrays, return tuple of `N` arrays s.t. they can automatically broadcast into proper index array
+    ```
+    >>> x = np.array([[ 0,  1,  2], 
+                      [ 3,  4,  5], 
+                      [ 6,  7,  8], 
+                      [ 9, 10, 11]])
+    >>> rows = np.array([0, 3])
+    >>> cols = np.array([0, 2])
+    >>> idx = np.ix_(rows, cols)
+    >>> idx
+    (array([[0],
+            [3]]),
+            
+     array([[0, 2]]))
+    
+    >>> x[idx]
+    [[ 0,  2],
+     [ 9, 11]]
+    ```
 - Combining Advanced And Basic Indexing
     - Example 3: Advanced and basic indexing can be combined by using one *slice* `:` or *ellipsis* `...` with an index array. The following example uses slice for row and advanced index for column. The result is the same when slice is used for both. But advanced index results in copy and may have different memory layout.
     ```
@@ -679,53 +699,175 @@ UPDATEIFCOPY : False
 - Iterator object `np.nditer`: 
     - efficient multidimensional iterator object using which it is possible to iterate over an array. 
     - Each element of an array is visited using Python’s standard Iterator interface.
-- Example 1
-```
->>> import numpy as np
->>> a = np.arange(0, 60, 5).reshape(3, 4)
->>> a
-[[ 0  5 10 15]
- [20 25 30 35]
- [40 45 50 55]]
+    - Example 1
+    ```
+    >>> import numpy as np
+    >>> a = np.arange(0, 60, 5).reshape(3, 4)
+    >>> a
+    [[ 0  5 10 15]
+     [20 25 30 35]
+     [40 45 50 55]]
 
->>> for x in np.nditer(a):
-...     print(x, end=' ')
-0 5 10 15 20 25 30 35 40 45 50 55
-```
-- Example 2: The order of iteration is chosen to match the *memory layout* of an array, **without** considering a particular ordering. This can be seen by iterating over the transpose of the above array: 
-```
->>> a = np.arange(0, 60, 5).reshape(3, 4)
->>> b = a.T
->>> b
-[[ 0 20 40]
- [ 5 25 45]
- [10 30 50]
- [15 35 55]]
+    >>> for x in np.nditer(a):
+    ...     print(x, end=' ')
+    0 5 10 15 20 25 30 35 40 45 50 55
+    ```
+    - Example 2: The order of iteration is chosen to match the *memory layout* of an array, **without** considering a particular ordering. This can be seen by iterating over the transpose of the above array: 
+    ```
+    >>> a = np.arange(0, 60, 5).reshape(3, 4)
+    >>> b = a.T
+    >>> b
+    [[ 0 20 40]
+     [ 5 25 45]
+     [10 30 50]
+     [15 35 55]]
 
->>> for x in np.nditer(b):
-...     print(x, end=' ')
-0 5 10 15 20 25 30 35 40 45 50 55
-```
+    >>> for x in np.nditer(b):
+    ...     print(x, end=' ')
+    0 5 10 15 20 25 30 35 40 45 50 55
+    ```
+- Iteration Order
+    - Example 3: If the same elements are stored using `F`-style order, the iterator chooses the more efficient way of iterating over an array.
+    ```
+    >>> a = np.arange(0, 60, 5).reshape(3, 4)
+    >>> a
+    [[ 0  5 10 15]
+     [20 25 30 35]
+     [40 45 50 55]]
+    
+    >>> b = a.T
+    >>> b
+    [[ 0 20 40]
+     [ 5 25 45]
+     [10 30 50]
+     [15 35 55]]
+    
+    >>> c = b.copy(order='C')
+    >>> c
+    [[ 0 20 40]
+     [ 5 25 45]
+     [10 30 50]
+     [15 35 55]]
+    
+    >>> for x in np.nditer(c):
+    ...     print(x, end=' ')
+    0 20 40 5 25 45 10 30 50 15 35 55
+    
+    >>> d = b.copy(order='F')
+    >>> d
+    [[ 0 20 40]
+     [ 5 25 45]
+     [10 30 50]
+     [15 35 55]]
+    
+    >>> for x in np.nditer(d):
+    ...     print(x, end=' ')
+    0 5 10 15 20 25 30 35 40 45 50 55
+    ```
+    - Example 4: It is possible to force nditer object to use a specific order by explicitly mentioning it.
+    ```
+    >>> a = np.arange(0, 60, 5).reshape(3, 4)
+    >>> a
+    [[ 0  5 10 15]
+     [20 25 30 35]
+     [40 45 50 55]]
+     
+    >>> for x in np.nditer(a, order='C'):
+    ...     print(x, end=' ')
+    0 5 10 15 20 25 30 35 40 45 50 55
+    
+    >>> for x in np.nditer(a, order='F'):
+    ...     print(x, end=' ')
+    0 20 40 5 25 45 10 30 50 15 35 55
+    ```
+- Modifying Array Values
+    - The `nditer` object has another optional parameter called `op_flags`. Its default value is `'read-only'`, but can be set to `'read-write'` or `'write-only'` mode. This will enable modifying array elements using this iterator.
+    - Example 5: 
+    ```
+    >>> a = np.arange(0, 60, 5).reshape(3, 4)
+    >>> a
+    [[ 0  5 10 15]
+     [20 25 30 35]
+     [40 45 50 55]]
+    
+    >>> for x in np.nditer(a, op_flags=['readwrite']):
+    ...     x[...]= 2 * x
+    
+    >>> a
+    [[ 0  10  20  30]
+     [ 40 50  60  70]
+     [ 80 90 100 110]]
+    ```
+- External Loop
+    - The `nditer` class constructor has a `flags` parameter, which can take the following values:
+        - `c_index`: `C`-order index can be tracked
+        - `f_index`: `Fortran`-order index is tracked
+        - `multi-index`: Type of indexes with one per iteration can be tracked
+        - `external_loop`: Causes values given to be one-dimensional arrays with multiple values instead of zero-dimensional array
+    - Example 6: In the following example, one-dimensional arrays corresponding to each column is traversed by the iterator.
+    ```
+    >>> a = np.arange(0, 60, 5).reshape(3, 4)
+    >>> a
+    [[ 0  5 10 15]
+     [20 25 30 35]
+     [40 45 50 55]]
+     
+    >>> for x in np.nditer(a, flags=['external_loop'], order='F'):
+    ...     print(x, end=' ')
+    [ 0 20 40] [ 5 25 45] [10 30 50] [15 35 55]
+    ```
+- Broadcasting Iteration
+    - If two arrays are *broadcastable*, a combined `nditer` object is able to iterate upon them concurrently.
+    - Example 7: Assuming that an array `a` has dimension `3 * 4`, and there is another array `b` of dimension `1 * 4`, the iterator of following type is used (array `b` is broadcast to size of `a`).
+    ```
+    >>> a = np.arange(0, 60, 5).reshape(3, 4)
+    >>> a
+    [[ 0  5 10 15]
+     [20 25 30 35]
+     [40 45 50 55]]
+    
+    >>> b = np.array([1, 2, 3, 4], dtype=int)
+    >>> b
+    [1 2 3 4]
+    
+    >>> for x, y in np.nditer([a, b]):
+    ...     print('{}:{}'.format(x, y), end=' ')
+    0:1 5:2 10:3 15:4 20:1 25:2 30:3 35:4 40:1 45:2 50:3 55:4
+    ```
 
+### 🌱 Array Manipulation
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
+- Several routines are available for manipulation of elements in `ndarray`: 
+    - Changing Shape
+        - `np.reshape`: Gives a new shape to an array without changing its data
+        - `np.flat`: A 1D iterator over the array
+        - `np.flatten`: Returns a copy of the array collapsed into one dimension
+        - `np.ravel`: Returns a contiguous flattened array
+    - Transpose Operations
+        - `np.transpose`: Permutes the dimensions of an array
+        - `ndarray.T`: Same as `self.transpose`
+        - `np.rollaxis`: Rolls the specified axis backwards
+        - `np.swapaxes`: Interchanges the two axes of an array
+    - Changing Dimensions
+        - `np.broadcast`: Produces an object that mimics broadcasting
+        - `np.broadcast_to`: Broadcasts an array to a new shape
+        - `np.exapnd_items`: Expands the shape of an array
+        - `np.squeeze`: Removes single-dimensional entries from the shape of an array
+    - Joining Arrays
+        - `concatenate`: Joins a sequence of arrays along an existing axis
+        - `stack`: Joins a sequence of arrays along a new axis
+        - `hstack`: Stacks arrays in sequence horizontally (column wise)
+        - `vstack`: Stacks arrays in sequence vertically (row wise)
+    - Splitting Arrays
+        - `split`: Splits an array into multiple sub-arrays
+        - `hsplit`: Splits an array into multiple sub-arrays horizontally (column-wise)
+        - `vsplit`: Splits an array into multiple sub-arrays vertically (row-wise)
+    - Adding / Removing Elements
+        - `resize`: Returns a new array with the specified shape
+        - `append`: Appends the values to the end of an array
+        - `insert`: Inserts the values along the given axis before the given indices
+        - `delete`: Returns a new array with sub-arrays along an axis deleted
+        - `unique`: Finds the unique elements of an array
 
 
 
