@@ -619,6 +619,10 @@ UPDATEIFCOPY : False
 - Boolean Array Indexing
     - Occurs when `obj` is array object of `Boolean` type, such as may be returned from comparison operators
     - A single boolean index array is practically identical to `x[obj.nonzero()]` where, as described above, `obj.nonzero()` returns a tuple (of length `obj.ndim`) of integer index arrays showing the `True` elements of `obj`. However, it is faster when `obj.shape == x.shape`. 
+        - `np.nonzero`
+            - `numpy.nonzero(a)` will return a tuple of `a.ndim` `ndarray`s, let `r_1, r_2, ..., r_N`. Then the `i-th` non-zero element (counted row-major) is `a[r_1[i], r_2[i], ..., r_N[i]]`. 
+            - Offical expression: Returns a tuple of arrays, one for each dimension of `a`, containing the indices of the non-zero elements in that dimension. The values in `a` are always tested and returned in row-major, `C`-style order.
+    - If `obj.ndim == x.ndim`, `x[obj]` returns a 1D array filled with the elements of `x` corresponding to the `True` values of `obj`. The search order will be row-major, `C`-style. If `obj` has `True` values at entries that are outside of the bounds of `x`, then an index error will be raised. If `obj` is smaller than `x` it is identical to filling it with `False`.
     - Example 4: In this example, items greater than 5 are returned as a result of Boolean indexing
     ```
     >>> x = np.array([[ 0,  1,  2], 
@@ -634,11 +638,12 @@ UPDATEIFCOPY : False
     >>> a[~np.isnan(a)]
     [ 1. 2. 3. 4. 5.]
     ```
-    - Example 6: The following example shows how to filter out the non-complex elements from an array
+    - Example 6: The following example adds a constant to all negative elements
     ```
-    >>> a = np.array([1, 2+6j, 5, 3.5+5j])
-    >>> a[np.iscomplex(a)]
-    [2.0+6.j 3.5+5.j]
+    >>> x = np.array([1., -1., -2., 3])
+    >>> x[x < 0] += 20
+    >>> x
+    array([  1.,  19.,  18.,   3.])
     ```
 
 ### 🌱 Broadcasting
