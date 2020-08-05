@@ -1024,7 +1024,44 @@ UPDATEIFCOPY : False
             ...                print('hehe')
             
             ```
-        - `numpy.rollaxis`: Rolls the specified axis backwards
+        - `numpy.rollaxis`
+            - This function returns a *view* of `arr` whose specified axis looks like being rolled backwards, until it lies in a specified position. 
+                - e.g. roll axis `2` backwards to `0` will have index dimention mapping `0 1 2 -> 0 2 1 -> 2 0 1`
+            - Signature: 
+            ```
+            numpy.rollaxis(arr, axis, start)
+            ```
+            - Parameters: 
+                - `arr`: Input array
+                - `axis`: Axis to roll backwards. The position of the other axes do not change relative to one another
+                - `start`: `0` by default leading to the complete roll. Rolls until it reaches the specified position
+            ```
+            >>> a = np.arange(8).reshape(2, 2, 2)
+            >>> a
+            array([[[0, 1],
+                    [2, 3]],
+
+                   [[4, 5],
+                    [6, 7]]])
+            
+            >>> b = np.rollaxis(a, 2)
+            >>> b.base is a.base
+            True
+            >>> b
+            array([[[0, 2],
+                    [4, 6]],
+
+                   [[1, 3],
+                    [5, 7]]])
+                    
+            >>> c = np.rollaxis(a, 2, 1)
+            >>> c
+            array([[[0, 1],
+                    [4, 5]],
+
+                   [[2, 3],
+                    [6, 7]]])
+            ```
     - Changing Dimensions
         - `numpy.broadcast`: Produces an object that mimics broadcasting
         - `numpy.broadcast_to`: Broadcasts an array to a new shape
