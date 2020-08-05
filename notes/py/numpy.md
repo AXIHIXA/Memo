@@ -13,7 +13,7 @@
 
 ![](https://www.tutorialspoint.com/numpy/images/ndarray.jpg)
 
-- The basic ndarray is created using `np.array` function in `NumPy`, creating an `ndarray` from any object exposing array interface, or from any method that returns an array
+- The basic ndarray is created using `numpy.array` function in `NumPy`, creating an `ndarray` from any object exposing array interface, or from any method that returns an array
     - signature
     ```
     numpy.array(object, dtype=None, copy=True, order=None, subok=False, ndmin=0)
@@ -29,25 +29,25 @@
 ### 🌱 Data Types
 
 - Scalar Data Types
-    - `np.bool_`: Boolean (`True` or `False`) stored as a byte
-    - `np.int_`: Default integer type (same as `C` long; normally either `np.int64` or `np.int32`)
-    - `np.intc`: Identical to `C` `int` (normally `np.int32` or `np.int64`)
-    - `np.intp`: Integer used for indexing (same as `C` `ssize_t`; normally either `np.int32` or `np.int64`)
-    - `np.int8`: Byte (-128 to 127)
-    - `np.int16`: Integer (-32768 to 32767)
-    - `np.int32`: Integer (-2147483648 to 2147483647)
-    - `np.int64`: Integer (-9223372036854775808 to 9223372036854775807)
-    - `np.uint8`: Unsigned integer (0 to 255)
-    - `np.uint16`: Unsigned integer (0 to 65535)
-    - `np.uint32`: Unsigned integer (0 to 4294967295)
-    - `np.uint64`: Unsigned integer (0 to 18446744073709551615)
-    - `np.float_`: Shorthand for `np.float64`
-    - `np.float16`: Half precision float: sign bit, 5 bits exponent, 10 bits mantissa
-    - `np.float32`: Single precision float: sign bit, 8 bits exponent, 23 bits mantissa
-    - `np.float64`: Double precision float: sign bit, 11 bits exponent, 52 bits mantissa
-    - `np.complex_`: Shorthand for `np.complex128`
-    - `np.complex64`: Complex number, represented by two 32-bit floats (real and imaginary components)
-    - `np.complex128`: Complex number, represented by two 64-bit floats (real and imaginary components)
+    - `numpy.bool_`: Boolean (`True` or `False`) stored as a byte
+    - `numpy.int_`: Default integer type (same as `C` long; normally either `numpy.int64` or `numpy.int32`)
+    - `numpy.intc`: Identical to `C` `int` (normally `numpy.int32` or `numpy.int64`)
+    - `numpy.intp`: Integer used for indexing (same as `C` `ssize_t`; normally either `numpy.int32` or `numpy.int64`)
+    - `numpy.int8`: Byte (-128 to 127)
+    - `numpy.int16`: Integer (-32768 to 32767)
+    - `numpy.int32`: Integer (-2147483648 to 2147483647)
+    - `numpy.int64`: Integer (-9223372036854775808 to 9223372036854775807)
+    - `numpy.uint8`: Unsigned integer (0 to 255)
+    - `numpy.uint16`: Unsigned integer (0 to 65535)
+    - `numpy.uint32`: Unsigned integer (0 to 4294967295)
+    - `numpy.uint64`: Unsigned integer (0 to 18446744073709551615)
+    - `numpy.float_`: Shorthand for `numpy.float64`
+    - `numpy.float16`: Half precision float: sign bit, 5 bits exponent, 10 bits mantissa
+    - `numpy.float32`: Single precision float: sign bit, 8 bits exponent, 23 bits mantissa
+    - `numpy.float64`: Double precision float: sign bit, 11 bits exponent, 52 bits mantissa
+    - `numpy.complex_`: Shorthand for `numpy.complex128`
+    - `numpy.complex64`: Complex number, represented by two 32-bit floats (real and imaginary components)
+    - `numpy.complex128`: Complex number, represented by two 64-bit floats (real and imaginary components)
 - Each built-in data type has a character code that uniquely identifies it
     - `b`: boolean
     - `i`: (signed) integer
@@ -71,7 +71,7 @@
     - `dtype` object construction
         - constructor signature
         ```
-        np.dtype(object, align, copy)
+        numpy.dtype(object, align, copy)
         ```
         - parameters:
             - `object`: To be converted to data type object
@@ -204,7 +204,7 @@ UPDATEIFCOPY : False
 
 ### 🌱 Array Creation Routines
 
-- `np.empty`
+- `numpy.empty`
     - creates an *uninitialized* array of specified `shape` and `dtype`
     - signature
     ```
@@ -222,7 +222,7 @@ UPDATEIFCOPY : False
  [1818321759 1885959276]
  [16779776   156368896]]
 ```
-- `np.zeros`
+- `numpy.zeros`
     - returns a new array of specified size, filled with zeros
         - signature
     ```
@@ -248,7 +248,7 @@ UPDATEIFCOPY : False
 [[(0, 0) (0, 0)]
  [(0, 0) (0, 0)]]
 ```
-- `np.ones`
+- `numpy.ones`
     - returns a new array of specified size, filled with ones
         - signature
     ```
@@ -272,8 +272,8 @@ UPDATEIFCOPY : False
 
 ### 🌱 Array from Existing Data
 
-- `np.array`
-- `np.asarray`
+- `numpy.array`
+- `numpy.asarray`
     - similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`
     - signature
     ```
@@ -305,7 +305,7 @@ UPDATEIFCOPY : False
 >>> np.asarray(x)
 [(1, 2, 3) (4, 5)]
 ```
-- `np.frombuffer`
+- `numpy.frombuffer`
     - This function interprets a buffer as 1D array. Any object that exposes the buffer interface is used as parameter to return an `ndarray`
     - signature
     ```
@@ -323,7 +323,7 @@ UPDATEIFCOPY : False
 >>> a
 ['H' 'e' 'l' 'l' 'o' ' ' 'W' 'o' 'r' 'l' 'd']
 ```
-- `np.fromiter`
+- `numpy.fromiter`
     - This function builds an ndarray object from any iterable object. A new 1D array is returned by this function
 - signature
     ```
@@ -348,7 +348,7 @@ UPDATEIFCOPY : False
 
 ### 🌱 Array from Numerical Ranges
 
-- `np.arange`
+- `numpy.arange`
     - This function returns an `ndarray` object containing evenly spaced values within a given range
     - signature
     ```
@@ -375,7 +375,7 @@ UPDATEIFCOPY : False
 >>> x
 [10 12 14 16 18]
 ```
-- `np.linspace`
+- `numpy.linspace`
     - This function is similar to `numpy.arange` function. In this function, instead of step size, the *number* of evenly spaced values between the interval is specified
     - signature
     ```
@@ -404,7 +404,7 @@ UPDATEIFCOPY : False
 >>> x
 (array([ 1. , 1.25, 1.5 , 1.75, 2. ]), 0.25)
 ```
-- `np.logspace`
+- `numpy.logspace`
     - This function returns an `ndarray` object that contains the numbers that are evenly spaced on a log scale. `start` and `stop` endpoints of the scale are indices of the base, usually `10`
     - signature
     ```
@@ -528,7 +528,7 @@ UPDATEIFCOPY : False
      [4 5]
      [5 6]]
     ```
-    - Each `np.newaxis` object in the selection tuple serves to expand the dimensions of the resulting selection by one unit-length dimension. The added dimension is the position of the newaxis object in the selection tuple
+    - Each `numpy.newaxis` object in the selection tuple serves to expand the dimensions of the resulting selection by one unit-length dimension. The added dimension is the position of the newaxis object in the selection tuple
         - The `newaxis` object can be used in all slicing operations to create an axis of length one. `newaxis` is an alias for `None`, and `None` can be used in place of this with the same result
         ```
         >>> x = np.array([[[1], [2], [3]], [[4], [5], [6]]])
@@ -640,7 +640,7 @@ UPDATEIFCOPY : False
 - Boolean Array Indexing
     - Occurs when `obj` is array object of `bool` type, such as may be returned from comparison operators
     - Boolean array indexing `x[obj]` is practically identical to Integer array indexing `x[obj.nonzero()]`. However, Boolean Array Indexing is faster when `obj.shape == x.shape`. 
-        - `np.nonzero`
+        - `numpy.nonzero`
             - `numpy.nonzero(a)` will return a tuple of `a.ndim` `ndarray`s, let `r_1, ..., r_N`. Then, `a`'s `i-th` non-zero element (counted in row-major, `C`-style order) is `a[r_1[i], ..., r_N[i]]`. 
             - Offical expression: Returns a tuple of arrays, one for each dimension of `a`, containing the indices of the non-zero elements in that dimension. The values in `a` are always tested and returned in row-major, `C`-style order.
     - If `obj.ndim == x.ndim`, `x[obj]` returns a 1D array filled with the elements of `x` corresponding to the `True` values of `obj`. The search order will be row-major, `C`-style. 
@@ -696,7 +696,7 @@ UPDATEIFCOPY : False
 
 ### 🌱 Iterating Over Array
 
-- Iterator object `np.nditer`: 
+- Iterator object `numpy.nditer`: 
     - efficient multidimensional iterator object using which it is possible to iterate over an array. 
     - Each element of an array is visited using Python’s standard Iterator interface.
     - **Example 1**
@@ -839,11 +839,11 @@ UPDATEIFCOPY : False
 
 - Several routines are available for manipulation of elements in `ndarray`: 
     - Changing Shape
-        - `np.reshape`: Gives a new shape to an array without changing its data
+        - `numpy.reshape`: Gives a new shape to an array without changing its data
             - This function gives a new shape to an array without changing the data. 
             - Signature: 
             ```
-            numpy.reshape(arr, newshape, order')
+            numpy.reshape(arr, newshape, order)
             ```
             - Parameters: 
                 - `arr`: Array to be reshaped
@@ -861,34 +861,112 @@ UPDATEIFCOPY : False
              [4 5]
              [6 7]]
             ```
-        - `np.flat`: A 1D iterator over the array
-        - `np.flatten`: Returns a copy of the array collapsed into one dimension
-        - `np.ravel`: Returns a contiguous flattened array
+        - `numpy.ndarray.flat`: A 1D iterator over the array
+            - This function returns a *1D iterator* over the array. It behaves similar to `Python`'s built-in iterator.
+            ```
+            >>> a = np.arange(8).reshape(2, 4)
+            >>> a
+            [[0 1 2 3]
+             [4 5 6 7]]
+
+            >>> a.flat[5]
+            5
+            ```
+        - `numpy.ndarray.flatten`: Returns a copy of the array collapsed into one dimension
+            - This function returns a *copy of an array* collapsed into 1D. 
+            - Signature: 
+            ```
+            ndarray.flatten(order)
+            ```
+            - Parameters: 
+                - `order`: `'C'`: row major (default); `'F'`: column major; `'A'`: flatten in column-major order, if a is Fortran contiguous in memory, row-major order otherwise; `'K'`: flatten array in the order the elements occur in the memory
+            ```
+            >>> a = np.arange(8).reshape(2, 4)
+            >>> a
+            [[0 1 2 3]
+             [4 5 6 7]]
+             
+            >>> a.flatten()
+            [0 1 2 3 4 5 6 7]
+            
+            >>> a.flatten(order='F')
+            [0 4 1 5 2 6 3 7]
+            ```
+        - `numpy.ravel`: Returns a contiguous flattened array
+            - This function returns a *view* of original array that is flattened into 1D (whenever possible, or a copy). The returned array will have the same type as that of the input array. 
+            - Signature: 
+            ```
+            ndarray.ravel(a, order)
+            ```
+            - Parameters: 
+                - `order`: `'C'`: row major (default); `'F'`: column major; `'A'`: flatten in column-major order, if a is Fortran contiguous in memory, row-major order otherwise; `'K'`: flatten `a` in the order the elements occur in the memory
+            ```
+            >>> a = np.arange(8).reshape(2, 4)
+            >>> a
+            [[0 1 2 3]
+             [4 5 6 7]]
+             
+            >>> a.ravel()
+            [0 1 2 3 4 5 6 7]
+            
+            >>> a.ravel(order='F')
+            [0 4 1 5 2 6 3 7]
+            ```
     - Transpose Operations
-        - `np.transpose`: Permutes the dimensions of an array
-        - `ndarray.T`: Same as `self.transpose`
-        - `np.rollaxis`: Rolls the specified axis backwards
-        - `np.swapaxes`: Interchanges the two axes of an array
+        - `numpy.transpose`: Permutes the dimensions of an array
+            - This function permutes the dimension of the given array. It returns a `view` whenever possible. 
+            - Signature
+            ```
+            numpy.transpose(arr, axes)
+            ```
+            - Parameters: 
+                - `arr`: The array to be transposed
+                - `axes`: `List[int]`, corresponding to the dimensions. By default, the dimensions are reversed
+            ```
+            >>> a = np.arange(12).reshape(3, 4)
+            >>> a
+            [[ 0,  1,  2,  3],
+             [ 4,  5,  6,  7],
+             [ 8,  9, 10, 11]]
+            
+            >>> b = np.transpose(a)
+            >> b
+            [[ 0,  4,  8],
+             [ 1,  5,  9],
+             [ 2,  6, 10],
+             [ 3,  7, 11]]
+            
+            >>> a
+            [[ 0,  1,  2,  3],
+             [ 4,  5,  6,  7],
+             [ 8,  9, 10, 11]]
+            
+            >>> b.base is a.base
+            True
+            ```
+        - `numpy.ndarray.T`: Same as `self.transpose`
+        - `numpy.rollaxis`: Rolls the specified axis backwards
+        - `numpy.swapaxes`: Interchanges the two axes of an array
     - Changing Dimensions
-        - `np.broadcast`: Produces an object that mimics broadcasting
-        - `np.broadcast_to`: Broadcasts an array to a new shape
-        - `np.exapnd_items`: Expands the shape of an array
-        - `np.squeeze`: Removes single-dimensional entries from the shape of an array
+        - `numpy.broadcast`: Produces an object that mimics broadcasting
+        - `numpy.broadcast_to`: Broadcasts an array to a new shape
+        - `numpy.exapnd_items`: Expands the shape of an array
+        - `numpy.squeeze`: Removes single-dimensional entries from the shape of an array
     - Joining Arrays
-        - `np.concatenate`: Joins a sequence of arrays along an existing axis
-        - `np.stack`: Joins a sequence of arrays along a new axis
-        - `np.hstack`: Stacks arrays in sequence horizontally (column wise)
-        - `np.vstack`: Stacks arrays in sequence vertically (row wise)
+        - `numpy.concatenate`: Joins a sequence of arrays along an existing axis
+        - `numpy.stack`: Joins a sequence of arrays along a new axis
+        - `numpy.hstack`: Stacks arrays in sequence horizontally (column wise)
+        - `numpy.vstack`: Stacks arrays in sequence vertically (row wise)
     - Splitting Arrays
-        - `np.split`: Splits an array into multiple sub-arrays
-        - `np.hsplit`: Splits an array into multiple sub-arrays horizontally (column-wise)
-        - `np.vsplit`: Splits an array into multiple sub-arrays vertically (row-wise)
+        - `numpy.split`: Splits an array into multiple sub-arrays
+        - `numpy.hsplit`: Splits an array into multiple sub-arrays horizontally (column-wise)
+        - `numpy.vsplit`: Splits an array into multiple sub-arrays vertically (row-wise)
     - Adding / Removing Elements
-        - `np.resize`: Returns a new array with the specified shape
-        - `np.append`: Appends the values to the end of an array
-        - `np.insert`: Inserts the values along the given axis before the given indices
-        - `np.delete`: Returns a new array with sub-arrays along an axis deleted
-        - `np.unique`: Finds the unique elements of an array
+        - `numpy.resize`: Returns a new array with the specified shape
+        - `numpy.append`: Appends the values to the end of an array
+        - `numpy.insert`: Inserts the values along the given axis before the given indices
+        - `numpy.delete`: Returns a new array with sub-arrays along an axis deleted
+        - `numpy.unique`: Finds the unique elements of an array
 
 
 
