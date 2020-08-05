@@ -620,7 +620,7 @@ UPDATEIFCOPY : False
     - Occurs when `obj` is array object of `Boolean` type, such as may be returned from comparison operators
     - A single boolean index array is practically identical to `x[obj.nonzero()]` where, as described above, `obj.nonzero()` returns a tuple (of length `obj.ndim`) of integer index arrays showing the `True` elements of `obj`. However, it is faster when `obj.shape == x.shape`. 
         - `np.nonzero`
-            - `numpy.nonzero(a)` will return a tuple of `a.ndim` `ndarray`s, let `r_1, r_2, ..., r_N`. Then the `i-th` non-zero element (counted row-major) is `a[r_1[i], r_2[i], ..., r_N[i]]`. 
+            - `numpy.nonzero(a)` will return a tuple of `a.ndim` `ndarray`s, let `r_1, ..., r_N`. Then, `a`'s `i-th` non-zero element (counted in row-major, `C`-style order) is `a[r_1[i], ..., r_N[i]]`. 
             - Offical expression: Returns a tuple of arrays, one for each dimension of `a`, containing the indices of the non-zero elements in that dimension. The values in `a` are always tested and returned in row-major, `C`-style order.
     - If `obj.ndim == x.ndim`, `x[obj]` returns a 1D array filled with the elements of `x` corresponding to the `True` values of `obj`. The search order will be row-major, `C`-style. If `obj` has `True` values at entries that are outside of the bounds of `x`, then an index error will be raised. If `obj` is smaller than `x` it is identical to filling it with `False`.
     - Example 4: In this example, items greater than 5 are returned as a result of Boolean indexing
