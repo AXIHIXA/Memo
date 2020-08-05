@@ -288,25 +288,21 @@ UPDATEIFCOPY : False
 >>> # convert list to ndarray
 >>> import numpy as np
 >>> x = [1, 2, 3]
->>> a = np.asarray(x)
->>> a
+>>> np.asarray(x)
 [1 2 3]
 
 >>> # dtype is set
->>> a = np.asarray(x, dtype=float)
->>> a
+>>> np.asarray(x, dtype=float)
 [ 1. 2. 3.]
 
 >>> # ndarray from tuple
 >>> x = (1, 2, 3)
->>> a = np.asarray(x)
->>> a
+>>> np.asarray(x)
 [1 2 3]
 
 >>> # ndarray from list of tuples
 >>> x = [(1, 2, 3), (4, 5)]
->>> a = np.asarray(x)
->>> a
+>>> np.asarray(x)
 [(1, 2, 3) (4, 5)]
 ```
 - `np.frombuffer`
@@ -346,8 +342,7 @@ UPDATEIFCOPY : False
 
 >>> # use iterator to create ndarray
 >>> it = iter(list)
->>> x = np.fromiter(it, dtype=float)
->>> x
+>>> np.fromiter(it, dtype=float)
 [0. 1. 2. 3. 4.]
 ```
 
@@ -550,7 +545,7 @@ UPDATEIFCOPY : False
 - Advanced indexing is triggered when the selection object `obj` is:
     - a *non-tuple sequence object*, or 
     - an `ndarray` (whose `dtype` is `int` or `bool`), or
-    - a *tuple* with `1+` *sequence object* or `ndarray` (whose `dtype` is `int` or `bool`)
+    - a *tuple* having `>= 1` *sequence object* or `ndarray` (whose `dtype` is `int` or `bool`)
 - Warning
     - `x[(1, 2, 3), ]` is different from `x[(1, 2, 3)]`. The former triggers *advanced indexing*, while the latter one equals to `x[1, 2, 3]` and triggers *basic indexing*
     - Also recognize that `x[[1, 2, 3]]` will trigger *advanced indexing*, whereas due to the deprecated Numeric compatibility mentioned above, `x[[1, 2, slice(None)]]` will trigger *basic slicing* 
@@ -558,13 +553,13 @@ UPDATEIFCOPY : False
     - *Integer Array Indexing* 
     - *Boolean Array Indexing* 
 - Integer Array Indexing
-    - Index is a tuple of `x.ndim` `ndarray`s, all in same shape (same as output shape). For the following
+    - Index is a tuple of `x.ndim` `ndarray`s, all in same shape (same as output shape) (or boardcastable shape). For the following
     ```
     res = x[a_1, ..., a_N]  # N == x.ndim
                             # M == res.ndim
-                            # res.shape == a_k.shape, k = 0, 1, ..., N
+                            # res.shape == a_1.shape == ... == a_k.shape
     ```
-    - We have: `res`'s `[i_1, ..., i_M]-th` scalar element
+    - We have: every scalar element in `res` is selected from `x`, with the `k-th` coordinate given by `a_k`'s cooresponding element, i.e. 
     ```
     res[i_1, ..., i_M] == x[a_1[i_1, ..., i_M], a_2[i_1, ..., i_M], ..., a_N[i_1, ..., i_M]]
     ```
@@ -572,8 +567,7 @@ UPDATEIFCOPY : False
     ```
     >>> import numpy as np
     >>> x = np.array([[1, 2], [3, 4], [5, 6]])
-    >>> y = x[[0, 1, 2], [0, 1, 0]]
-    >>> y
+    >>> x[[0, 1, 2], [0, 1, 0]]
     [1 4 5]
     ```
     - Example 2: from a `4 * 3` array the corner elements should be selected using advanced indexing. Thus all elements for which the column is one of `[0, 2]` and the row is one of `[0, 3]` need to be selected. To use advanced indexing one needs to select all elements explicitly.
@@ -584,11 +578,27 @@ UPDATEIFCOPY : False
                       [ 9, 10, 11]])
     >>> rows = np.array([[0, 0], [3, 3]])
     >>> cols = np.array([[0, 2], [0, 2]])
-    >>> y = x[rows, cols]
-    >>> y
+    >>> x[rows, cols]
     [[ 0,  2],
      [ 9, 11]]
     ```
+    - Example 2.1: we can make use of *broadcasting* to generate `rows`, `cols` from simpler `ndarray`s
+    ```
+    >>> x = np.array([[ 0,  1,  2], 
+                      [ 3,  4,  5], 
+                      [ 6,  7,  8], 
+                      [ 9, 10, 11]])
+    >>> rows = np.array([0, 3])
+    >>> rows[:, np.newaxis]
+    [[0],
+     [3]]
+    
+    >>> cols = np.array([0, 2])
+    >>> x[rows[:, np.newaxis], cols]
+    [[ 0,  2],
+     [ 9, 11]]
+    ```
+- Combining Advanced And Basic Indexing
     - Example 3: Advanced and basic indexing can be combined by using one *slice* `:` or *ellipsis* `...` with an index array. The following example uses slice for row and advanced index for column. The result is the same when slice is used for both. But advanced index results in copy and may have different memory layout.
     ```
     >>> x = np.array([[ 0,  1,  2], 
@@ -607,52 +617,45 @@ UPDATEIFCOPY : False
      [10 11]]
     ```
 - Boolean Array Indexing
-    - 
+    - Occurs when `obj` is array object of `Boolean` type, such as may be returned from comparison operators
+    - A single boolean index array is practically identical to `x[obj.nonzero()]` where, as described above, `obj.nonzero()` returns a tuple (of length `obj.ndim`) of integer index arrays showing the `True` elements of `obj`. However, it is faster when `obj.shape == x.shape`. 
+    - Example 4: In this example, items greater than 5 are returned as a result of Boolean indexing
+    ```
+    >>> x = np.array([[ 0,  1,  2], 
+                      [ 3,  4,  5], 
+                      [ 6,  7,  8], 
+                      [ 9, 10, 11]])
+    >>> x[x > 5]
+    [6 7 8 9 10 11]
+    ```
+    - Example 5: In this example, `NaN` (Not a Number) elements are omitted
+    ```
+    >>> a = np.array([np.nan, 1, 2, np.nan, 3, 4, 5])
+    >>> a[~np.isnan(a)]
+    [ 1. 2. 3. 4. 5.]
+    ```
+    - Example 6: The following example shows how to filter out the non-complex elements from an array
+    ```
+    >>> a = np.array([1, 2+6j, 5, 3.5+5j])
+    >>> a[np.iscomplex(a)]
+    [2.0+6.j 3.5+5.j]
+    ```
 
+### 🌱 Broadcasting
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- The term *broadcasting* refers to the ability of *NumPy* to treat arrays of different shapes during arithmetic operations
+- Arithmetic operations on arrays are usually done elementwise
+    - If two arrays are of exactly the same shape, then these operations are smoothly performed
+    - If the dimensions of two arrays are dissimilar, the smaller array is *broadcast* to the size of the larger array so that they have compatible shapes
+- *Broadcasting* is possible if the following rules are satisfied: 
+    - Array with smaller `ndim` than the other is prepended with `1` in its shape
+  - Size in each dimension of the output shape is maximum of the input sizes in that dimension
+  - An input can be used in calculation, if its size in a particular dimension: *matches* the output size, or is *exactly `1`* 
+  - If an input has a dimension size of `1`, the first data entry in that dimension is used for all calculations along that dimension
+- A set of arrays is said to be *broadcastable* if the above rules produce a valid result and one of the following is true:
+  - Arrays have exactly the same shape
+  - Arrays have the same number of dimensions and the length of each dimension is either a common length or `1`
+  - Array having too few dimensions can have its shape prepended with a dimension of length `1`, so that the above stated property is true
 
 ### 🌱 
 
