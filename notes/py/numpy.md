@@ -839,8 +839,8 @@ UPDATEIFCOPY : False
 
 - Several routines are available for manipulation of elements in `ndarray`: 
     - Changing Shape
-        - `numpy.reshape`: Gives a new shape to an array without changing its data
-            - This function The returns a *view* having the specified shape, that shares the data with `arr`. Note that the returned view does **NOT** own the data (i.e., `resultant.base` is `None`)
+        - `numpy.reshape`
+            - This function returns a *view* having the specified shape, that shares the data with `arr`. Note that the returned view does **NOT** own the data (i.e., `resultant.base` is `None`)
             - Signature: 
             ```
             numpy.reshape(arr, newshape, order)
@@ -852,14 +852,23 @@ UPDATEIFCOPY : False
             ```
             >>> a = np.arange(8)
             >>> a
-            [0 1 2 3 4 5 6 7]
+            [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11]
+            
+            >>> a.base
+            None
             
             >>> b = a.reshape(4, 2)
             >>> b
-            [[0 1]
-             [2 3]
-             [4 5]
-             [6 7]]
+            [[ 0,  1,  2,  3],
+             [ 4,  5,  6,  7],
+             [ 8,  9, 10, 11]]
+            
+            >>> b.base is a
+            True
+            
+            >>> b[1, 1] = 50
+            >>> a
+            [ 0,  1,  2,  3,  4, 50,  6,  7,  8,  9, 10, 11]
             ```
         - `numpy.ndarray.flat`: A 1D iterator over the array
             - This function returns a *1D iterator* over the array. It behaves similar to `Python`'s built-in iterator.
@@ -872,8 +881,8 @@ UPDATEIFCOPY : False
             >>> a.flat[5]
             5
             ```
-        - `numpy.ndarray.flatten`: Returns a copy of the array collapsed into one dimension
-            - This function returns a *copy of an array* collapsed into 1D. 
+        - `numpy.ndarray.flatten`
+            - This function returns a *copy* of an array collapsed into 1D. 
             - Signature: 
             ```
             ndarray.flatten(order)
@@ -886,13 +895,22 @@ UPDATEIFCOPY : False
             [[0 1 2 3]
              [4 5 6 7]]
              
-            >>> a.flatten()
+            >>> b = a.flatten()
+            >>> b
             [0 1 2 3 4 5 6 7]
+            >>> b.flags
+            C_CONTIGUOUS : True
+            F_CONTIGUOUS : True
+            OWNDATA : True
+            WRITEABLE : True
+            ALIGNED : True
+            WRITEBACKIFCOPY : False
+            UPDATEIFCOPY : False
             
             >>> a.flatten(order='F')
             [0 4 1 5 2 6 3 7]
             ```
-        - `numpy.ravel`: Returns a contiguous flattened array
+        - `numpy.ravel`
             - This function returns a *view* of original array that is flattened into 1D (whenever possible, or a copy). The returned array will have the same type as that of the input array. 
             - Signature: 
             ```
@@ -913,7 +931,7 @@ UPDATEIFCOPY : False
             [0 4 1 5 2 6 3 7]
             ```
     - Transpose Operations
-        - `numpy.transpose`: Permutes the dimensions of an array
+        - `numpy.transpose`
             - This function permutes the dimension of the given array. It returns a `view` whenever possible. 
             - Signature
             ```
@@ -944,7 +962,7 @@ UPDATEIFCOPY : False
             >>> b.base is a.base
             True
             ```
-        - `numpy.ndarray.T`: Same as `self.transpose`
+        - `numpy.ndarray.T`
             - This *attribute* belongs to `ndarray` class. It behaves similar to `numpy.transpose`. 
             ```
             >>> a = np.arange(12).reshape(3, 4)
@@ -968,10 +986,42 @@ UPDATEIFCOPY : False
             >>> b.base is a.base
             True
             ```
-        - `numpy.swapaxes`: Interchanges the two axes of an array
+        - `numpy.swapaxes`
             - This function interchanges the two axes of an array. A *view* of the swapped array is returned `(since NumPy1.10)`.
+                - Note swapping axes can be done simply by swapping the indexes of affected dimensions when indexing
             - Signature
             ```
+            numpy.swapaxes(arr, axis1, axis2)
+            ```
+            - Parameters: 
+                - `arr`: Input array whose axes are to be swapped
+                - `axis1`: An `int` corresponding to the first axis
+                - `axis2`: An `int` corresponding to the second axis
+            ```
+            >>> a = np.arange(8).reshape(2, 2, 2)
+            >>> a
+            array([[[0, 1],
+                    [2, 3]],
+
+                   [[4, 5],
+                    [6, 7]]])
+            
+            >>> b = np.swapaxes(a, 2, 0)
+            >>> b
+            array([[[0, 4],
+                    [2, 6]],
+
+                   [[1, 5],
+                    [3, 7]]])
+            
+            >>> b.base is a.base
+            True
+            
+            >>> for i in range(2):
+            ...    for j in range(2):
+            ...        for k in range(2):
+            ...            if b[i, j, k].base is not a[k, j, i].base: 
+            ...                print('hehe')
             
             ```
         - `numpy.rollaxis`: Rolls the specified axis backwards
