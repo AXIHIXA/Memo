@@ -549,6 +549,7 @@ UPDATEIFCOPY : False
 - Warning
     - `x[(1, 2, 3), ]` is different from `x[(1, 2, 3)]`. The former triggers *advanced indexing*, while the latter one equals to `x[1, 2, 3]` and triggers *basic indexing*
     - Also recognize that `x[[1, 2, 3]]` will trigger *advanced indexing*, whereas due to the deprecated Numeric compatibility mentioned above, `x[[1, 2, slice(None)]]` will trigger *basic slicing* 
+- Offical documents says that advanced indexing generates *copies*, however, as tested, advanced indexing can also be used to set values! WEIRD THING HERE. 
 - two types of advanced indexing: 
     - *Integer Array Indexing* 
     - *Boolean Array Indexing* 
@@ -617,12 +618,14 @@ UPDATEIFCOPY : False
      [10 11]]
     ```
 - Boolean Array Indexing
-    - Occurs when `obj` is array object of `Boolean` type, such as may be returned from comparison operators
-    - A single boolean index array is practically identical to `x[obj.nonzero()]` where, as described above, `obj.nonzero()` returns a tuple (of length `obj.ndim`) of integer index arrays showing the `True` elements of `obj`. However, it is faster when `obj.shape == x.shape`. 
+    - Occurs when `obj` is array object of `bool` type, such as may be returned from comparison operators
+    - Boolean array indexing `x[obj]` is practically identical to Integer array indexing `x[obj.nonzero()]`. However, Boolean Array Indexing is faster when `obj.shape == x.shape`. 
         - `np.nonzero`
             - `numpy.nonzero(a)` will return a tuple of `a.ndim` `ndarray`s, let `r_1, ..., r_N`. Then, `a`'s `i-th` non-zero element (counted in row-major, `C`-style order) is `a[r_1[i], ..., r_N[i]]`. 
             - Offical expression: Returns a tuple of arrays, one for each dimension of `a`, containing the indices of the non-zero elements in that dimension. The values in `a` are always tested and returned in row-major, `C`-style order.
-    - If `obj.ndim == x.ndim`, `x[obj]` returns a 1D array filled with the elements of `x` corresponding to the `True` values of `obj`. The search order will be row-major, `C`-style. If `obj` has `True` values at entries that are outside of the bounds of `x`, then an index error will be raised. If `obj` is smaller than `x` it is identical to filling it with `False`.
+    - If `obj.ndim == x.ndim`, `x[obj]` returns a 1D array filled with the elements of `x` corresponding to the `True` values of `obj`. The search order will be row-major, `C`-style. 
+        - If `obj` has True values at entries that are outside of the bounds of `x`, then an `IndexError` will be raised.
+        - If `obj` is smaller than `x`, it is identical to filling it with `False`.
     - Example 4: In this example, items greater than 5 are returned as a result of Boolean indexing
     ```
     >>> x = np.array([[ 0,  1,  2], 
@@ -645,6 +648,15 @@ UPDATEIFCOPY : False
     >>> x
     array([  1.,  19.,  18.,   3.])
     ```
+    - If an index includes a Boolean array, the result will be identical to inserting `obj.nonzero()` into the same position and using the integer array indexing mechanism. `x[a_1, boolean_array, a_2]` is equivalent to `x[(ind_1,) + boolean_array.nonzero() + (ind_2,)]`.
+    - Example 7: 
+    ```
+    >>> x = np.array([[0, 1], [1, 1], [2, 2]])
+    >>> rowsum = x.sum(-1)
+    >>> x[rowsum <= 2, :]
+    [[0, 1],
+     [1, 1]]
+    ```
 
 ### 🌱 Broadcasting
 
@@ -662,11 +674,38 @@ UPDATEIFCOPY : False
     - Arrays have the same number of dimensions and the length of each dimension is either a common length or `1`
     - Array having too few dimensions can have its shape prepended with a dimension of length `1`, so that the above stated property is true
 
-### 🌱 
+### 🌱 Iterating Over Array
 
+- Iterator object `np.nditer`: 
+    - efficient multidimensional iterator object using which it is possible to iterate over an array. 
+    - Each element of an array is visited using Python’s standard Iterator interface.
+- Example 1
+```
+>>> import numpy as np
+>>> a = np.arange(0, 60, 5).reshape(3, 4)
+>>> a
+[[ 0  5 10 15]
+ [20 25 30 35]
+ [40 45 50 55]]
 
+>>> for x in np.nditer(a):
+...     print(x, end=' ')
+0 5 10 15 20 25 30 35 40 45 50 55
+```
+- Example 2: The order of iteration is chosen to match the *memory layout* of an array, **without** considering a particular ordering. This can be seen by iterating over the transpose of the above array: 
+```
+>>> a = np.arange(0, 60, 5).reshape(3, 4)
+>>> b = a.T
+>>> b
+[[ 0 20 40]
+ [ 5 25 45]
+ [10 30 50]
+ [15 35 55]]
 
-
+>>> for x in np.nditer(b):
+...     print(x, end=' ')
+0 5 10 15 20 25 30 35 40 45 50 55
+```
 
 
 
