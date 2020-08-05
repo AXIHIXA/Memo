@@ -840,7 +840,7 @@ UPDATEIFCOPY : False
 - Several routines are available for manipulation of elements in `ndarray`: 
     - Changing Shape
         - `numpy.reshape`: Gives a new shape to an array without changing its data
-            - This function gives a new shape to an array without changing the data. 
+            - This function The returns a *view* having the specified shape, that shares the data with `arr`. Note that the returned view does **NOT** own the data (i.e., `resultant.base` is `None`)
             - Signature: 
             ```
             numpy.reshape(arr, newshape, order)
@@ -945,8 +945,36 @@ UPDATEIFCOPY : False
             True
             ```
         - `numpy.ndarray.T`: Same as `self.transpose`
-        - `numpy.rollaxis`: Rolls the specified axis backwards
+            - This *attribute* belongs to `ndarray` class. It behaves similar to `numpy.transpose`. 
+            ```
+            >>> a = np.arange(12).reshape(3, 4)
+            >>> a
+            [[ 0,  1,  2,  3],
+             [ 4,  5,  6,  7],
+             [ 8,  9, 10, 11]]
+            
+            >>> b = a.T
+            >>> b
+            [[ 0,  4,  8],
+             [ 1,  5,  9],
+             [ 2,  6, 10],
+             [ 3,  7, 11]]
+            
+            >>> a
+            [[ 0,  1,  2,  3],
+             [ 4,  5,  6,  7],
+             [ 8,  9, 10, 11]]
+            
+            >>> b.base is a.base
+            True
+            ```
         - `numpy.swapaxes`: Interchanges the two axes of an array
+            - This function interchanges the two axes of an array. A *view* of the swapped array is returned `(since NumPy1.10)`.
+            - Signature
+            ```
+            
+            ```
+        - `numpy.rollaxis`: Rolls the specified axis backwards
     - Changing Dimensions
         - `numpy.broadcast`: Produces an object that mimics broadcasting
         - `numpy.broadcast_to`: Broadcasts an array to a new shape
