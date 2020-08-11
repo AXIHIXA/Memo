@@ -10,21 +10,25 @@
     - Every item in an ndarray takes the same size of block in the memory
     - Each element in `ndarray` is an object of data-type object (called `dtype`)
     - Any item extracted from `ndarray` object (by *slicing*) is represented by a `Python` object of one of array scalar types
-
 ![](https://www.tutorialspoint.com/numpy/images/ndarray.jpg)
-
-- The basic ndarray is created using `numpy.array` function in `NumPy`, creating an `ndarray` from any object exposing array interface, or from any method that returns an array
-    - signature
+- [`numpy.array`](https://numpy.org/doc/stable/reference/generated/numpy.array.html?highlight=numpy%20array#numpy.array)
+    - Signature
     ```
-    numpy.array(object, dtype=None, copy=True, order=None, subok=False, ndmin=0)
+    numpy.array(object, dtype=None, *, copy=True, order='K', subok=False, ndmin=0)
     ```
-    - parameters
-        - `object`: Any object exposing the array interface method returns an array, or any (nested) sequence
-        - `dtype`: *Optional*. Desired data type of array
-        - `copy`: *Optional*. By default (true), the object is copied 
-        - `order`: `C` (`C`-style, row major) or `F` (`FORTRAN`-style, column major) or `A` (any) (default)
-        - `subok`: By default, returned array forced to be a base class array. If true, sub-classes passed through
-        - `ndimin`: Specifies minimum dimensions of resultant array
+    - Parameters
+        - `object`: `array_like`. Any object exposing the array interface, whose `__array__` method returns an array, or any (nested) sequence. 
+        - `dtype`: `data-type`, *optional*. Desired data type of array, if not given then use min type to hold the data. 
+        - `copy`: `bool`, *optional*. By default (`True`), the object is copied. 
+        - `order`: `{'K', 'A', 'C', 'F'}`, *optional*. Specify the memory layout of the array. If object is not an array, the newly created array will be in C order (row major) unless `'F'` is specified, in which case it will be in Fortran order (column major). If object is an array, the following holds: 
+            - `'K'`: unchanged if `copy=False`, else F & C order preserved, otherwise most similar order
+            - `'A'`: unchanged if `copy=False`, else F order if input is F and not C, otherwise C order
+            - `'C'`: C order
+            - `'F'`: F order
+        - `subok`: `bool`, *optional*. If `True`, then sub-classes will be passed-through; otherwise, the returned array will be forced to be a base-class array (default). 
+        - `ndimin`: `int`, *optional*. Specifies minimum dimensions of resultant array. Ones will be pre-pended to the shape as needed to meet this requirement. 
+    - Returns: 
+        - `out`: `ndarray`. An array object satisfying the specified requirements. 
 
 ### 🌱 Data Types
 
@@ -963,7 +967,7 @@ UPDATEIFCOPY : False
             True
             ```
         - `numpy.ndarray.T`
-            - This *attribute* belongs to `ndarray` class. It behaves similar to `numpy.transpose`. 
+            - This *attribute* belongs to `ndarray` class. It behaves similar to `numpy.transpose`, i.e. is actually a *view* to original array but with its own transposed index mapping.  
             ```
             >>> a = np.arange(12).reshape(3, 4)
             >>> a
@@ -1064,9 +1068,123 @@ UPDATEIFCOPY : False
             ```
     - Changing Dimensions
         - `numpy.broadcast`: Produces an object that mimics broadcasting
+            - It returns an object that encapsulates the result of broadcasting one array against the other.
+            ```
+            >>> x = np.array([[1], [2], [3]])
+            >>> y = np.array([4, 5, 6])
+            >>> b = np.broadcast(x, y)
+            
+            >>> for (r, c) in b:
+            ...     print(r, c)
+            1 4
+            1 5
+            1 6
+            2 4
+            2 5
+            2 6
+            3 4
+            3 5
+            3 6
+
+            >>> out = np.empty(b.shape)
+            >>> out.flat = [u + v for (u, v) in b]
+            >>> out
+            array([[5.,  6.,  7.],
+                   [6.,  7.,  8.],
+                   [7.,  8.,  9.]])
+            ```
         - `numpy.broadcast_to`: Broadcasts an array to a new shape
-        - `numpy.exapnd_items`: Expands the shape of an array
-        - `numpy.squeeze`: Removes single-dimensional entries from the shape of an array
+            - This function broadcasts an array to a new shape. It returns a *read-only view* on the original array. It is typically **NOT** contiguous. The function may throw ValueError if the new shape does not comply with NumPy's broadcasting rules.
+            - Signature
+            ```
+            numpy.broadcast_to(array, shape, subok=False)
+            ```
+            - Parameters
+                - `array`: `array_like`. The array to broadcast.
+                - `shape`: `tuple`. The shape of the desired array.
+                - `subok`: `bool`, *optional*. If `True`, then sub-classes will be passed-through, otherwise the returned array will be forced to be a base-class array (default).
+            ```
+            >>> a = np.array([0, 1, 2, 3])
+            >>> np.broadcast_to(a, (4, 4))
+            [[0 1 2 3]
+             [0 1 2 3]
+             [0 1 2 3]
+             [0 1 2 3]]
+            ```
+        - `numpy.broadcast_arrays`
+            - Broadcast any number of arrays against each other. Return a `list` of arrays (*views* on the original arrays, typically **NOT** contiguous. Furthermore, more than one element of a broadcasted array may refer to a single memory location).
+            - Signature
+            ```
+            numpy.broadcast_arrays(*args, subok=False)
+            ```
+            - Parameters
+                - `*args`: `array_likes`. The arrays to broadcast.
+                - `subok`: `bool`, *optional*. If `True`, then sub-classes will be passed-through, otherwise the returned arrays will be forced to be a base-class array (default).
+            ```
+            >>> x = np.array([[1, 2, 3]])
+            >>> y = np.array([[4], [5]])
+            >>> np.broadcast_arrays(x, y)
+            [array([[1, 2, 3],
+                    [1, 2, 3]]),
+             array([[4, 4, 4],
+                    [5, 5, 5]])]
+            ```
+            - Here is a useful idiom for getting *contiguous copies* instead of non-contiguous views:
+            ```
+            >>> [np.array(a) for a in np.broadcast_arrays(x, y)]
+            [array([[1, 2, 3],
+                    [1, 2, 3]]),
+             array([[4, 4, 4],
+                    [5, 5, 5]])]
+            ```
+        - `numpy.exapnd_dims`
+            - This function expands the shape of an array by inserting a new axis at the specified position, returning a view. 
+            - Signature
+            ```
+            numpy.expand_dims(arr, axis)
+            ```
+            - Parameters
+                - `arr`: Input array
+                - `axis`: Position where new axis to be inserted
+        ```
+        >>> x = np.array(([1, 2], [3, 4]))
+        >>> x
+        array([[1, 2],
+               [3, 4]])
+        
+        >>> y = np.expand_dims(x, axis=0)
+        >>> y
+        array([[[1, 2],
+                [3, 4]]])
+        
+        >>> y.base is x
+        True
+        ```
+        - `numpy.squeeze`
+            - This function removes single-dimensional entry from the shape of the given array.
+            - Signature: 
+            ```
+            numpy.squeeze(arr, axis=None)
+            ```
+            - Parameters: 
+                - `arr`: Input array
+                - `axis`: `int` or `Tuple[int]`. Selects a subset of single-dimensional entries in the shape
+            ```
+            >>> x = np.arange(9).reshape(1, 3, 3)
+            >>> x
+            array([[[0, 1, 2],
+                    [3, 4, 5],
+                    [6, 7, 8]]])
+                    
+            >>> y = np.squeeze(x)
+            >>> y
+            array([[0, 1, 2],
+                   [3, 4, 5],
+                   [6, 7, 8]])
+                   
+            >>> y.base is x.base
+            True
+            ```
     - Joining Arrays
         - `numpy.concatenate`: Joins a sequence of arrays along an existing axis
         - `numpy.stack`: Joins a sequence of arrays along a new axis
