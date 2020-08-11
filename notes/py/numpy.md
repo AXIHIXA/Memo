@@ -243,7 +243,7 @@ UPDATEIFCOPY : False
     - Returns: 
         - `out`: `ndarray`.  Array of uninitialized (arbitrary) data with the same shape and type as prototype.
     ```
-    >>> a = ([1,2,3], [4,5,6])                         # a is array-like
+    >>> a = ([1, 2, 3], [4, 5, 6])                         # a is array-like
     >>> np.empty_like(a)
     array([[-1073741821, -1073741821,           3],    # uninitialized
            [          0,           0, -1073741821]])
@@ -431,38 +431,40 @@ UPDATEIFCOPY : False
 ### 🌱 Array from Existing Data
 
 - `numpy.array`
-- `numpy.asarray`
-    - similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`
-    - signature
+- [`numpy.asarray`](https://numpy.org/doc/stable/reference/generated/numpy.asarray.html?highlight=numpy%20asarray#numpy.asarray)
+    - Convert the input to an array. Similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`
+    - Signature
     ```
     numpy.asarray(a, dtype=None, order=None)
     ```
-    - parameters
-        - `a`: Input data in any form such as list, list of tuples, tuples, tuple of tuples or tuple of lists
-        - `dtype`: *Optional*. Desired data type of array. By default, data type of input data is applied
-        - `copy`: *Optional*. By default (true), the object is copied 
-        - `order`: `C` (`C`-style, row major) or `F` (`FORTRAN`-style, column major) or `A` (any) (default)
-```
->>> # convert list to ndarray
->>> import numpy as np
->>> x = [1, 2, 3]
->>> np.asarray(x)
-[1 2 3]
+    - Parameters
+        - `a`: `array_like`. Input data, in any form that can be converted to an array. This includes `List`, `List[Tuple]`, `Tuple`, `Tuple[Tuples]`, `Tuple[List[np.ndarray]]`.
+        - `dtype`: `data-type`, *optional*. By default, the data-type is inferred from the input data.
+        - `order`: `{'C', 'F'}`, *optional*. Whether to use row-major (C-style) or column-major (Fortran-style) memory representation. Defaults to ‘C’.
+    - Returns: 
+        - `out`: `ndarray`. Array interpretation of `a`. **NO** copy is performed if the input is already an `ndarray` with matching dtype and order. If `a` is a subclass of ndarray, a base class `ndarray` is returned. 
 
->>> # dtype is set
->>> np.asarray(x, dtype=float)
-[ 1. 2. 3.]
+    ```
+    >>> # convert list to ndarray
+    >>> import numpy as np
+    >>> x = [1, 2, 3]
+    >>> np.asarray(x)
+    [1 2 3]
 
->>> # ndarray from tuple
->>> x = (1, 2, 3)
->>> np.asarray(x)
-[1 2 3]
+    >>> # dtype is set
+    >>> np.asarray(x, dtype=float)
+    [ 1. 2. 3.]
 
->>> # ndarray from list of tuples
->>> x = [(1, 2, 3), (4, 5)]
->>> np.asarray(x)
-[(1, 2, 3) (4, 5)]
-```
+    >>> # ndarray from tuple
+    >>> x = (1, 2, 3)
+    >>> np.asarray(x)
+    [1 2 3]
+
+    >>> # ndarray from list of tuples
+    >>> x = [(1, 2, 3), (4, 5)]
+    >>> np.asarray(x)
+    [(1, 2, 3) (4, 5)]
+    ```
 - `numpy.frombuffer`
     - This function interprets a buffer as 1D array. Any object that exposes the buffer interface is used as parameter to return an `ndarray`
     - signature
@@ -506,88 +508,115 @@ UPDATEIFCOPY : False
 
 ### 🌱 Array from Numerical Ranges
 
-- `numpy.arange`
-    - This function returns an `ndarray` object containing evenly spaced values within a given range
-    - signature
+- [`numpy.arange`](https://numpy.org/doc/stable/reference/generated/numpy.arange.html?highlight=numpy%20arange#numpy.arange)
+    - Return evenly spaced values within a given interval.
+    - Values are generated within the half-open interval `[start, stop)`. For integer arguments the function is equivalent to the `Python` built-in range function, but returns an `ndarray` rather than a generator.
+    - When using a non-integer step, such as 0.1, the results will often **NOT** be consistent. It is better to use `numpy.linspace` for these cases.   
+    - Signature
     ```
-    numpy.arange(start, stop, step, dtype)
+    numpy.arange(start=0, stop, step=1, dtype=None)
     ```
-    - parameters
-        - `start`: *Optional*. The start of an interval. If omitted, defaults to `0`
-        - `end`: The end of an interval (**NOT** including this number)
-        - `step`: Spacing between values, default is `1`
-        - `dtype`: Data type of resulting ndarray. If not given, data type of input is used
-```
->>> import numpy as np
->>> x = np.arange(5)
->>> x
-[0 1 2 3 4]
+    - Parameters
+        - `start`: `number`, *optional*. Start of interval. The interval includes this value. The default start value is `0`.
+        - `stop`: `number`. End of interval. The interval does **NOT** include this value, except in some cases where step is not an integer and floating point round-off affects the length of out.
+        - `step`: `number`, *optional*. Spacing between values. For any output `out`, this is the distance between two adjacent values, `out[i + 1] - out[i]`. The default step size is `1`. If step is specified as a position argument, `start` *must also be given*. 
+        - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
+    - Returns: 
+        - `argange`: `ndarray`. Array of evenly spaced values. For floating point arguments, the length of the result is `ceil((stop - start) / step)`. Because of floating point overflow, this rule may result in the last element of out being greater than stop.
+    ```
+    >>> import numpy as np
+    >>> x = np.arange(5)
+    >>> x
+    [0 1 2 3 4]
 
->>> # dtype set
->>> x = np.arange(5, dtype=float)
->>> x
-[0. 1. 2. 3. 4.]
+    >>> # dtype set
+    >>> x = np.arange(5, dtype=float)
+    >>> x
+    [0. 1. 2. 3. 4.]
 
->>> # start and stop parameters set
->>> x = np.arange(10, 20, 2)
->>> x
-[10 12 14 16 18]
-```
-- `numpy.linspace`
-    - This function is similar to `numpy.arange` function. In this function, instead of step size, the *number* of evenly spaced values between the interval is specified
-    - signature
+    >>> # start and stop parameters set
+    >>> x = np.arange(10, 20, 2)
+    >>> x
+    [10 12 14 16 18]
     ```
-    numpy.linspace(start, stop, num, endpoint, retstep, dtype)
+- [`numpy.linspace`](https://numpy.org/doc/stable/reference/generated/numpy.linspace.html)
+    - This function is similar to `numpy.arange` function. In this function, instead of step size, the *number* of evenly spaced values between the interval `[start, stop]`
+    - Signature
     ```
-    - parameters
-        - `start`: The starting value of the sequence
-        - `stop`: The end value of the sequence, included in the sequence if endpoint set to `True`
-        - `num`: The number of evenly spaced samples to be generated. Default is `50`
-        - `endpoint`: `True` by default, hence the stop value is included in the sequence. If `False`, it is **NOT** included
-        - `retstep`: If `True`, returns a tuple of (samples, step between the consecutive numbers)
-        - `dtype`: Data type of output `ndarray`
-```
->>> import numpy as np
->>> x = np.linspace(10, 20, 5)
->>> x
-[10. 12.5 15. 17.5 20.]
+    numpy.linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis=0)
+    ```
+    - Parameters
+        - `start`: `array_like`. The starting value of the sequence
+        - `stop`: `array_like`. The end value of the sequence, *included* in the sequence if `endpoint=True`
+        - `num`: `int`, *optional*. The number of evenly spaced samples to be generated. Default is `50`
+        - `endpoint`: `bool`, *optional*. `True` by default, hence the stop value is included in the sequence. If `False`, it is **NOT** included
+        - `retstep`: `bool`, *optional*. If `True`, returns a tuple of (samples, step between the consecutive numbers)
+        - `dtype`: `data-type`, *optional*. Data type of output `ndarray`
+        - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if `start` or `stop` are `array-like`. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
+    - Returns: 
+        - `samples`: `ndarray`. There are num equally spaced samples in the closed interval `[start, stop]` or the half-open interval `[start, stop)` (depending on whether `endpoint` is `True` or `False`).
+        - `step`: `float`, *optional*. Only returned if `retstep=True`. Size of spacing between samples.
+    ```
+    >>> import numpy as np
+    >>> x = np.linspace(10, 20, 5)
+    >>> x
+    [10. 12.5 15. 17.5 20.]
 
->>> # endpoint set to false
->>> x = np.linspace(10, 20, 5, endpoint=False)
->>> x
-[10. 12. 14. 16. 18.]
+    >>> # endpoint set to false
+    >>> x = np.linspace(10, 20, 5, endpoint=False)
+    >>> x
+    [10. 12. 14. 16. 18.]
 
->>> # find retstep value
->>> x = np.linspace(1, 2, 5, retstep=True)
->>> x
-(array([ 1. , 1.25, 1.5 , 1.75, 2. ]), 0.25)
-```
-- `numpy.logspace`
-    - This function returns an `ndarray` object that contains the numbers that are evenly spaced on a log scale. `start` and `stop` endpoints of the scale are indices of the base, usually `10`
-    - signature
+    >>> # find retstep value
+    >>> x = np.linspace(1, 2, 5, retstep=True)
+    >>> x
+    (array([ 1. , 1.25, 1.5 , 1.75, 2. ]), 0.25)
     ```
-    numpy.logscale(start, stop, num, endpoint, base, dtype)
+- [`numpy.logspace`](https://numpy.org/doc/stable/reference/generated/numpy.logspace.html#numpy.logspace)
+    - Return numbers spaced evenly on a log scale. In linear space, the sequence starts at `base ** start` and ends with `base ** stop`. 
+    - Signature
     ```
-    - parameters
-        - `start`: The starting point of the sequence is basestart
-        - `stop`: The final value of sequence is basestop
-        - `num`: The number of values between the range. Default is `50`
-        - `endpoint`: If `True`, `stop` is the last value in the range
-        - `base`: Base of log space, default is `10`
-        - `dtype`: Data type of output array. If not given, it depends upon other input arguments
-```
->>> # default base is 10
->>> import numpy as np
->>> a = np.logspace(1.0, 2.0, num=10)
->>> a
-[ 10.         12.91549665 16.68100537 21.5443469  27.82559402
-  35.93813664 46.41588834 59.94842503 77.42636827 100.        ]
-  
->>> # set base of log space to 2
->>> a = np.logspace(1, 10, num=10, base=2)
->>> a
-[ 2. 4. 8. 16. 32. 64. 128. 256. 512. 1024.]
-```
+    numpy.logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0)
+    ```
+    - Parameters
+        - `start`: `array_like`. `base ** start` is the starting value of the sequence.
+        - `stop`: `array_like`. `base ** stop` is the final value of the sequence, unless `endpoint=False`. In that case, `num + 1` values are spaced over the interval in log-space, of which all but the last (a sequence of length num) are returned.
+        - `num`: `int`, *optional*. Number of samples to generate. Default is `50`.
+        - `endpoint`: `bool`, *optional*. If `True`, `stop` is the last sample. Otherwise, it is **NOT** included. Default is `True`.
+        - `base`: `float`, *optional*. The base of the log space. The step size between the elements in `ln(samples) / ln(base)` (or `log_base(samples)`) is uniform. Default is `10.0`.
+        - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
+        - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if start or stop are array-like. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
+    - Returns: 
+        - `samples`: `ndarray`. `num` samples equally spaced on a log scale.
+    ```
+    >>> # default base is 10
+    >>> import numpy as np
+    >>> a = np.logspace(1.0, 2.0, num=10)
+    >>> a
+    [ 10.         12.91549665 16.68100537 21.5443469  27.82559402
+      35.93813664 46.41588834 59.94842503 77.42636827 100.        ]
+      
+    >>> # set base of log space to 2
+    >>> a = np.logspace(1, 10, num=10, base=2)
+    >>> a
+    [ 2. 4. 8. 16. 32. 64. 128. 256. 512. 1024.]
+    ```
+- [`numpy.geomspace`](https://numpy.org/doc/stable/reference/generated/numpy.geomspace.html#numpy.geomspace)  
+    - Return numbers spaced evenly on a log scale (a geometric progression). This is similar to `logspace`, but with endpoints specified *directly*. Each output sample is a constant multiple of the previous.
+    - Signature: 
+    ```
+    numpy.geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0)
+    ```
+    - Parameters
+        - `start`: `array_like`. The starting value of the sequence.
+        - `stop`: `array_like`. The final value of the sequence, unless `endpoint=False`. In that case, `num + 1` values are spaced over the interval in log-space, of which all but the last (a sequence of length num) are returned.
+        - `num`: `int`, *optional*. Number of samples to generate. Default is `50`.
+        - `endpoint`: `bool`, *optional*. If `True`, `stop` is the last sample. Otherwise, it is **NOT** included. Default is `True`.
+        - `base`: `float`, *optional*. The base of the log space. The step size between the elements in `ln(samples) / ln(base)` (or `log_base(samples)`) is uniform. Default is `10.0`.
+        - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
+        - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if start or stop are array-like. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
+    - Returns: 
+        - `samples`: `ndarray`. `num` samples equally spaced on a log scale.
 
 ### 🌱 Basic Indexing & Slicing
 
@@ -997,56 +1026,93 @@ UPDATEIFCOPY : False
 
 - Several routines are available for manipulation of elements in `ndarray`: 
     - Changing Shape
-        - `numpy.reshape`
-            - This function returns a *view* having the specified shape, that shares the data with `arr`. Note that the returned view does **NOT** own the data (i.e., `resultant.base` is `None`)
+        - [`numpy.reshape`](https://numpy.org/doc/stable/reference/generated/numpy.reshape.html?highlight=numpy%20reshape#numpy.reshape), [numpy.ndarray.reshape](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.reshape.html#numpy.ndarray.reshape)
+            - Gives a new shape to an array **without** changing its data.
             - Signature: 
             ```
-            numpy.reshape(arr, newshape, order)
+            numpy.reshape(a, newshape, order='C')
             ```
             - Parameters: 
-                - `arr`: Array to be reshaped
-                - `newshape`: `int` or `Tuple[int]`. New shape should be compatible to the original shape
-                - `order`: `'C'` for `C` style, `'F'` for `Fortran` style, `'A'` means `Fortran` like order if an array is stored in `Fortran`-like contiguous memory, `C` style otherwise
+                - `a`: `array_like`. Array to be reshaped
+                - `newshape`: `int` or `Tuple[int]`. The new shape should be compatible with the original shape. If `int`, then the result will be a 1D array of that length. One shape dimension can be `-1`. In this case, the value is inferred from the length of the array and remaining dimensions. 
+                - `order`: `{'C', 'F', 'A'}`, *optional*. 
+            - Returns: 
+                - `reshaped_array`: `ndarray`. This will be a *new view* object if possible; otherwise, it will be a copy. Note there is **NO** guarantee of the memory layout (C or Fortran contiguous) of the returned array.
+            - Notes: 
+                - It is **NOT** always possible to change the shape of an array **without** copying the data. If you want an error to be raised when the data is copied, you should assign the new shape to the shape attribute of the array:
+                ```
+                >>> a = np.zeros((10, 2))
+
+                # A transpose makes the array non-contiguous
+                >>> b = a.T
+
+                # Taking a view makes it possible to modify the shape 
+                # without modifying the initial object.
+                >>> c = b.view()
+                >>> c.shape = (20)
+                Traceback (most recent call last):
+                   ...
+                AttributeError: Incompatible shape for in-place modification. Use 
+                `.reshape()` to make a copy with the desired shape.
+                ```
+            - Examples
             ```
-            >>> a = np.arange(8)
-            >>> a
-            [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11]
+            >>> a = np.array([[1, 2, 3], [4, 5, 6]])
             
             >>> a.base
             None
             
-            >>> b = a.reshape(4, 2)
+            >>> b = np.reshape(a, (3, -1))  # the unspecified value is inferred to be 2
             >>> b
-            [[ 0,  1,  2,  3],
-             [ 4,  5,  6,  7],
-             [ 8,  9, 10, 11]]
-            
+            array([[1, 2],
+                   [3, 4],
+                   [5, 6]])
+                   
             >>> b.base is a
             True
-            
-            >>> b[1, 1] = 50
-            >>> a
-            [ 0,  1,  2,  3,  4, 50,  6,  7,  8,  9, 10, 11]
             ```
-        - `numpy.ndarray.flat`: A 1D iterator over the array
-            - This function returns a *1D iterator* over the array. It behaves similar to `Python`'s built-in iterator.
+        - `numpy.ndarray.flat`
+            - A 1-D iterator over the array. This is a `numpy.flatiter` instance, which acts similarly to, but is not a subclass of, `Python`’s built-in `iter` object. 
             ```
-            >>> a = np.arange(8).reshape(2, 4)
-            >>> a
-            [[0 1 2 3]
-             [4 5 6 7]]
+            >>> x = np.arange(1, 7).reshape(2, 3)
+            >>> x
+            array([[1, 2, 3],
+                   [4, 5, 6]])
 
-            >>> a.flat[5]
+            >>> x.flat[3]
+            4
+
+            >>> x.T
+            array([[1, 4],
+                   [2, 5],
+                   [3, 6]])
+
+            >>> x.T.flat[3]
             5
+
+            >>> type(x.flat)
+            <class 'numpy.flatiter'>
+
+            >>> x.flat = 3
+            >>> x
+            array([[3, 3, 3],
+                   [3, 3, 3]])
+
+            >>> x.flat[[1, 4]] = 1
+            >>> x
+            array([[3, 1, 3],
+                   [3, 1, 3]])
             ```
-        - `numpy.ndarray.flatten`
-            - This function returns a *copy* of an array collapsed into 1D. 
+        - [`numpy.ndarray.flatten`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flatten.html#numpy.ndarray.flatten)
+            - Return a *copy* of the array collapsed into one dimension.
             - Signature: 
             ```
-            ndarray.flatten(order)
+            ndarray.flatten(order='C')
             ```
             - Parameters: 
-                - `order`: `'C'`: row major (default); `'F'`: column major; `'A'`: flatten in column-major order, if a is Fortran contiguous in memory, row-major order otherwise; `'K'`: flatten array in the order the elements occur in the memory
+                - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. 
+            - Returns: 
+                - `y`: `ndarray`. A copy of the input array, flattened to one dimension.
             ```
             >>> a = np.arange(8).reshape(2, 4)
             >>> a
@@ -1068,14 +1134,15 @@ UPDATEIFCOPY : False
             >>> a.flatten(order='F')
             [0 4 1 5 2 6 3 7]
             ```
-        - `numpy.ravel`
-            - This function returns a *view* of original array that is flattened into 1D (whenever possible, or a copy). The returned array will have the same type as that of the input array. 
+        - [`numpy.ravel`](https://numpy.org/doc/stable/reference/generated/numpy.ravel.html?highlight=numpy%20ravel)
+            - This function returns a *view* of original array that is flattened into contiguous 1D (whenever possible. A copy is made only if needed). The returned array will have the same type as that of the input array. 
             - Signature: 
             ```
-            ndarray.ravel(a, order)
+            ndarray.ravel(a, order='C')
             ```
             - Parameters: 
-                - `order`: `'C'`: row major (default); `'F'`: column major; `'A'`: flatten in column-major order, if a is Fortran contiguous in memory, row-major order otherwise; `'K'`: flatten `a` in the order the elements occur in the memory
+                - `a`: `array_like`. Input array. The elements in a are read in the order specified by order, and packed as a 1-D array. 
+                - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. 
             ```
             >>> a = np.arange(8).reshape(2, 4)
             >>> a
@@ -1089,15 +1156,20 @@ UPDATEIFCOPY : False
             [0 4 1 5 2 6 3 7]
             ```
     - Transpose Operations
-        - `numpy.transpose`
-            - This function permutes the dimension of the given array. It returns a `view` whenever possible. 
+        - [`numpy.transpose`](https://numpy.org/doc/stable/reference/generated/numpy.transpose.html#numpy.transpose)
+            - Reverse or permute the axes of an array; returns the modified array. For an array a with two axes, this function gives the matrix transpose. 
             - Signature
             ```
-            numpy.transpose(arr, axes)
+            numpy.transpose(a, axes=None)
             ```
             - Parameters: 
-                - `arr`: The array to be transposed
-                - `axes`: `List[int]`, corresponding to the dimensions. By default, the dimensions are reversed
+                - `a`: `array_like`. The array to be transposed
+                - `axes`: `Tuple[int]` or `List[int]`, *optional*. If specified, it must be a `tuple` or `list` which contains a permutation of `[0, 1 , .., N - 1]` where `N == a.ndim`. The `i`-th axis of the returned array will correspond to the axis numbered `axes[i]` of the input. If not specified, defaults to `range(a.ndim)[::-1]`, which reverses the order of the axes.
+            - Returns: 
+                - `p`: `ndarray`. `a` with its axes permuted. A *view* is returned whenever possible. 
+            - Notes: 
+                - Use `np.transpose(a, np.argsort(axes))` to invert the transposition of tensors when using the axes keyword argument.
+                - Transposing a 1-D array returns an *unchanged* view of the original array.
             ```
             >>> a = np.arange(12).reshape(3, 4)
             >>> a
@@ -1120,8 +1192,8 @@ UPDATEIFCOPY : False
             >>> b.base is a.base
             True
             ```
-        - `numpy.ndarray.T`
-            - This *attribute* belongs to `ndarray` class. It behaves similar to `numpy.transpose`, i.e. is actually a *view* to original array but with its own transposed index mapping.  
+        - [`numpy.ndarray.T`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.T.html?highlight=numpy%20ndarray%20t#numpy.ndarray.T)
+            - This *attribute* belongs to `ndarray` class. It behaves similar to `self.transpose()`, i.e. is actually a *view* to original array but with its own transposed index mapping.  
             ```
             >>> a = np.arange(12).reshape(3, 4)
             >>> a
@@ -1144,55 +1216,60 @@ UPDATEIFCOPY : False
             >>> b.base is a.base
             True
             ```
-        - `numpy.swapaxes`
-            - This function interchanges the two axes of an array. A *view* of the swapped array is returned `(since NumPy1.10)`.
-                - Note swapping axes can be done simply by swapping the indexes of affected dimensions when indexing
-            - Signature
+        - [`numpy.moveaxis`](https://numpy.org/doc/stable/reference/generated/numpy.moveaxis.html)
+            - Move axes of an array to new positions. Other axes remain in their original order. 
+            - Signature: 
             ```
-            numpy.swapaxes(arr, axis1, axis2)
+            numpy.moveaxis(a, source, destination)
             ```
             - Parameters: 
-                - `arr`: Input array whose axes are to be swapped
-                - `axis1`: An `int` corresponding to the first axis
-                - `axis2`: An `int` corresponding to the second axis
+                - `a`: `ndarray`. The array whose axes should be reordered.
+                - `source`: `int` or `Sequence[int]`. Original positions of the axes to move. These must be unique. 
+                - `destination`: `int` or `Sequence[int]`. Destination positions for each of the original axes. These must also be unique. 
+            - Returns
+                - `result`: `ndarray`. Array with moved axes. This array is a *view* of the input array. 
             ```
-            >>> a = np.arange(8).reshape(2, 2, 2)
-            >>> a
-            array([[[0, 1],
-                    [2, 3]],
+            >>> x = np.zeros((3, 4, 5))
 
-                   [[4, 5],
-                    [6, 7]]])
-            
-            >>> b = np.swapaxes(a, 2, 0)
-            >>> b
-            array([[[0, 4],
-                    [2, 6]],
+            >>> np.moveaxis(x, 0, -1).shape
+            (4, 5, 3)
 
-                   [[1, 5],
-                    [3, 7]]])
+            >>> np.moveaxis(x, -1, 0).shape
+            (5, 3, 4)
             
-            >>> b.base is a.base
-            True
-            
-            >>> for i in range(2):
-            ...    for j in range(2):
-            ...        for k in range(2):
-            ...            if b[i, j, k].base is not a[k, j, i].base: 
-            ...                print('hehe')
-            
+            >>> np.transpose(x).shape
+            (5, 4, 3)
+
+            >>> np.swapaxes(x, 0, -1).shape
+            (5, 4, 3)
+
+            >>> np.moveaxis(x, [0, 1], [-1, -2]).shape
+            (5, 4, 3)
+
+            >>> np.moveaxis(x, [0, 1, 2], [-1, -2, -3]).shape
+            (5, 4, 3)
             ```
-        - `numpy.rollaxis`
-            - This function returns a *view* of `arr` whose specified axis looks like being rolled backwards, until it lies in a specified position. 
+        - [`numpy.rollaxis`](https://numpy.org/doc/stable/reference/generated/numpy.rollaxis.html)
+            - Roll the specified axis backwards, until it lies in a given position. This function continues to be supported for backward compatibility, but you should prefer `moveaxis`. 
                 - e.g. roll axis `2` backwards to `0` will have index dimention mapping `0 1 2 -> 0 2 1 -> 2 0 1`
             - Signature: 
             ```
-            numpy.rollaxis(arr, axis, start)
+            numpy.rollaxis(a, axis, start=0)
             ```
             - Parameters: 
-                - `arr`: Input array
-                - `axis`: Axis to roll backwards. The position of the other axes do not change relative to one another
-                - `start`: `0` by default leading to the complete roll. Rolls until it reaches the specified position
+                - `a`: `ndarray`. Input array
+                - `axis`: `int`. Axis to roll backwards. The positions of the other axes do not change relative to one another. 
+                - `start`: `int`, *optional*. `When start <= axis`, the axis is rolled back until it lies in this position. When `start > axis`, the axis is rolled until it lies before this position. The default, `0`, results in a “complete” roll. The following table describes how negative values of start are interpreted: `0` by default leading to the complete roll: 
+                    - `-(a.ndim + 1)`: raise `AxisError`
+                    - `-a.ndim`: 0
+                    - `...`: `...`
+                    - `-1`: `a.ndim - 1`
+                    - `-1`: `0`
+                    - `...`: `...`
+                    - `a.ndim`: `a.ndim`
+                    - `a.ndim + 1`: raise `AxisError`
+            - Returns: 
+                - `res`: `ndarray`. A view of a is always returned `(since NumPy 1.10.0)`. 
             ```
             >>> a = np.arange(8).reshape(2, 2, 2)
             >>> a
@@ -1220,6 +1297,46 @@ UPDATEIFCOPY : False
                    [[2, 3],
                     [6, 7]]])
             ```
+        - [`numpy.swapaxes`](https://numpy.org/doc/stable/reference/generated/numpy.swapaxes.html)
+            - Interchange two axes of an array. 
+            - Signature
+            ```
+            numpy.swapaxes(a, axis1, axis2)
+            ```
+            - Parameters: 
+                - `a`: `array_like`. Input array whose axes are to be swapped
+                - `axis1`: `int`. First axis
+                - `axis2`: `int`. Second axis
+            - Returns: 
+                - `a_swapped`: `ndarray`. If `a` is an `ndarray`, then a *view* is returned; otherwise, a new array is created.
+            ```
+            >>> a = np.arange(8).reshape(2, 2, 2)
+            >>> a
+            array([[[0, 1],
+                    [2, 3]],
+
+                   [[4, 5],
+                    [6, 7]]])
+            
+            >>> b = np.swapaxes(a, 2, 0)
+            >>> b
+            array([[[0, 4],
+                    [2, 6]],
+
+                   [[1, 5],
+                    [3, 7]]])
+            
+            >>> b.base is a.base
+            True
+            
+            >>> for i in range(2):
+            ...    for j in range(2):
+            ...        for k in range(2):
+            ...            if b[i, j, k].base is not a[k, j, i].base: 
+            ...                print('hehe')
+            
+            ```
+
     - Changing Dimensions
         - `numpy.broadcast`: Produces an object that mimics broadcasting
             - It returns an object that encapsulates the result of broadcasting one array against the other.
@@ -1291,38 +1408,66 @@ UPDATEIFCOPY : False
              array([[4, 4, 4],
                     [5, 5, 5]])]
             ```
-        - `numpy.exapnd_dims`
-            - This function expands the shape of an array by inserting a new axis at the specified position, returning a view. 
+        - [`numpy.expand_dims`](https://numpy.org/doc/stable/reference/generated/numpy.expand_dims.html?highlight=numpy%20expand_dims#numpy.expand_dims)
+            - Expand the shape of an array. Insert a new axis that will appear at the axis position in the expanded array shape. 
             - Signature
             ```
-            numpy.expand_dims(arr, axis)
+            numpy.expand_dims(a, axis)
             ```
             - Parameters
-                - `arr`: Input array
-                - `axis`: Position where new axis to be inserted
-        ```
-        >>> x = np.array(([1, 2], [3, 4]))
-        >>> x
-        array([[1, 2],
-               [3, 4]])
-        
-        >>> y = np.expand_dims(x, axis=0)
-        >>> y
-        array([[[1, 2],
-                [3, 4]]])
-        
-        >>> y.base is x
-        True
-        ```
-        - `numpy.squeeze`
-            - This function removes single-dimensional entry from the shape of the given array.
+                - `a`: `array_like`. Input array
+                - `axis`: `int` or `Tuple[int]`. Position in the expanded axes where the new axis (or axes) is placed. 
+            - Returns: 
+                - `result`: `ndarray`. *View* of `a` with the number of dimensions increased.
+            - Notes: 
+                - Note that some examples may use `None` instead of `np.newaxis`. These are the same objects:
+                ```
+                >>> np.newaxis is None
+                True
+                ```
+            - Examples: 
+            ```
+            >>> x = np.array([1, 2])
+            >>> x.shape
+            (2,)
+            
+            # equivalent to x[np.newaxis, :] or x[np.newaxis]
+            >>> y = np.expand_dims(x, axis=0)
+            >>> y
+            array([[1, 2]])
+            
+            >>> y.shape
+            (1, 2)
+            
+            # equivalent to x[:, np.newaxis]
+            >>> y = np.expand_dims(x, axis=1)
+            >>> y
+            array([[1],
+                   [2]])
+
+            >>> y.shape
+            (2, 1)
+          
+            # axis may also be a tuple
+            >>> x = np.array([[1, 2], [3, 4]])
+            >>> x.shape
+            (2, 2)
+            
+            >>> y = np.exapnd_dims(x, axis=(2, 0))
+            >>> y.shape
+            (1, 2, 1, 2)
+            ```
+        - [`numpy.squeeze`](https://numpy.org/doc/stable/reference/generated/numpy.squeeze.html#numpy.squeeze)
+            - Remove single-dimensional entries from the shape of an array. 
             - Signature: 
             ```
-            numpy.squeeze(arr, axis=None)
+            numpy.squeeze(a, axis=None)
             ```
             - Parameters: 
-                - `arr`: Input array
-                - `axis`: `int` or `Tuple[int]`. Selects a subset of single-dimensional entries in the shape
+                - `arr`: `array_like`. `Input array
+                - `axis`: `None` or `int` or `Tuple[int]`. Selects a subset of the single-dimensional entries in the shape. If an axis is selected with shape entry greater than one, an error is raised. 
+            - Returns: 
+                - `squeezed`: `ndarray`. The input array, but with all or a subset of the dimensions of length `1` removed. This is always `a` itself or a *view* into `a`. Note that if all axes are squeezed, the result is a 0-D array and **NOT** a scalar.
             ```
             >>> x = np.arange(9).reshape(1, 3, 3)
             >>> x
@@ -1340,21 +1485,20 @@ UPDATEIFCOPY : False
             True
             ```
     - Joining Arrays
-        - `numpy.concatenate`: Joins a sequence of arrays along an existing axis
-        - `numpy.stack`: Joins a sequence of arrays along a new axis
-        - `numpy.hstack`: Stacks arrays in sequence horizontally (column wise)
-        - `numpy.vstack`: Stacks arrays in sequence vertically (row wise)
+        - `numpy.concatenate`
+        - `numpy.stack`
+        - `numpy.hstack`
+        - `numpy.vstack`
     - Splitting Arrays
-        - `numpy.split`: Splits an array into multiple sub-arrays
-        - `numpy.hsplit`: Splits an array into multiple sub-arrays horizontally (column-wise)
-        - `numpy.vsplit`: Splits an array into multiple sub-arrays vertically (row-wise)
+        - `numpy.split`
+        - `numpy.hsplit`
+        - `numpy.vsplit`
     - Adding / Removing Elements
-        - `numpy.resize`: Returns a new array with the specified shape
-        - `numpy.append`: Appends the values to the end of an array
-        - `numpy.insert`: Inserts the values along the given axis before the given indices
-        - `numpy.delete`: Returns a new array with sub-arrays along an axis deleted
-        - `numpy.unique`: Finds the unique elements of an array
-
+        - `numpy.resize`
+        - `numpy.append`
+        - `numpy.insert`
+        - `numpy.delete`
+        - `numpy.unique`
 
 
 
