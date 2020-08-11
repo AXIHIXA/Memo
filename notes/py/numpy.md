@@ -208,71 +208,225 @@ UPDATEIFCOPY : False
 
 ### 🌱 Array Creation Routines
 
-- `numpy.empty`
-    - creates an *uninitialized* array of specified `shape` and `dtype`
-    - signature
+- [`numpy.empty`](https://numpy.org/doc/stable/reference/generated/numpy.empty.html#numpy.empty)
+    - Creates an *uninitialized* array of specified `shape` and `dtype`
+    - Signature
     ```
     numpy.empty(shape, dtype=float, order='C')
     ```
-    - parameters
-        - `shape`: int, or tuple of int. shape of an empty array
-        - `dtype`: desired output data type. *Optional*
-        - `order`: `'C'` for `C`-style row-major array, `'F'` for `FORTRAN`-style column-major array
-```
->>> import numpy as np
->>> x = np.empty([3, 2], dtype=int)
->>> x
-[[22649312   1701344351]
- [1818321759 1885959276]
- [16779776   156368896]]
-```
-- `numpy.zeros`
-    - returns a new array of specified size, filled with zeros
-        - signature
+    - Parameters
+        - `shape`: `int` or `Tuple[int]`. shape of an empty array
+        - `dtype`: `data-type`, *optional*. Desired output data-type for the array, e.g, `numpy.int8`. Default is `numpy.float64`.
+        - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory. 
+    - Returns: 
+        - `out`: `ndarray`. Array of uninitialized (arbitrary) data of the given shape, dtype, and order. Object arrays will be initialized to `None`. 
+    ```
+    >>> import numpy as np
+    >>> x = np.empty([3, 2], dtype=int)
+    >>> x
+    [[22649312   1701344351]
+     [1818321759 1885959276]
+     [16779776   156368896]]
+    ```
+- [`numpy.empty_like`](https://numpy.org/doc/stable/reference/generated/numpy.empty_like.html#numpy.empty_like)
+    - Return a new *uninitialized* array with the same shape and type as a given array. 
+    - Signature: 
+    ```
+     numpy.empty_like(a, dtype=None, order='K', subok=True, shape=None)
+    ```
+    - Parameters: 
+        - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
+        - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
+        - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. `‘C’` means C-order, `‘F’` means F-order, `‘A’` means `‘F’` if prototype is Fortran contiguous, `‘C’` otherwise. `‘K’` means match the layout of prototype as closely as possible.
+        - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
+        - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied. 
+    - Returns: 
+        - `out`: `ndarray`.  Array of uninitialized (arbitrary) data with the same shape and type as prototype.
+    ```
+    >>> a = ([1,2,3], [4,5,6])                         # a is array-like
+    >>> np.empty_like(a)
+    array([[-1073741821, -1073741821,           3],    # uninitialized
+           [          0,           0, -1073741821]])
+
+    >>> a = np.array([[1., 2., 3.], [4., 5., 6.]])
+    >>> np.empty_like(a)
+    array([[ -2.00000715e+000,   1.48219694e-323,  -2.00000572e+000], # uninitialized
+           [  4.38791518e-305,  -2.00000715e+000,   4.17269252e-309]])
+    ```
+- [`numpy.zeros`](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html#numpy.zeros)
+    - Return a new array of given shape and type, filled with zeros.
+    - Signature
     ```
     numpy.zeros(shape, dtype=float, order='C')
     ```
-    - parameters
-        - `shape`: int, or tuple of int. shape of an empty array
-        - `dtype`: desired output data type. *Optional*
-        - `order`: `'C'` for `C`-style row-major array, `'F'` for `FORTRAN`-style column-major array
-```
->>> import numpy as np
->>> x = np.zeros(5)
->>> x
-[ 0. 0. 0. 0. 0.]
+    - Parameters
+        - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
+        - `dtype`: `data-type`, *optional*. Desired output data type. e.g, `numpy.int8`. Default is `numpy.float64`.
+        - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
+    - Returns: 
+        - `out`: `ndarray`. Array of zeros with the given shape, dtype, and order.
+    ```
+    >>> import numpy as np
+    >>> x = np.zeros(5)
+    >>> x
+    [ 0. 0. 0. 0. 0.]
 
->>> x = np.zeros((5, ), dtype=np.int)
->>> x
-[0 0 0 0 0]
+    >>> x = np.zeros((5, ), dtype=np.int)
+    >>> x
+    [0 0 0 0 0]
 
->>> # custom type
->>> x = np.zeros((2, 2), dtype=[('x', 'i4'), ('y', 'i4')])
->>> x
-[[(0, 0) (0, 0)]
- [(0, 0) (0, 0)]]
-```
-- `numpy.ones`
-    - returns a new array of specified size, filled with ones
-        - signature
+    >>> # custom type
+    >>> x = np.zeros((2, 2), dtype=[('x', 'i4'), ('y', 'i4')])
+    >>> x
+    [[(0, 0) (0, 0)]
+     [(0, 0) (0, 0)]]
+    ```
+- [`numpy.zeros_like`](https://numpy.org/doc/stable/reference/generated/numpy.zeros_like.html)
+    - Return an array of zeros with the same shape and type as a given array.
+    - Signature: 
+    ```
+    numpy.zeros_like(a, dtype=None, order='K', subok=True, shape=None)
+    ```
+    - Parameters: 
+        - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
+        - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
+        - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
+        - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
+        - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
+    - Returns: 
+        - `out`: `ndarray`. Array of zeros with the same shape and type as `a`. 
+    ```
+    >>> x = np.arange(6).reshape((2, 3))
+    >>> x
+    array([[0, 1, 2],
+           [3, 4, 5]])
+
+    >>> np.zeros_like(x)
+    array([[0, 0, 0],
+           [0, 0, 0]])
+           
+    >>> y = np.arange(3, dtype=float)
+    >>> y
+    array([0., 1., 2.])
+
+    >>> np.zeros_like(y)
+    array([0.,  0.,  0.])
+    ```
+- [`numpy.ones`](https://numpy.org/doc/stable/reference/generated/numpy.ones.html#numpy.ones)
+    - Return a new array of given shape and type, filled with ones.
+    - Signature
     ```
     numpy.ones(shape, dtype=float, order='C')
     ```
-    - parameters
-        - `shape`: int, or tuple of int. shape of an empty array
-        - `dtype`: desired output data type. *Optional*
-        - `order`: `'C'` for `C`-style row-major array, `'F'` for `FORTRAN`-style column-major array
-```
->>> import numpy as np
->>> x = np.ones(5)
->>> x
-[ 1. 1. 1. 1. 1.]
+    - Parameters
+        - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
+        - `dtype`: `data-type`, *optional*. Desired output data type. e.g, `numpy.int8`. Default is `numpy.float64`.
+        - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
+    - Returns: 
+        - `out`: `ndarray`. Array of ones with the given shape, dtype, and order.
+    ```
+    >>> import numpy as np
+    >>> x = np.ones(5)
+    >>> x
+    [ 1. 1. 1. 1. 1.]
 
->>> x = np.ones([2, 2], dtype=int)
->>> x
-[[1 1]
- [1 1]]
-```
+    >>> x = np.ones([2, 2], dtype=int)
+    >>> x
+    [[1 1]
+     [1 1]]
+    ```
+- [`numpy.ones_like`](https://numpy.org/doc/stable/reference/generated/numpy.ones_like.html)
+    - Return an array of zeros with the same shape and type as a given array.
+    - Signature: 
+    ```
+    numpy.ones_like(a, dtype=None, order='K', subok=True, shape=None)
+    ```
+    - Parameters: 
+        - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
+        - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
+        - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
+        - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
+        - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
+    - Returns: 
+        - `out`: `ndarray`. Array of zeros with the same shape and type as `a`. 
+    ```
+    >>> x = np.arange(6).reshape((2, 3))
+    >>> x
+    array([[0, 1, 2],
+           [3, 4, 5]])
+
+    >>> np.ones_like(x)
+    array([[1, 1, 1],
+           [1, 1, 1]])
+           
+    >>> y = np.arange(3, dtype=float)
+    >>> y
+    array([0., 1., 2.])
+
+    >>> np.ones_like(y)
+    array([1.,  1.,  1.])
+    ```
+- [`numpy.full`](https://numpy.org/doc/stable/reference/generated/numpy.full.html#numpy.full)
+    - RReturn a new array of given shape and type, filled with `fill_value`. 
+    - Signature
+    ```
+    numpy.full(shape, fill_value, dtype=None, order='C')[source]
+    ```
+    - Parameters
+        - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
+        - `fill_value`: `scalar` or `array_like`, Fill value.
+        - `dtype`: `data-type`, *optional*. The desired data-type for the array. The default, `None`, means `np.array(fill_value).dtype`.
+        - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
+    - Returns: 
+        - `out`: `ndarray`. Array of `fill_value` with the given shape, dtype, and order.
+    ```
+    >>> np.full((2, 2), np.inf)
+    array([[inf, inf],
+           [inf, inf]])
+
+    >>> np.full((2, 2), 10)
+    array([[10, 10],
+           [10, 10]])
+    
+    >>> np.full((2, 2), [1, 2])
+    array([[1, 2],
+           [1, 2]])
+    ```
+- [`numpy.full_like`](https://numpy.org/doc/stable/reference/generated/numpy.full_like.html#numpy.full_like)
+    - Return a full array with the same shape and type as a given array. 
+    - Signature: 
+    ```
+    numpy.full_like(a, fill_value, dtype=None, order='K', subok=True, shape=None)
+    ```
+    - Parameters: 
+        - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
+        - `fill_value`: `scalar`. Fill value.
+        - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
+        - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
+        - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
+        - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
+    - Returns: 
+        - `out`: `ndarray`. Array of `fill_value` with the same shape and type as `a`. 
+    ```
+    >>> x = np.arange(6, dtype=int)
+
+    >>> np.full_like(x, 1)
+    array([1, 1, 1, 1, 1, 1])
+
+    >>> np.full_like(x, 0.1)
+    array([0, 0, 0, 0, 0, 0])
+
+    >>> np.full_like(x, 0.1, dtype=np.double)
+    array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+
+    >>> np.full_like(x, np.nan, dtype=np.double)
+    array([nan, nan, nan, nan, nan, nan])
+
+    >>> y = np.arange(6, dtype=np.double)
+
+    >>> np.full_like(y, 0.1)
+    array([0.1,  0.1,  0.1,  0.1,  0.1,  0.1])
+    ```
 
 ### 🌱 Array from Existing Data
 

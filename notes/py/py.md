@@ -774,9 +774,205 @@ class Dog:
 'Buddy'
 ```
 
+
+
+
+
+
 ### 🌱 [标准库](https://docs.python.org/zh-cn/3.7/library/index.html)
 
 - 比较牛B，就不像隔壁`C++`那样抄了，实在抄不完
+
+
+
+
+
+
+### 🌱 [类型标注](https://docs.python.org/zh-cn/3.7/library/typing.html)
+
+- 概述
+    - `Python runtime`不强迫执行函数以及变量类型标注。类型标注是为了方便第三方工具，例如`type checker`、`IDE`以及`linters`等。
+    - 最基本的类型标注由[`Any`](https://docs.python.org/zh-cn/3.7/library/typing.html#typing.Any)、[`Union`](https://docs.python.org/zh-cn/3.7/library/typing.html#typing.Union)、[`Tuple`](https://docs.python.org/zh-cn/3.7/library/typing.html#typing.Tuple)、[`Callable`](https://docs.python.org/zh-cn/3.7/library/typing.html#typing.Callable)、[`TypeVar`](https://docs.python.org/zh-cn/3.7/library/typing.html#typing.TypeVar)和[`Generic`](https://docs.python.org/zh-cn/3.7/library/typing.html#typing.Any)类型组成。
+    - 例如，可以指定如下函数接受并返回一个字符串（`str`的子类型也可以）
+    ```
+    def greeting(name: str) -> str: 
+        return 'Hello' + name
+    ```
+- *类型别名* 
+    - *类型别名* 通过将类型分配给别名来定义。
+    - 在这个例子中，`Vector`和`List[float]`将被视为可互换的同义词：
+    ```
+    from typing import List
+    Vector = List[float]
+
+    def scale(scalar: float, vector: Vector) -> Vector:
+        return [scalar * num for num in vector]
+
+    # typechecks; a list of floats qualifies as a Vector.
+    new_vector = scale(2.0, [1.0, -4.2, 5.4])
+    ```
+    - 类型别名可用于简化复杂类型签名。例如：
+    ```
+    from typing import Dict, Tuple, Sequence
+
+    ConnectionOptions = Dict[str, str]
+    Address = Tuple[str, int]
+    Server = Tuple[Address, ConnectionOptions]
+
+    def broadcast_message(message: str, servers: Sequence[Server]) -> None:
+        ...
+
+    # The static type checker will treat the previous type signature as
+    # being exactly equivalent to this one.
+    def broadcast_message
+    (
+        message: str,
+        servers: Sequence[Tuple[Tuple[str, int], Dict[str, str]]]
+    ) -> None:
+        ...
+    ```
+    - 请注意，`None`作为类型提示是一种特殊情况：应当写作`type(None)`
+- `NewType`
+    - 使用[`NewType`](https://docs.python.org/zh-cn/3.7/library/typing.html#typing.NewType)辅助函数创建不同的类型
+    ```
+    from typing import NewType
+
+    UserId = NewType('UserId', int)
+    some_id = UserId(524313)
+    ```
+    - 静态类型检查器会将新类型视为其 *原始类型的子类* 。这对于帮助捕捉逻辑错误非常有用：
+    ```
+    def get_user_name(user_id: UserId) -> str:
+        ...
+
+    # typechecks
+    user_a = get_user_name(UserId(42351))
+
+    # does not typecheck; an int is not a UserId
+    user_b = get_user_name(-1)
+    ```
+    - 您仍然可以对`UserId`类型的变量执行所有的`int`支持的操作，但结果将始终为`int`类型。这可以让你在需要`int` 的地方传入`UserId`，但会**阻止**你以无效的方式无意中创建`UserId`：
+    ```
+    # 'output' is of type 'int', not 'UserId'
+    output = UserId(23413) + UserId(54341)
+    ```
+    - 请注意，这些检查仅通过静态类型检查程序强制执行。在运行时，`Derived = NewType('Derived'，Base)`是创建了一个名为`Derived`的函数，该函数立即返回您传递它的任何参数。这意味着表达式 `Derived(some_value)` **不会**创建一个新的类或引入任何超出常规函数调用的开销。更确切地说，表达式 `some_value is Derived(some_value)`在运行时总是为`True`。这也意味着**无法**创建`Derived`的派生类型，因为它是运行时的标识函数，而不是实际的类型：
+    ```
+    from typing import NewType
+
+    UserId = NewType('UserId', int)
+
+    # Fails at runtime and does not typecheck
+    class AdminUserId(UserId): pass
+    ```
+    - 但是，可以用`NewType`函数套娃，并且`ProUserId`的类型检查将按预期工作：
+    ```
+    from typing import NewType
+
+    UserId = NewType('UserId', int)
+
+    ProUserId = NewType('ProUserId', UserId)
+    ```
+    - **注解**
+        - 回想一下，使用类型别名声明两种类型彼此 *等效* 。`Alias = Original`将使静态类型检查对待所有情况下`Alias`完全等同于`Original`。当您想简化复杂类型签名时，这很有用。
+        - 相反，`NewType`声明一种类型是另一种类型的 *子类型* 。`Derived = NewType('Derived', Original)`将使静态类型检查器将 `Derived`当作`Original`的 *子类* ，这意味着`Original`类型的值**不能**用于`Derived`类型的值需要的地方。当您想以最小的运行时间成本防止逻辑错误时，这非常有用。
+- `Callable`
+    - 期望特定签名的回调函数的框架可以将类型标注为`Callable[[ArgType, Arg2Type], ReturnType]`，例如：
+    ```
+    from typing import Callable
+
+    def feeder(get_next_item: Callable[[], str]) -> None:
+        # Body
+
+    def async_query
+    (
+        on_success: Callable[[int], None],
+        on_error: Callable[[int, Exception], None]
+    ) -> None:
+        # Body
+    ```
+    - 通过用 *文字省略号* `...` 替换类型提示中的参数列表：`Callable[...，ReturnType]`，可以声明可调用的返回类型，而无需指定调用签名。
+- 泛型（Generic）
+    - 由于无法以通用方式静态推断有关保存在容器中的对象的类型信息，因此抽象基类已扩展为支持订阅以表示容器元素的预期类型。
+    ```
+    from typing import Mapping, Sequence
+
+    def notify_by_email
+    (
+        employees: Sequence[Employee],
+        overrides: Mapping[str, str]
+    ) -> None: 
+        ...
+    ```
+    - 泛型可以通过使用`typing`模块中名为`TypeVar`的新工厂进行参数化。
+    ```
+    from typing import Sequence, TypeVar
+
+    T = TypeVar('T')      # Declare type variable
+
+    def first(l: Sequence[T]) -> T:   # Generic function
+        return l[0]
+    ```
+- `Any`类型
+    - `Any`是一种特殊的类型。静态类型检查器将所有类型视为与`Any`兼容，反之亦然，`Any`也与所有类型相兼容。这意味着可对类型为`Any`的值执行任何操作或方法调用，并将其赋值给任何变量：
+    ```
+    from typing import Any
+
+    a = None    # type: Any
+    a = []      # OK
+    a = 2       # OK
+
+    s = ''      # type: str
+    s = a       # OK
+
+    def foo(item: Any) -> int:
+        # Typechecks; 'item' could be any type,
+        # and that type might have a 'bar' method
+        item.bar()
+        ...
+    ```
+    - 需要注意的是，将`Any`类型的值赋值给另一个更具体的类型时，`Python`**不会**执行类型检查。例如，当把`a`赋值给`s`时，即使`s`被声明为`str`类型，在运行时接收到的是`int`值，静态类型检查器也**不会**报错。
+    - 此外，所有 *返回值无类型* 或 *形参无类型* 的 *函数* 将 *隐式地默认使用* `Any`类型：
+    ```
+    def legacy_parser(text):
+        ...
+        return data
+
+    # A static type checker will treat the above
+    # as having the same signature as:
+    def legacy_parser(text: Any) -> Any:
+        ...
+        return data
+    ```
+    - 当需要混用动态类型和静态类型的代码时，上述行为可以让`Any`被用作 应急出口。
+
+    - `Any`和`object`的行为对比
+        - 与`Any`相似，所有的类型都是`object`的子类型。然而不同于`Any`，反之并不成立：`object`**不是**其他所有类型的子类型。这意味着当一个值的类型是`object`的时候，类型检查器会拒绝对它的几乎所有的操作。把它赋值给一个指定了类型的变量（或者当作返回值）是一个类型错误。比如说：
+        ```
+        def hash_a(item: object) -> int:
+            # Fails; an object does not have a 'magic' method.
+            item.magic()
+            ...
+
+        def hash_b(item: Any) -> int:
+            # Typechecks
+            item.magic()
+            ...
+
+        # Typechecks, since ints and strs are subclasses of object
+        hash_a(42)
+        hash_a("foo")
+
+        # Typechecks, since Any is compatible with all types
+        hash_b(42)
+        hash_b("foo")
+        ```
+        - 使用`object`示意一个值可以类型安全地兼容任何类型。使用`Any`示意一个值地类型是动态定义的。
+
+
+
+
+
 
 
 
