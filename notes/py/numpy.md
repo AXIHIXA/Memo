@@ -2,6 +2,7 @@
 
 - Notes of reading:
     - [`Numpy Tutorial - Tutorialspoint`](https://www.tutorialspoint.com/numpy/index.htm)
+    - [`NumPy ver. Stable Manual`](https://numpy.org/doc/stable/index.html)
 
 ### 🌱 `ndarray` Object
 
@@ -1026,7 +1027,7 @@ UPDATEIFCOPY : False
 
 - Several routines are available for manipulation of elements in `ndarray`: 
     - Changing Shape
-        - [`numpy.reshape`](https://numpy.org/doc/stable/reference/generated/numpy.reshape.html?highlight=numpy%20reshape#numpy.reshape), [numpy.ndarray.reshape](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.reshape.html#numpy.ndarray.reshape)
+        - [`numpy.reshape`](https://numpy.org/doc/stable/reference/generated/numpy.reshape.html?highlight=numpy%20reshape#numpy.reshape), [`numpy.ndarray.reshape`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.reshape.html#numpy.ndarray.reshape)
             - Gives a new shape to an array **without** changing its data.
             - Signature: 
             ```
@@ -1485,43 +1486,62 @@ UPDATEIFCOPY : False
             True
             ```
     - Joining Arrays
-        - `numpy.concatenate`
+        - [`numpy.concatenate`](https://numpy.org/doc/stable/reference/generated/numpy.concatenate.html?highlight=numpy%20concatenate#numpy.concatenate)
+            - Join a sequence of arrays along an existing axis.
+            - Signature: 
+            ```
+            numpy.concatenate((a1, a2, ...), axis=0, out=None)
+            ```
+            - Parameters: 
+                - `a1, a2, ...`: `Sequence[array_like]`. The arrays must have the *same shape*, except in the dimension corresponding to `axis`.
+                - `axis`: `None` or `int`, *optional*. The axis along which the arrays will be joined. If axis is `None`, arrays are flattened before use. 
+                - `out`: `ndarray`, *optional*. If provided, the destination to place the result. The shape must be correct, matching that of what concatenate would have returned if no out argument were specified.
+            - Returns: 
+                - `res`: `ndarray`. The concatenated array.
+            ```
+            >>> a = np.array([[1, 2], [3, 4]])
+            >>> b = np.array([[5, 6]])
+
+            >>> np.concatenate((a, b), axis=0)
+            array([[1, 2],
+                   [3, 4],
+                   [5, 6]])
+
+            >>> np.concatenate((a, b.T), axis=1)
+            array([[1, 2, 5],
+                   [3, 4, 6]])
+
+            >>> np.concatenate((a, b), axis=None)
+            array([1, 2, 3, 4, 5, 6])
+            ```
         - `numpy.stack`
+        - `numpy.block`
         - `numpy.hstack`
         - `numpy.vstack`
+        - `numpy.dstack`
+        - `numpy.column_stack`
     - Splitting Arrays
         - `numpy.split`
+        - [`numpy.array_split`](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html#numpy.array_split)
+            - Split an array into multiple sub-arrays. Same as `split` except `array_split` allows `indices_or_sections` to be an integer that does **NOT** equally divide the axis. For an array of length `l` that should be split into `n` sections, it returns `l % n` sub-arrays of `size l//n + 1` and the rest of size `l//n`. 
+            ```
+            >>> x = np.arange(8.0)
+            >>> np.array_split(x, 3)
+            [array([0.,  1.,  2.]), array([3.,  4.,  5.]), array([6.,  7.])]
+            
+            >>> x = np.arange(7.0)
+            >>> np.array_split(x, 3)
+            [array([0.,  1.,  2.]), array([3.,  4.]), array([5.,  6.])]
+            ```
         - `numpy.hsplit`
         - `numpy.vsplit`
+        - `numpy.dsplit`
     - Adding / Removing Elements
         - `numpy.resize`
         - `numpy.append`
         - `numpy.insert`
         - `numpy.delete`
         - `numpy.unique`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ### 🌱 
 
