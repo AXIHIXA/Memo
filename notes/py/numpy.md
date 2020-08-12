@@ -659,6 +659,160 @@ UPDATEIFCOPY : False
         - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if start or stop are array-like. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
     - Returns: 
         - `samples`: `ndarray`. `num` samples equally spaced on a log scale.
+- [`numpy.meshgrid`](https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html#numpy.meshgrid)
+    - Return coordinate matrices from coordinate vectors. Make N-D coordinate arrays for vectorized evaluations of N-D scalar/vector fields over N-D grids, given one-dimensional coordinate arrays `x1, x2, ..., xn`.
+    - Signature: 
+    ```
+    numpy.meshgrid(*xi, copy=True, sparse=False, indexing='xy')
+    ```
+    - Parameters: 
+        - `x1, x2, ..., xn`: `array_like`. 1-D arrays representing the coordinates of a grid. 
+        - `indexing`: `{'xy', 'ij'}`, *optional*. Cartesian (`'xy'`, default) or matrix (`'ij'`) indexing of output. 
+        - `sparse`: `bool`, *optional*. If `True` a sparse grid is returned in order to conserve memory. Default is `False`. 
+        - `copy`: `bool`, *optional*. If `False`, a *view* into the original arrays are returned in order to conserve memory.  Default is `True`. Please note that `sparse=False`, `copy=False` will likely return *non-contiguous* arrays.  Furthermore, more than one element of a broadcast array may refer to a single memory location. If you need to write to the arrays, make copies first. 
+    - Returns: 
+        - `X1, X2, ..., XN`: `ndarray`. For vectors `x1, x2, ..., xn` with lengths `Ni = len(xi)`, return `(N1, N2, N3, ..., Nn)` shaped arrays if `indexing='ij'` or `(N2, N1, N3, ..., Nn)` shaped arrays if `indexing='xy'` with the elements of `xi` repeated to fill the matrix along the first dimension for `x1`, the second for `x2` and so on. 
+    - Notes: 
+        - This function supports both indexing conventions through the indexing keyword argument. Giving the string `'ij'` returns a meshgrid with matrix indexing, while `'xy'` returns a meshgrid with Cartesian indexing. In the 2-D case with inputs of length `M` and `N`, the outputs are of shape `(N, M)` for `'xy'` indexing and `(M, N)` for `'ij'` indexing. In the 3-D case with inputs of length `M`, `N` and `P`, outputs are of shape `(N, M, P)` for `'xy'`indexing and `(M, N, P)` for `'ij'` indexing.
+    - Examples: 
+    ```
+    >>> nx, ny = (3, 2)
+    >>> x = np.linspace(0, 1, nx)
+    >>> y = np.linspace(0, 1, ny)
+    
+    >>> xv, yv = np.meshgrid(x, y)
+
+    >>> xv
+    array([[0. , 0.5, 1. ],
+           [0. , 0.5, 1. ]])
+
+    >>> yv
+    array([[0.,  0.,  0.],
+           [1.,  1.,  1.]])
+
+    >>> xv, yv = np.meshgrid(x, y, sparse=True)  # make sparse output arrays
+
+    >>> xv
+    array([[0. ,  0.5,  1. ]])
+
+    >>> yv
+    array([[0.],
+           [1.]])
+    ```
+    
+### 🌱 Building Matrices
+
+- [`numpy.diag`](https://numpy.org/doc/stable/reference/generated/numpy.diag.html#numpy.diag)
+    - Extract a diagonal or construct a diagonal array. Whether it returns a copy or a view depends on what version of numpy you are using. 
+    - Signature: 
+    ```
+    numpy.diag(v, k=0)
+    ```
+    - Parameters: 
+        - `v`: `array_like`. If `v` is a 2-D array, return a *copy* of its `k`-th diagonal. If `v` is a 1-D array, return a 2-D array with `v` on the `k`-th diagonal. 
+        - `k`: `int`, *optional*. Diagonal in question. The default is `0`. Use `k > 0` for diagonals above the main diagonal, and `k < 0` for diagonals below the main diagonal. 
+    - Returns: 
+        - `out`: `ndarray`. The extracted diagonal or constructed diagonal array. 
+    ```
+    >>> x = np.arange(9).reshape(3, 3)
+    >>> x
+    array([[0, 1, 2],
+           [3, 4, 5],
+           [6, 7, 8]])
+
+    >>> np.diag(x)
+    array([0, 4, 8])
+
+    >>> np.diag(x, k=1)
+    array([1, 5])
+
+    >>> np.diag(x, k=-1)
+    array([3, 7])
+
+    >>> np.diag(np.diag(x))
+    array([[0, 0, 0],
+           [0, 4, 0],
+           [0, 0, 8]])
+    ```
+- [`numpy.diagflat`](https://numpy.org/doc/stable/reference/generated/numpy.diagflat.html#numpy.diagflat)
+    - Create a 2-D array with the flattened input as a diagonal. 
+    - Signature: 
+    ```
+    numpy.diagflat(v, k=0)
+    ```
+    - Parameters: 
+        - `v`: `array_like`. Input data, which is flattened and set as the k-th diagonal of the output. 
+        - `k`: `int`, *optional*. Diagonal to set; `0`, the default, corresponds to the "main" diagonal, a positive (negative) k giving the number of the diagonal above (below) the main. 
+    - Returns: 
+        - `out`: `ndarray`. The 2-D output array. 
+    ```
+    >>> np.diagflat([[1, 2], [3, 4]])
+    array([[1, 0, 0, 0],
+           [0, 2, 0, 0],
+           [0, 0, 3, 0],
+           [0, 0, 0, 4]])
+
+    >>> np.diagflat([1, 2], 1)
+    array([[0, 1, 0],
+           [0, 0, 2],
+           [0, 0, 0]])
+    ```
+- [`numpy.tri`](https://numpy.org/doc/stable/reference/generated/numpy.tri.html#numpy.tri)
+    - An array with ones at and below the given diagonal and zeros elsewhere. 
+    - Signature: 
+    ```
+    numpy.tri(N, M=None, k=0, dtype=<class 'float'>)
+    ```
+    - Parameters: 
+        - `N`: `int`. Number of rows in the array. 
+        - `M`: `int`, *optional*. Number of columns in the array. By default, `M` is taken equal to `N`. 
+        - `k`: `int`, *optional*. The sub-diagonal at and below which the array is filled. `k = 0` is the main diagonal, while `k < 0` is below it, and `k > 0` is above. The default is `0`. 
+        - `dtype``data-type`, *optional*. Data type of the returned array. The default is `float`. 
+    - Returns: 
+        - `tri`: `ndarray` of shape `(N, M)`. Array with its lower triangle filled with ones and zero elsewhere; in other words `T[i,j] == 1` for `j <= i + k`, `0` otherwise. 
+    ```
+    >>> np.tri(3, 5, 2, dtype=int)
+    array([[1, 1, 1, 0, 0],
+           [1, 1, 1, 1, 0],
+           [1, 1, 1, 1, 1]])
+    
+    >>> np.tri(3, 5, -1)
+    array([[0.,  0.,  0.,  0.,  0.],
+           [1.,  0.,  0.,  0.,  0.],
+           [1.,  1.,  0.,  0.,  0.]])
+    ```
+- [`numpy.tril`](https://numpy.org/doc/stable/reference/generated/numpy.tril.html#numpy.tril)
+    - Lower triangle of an array. Return a *copy* of an array with elements *above* the `k`-th diagonal zeroed. 
+    - Signature: 
+    ```
+    numpy.tril(m, k=0)
+    ```
+    - Parameters: 
+        - `m`: `array_like`, shape `(M, N)`. Input array. 
+        - `k`: `int`, *optional*. Diagonal above which to zero elements. `k = 0` (the default) is the main diagonal, `k < 0` is below it and `k > 0` is above. 
+    - Returns: 
+        - `tril`: `ndarray`, shape `(M, N)`. Lower triangle of `m`, of same shape and data-type as `m`. 
+    ```
+    >>> np.tril([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], -1)
+    array([[ 0,  0,  0], 
+           [ 4,  0,  0],
+           [ 7,  8,  0],
+           [10, 11, 12]])
+    ```
+- [`numpy.triu`](https://numpy.org/doc/stable/reference/generated/numpy.triu.html#numpy.triu)
+    - Upper triangle of an array. Return a *copy* of a matrix with the elements *below* the `k`-th diagonal zeroed. 
+    - Signature: 
+    ```
+    numpy.triu(m, k=0)
+    ```
+    - Examples: 
+    ```
+    >>> np.triu([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], -1)
+    array([[ 1,  2,  3],
+           [ 4,  5,  6],
+           [ 0,  8,  9],
+           [ 0,  0, 12]])
+    ```
 
 ### 🌱 Basic Indexing & Slicing
 
@@ -774,7 +928,7 @@ UPDATEIFCOPY : False
 - Advanced indexing is triggered when the selection object `obj` is:
     - a *non-tuple sequence object*, or 
     - an `ndarray` (whose `dtype` is `int` or `bool`), or
-    - a *tuple* having `>= 1` *sequence object* or `ndarray` (whose `dtype` is `int` or `bool`)
+    - a *tuple* having one more *sequence object* or `ndarray` (whose `dtype` is `int` or `bool`)
 - Warning
     - `x[(1, 2, 3), ]` is different from `x[(1, 2, 3)]`. The former triggers *advanced indexing*, while the latter one equals to `x[1, 2, 3]` and triggers *basic indexing*
     - Also recognize that `x[[1, 2, 3]]` will trigger *advanced indexing*, whereas due to the deprecated Numeric compatibility mentioned above, `x[[1, 2, slice(None)]]` will trigger *basic slicing* 
@@ -926,7 +1080,7 @@ UPDATEIFCOPY : False
 ### 🌱 Iterating Over Array
 
 - Iterator object `numpy.nditer`: 
-    - efficient multidimensional iterator object using which it is possible to iterate over an array. 
+    - Efficient multidimensional iterator object using which it is possible to iterate over an array. 
     - Each element of an array is visited using Python’s standard Iterator interface.
     - **Example 1**
     ```
@@ -1378,7 +1532,6 @@ UPDATEIFCOPY : False
             ...                print('hehe')
             
             ```
-
     - Changing Dimensions
         - `numpy.broadcast`: Produces an object that mimics broadcasting
             - It returns an object that encapsulates the result of broadcasting one array against the other.
@@ -1602,22 +1755,70 @@ UPDATEIFCOPY : False
                 - `arrays`: nested list of `array_like` or `scalars` (but **NOT** `tuples`). If passed a single `ndarray` or `scalar` (a nested list of depth 0), this is returned unmodified (and not copied). Elements shapes must match along the appropriate axes (without broadcasting), but leading `1`s will be prepended to the shape as necessary to make the dimensions match.
             - Returns: 
                 - `block_array`: `ndarray`. The array assembled from the given blocks. The dimensionality of the output is equal to the greatest of: * the dimensionality of all the inputs * the depth to which the input list is nested
-            ```
-            >>> A = np.eye(2) * 2
-            >>> B = np.eye(3) * 3
-            >>> np.block([
-            ...     [A,               np.zeros((2, 3))],
-            ...     [np.ones((3, 2)), B               ]
-            ... ])
-            array([[2., 0., 0., 0., 0.],
-                   [0., 2., 0., 0., 0.],
-                   [1., 1., 3., 0., 0.],
-                   [1., 1., 0., 3., 0.],
-                   [1., 1., 0., 0., 3.]])
-            ```
+            - Examples: 
+                - The most common use of this function is to build a block matrix
+                ```
+                >>> A = np.eye(2) * 2
+                >>> B = np.eye(3) * 3
+                >>> np.block([
+                ...     [A,               np.zeros((2, 3))],
+                ...     [np.ones((3, 2)), B               ]
+                ... ])
+                array([[2., 0., 0., 0., 0.],
+                       [0., 2., 0., 0., 0.],
+                       [1., 1., 3., 0., 0.],
+                       [1., 1., 0., 3., 0.],
+                       [1., 1., 0., 0., 3.]])
+                ```
+                - With a list of depth 1, block can be used as `numpy.hstack`: 
+                ```
+                >>> np.block([1, 2, 3])              # hstack([1, 2, 3])
+                array([1, 2, 3])
 
+                >>> a = np.array([1, 2, 3])
+                >>> b = np.array([2, 3, 4])
+                >>> np.block([a, b, 10])             # hstack([a, b, 10])
+                array([ 1,  2,  3,  2,  3,  4, 10])
 
+                >>> A = np.ones((2, 2), int)
+                >>> B = 2 * A
+                >>> np.block([A, B])                 # hstack([A, B])
+                array([[1, 1, 2, 2],
+                       [1, 1, 2, 2]])
+                ```
+                - With a list of depth 2, block can be used in place of `numpy.vstack`:
+                ```
+                >>> a = np.array([1, 2, 3])
+                >>> b = np.array([2, 3, 4])
+                >>> np.block([[a], [b]])             # vstack([a, b])
+                array([[1, 2, 3],
+                       [2, 3, 4]])
 
+                >>> A = np.ones((2, 2), int)
+                >>> B = 2 * A
+                >>> np.block([[A], [B]])             # vstack([A, B])
+                array([[1, 1],
+                       [1, 1],
+                       [2, 2],
+                       [2, 2]])
+                ```
+                - It can also be used in places of `numpy.atleast_1d` and `numpy.atleast_2d`: 
+                ```
+                >>> a = np.array(0)
+                >>> b = np.array([1])
+
+                >>> np.block([a])                    # atleast_1d(a)
+                array([0])
+
+                >>> np.block([b])                    # atleast_1d(b)
+                array([1])
+
+                >>> np.block([[a]])                  # atleast_2d(a)
+                array([[0]])
+
+                >>> np.block([[b]])                  # atleast_2d(b)
+                array([[1]])
+                ```
         - `numpy.hstack`
         - `numpy.vstack`
         - `numpy.dstack`
