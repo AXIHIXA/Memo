@@ -1960,8 +1960,7 @@ UPDATEIFCOPY : False
                         - `ary[:2]`
                         - `ary[2:3]`
                         - `ary[3:]`
-
-                    If an index exceeds the dimension of the array along axis, an empty sub-array is returned correspondingly.
+                    - If an index exceeds the dimension of the array along axis, an empty sub-array is returned correspondingly. 
                 - `axis`: `int`, *optional*. The axis along which to split, default is `0`. 
             - Returns: 
                 - `sub-arrays`: `List[ndarray]`. A list of sub-arrays as *views* into `ary`. 
