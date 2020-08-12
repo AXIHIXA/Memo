@@ -1946,7 +1946,40 @@ UPDATEIFCOPY : False
                    [3, 4]])
             ```
     - Splitting Arrays
-        - `numpy.split`
+        - [`numpy.split`](https://numpy.org/doc/stable/reference/generated/numpy.split.html#numpy.split)
+            - Split an array into multiple sub-arrays as *views* into `ary`. 
+            - Signature: 
+            ```
+            numpy.split(ary, indices_or_sections, axis=0)
+            ```
+            - Parameters: 
+                - `ary`: `ndarray`. Array to be divided into sub-arrays.
+                - `indices_or_sections`: `int` or 1-D array. 
+                    - If `indices_or_sections` is an `int`, `N`, the array will be divided into `N` equal arrays along axis. If such a split is not possible, an error is raised. 
+                    - If `ndices_or_sections` is a 1-D array of sorted integers, the entries indicate where along axis the array is split. For example, `[2, 3]` would, for `axis=0`, result in
+                        - `ary[:2]`
+                        - `ary[2:3]`
+                        - `ary[3:]`
+
+                    If an index exceeds the dimension of the array along axis, an empty sub-array is returned correspondingly.
+                - `axis`: `int`, *optional*. The axis along which to split, default is `0`. 
+            - Returns: 
+                - `sub-arrays`: `List[ndarray]`. A list of sub-arrays as *views* into `ary`. 
+            ```
+            >>> x = np.arange(9.0)
+
+            >>> np.split(x, 3)
+            [array([0.,  1.,  2.]), array([3.,  4.,  5.]), array([6.,  7.,  8.])]
+            
+            >>> x = np.arange(8.0)
+            >>> np.split(x, [3, 5, 6, 10])
+            [array([0.,  1.,  2.]),
+             array([3.,  4.]),
+             array([5.]),
+             array([6.,  7.]),
+             array([], dtype=float64)]
+            ```
+
         - [`numpy.array_split`](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html#numpy.array_split)
             - Split an array into multiple sub-arrays. Same as `split` except `array_split` allows `indices_or_sections` to be an integer that does **NOT** equally divide the axis. For an array of length `l` that should be split into `n` sections, it returns `l % n` sub-arrays of `size l//n + 1` and the rest of size `l//n`. 
             ```
