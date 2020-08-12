@@ -254,6 +254,47 @@ UPDATEIFCOPY : False
     array([[ -2.00000715e+000,   1.48219694e-323,  -2.00000572e+000], # uninitialized
            [  4.38791518e-305,  -2.00000715e+000,   4.17269252e-309]])
     ```
+- [`numpy.eye`](https://numpy.org/doc/stable/reference/generated/numpy.eye.html#numpy.eye)
+    - Return a 2-D array with ones on the diagonal and zeros elsewhere.
+    - Signature: 
+    ```
+    numpy.eye(N, M=None, k=0, dtype=<class 'float'>, order='C')
+    ```
+    - Parameters: 
+        - `N`: `int`. Number of rows in the output.
+        - `M`: `int`, *optional*. Number of columns in the output. If `None`, defaults to `N`. 
+        - `k`: `int`, *optional*. Index of the diagonal: `0` (the default) refers to the main diagonal, a positive value refers to an upper diagonal, and a negative value to a lower diagonal.
+        - `dtype`: `data-type`, *optional*. Data-type of the returned array.
+        - `order`: `{'C', 'F'}`, *optional*. Whether the output should be stored in row-major (C-style) or column-major (Fortran-style) order in memory.
+    - Returns: 
+        - `I`: `ndarray` of shape `(N, M)`. An array where all elements are equal to zero, except for the k-th diagonal, whose values are equal to one.
+    ```
+    >>> np.eye(2, dtype=int)
+    array([[1, 0],
+           [0, 1]])
+
+    >>> np.eye(3, k=1)
+    array([[0.,  1.,  0.],
+           [0.,  0.,  1.],
+           [0.,  0.,  0.]])
+    ```
+- [`numpy.identity`](https://numpy.org/doc/stable/reference/generated/numpy.identity.html#numpy.identity)
+    - Return the identity array. The identity array is a square array with ones on the main diagonal. 
+    - Signature: 
+    ```
+    numpy.identity(n, dtype=None)
+    ```
+    - Parameters: 
+        - `n`: `int`. Number of rows (and columns) in `n x n` output.
+        - `dtype`: `data-type`, *optional*. Data-type of the output. Defaults to `float`.
+    - Returns: 
+        - `out`: `ndarray`. `n x n` array with its main diagonal set to one, and all other elements `0`.
+    ```
+    >>> np.identity(3)
+    array([[1.,  0.,  0.],
+           [0.,  1.,  0.],
+           [0.,  0.,  1.]])
+    ```
 - [`numpy.zeros`](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html#numpy.zeros)
     - Return a new array of given shape and type, filled with zeros.
     - Signature
@@ -1487,7 +1528,7 @@ UPDATEIFCOPY : False
             ```
     - Joining Arrays
         - [`numpy.concatenate`](https://numpy.org/doc/stable/reference/generated/numpy.concatenate.html?highlight=numpy%20concatenate#numpy.concatenate)
-            - Join a sequence of arrays along an existing axis.
+            - Join a sequence of arrays along an *existing axis*.
             - Signature: 
             ```
             numpy.concatenate((a1, a2, ...), axis=0, out=None)
@@ -1514,8 +1555,69 @@ UPDATEIFCOPY : False
             >>> np.concatenate((a, b), axis=None)
             array([1, 2, 3, 4, 5, 6])
             ```
-        - `numpy.stack`
-        - `numpy.block`
+        - [`numpy.stack`](https://numpy.org/doc/stable/reference/generated/numpy.stack.html#numpy.stack)
+            - Join a sequence of arrays along a *new axis*. The `axis`parameter specifies the index of the new axis in the dimensions of the result. For example, if `axis=0` it will be the first dimension and if `axis=-1` it will be the last dimension. 
+            - Signature: 
+            ```
+            numpy.stack(arrays, axis=0, out=None)
+            ```
+            - Parameters: 
+                - `arrays`: `Sequence[array_like]`. Each array must have the *same shape*.
+                - `axis`: `int`, *optional*. The axis in the result array along which the input arrays are stacked.
+                - `out`: `ndarray`, *optional*. If provided, the destination to place the result. The shape must be correct, matching that of what stack would have returned if no out argument were specified. 
+            - Returns: 
+                - `stacked`: `ndarray`. The stacked array has one more dimension than the input arrays. 
+            ```
+            >>> arrays = [np.empty((3, 4)) for _ in range(10)]
+            >>> np.stack(arrays, axis=0).shape
+            (10, 3, 4)
+            
+            >>> np.stack(arrays, axis=1).shape
+            (3, 10, 4)
+
+            >>> np.stack(arrays, axis=2).shape
+            (3, 4, 10)
+            
+            >>> a = np.array([1, 2, 3])
+            >>> b = np.array([2, 3, 4])
+            >>> np.stack((a, b))
+            array([[1, 2, 3],
+                   [2, 3, 4]])
+            
+            >>> np.stack((a, b), axis=-1)
+            array([[1, 2],
+                   [2, 3],
+                   [3, 4]])
+            ```
+        - [`numpy.block`](https://numpy.org/doc/stable/reference/generated/numpy.block.html?highlight=numpy%20block#numpy.block)
+            - Assemble an nd-array from nested lists of blocks.
+            - Blocks in the innermost lists are concatenated along the last dimension (`-1`), then these are concatenated along the second-last dimension (`-2`), and so on until the outermost list is reached.
+            - Blocks can be of any dimension, but will **NOT** be broadcasted using the normal rules. Instead, leading axes of size `1` are inserted, to make `block.ndim` the same for all blocks. This is primarily useful for working with scalars, and means that code like `np.block([v, 1])` is valid, where `v.ndim == 1`.
+            - When the nested list is two levels deep, this allows block matrices to be constructed from their components.
+            - Signature: 
+            ```
+            numpy.block(arrays)
+            ```
+            - Parameters: 
+                - `arrays`: nested list of `array_like` or `scalars` (but **NOT** `tuples`). If passed a single `ndarray` or `scalar` (a nested list of depth 0), this is returned unmodified (and not copied). Elements shapes must match along the appropriate axes (without broadcasting), but leading `1`s will be prepended to the shape as necessary to make the dimensions match.
+            - Returns: 
+                - `block_array`: `ndarray`. The array assembled from the given blocks. The dimensionality of the output is equal to the greatest of: * the dimensionality of all the inputs * the depth to which the input list is nested
+            ```
+            >>> A = np.eye(2) * 2
+            >>> B = np.eye(3) * 3
+            >>> np.block([
+            ...     [A,               np.zeros((2, 3))],
+            ...     [np.ones((3, 2)), B               ]
+            ... ])
+            array([[2., 0., 0., 0., 0.],
+                   [0., 2., 0., 0., 0.],
+                   [1., 1., 3., 0., 0.],
+                   [1., 1., 0., 3., 0.],
+                   [1., 1., 0., 0., 3.]])
+            ```
+
+
+
         - `numpy.hstack`
         - `numpy.vstack`
         - `numpy.dstack`
