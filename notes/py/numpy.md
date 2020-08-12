@@ -1222,6 +1222,32 @@ UPDATEIFCOPY : False
 
 - Several routines are available for manipulation of elements in `ndarray`: 
     - Changing Shape
+        - [`numpy.atleast_1d`](https://numpy.org/doc/stable/reference/generated/numpy.atleast_1d.html#numpy.atleast_1d), [`numpy.atleast_2d`](https://numpy.org/doc/stable/reference/generated/numpy.atleast_1d.html#numpy.atleast_2d), [`numpy.atleast_3d`](https://numpy.org/doc/stable/reference/generated/numpy.atleast_1d.html#numpy.atleast_3d)
+            - Convert inputs to arrays with at least 1/2/3 dimension. Scalar inputs are converted to 1/2/3-dimensional arrays, whilst higher-dimensional inputs are preserved. 
+            - Signature: 
+            ```
+            numpy.atleast_1d(*arys)
+            ```
+            - Parameters: 
+                - `*arys`: `array_like`s. One or more input arrays. 
+            - Returns: 
+                - `ret`: `ndarray`. An array, or `list` of arrays, each with `a.ndim >= 1/2/3`. Copies are made only if necessary. 
+            ```
+            >>> np.atleast_1d(1.0)
+            array([1.])
+
+            >>> x = np.arange(9.0).reshape(3, 3)
+            >>> np.atleast_1d(x)
+            array([[0., 1., 2.],
+                   [3., 4., 5.],
+                   [6., 7., 8.]])
+
+            >>> np.atleast_1d(x) is x
+            True
+
+            >>> np.atleast_1d(1, [3, 4])
+            [array([1]), array([3, 4])]
+            ```
         - [`numpy.reshape`](https://numpy.org/doc/stable/reference/generated/numpy.reshape.html?highlight=numpy%20reshape#numpy.reshape), [`numpy.ndarray.reshape`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.reshape.html#numpy.ndarray.reshape)
             - Gives a new shape to an array **without** changing its data.
             - Signature: 
@@ -1752,9 +1778,11 @@ UPDATEIFCOPY : False
             numpy.block(arrays)
             ```
             - Parameters: 
-                - `arrays`: nested list of `array_like` or `scalars` (but **NOT** `tuples`). If passed a single `ndarray` or `scalar` (a nested list of depth 0), this is returned unmodified (and not copied). Elements shapes must match along the appropriate axes (without broadcasting), but leading `1`s will be prepended to the shape as necessary to make the dimensions match.
+                - `arrays`: nested `list` of `array_like` or `scalars` (but **NOT** `tuples`). If passed a single `ndarray` or `scalar` (a nested list of depth 0), this is returned unmodified (and not copied). Elements shapes must match along the appropriate axes (without broadcasting), but leading `1`s will be prepended to the shape as necessary to make the dimensions match.
             - Returns: 
-                - `block_array`: `ndarray`. The array assembled from the given blocks. The dimensionality of the output is equal to the greatest of: * the dimensionality of all the inputs * the depth to which the input list is nested
+                - `block_array`: `ndarray`. The array assembled from the given blocks. The dimensionality of the output is equal to the greatest of: 
+                    - the dimensionality of all the inputs; 
+                    - the depth to which the input list is nested. 
             - Examples: 
                 - The most common use of this function is to build a block matrix
                 ```
@@ -1819,10 +1847,104 @@ UPDATEIFCOPY : False
                 >>> np.block([[b]])                  # atleast_2d(b)
                 array([[1]])
                 ```
-        - `numpy.hstack`
-        - `numpy.vstack`
-        - `numpy.dstack`
-        - `numpy.column_stack`
+        - [`numpy.vstack`](https://numpy.org/doc/stable/reference/generated/numpy.vstack.html#numpy.vstack)
+            - Stack arrays in sequence vertically (row wise). 
+            - This is equivalent to concatenation along the first axis after 1-D arrays of shape `(N,)` have been reshaped to `(1, N)`. Rebuilds arrays divided by `vsplit`. 
+            - This function makes most sense for arrays with up to 3 dimensions. For instance, for pixel-data with a height (first axis), width (second axis), and r/g/b channels (third axis). The functions `concatenate`, `stack` and `block` provide more general stacking and concatenation operations. 
+            - Signature: 
+            ```
+            numpy.vstack(tup)
+            ```
+            - Parameters: 
+                - `tup`: `Sequence[ndarray]`. The arrays must have the same shape along all but the *first axis*. 1-D arrays must have the same length.
+            - Returns: 
+                - `stacked`: `ndarray`. The array formed by stacking the given arrays, will be at least 2-D. 
+            ```
+            >>> a = np.array([1, 2, 3])
+            >>> b = np.array([2, 3, 4])
+            >>> np.vstack((a,b))
+            array([[1, 2, 3],
+                   [2, 3, 4]])
+                   
+            >>> a = np.array([[1], [2], [3]])
+            >>> b = np.array([[2], [3], [4]])
+            >>> np.vstack((a,b))
+            array([[1],
+                   [2],
+                   [3],
+                   [2],
+                   [3],
+                   [4]])
+            ```
+        - [`numpy.hstack`](https://numpy.org/doc/stable/reference/generated/numpy.hstack.html#numpy.hstack)
+            - Stack arrays in sequence horizontally (column wise). 
+            - This is equivalent to concatenation along the second axis, except for 1-D arrays where it concatenates along the first axis. Rebuilds arrays divided by `hsplit`. 
+            - Signature: 
+            ```
+            numpy.hstack(tup)
+            ```
+            - Parameters: 
+                - `tup`: `Sequence[ndarray]`. The arrays must have the same shape along all but the *second axis*, except 1-D arrays which can be any length.
+            - Returns: 
+                - `stacked`: `ndarray`. The array formed by stacking the given arrays. 
+            ```
+            >>> a = np.array((1, 2, 3))
+            >>> b = np.array((2, 3, 4))
+            >>> np.hstack((a, b))
+            array([1, 2, 3, 2, 3, 4])
+
+            >>> a = np.array([[1], [2], [3]])
+            >>> b = np.array([[2], [3], [4]])
+            >>> np.hstack((a, b))
+            array([[1, 2],
+                   [2, 3],
+                   [3, 4]])
+            ```
+        - [`numpy.dstack`](https://numpy.org/doc/stable/reference/generated/numpy.dstack.html#numpy.dstack)
+            - Stack arrays in sequence depth wise (along third axis). This is equivalent to concatenation along the third axis after 2-D arrays of shape `(M, N)` have been reshaped to `(M, N, 1)` and 1-D arrays of shape `(N,)` have been reshaped to `(1, N, 1)`. Rebuilds arrays divided by `dsplit`.
+            - Signature: 
+            ```
+            numpy.dstack(tup)
+            ```
+            - Parameters: 
+                - `tup`: `Sequence[ndarray]`. The arrays must have the same shape along all but the *third axis*. 1-D or 2-D arrays must have the same shape. 
+            - Returns: 
+                - `stacked`: `ndarray`. The array formed by stacking the given arrays, will be at least 3-D. 
+            ```
+            >>> a = np.array((1, 2, 3))
+            >>> b = np.array((2, 3, 4))
+            >>> np.hstack((a, b))
+            array([[[1, 2],
+                    [2, 3],
+                    [3, 4]]])
+
+            >>> a = np.array([[1], [2], [3]])
+            >>> b = np.array([[2], [3], [4]])
+            >>> np.hstack((a, b))
+            array([[[1, 2]],
+                   [[2, 3]],
+                   [[3, 4]]])
+            ```
+        - [`numpy.column_stack`](https://numpy.org/doc/stable/reference/generated/numpy.column_stack.html#numpy.column_stack)
+            - Stack 1-D arrays as columns into a 2-D array. 
+            - Take a sequence of 1-D arrays and stack them as columns to make a single 2-D array. 2-D arrays are stacked as-is, just like with hstack. 1-D arrays are turned into 2-D columns first. 
+            - Signature: 
+            ```
+            numpy.column_stack(tup)
+            ```
+            - Parameters: 
+                - `tup`: sequence of 1-D or 2-D arrays.. Arrays to stack. All of them must have the same first dimension.  
+            - Returns: 
+                - `stacked`: 2-D array. The array formed by stacking the given arrays. 
+            ```
+            >>> a = np.array((1, 2, 3))
+            >>> b = np.array((2, 3, 4))
+
+            >>> np.column_stack((a, b))
+            array([[1, 2],
+                   [2, 3],
+                   [3, 4]])
+            ```
     - Splitting Arrays
         - `numpy.split`
         - [`numpy.array_split`](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html#numpy.array_split)
