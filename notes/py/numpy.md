@@ -1966,7 +1966,6 @@ UPDATEIFCOPY : False
                 - `sub-arrays`: `List[ndarray]`. A list of sub-arrays as *views* into `ary`. 
             ```
             >>> x = np.arange(9.0)
-
             >>> np.split(x, 3)
             [array([0.,  1.,  2.]), array([3.,  4.,  5.]), array([6.,  7.,  8.])]
             
@@ -1978,7 +1977,6 @@ UPDATEIFCOPY : False
              array([6.,  7.]),
              array([], dtype=float64)]
             ```
-
         - [`numpy.array_split`](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html#numpy.array_split)
             - Split an array into multiple sub-arrays. Same as `split` except `array_split` allows `indices_or_sections` to be an integer that does **NOT** equally divide the axis. For an array of length `l` that should be split into `n` sections, it returns `l % n` sub-arrays of `size l//n + 1` and the rest of size `l//n`. 
             ```
@@ -1990,9 +1988,27 @@ UPDATEIFCOPY : False
             >>> np.array_split(x, 3)
             [array([0.,  1.,  2.]), array([3.,  4.]), array([5.,  6.])]
             ```
-        - `numpy.hsplit`
-        - `numpy.vsplit`
-        - `numpy.dsplit`
+        - [`numpy.vsplit`](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html#numpy.vsplit)
+            - Split an array into multiple sub-arrays vertically (row-wise). 
+            - Signature: 
+            ```
+            numpy.vsplit(ary, indices_or_sections)
+            ```
+            - Same as `numpy.split(ary, indices_or_sections, axis=0)`
+        - [`numpy.hsplit`](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html#numpy.hsplit)
+            - Split an array into multiple sub-arrays horizontally (column-wise). 
+            - Signature: 
+            ```
+            numpy.hsplit(ary, indices_or_sections)
+            ```
+            - Same as `numpy.split(ary, indices_or_sections, axis=1)`
+        - [`numpy.dsplit`](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html#numpy.dsplit)
+            - Split array into multiple sub-arrays along the 3rd axis (depth). 
+            - Signature: 
+            ```
+            numpy.dsplit(ary, indices_or_sections)
+            ```
+            - Same as `numpy.split(ary, indices_or_sections, axis=2)`
     - Adding / Removing Elements
         - `numpy.resize`
         - `numpy.append`
