@@ -207,7 +207,7 @@ WRITEBACKIFCOPY : False
 UPDATEIFCOPY : False
 ```
 
-### 🌱 Array Creation Routines
+### 🌱 [Array Creation Routines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
 
 - [`numpy.empty`](https://numpy.org/doc/stable/reference/generated/numpy.empty.html#numpy.empty)
     - Creates an *uninitialized* array of specified `shape` and `dtype`
@@ -470,7 +470,7 @@ UPDATEIFCOPY : False
     array([0.1,  0.1,  0.1,  0.1,  0.1,  0.1])
     ```
 
-### 🌱 Array from Existing Data
+### 🌱 [Array from Existing Data](https://numpy.org/doc/stable/reference/routines.array-creation.html)
 
 - `numpy.array`
 - [`numpy.asarray`](https://numpy.org/doc/stable/reference/generated/numpy.asarray.html?highlight=numpy%20asarray#numpy.asarray)
@@ -548,7 +548,7 @@ UPDATEIFCOPY : False
 [0. 1. 2. 3. 4.]
 ```
 
-### 🌱 Array from Numerical Ranges
+### 🌱 [Array from Numerical Ranges](https://numpy.org/doc/stable/reference/routines.array-creation.html)
 
 - [`numpy.arange`](https://numpy.org/doc/stable/reference/generated/numpy.arange.html?highlight=numpy%20arange#numpy.arange)
     - Return evenly spaced values within a given interval.
@@ -700,7 +700,7 @@ UPDATEIFCOPY : False
            [1.]])
     ```
     
-### 🌱 Building Matrices
+### 🌱 [Building Matrices](https://numpy.org/doc/stable/reference/routines.array-creation.html)
 
 - [`numpy.diag`](https://numpy.org/doc/stable/reference/generated/numpy.diag.html#numpy.diag)
     - Extract a diagonal or construct a diagonal array. Whether it returns a copy or a view depends on what version of numpy you are using. 
@@ -814,7 +814,7 @@ UPDATEIFCOPY : False
            [ 0,  0, 12]])
     ```
 
-### 🌱 Basic Indexing & Slicing
+### 🌱 [Basic Indexing & Slicing](https://numpy.org/doc/stable/reference/arrays.indexing.html)
 
 - Contents of `ndarray` object can be accessed and modified by *indexing* or *slicing* 
     - items in `ndarray` object follows *zero-based index*, can be indexed using `x[obj]` syntax 
@@ -923,7 +923,7 @@ UPDATEIFCOPY : False
         (2, 1, 3, 1)
         ```
 
-### 🌱 Advanced Indexing
+### 🌱 [Advanced Indexing](https://numpy.org/doc/stable/reference/arrays.indexing.html#advanced-indexing)
 
 - Advanced indexing is triggered when the selection object `obj` is:
     - a *non-tuple sequence object*, or 
@@ -936,7 +936,7 @@ UPDATEIFCOPY : False
 - two types of advanced indexing: 
     - *Integer Array Indexing* 
     - *Boolean Array Indexing* 
-- Integer Array Indexing
+- [Integer Array Indexing](https://numpy.org/doc/stable/reference/arrays.indexing.html#integer-array-indexing)
     - Index is a tuple of `x.ndim` `ndarray`s, all in same shape (same as output shape) (or boardcastable shape). For the following
     ```
     res = x[a_1, ..., a_N]  # N == x.ndim
@@ -1020,7 +1020,7 @@ UPDATEIFCOPY : False
      [ 7  8]
      [10 11]]
     ```
-- Boolean Array Indexing
+- [Boolean Array Indexing](https://numpy.org/doc/stable/reference/arrays.indexing.html#boolean-array-indexing)
     - Occurs when `obj` is array object of `bool` type, such as may be returned from comparison operators
     - Boolean array indexing `x[obj]` is practically identical to Integer array indexing `x[obj.nonzero()]`. However, Boolean Array Indexing is faster when `obj.shape == x.shape`. 
         - `numpy.nonzero`
@@ -1218,7 +1218,7 @@ UPDATEIFCOPY : False
     0:1 5:2 10:3 15:4 20:1 25:2 30:3 35:4 40:1 45:2 50:3 55:4
     ```
 
-### 🌱 Array Manipulation
+### 🌱 [Array Manipulation](https://numpy.org/doc/stable/reference/routines.array-manipulation.html)
 
 - Several routines are available for manipulation of elements in `ndarray`: 
     - Changing Shape
@@ -1979,6 +1979,11 @@ UPDATEIFCOPY : False
             ```
         - [`numpy.array_split`](https://numpy.org/doc/stable/reference/generated/numpy.array_split.html#numpy.array_split)
             - Split an array into multiple sub-arrays. Same as `split` except `array_split` allows `indices_or_sections` to be an integer that does **NOT** equally divide the axis. For an array of length `l` that should be split into `n` sections, it returns `l % n` sub-arrays of `size l//n + 1` and the rest of size `l//n`. 
+            - Signature: 
+            ```
+            numpy.array_split(ary, indices_or_sections, axis=0)
+            ```
+            - Examples: 
             ```
             >>> x = np.arange(8.0)
             >>> np.array_split(x, 3)
@@ -1989,32 +1994,125 @@ UPDATEIFCOPY : False
             [array([0.,  1.,  2.]), array([3.,  4.]), array([5.,  6.])]
             ```
         - [`numpy.vsplit`](https://numpy.org/doc/stable/reference/generated/numpy.vsplit.html#numpy.vsplit)
-            - Split an array into multiple sub-arrays vertically (row-wise). 
+            - Split an array into multiple sub-arrays vertically (row-wise). Same as `numpy.split(ary, indices_or_sections, axis=0)`
             - Signature: 
             ```
             numpy.vsplit(ary, indices_or_sections)
             ```
-            - Same as `numpy.split(ary, indices_or_sections, axis=0)`
         - [`numpy.hsplit`](https://numpy.org/doc/stable/reference/generated/numpy.hsplit.html#numpy.hsplit)
-            - Split an array into multiple sub-arrays horizontally (column-wise). 
+            - Split an array into multiple sub-arrays horizontally (column-wise). Same as `numpy.split(ary, indices_or_sections, axis=1)`
             - Signature: 
             ```
             numpy.hsplit(ary, indices_or_sections)
             ```
-            - Same as `numpy.split(ary, indices_or_sections, axis=1)`
         - [`numpy.dsplit`](https://numpy.org/doc/stable/reference/generated/numpy.dsplit.html#numpy.dsplit)
-            - Split array into multiple sub-arrays along the 3rd axis (depth). 
+            - Split array into multiple sub-arrays along the 3rd axis (depth). Same as `numpy.split(ary, indices_or_sections, axis=2)`
             - Signature: 
             ```
             numpy.dsplit(ary, indices_or_sections)
             ```
-            - Same as `numpy.split(ary, indices_or_sections, axis=2)`
-    - Adding / Removing Elements
-        - `numpy.resize`
-        - `numpy.append`
-        - `numpy.insert`
-        - `numpy.delete`
-        - `numpy.unique`
+    - Adding And Removing Elements
+        - [`numpy.delete`](https://numpy.org/doc/stable/reference/generated/numpy.delete.html#numpy.delete)
+            - Return a new array with sub-arrays along an axis deleted. For a 1-D array, this returns those entries not returned by `arr[obj]`. 
+            - Signature: 
+            ```
+            numpy.delete(arr, obj, axis=None)
+            ```
+            - Parameters: 
+                - `arr`: `array_like`. Input array.
+                - `obj`: `slice`, `int` or array of `int`s. Indicate indices of sub-arrays to remove along the specified axis. (Changed in version 1.19.0: Boolean indices are now treated as a mask of elements to remove, rather than being cast to the integers `0` and `1`). 
+                - `axis`: `int`, *optional*. The axis along which to delete the subarray defined by `obj`. If `axis` is `None`, `obj` is applied to the flattened array.
+            - Returns: 
+                - `out`: `ndarray`. A *copy* of `arr` with the elements specified by `obj` removed. Note that delete does not occur in-place. If `axis` is `None`, `out` is a flattened array. 
+            - Notes: 
+                - Often it is preferable to use a boolean mask. For example: 
+                ```
+                arr = np.arange(12) + 1
+                mask = np.ones(len(arr), dtype=bool)
+                mask[[0, 2, 4]] = False
+                result = arr[mask,...]
+                ```
+                - Is equivalent to `np.delete(arr, [0, 2, 4], axis=0)`, but allows further use of `mask`. 
+            - Examples: 
+            ```
+            >>> arr = np.array([[1,2,3,4], [5,6,7,8], [9,10,11,12]])
+            >>> arr
+            array([[ 1,  2,  3,  4],
+                   [ 5,  6,  7,  8],
+                   [ 9, 10, 11, 12]])
+
+            >>> np.delete(arr, 1, 0)
+            array([[ 1,  2,  3,  4],
+                   [ 9, 10, 11, 12]])
+                   
+            >>> np.delete(arr, np.s_[::2], 1)
+            array([[ 2,  4],
+                   [ 6,  8],
+                   [10, 12]])
+
+            >>> np.delete(arr, [1,3,5], None)
+            array([ 1,  3,  5,  7,  8,  9, 10, 11, 12]
+            ```
+        - [`numpy.insert`](https://numpy.org/doc/stable/reference/generated/numpy.insert.html#numpy.insert)
+            - Insert values along the given axis before the given indices. 
+            - Signature: 
+            ```
+            numpy.insert(arr, obj, values, axis=None)
+            ```
+            - Parameters: 
+                - `arr`: `array_like`. Input array. 
+                - `obj`: `int`, `slice` or `Sequence[int]`. Object that defines the index or indices before which values is inserted. Support for multiple insertions when `obj` is a single scalar or a sequence with one element (similar to calling insert multiple times). 
+                - `values`: `array_like`. Values to insert into `arr`. If the type of values is different from that of `arr`, values is converted to the type of `arr`. Values should be shaped so that `arr[..., obj, ...] = values` is legal. 
+                - `axis`: `int`, *optional*. Axis along which to insert values. If axis is `None` then `arr` is flattened first. 
+            - Returns: 
+                - `out`: `ndarray`. A *copy* of `arr` with values inserted. Note that insert does **NOT** occur in-place: a new array is returned. If axis is `None`, `out` is a flattened array. 
+            ```
+            >>> a = np.array([[1, 1], [2, 2], [3, 3]])
+            >>> a
+            array([[1, 1],
+                   [2, 2],
+                   [3, 3]])
+
+            >>> np.insert(a, 1, 5)
+            array([1, 5, 1, ..., 2, 3, 3])
+
+            >>> np.insert(a, 1, 5, axis=1)
+            array([[1, 5, 1],
+                   [2, 5, 2],
+                   [3, 5, 3]])
+                   
+            >>> np.insert(a, [1], [[1],[2],[3]], axis=1)
+            array([[1, 1, 1],
+                   [2, 2, 2],
+                   [3, 3, 3]])
+
+            >>> np.array_equal(np.insert(a, 1, [1, 2, 3], axis=1),
+                               np.insert(a, [1], [[1], [2], [3]], axis=1))
+            True
+
+            >>> b = a.flatten()
+            >>> b
+            array([1, 1, 2, 2, 3, 3])
+
+            >>> np.insert(b, [2, 2], [5, 6])
+            array([1, 1, 5, ..., 2, 3, 3])
+
+            >>> np.insert(b, slice(2, 4), [5, 6])
+            array([1, 1, 5, ..., 2, 3, 3])
+
+            >>> np.insert(b, [2, 2], [7.13, False]) # type casting
+            array([1, 1, 7, ..., 2, 3, 3])
+
+            >>> x = np.arange(8).reshape(2, 4)
+            >>> idx = (1, 3)
+            >>> np.insert(x, idx, 999, axis=1)
+            array([[  0, 999,   1,   2, 999,   3],
+                   [  4, 999,   5,   6, 999,   7]])
+            ```
+        - [`numpy.append`]()
+        - [`numpy.resize`]()
+        - [`numpy.trim_zeros`]()
+        - [`numpy.unique`]()
 
 ### 🌱 
 
