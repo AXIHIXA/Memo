@@ -410,7 +410,7 @@ UPDATEIFCOPY : False
         array([1.,  1.,  1.])
         ```
     - [`numpy.full`](https://numpy.org/doc/stable/reference/generated/numpy.full.html#numpy.full)
-        - RReturn a new array of given shape and type, filled with `fill_value`. 
+        - Return a new array of given shape and type, filled with `fill_value`. 
         - Signature
         ```
         numpy.full(shape, fill_value, dtype=None, order='C')[source]
@@ -471,20 +471,20 @@ UPDATEIFCOPY : False
         array([0.1,  0.1,  0.1,  0.1,  0.1,  0.1])
         ```
 - From Existing Data
-    - `numpy.array`
+    - [`numpy.array`](https://numpy.org/doc/stable/reference/generated/numpy.array.html?highlight=numpy%20array#numpy.array)
+        - Given at beginning of this memo. 
     - [`numpy.asarray`](https://numpy.org/doc/stable/reference/generated/numpy.asarray.html?highlight=numpy%20asarray#numpy.asarray)
-        - Convert the input to an array. Similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`
-        - Signature
+        - Convert the input to an array. Similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`. 
+        - Signature: 
         ```
         numpy.asarray(a, dtype=None, order=None)
         ```
-        - Parameters
+        - Parameters: 
             - `a`: `array_like`. Input data, in any form that can be converted to an array. This includes `List`, `List[Tuple]`, `Tuple`, `Tuple[Tuples]`, `Tuple[List[np.ndarray]]`.
             - `dtype`: `data-type`, *optional*. By default, the data-type is inferred from the input data.
             - `order`: `{'C', 'F'}`, *optional*. Whether to use row-major (C-style) or column-major (Fortran-style) memory representation. Defaults to ‘C’.
         - Returns: 
             - `out`: `ndarray`. Array interpretation of `a`. **NO** copy is performed if the input is already an `ndarray` with matching dtype and order. If `a` is a subclass of ndarray, a base class `ndarray` is returned. 
-
         ```
         >>> # convert list to ndarray
         >>> import numpy as np
@@ -517,35 +517,35 @@ UPDATEIFCOPY : False
             - `dtype`: Data type of returned ndarray. Defaults to `float`
             - `count`: The number of items to read, default `-1` means all data
             - `offset`: The starting position to read from. Default is `0`
-    ```
-    >>> import numpy as np
-    >>> s = 'Hello World'
-    >>> a = np.frombuffer(s, dtype='S1')
-    >>> a
-    ['H' 'e' 'l' 'l' 'o' ' ' 'W' 'o' 'r' 'l' 'd']
-    ```
+        ```
+        >>> import numpy as np
+        >>> s = 'Hello World'
+        >>> a = np.frombuffer(s, dtype='S1')
+        >>> a
+        ['H' 'e' 'l' 'l' 'o' ' ' 'W' 'o' 'r' 'l' 'd']
+        ```
     - `numpy.fromiter`
         - This function builds an ndarray object from any iterable object. A new 1D array is returned by this function
-    - signature
+        - Signature
         ```
         numpy.fromiter(buffer, dtype=float, count=-1)
         ```
-        - parameters
+        - Parameters
             - `buffer`: Any iterable object
             - `dtype`: Data type of returned ndarray. Defaults to `float`
             - `count`: The number of items to be read from iterator. Default is `-1` which means all data to be read
-    ```
-    >>> # create list object using range function
-    >>> import numpy as np
-    >>> lst = range(5)
-    >>> lst
-    [0, 1, 2, 3, 4]
+        ```
+        >>> # create list object using range function
+        >>> import numpy as np
+        >>> lst = range(5)
+        >>> lst
+        [0, 1, 2, 3, 4]
 
-    >>> # use iterator to create ndarray
-    >>> it = iter(list)
-    >>> np.fromiter(it, dtype=float)
-    [0. 1. 2. 3. 4.]
-    ```
+        >>> # use iterator to create ndarray
+        >>> it = iter(list)
+        >>> np.fromiter(it, dtype=float)
+        [0. 1. 2. 3. 4.]
+        ```
 - Numerical Ranges
     - [`numpy.arange`](https://numpy.org/doc/stable/reference/generated/numpy.arange.html?highlight=numpy%20arange#numpy.arange)
         - Return evenly spaced values within a given interval.
