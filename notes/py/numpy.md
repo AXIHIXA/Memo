@@ -209,612 +209,607 @@ UPDATEIFCOPY : False
 
 ### 🌱 [Array Creation Routines](https://numpy.org/doc/stable/reference/routines.array-creation.html)
 
-- [`numpy.empty`](https://numpy.org/doc/stable/reference/generated/numpy.empty.html#numpy.empty)
-    - Creates an *uninitialized* array of specified `shape` and `dtype`
-    - Signature
-    ```
-    numpy.empty(shape, dtype=float, order='C')
-    ```
-    - Parameters
-        - `shape`: `int` or `Tuple[int]`. shape of an empty array
-        - `dtype`: `data-type`, *optional*. Desired output data-type for the array, e.g, `numpy.int8`. Default is `numpy.float64`.
-        - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory. 
-    - Returns: 
-        - `out`: `ndarray`. Array of uninitialized (arbitrary) data of the given shape, dtype, and order. Object arrays will be initialized to `None`. 
+- Ones and zeros
+    - [`numpy.empty`](https://numpy.org/doc/stable/reference/generated/numpy.empty.html#numpy.empty)
+        - Creates an *uninitialized* array of specified `shape` and `dtype`
+        - Signature
+        ```
+        numpy.empty(shape, dtype=float, order='C')
+        ```
+        - Parameters
+            - `shape`: `int` or `Tuple[int]`. shape of an empty array
+            - `dtype`: `data-type`, *optional*. Desired output data-type for the array, e.g, `numpy.int8`. Default is `numpy.float64`.
+            - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory. 
+        - Returns: 
+            - `out`: `ndarray`. Array of uninitialized (arbitrary) data of the given shape, dtype, and order. Object arrays will be initialized to `None`. 
+        ```
+        >>> import numpy as np
+        >>> x = np.empty([3, 2], dtype=int)
+        >>> x
+        [[22649312   1701344351]
+         [1818321759 1885959276]
+         [16779776   156368896]]
+        ```
+    - [`numpy.empty_like`](https://numpy.org/doc/stable/reference/generated/numpy.empty_like.html#numpy.empty_like)
+        - Return a new *uninitialized* array with the same shape and type as a given array. 
+        - Signature: 
+        ```
+         numpy.empty_like(a, dtype=None, order='K', subok=True, shape=None)
+        ```
+        - Parameters: 
+            - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
+            - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
+            - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. `‘C’` means C-order, `‘F’` means F-order, `‘A’` means `‘F’` if prototype is Fortran contiguous, `‘C’` otherwise. `‘K’` means match the layout of prototype as closely as possible.
+            - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
+            - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied. 
+        - Returns: 
+            - `out`: `ndarray`.  Array of uninitialized (arbitrary) data with the same shape and type as prototype.
+        ```
+        >>> a = ([1, 2, 3], [4, 5, 6])                         # a is array-like
+        >>> np.empty_like(a)
+        array([[-1073741821, -1073741821,           3],    # uninitialized
+               [          0,           0, -1073741821]])
+
+        >>> a = np.array([[1., 2., 3.], [4., 5., 6.]])
+        >>> np.empty_like(a)
+        array([[ -2.00000715e+000,   1.48219694e-323,  -2.00000572e+000], # uninitialized
+               [  4.38791518e-305,  -2.00000715e+000,   4.17269252e-309]])
+        ```
+    - [`numpy.eye`](https://numpy.org/doc/stable/reference/generated/numpy.eye.html#numpy.eye)
+        - Return a 2-D array with ones on the diagonal and zeros elsewhere.
+        - Signature: 
+        ```
+        numpy.eye(N, M=None, k=0, dtype=<class 'float'>, order='C')
+        ```
+        - Parameters: 
+            - `N`: `int`. Number of rows in the output.
+            - `M`: `int`, *optional*. Number of columns in the output. If `None`, defaults to `N`. 
+            - `k`: `int`, *optional*. Index of the diagonal: `0` (the default) refers to the main diagonal, a positive value refers to an upper diagonal, and a negative value to a lower diagonal.
+            - `dtype`: `data-type`, *optional*. Data-type of the returned array.
+            - `order`: `{'C', 'F'}`, *optional*. Whether the output should be stored in row-major (C-style) or column-major (Fortran-style) order in memory.
+        - Returns: 
+            - `I`: `ndarray` of shape `(N, M)`. An array where all elements are equal to zero, except for the k-th diagonal, whose values are equal to one.
+        ```
+        >>> np.eye(2, dtype=int)
+        array([[1, 0],
+               [0, 1]])
+
+        >>> np.eye(3, k=1)
+        array([[0.,  1.,  0.],
+               [0.,  0.,  1.],
+               [0.,  0.,  0.]])
+        ```
+    - [`numpy.identity`](https://numpy.org/doc/stable/reference/generated/numpy.identity.html#numpy.identity)
+        - Return the identity array. The identity array is a square array with ones on the main diagonal. 
+        - Signature: 
+        ```
+        numpy.identity(n, dtype=None)
+        ```
+        - Parameters: 
+            - `n`: `int`. Number of rows (and columns) in `n x n` output.
+            - `dtype`: `data-type`, *optional*. Data-type of the output. Defaults to `float`.
+        - Returns: 
+            - `out`: `ndarray`. `n x n` array with its main diagonal set to one, and all other elements `0`.
+        ```
+        >>> np.identity(3)
+        array([[1.,  0.,  0.],
+               [0.,  1.,  0.],
+               [0.,  0.,  1.]])
+        ```
+    - [`numpy.zeros`](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html#numpy.zeros)
+        - Return a new array of given shape and type, filled with zeros.
+        - Signature
+        ```
+        numpy.zeros(shape, dtype=float, order='C')
+        ```
+        - Parameters
+            - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
+            - `dtype`: `data-type`, *optional*. Desired output data type. e.g, `numpy.int8`. Default is `numpy.float64`.
+            - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
+        - Returns: 
+            - `out`: `ndarray`. Array of zeros with the given shape, dtype, and order.
+        ```
+        >>> import numpy as np
+        >>> x = np.zeros(5)
+        >>> x
+        [ 0. 0. 0. 0. 0.]
+
+        >>> x = np.zeros((5, ), dtype=np.int)
+        >>> x
+        [0 0 0 0 0]
+
+        >>> # custom type
+        >>> x = np.zeros((2, 2), dtype=[('x', 'i4'), ('y', 'i4')])
+        >>> x
+        [[(0, 0) (0, 0)]
+         [(0, 0) (0, 0)]]
+        ```
+    - [`numpy.zeros_like`](https://numpy.org/doc/stable/reference/generated/numpy.zeros_like.html)
+        - Return an array of zeros with the same shape and type as a given array.
+        - Signature: 
+        ```
+        numpy.zeros_like(a, dtype=None, order='K', subok=True, shape=None)
+        ```
+        - Parameters: 
+            - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
+            - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
+            - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
+            - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
+            - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
+        - Returns: 
+            - `out`: `ndarray`. Array of zeros with the same shape and type as `a`. 
+        ```
+        >>> x = np.arange(6).reshape((2, 3))
+        >>> x
+        array([[0, 1, 2],
+               [3, 4, 5]])
+
+        >>> np.zeros_like(x)
+        array([[0, 0, 0],
+               [0, 0, 0]])
+               
+        >>> y = np.arange(3, dtype=float)
+        >>> y
+        array([0., 1., 2.])
+
+        >>> np.zeros_like(y)
+        array([0.,  0.,  0.])
+        ```
+    - [`numpy.ones`](https://numpy.org/doc/stable/reference/generated/numpy.ones.html#numpy.ones)
+        - Return a new array of given shape and type, filled with ones.
+        - Signature
+        ```
+        numpy.ones(shape, dtype=float, order='C')
+        ```
+        - Parameters
+            - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
+            - `dtype`: `data-type`, *optional*. Desired output data type. e.g, `numpy.int8`. Default is `numpy.float64`.
+            - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
+        - Returns: 
+            - `out`: `ndarray`. Array of ones with the given shape, dtype, and order.
+        ```
+        >>> import numpy as np
+        >>> x = np.ones(5)
+        >>> x
+        [ 1. 1. 1. 1. 1.]
+
+        >>> x = np.ones([2, 2], dtype=int)
+        >>> x
+        [[1 1]
+         [1 1]]
+        ```
+    - [`numpy.ones_like`](https://numpy.org/doc/stable/reference/generated/numpy.ones_like.html)
+        - Return an array of zeros with the same shape and type as a given array.
+        - Signature: 
+        ```
+        numpy.ones_like(a, dtype=None, order='K', subok=True, shape=None)
+        ```
+        - Parameters: 
+            - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
+            - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
+            - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
+            - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
+            - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
+        - Returns: 
+            - `out`: `ndarray`. Array of zeros with the same shape and type as `a`. 
+        ```
+        >>> x = np.arange(6).reshape((2, 3))
+        >>> x
+        array([[0, 1, 2],
+               [3, 4, 5]])
+
+        >>> np.ones_like(x)
+        array([[1, 1, 1],
+               [1, 1, 1]])
+               
+        >>> y = np.arange(3, dtype=float)
+        >>> y
+        array([0., 1., 2.])
+
+        >>> np.ones_like(y)
+        array([1.,  1.,  1.])
+        ```
+    - [`numpy.full`](https://numpy.org/doc/stable/reference/generated/numpy.full.html#numpy.full)
+        - RReturn a new array of given shape and type, filled with `fill_value`. 
+        - Signature
+        ```
+        numpy.full(shape, fill_value, dtype=None, order='C')[source]
+        ```
+        - Parameters
+            - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
+            - `fill_value`: `scalar` or `array_like`, Fill value.
+            - `dtype`: `data-type`, *optional*. The desired data-type for the array. The default, `None`, means `np.array(fill_value).dtype`.
+            - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
+        - Returns: 
+            - `out`: `ndarray`. Array of `fill_value` with the given shape, dtype, and order.
+        ```
+        >>> np.full((2, 2), np.inf)
+        array([[inf, inf],
+               [inf, inf]])
+
+        >>> np.full((2, 2), 10)
+        array([[10, 10],
+               [10, 10]])
+        
+        >>> np.full((2, 2), [1, 2])
+        array([[1, 2],
+               [1, 2]])
+        ```
+    - [`numpy.full_like`](https://numpy.org/doc/stable/reference/generated/numpy.full_like.html#numpy.full_like)
+        - Return a full array with the same shape and type as a given array. 
+        - Signature: 
+        ```
+        numpy.full_like(a, fill_value, dtype=None, order='K', subok=True, shape=None)
+        ```
+        - Parameters: 
+            - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
+            - `fill_value`: `scalar`. Fill value.
+            - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
+            - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
+            - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
+            - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
+        - Returns: 
+            - `out`: `ndarray`. Array of `fill_value` with the same shape and type as `a`. 
+        ```
+        >>> x = np.arange(6, dtype=int)
+
+        >>> np.full_like(x, 1)
+        array([1, 1, 1, 1, 1, 1])
+
+        >>> np.full_like(x, 0.1)
+        array([0, 0, 0, 0, 0, 0])
+
+        >>> np.full_like(x, 0.1, dtype=np.double)
+        array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+
+        >>> np.full_like(x, np.nan, dtype=np.double)
+        array([nan, nan, nan, nan, nan, nan])
+
+        >>> y = np.arange(6, dtype=np.double)
+
+        >>> np.full_like(y, 0.1)
+        array([0.1,  0.1,  0.1,  0.1,  0.1,  0.1])
+        ```
+- From Existing Data
+    - `numpy.array`
+    - [`numpy.asarray`](https://numpy.org/doc/stable/reference/generated/numpy.asarray.html?highlight=numpy%20asarray#numpy.asarray)
+        - Convert the input to an array. Similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`
+        - Signature
+        ```
+        numpy.asarray(a, dtype=None, order=None)
+        ```
+        - Parameters
+            - `a`: `array_like`. Input data, in any form that can be converted to an array. This includes `List`, `List[Tuple]`, `Tuple`, `Tuple[Tuples]`, `Tuple[List[np.ndarray]]`.
+            - `dtype`: `data-type`, *optional*. By default, the data-type is inferred from the input data.
+            - `order`: `{'C', 'F'}`, *optional*. Whether to use row-major (C-style) or column-major (Fortran-style) memory representation. Defaults to ‘C’.
+        - Returns: 
+            - `out`: `ndarray`. Array interpretation of `a`. **NO** copy is performed if the input is already an `ndarray` with matching dtype and order. If `a` is a subclass of ndarray, a base class `ndarray` is returned. 
+
+        ```
+        >>> # convert list to ndarray
+        >>> import numpy as np
+        >>> x = [1, 2, 3]
+        >>> np.asarray(x)
+        [1 2 3]
+
+        >>> # dtype is set
+        >>> np.asarray(x, dtype=float)
+        [ 1. 2. 3.]
+
+        >>> # ndarray from tuple
+        >>> x = (1, 2, 3)
+        >>> np.asarray(x)
+        [1 2 3]
+
+        >>> # ndarray from list of tuples
+        >>> x = [(1, 2, 3), (4, 5)]
+        >>> np.asarray(x)
+        [(1, 2, 3) (4, 5)]
+        ```
+    - `numpy.frombuffer`
+        - This function interprets a buffer as 1D array. Any object that exposes the buffer interface is used as parameter to return an `ndarray`
+        - signature
+        ```
+        numpy.frombuffer(buffer, dtype=float, count=-1, offset=0)
+        ```
+        - parameters
+            - `buffer`: Any object that exposes buffer interface
+            - `dtype`: Data type of returned ndarray. Defaults to `float`
+            - `count`: The number of items to read, default `-1` means all data
+            - `offset`: The starting position to read from. Default is `0`
     ```
     >>> import numpy as np
-    >>> x = np.empty([3, 2], dtype=int)
-    >>> x
-    [[22649312   1701344351]
-     [1818321759 1885959276]
-     [16779776   156368896]]
+    >>> s = 'Hello World'
+    >>> a = np.frombuffer(s, dtype='S1')
+    >>> a
+    ['H' 'e' 'l' 'l' 'o' ' ' 'W' 'o' 'r' 'l' 'd']
     ```
-- [`numpy.empty_like`](https://numpy.org/doc/stable/reference/generated/numpy.empty_like.html#numpy.empty_like)
-    - Return a new *uninitialized* array with the same shape and type as a given array. 
-    - Signature: 
-    ```
-     numpy.empty_like(a, dtype=None, order='K', subok=True, shape=None)
-    ```
-    - Parameters: 
-        - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
-        - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
-        - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. `‘C’` means C-order, `‘F’` means F-order, `‘A’` means `‘F’` if prototype is Fortran contiguous, `‘C’` otherwise. `‘K’` means match the layout of prototype as closely as possible.
-        - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
-        - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied. 
-    - Returns: 
-        - `out`: `ndarray`.  Array of uninitialized (arbitrary) data with the same shape and type as prototype.
-    ```
-    >>> a = ([1, 2, 3], [4, 5, 6])                         # a is array-like
-    >>> np.empty_like(a)
-    array([[-1073741821, -1073741821,           3],    # uninitialized
-           [          0,           0, -1073741821]])
-
-    >>> a = np.array([[1., 2., 3.], [4., 5., 6.]])
-    >>> np.empty_like(a)
-    array([[ -2.00000715e+000,   1.48219694e-323,  -2.00000572e+000], # uninitialized
-           [  4.38791518e-305,  -2.00000715e+000,   4.17269252e-309]])
-    ```
-- [`numpy.eye`](https://numpy.org/doc/stable/reference/generated/numpy.eye.html#numpy.eye)
-    - Return a 2-D array with ones on the diagonal and zeros elsewhere.
-    - Signature: 
-    ```
-    numpy.eye(N, M=None, k=0, dtype=<class 'float'>, order='C')
-    ```
-    - Parameters: 
-        - `N`: `int`. Number of rows in the output.
-        - `M`: `int`, *optional*. Number of columns in the output. If `None`, defaults to `N`. 
-        - `k`: `int`, *optional*. Index of the diagonal: `0` (the default) refers to the main diagonal, a positive value refers to an upper diagonal, and a negative value to a lower diagonal.
-        - `dtype`: `data-type`, *optional*. Data-type of the returned array.
-        - `order`: `{'C', 'F'}`, *optional*. Whether the output should be stored in row-major (C-style) or column-major (Fortran-style) order in memory.
-    - Returns: 
-        - `I`: `ndarray` of shape `(N, M)`. An array where all elements are equal to zero, except for the k-th diagonal, whose values are equal to one.
-    ```
-    >>> np.eye(2, dtype=int)
-    array([[1, 0],
-           [0, 1]])
-
-    >>> np.eye(3, k=1)
-    array([[0.,  1.,  0.],
-           [0.,  0.,  1.],
-           [0.,  0.,  0.]])
-    ```
-- [`numpy.identity`](https://numpy.org/doc/stable/reference/generated/numpy.identity.html#numpy.identity)
-    - Return the identity array. The identity array is a square array with ones on the main diagonal. 
-    - Signature: 
-    ```
-    numpy.identity(n, dtype=None)
-    ```
-    - Parameters: 
-        - `n`: `int`. Number of rows (and columns) in `n x n` output.
-        - `dtype`: `data-type`, *optional*. Data-type of the output. Defaults to `float`.
-    - Returns: 
-        - `out`: `ndarray`. `n x n` array with its main diagonal set to one, and all other elements `0`.
-    ```
-    >>> np.identity(3)
-    array([[1.,  0.,  0.],
-           [0.,  1.,  0.],
-           [0.,  0.,  1.]])
-    ```
-- [`numpy.zeros`](https://numpy.org/doc/stable/reference/generated/numpy.zeros.html#numpy.zeros)
-    - Return a new array of given shape and type, filled with zeros.
-    - Signature
-    ```
-    numpy.zeros(shape, dtype=float, order='C')
-    ```
-    - Parameters
-        - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
-        - `dtype`: `data-type`, *optional*. Desired output data type. e.g, `numpy.int8`. Default is `numpy.float64`.
-        - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
-    - Returns: 
-        - `out`: `ndarray`. Array of zeros with the given shape, dtype, and order.
-    ```
-    >>> import numpy as np
-    >>> x = np.zeros(5)
-    >>> x
-    [ 0. 0. 0. 0. 0.]
-
-    >>> x = np.zeros((5, ), dtype=np.int)
-    >>> x
-    [0 0 0 0 0]
-
-    >>> # custom type
-    >>> x = np.zeros((2, 2), dtype=[('x', 'i4'), ('y', 'i4')])
-    >>> x
-    [[(0, 0) (0, 0)]
-     [(0, 0) (0, 0)]]
-    ```
-- [`numpy.zeros_like`](https://numpy.org/doc/stable/reference/generated/numpy.zeros_like.html)
-    - Return an array of zeros with the same shape and type as a given array.
-    - Signature: 
-    ```
-    numpy.zeros_like(a, dtype=None, order='K', subok=True, shape=None)
-    ```
-    - Parameters: 
-        - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
-        - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
-        - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
-        - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
-        - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
-    - Returns: 
-        - `out`: `ndarray`. Array of zeros with the same shape and type as `a`. 
-    ```
-    >>> x = np.arange(6).reshape((2, 3))
-    >>> x
-    array([[0, 1, 2],
-           [3, 4, 5]])
-
-    >>> np.zeros_like(x)
-    array([[0, 0, 0],
-           [0, 0, 0]])
-           
-    >>> y = np.arange(3, dtype=float)
-    >>> y
-    array([0., 1., 2.])
-
-    >>> np.zeros_like(y)
-    array([0.,  0.,  0.])
-    ```
-- [`numpy.ones`](https://numpy.org/doc/stable/reference/generated/numpy.ones.html#numpy.ones)
-    - Return a new array of given shape and type, filled with ones.
-    - Signature
-    ```
-    numpy.ones(shape, dtype=float, order='C')
-    ```
-    - Parameters
-        - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
-        - `dtype`: `data-type`, *optional*. Desired output data type. e.g, `numpy.int8`. Default is `numpy.float64`.
-        - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
-    - Returns: 
-        - `out`: `ndarray`. Array of ones with the given shape, dtype, and order.
-    ```
-    >>> import numpy as np
-    >>> x = np.ones(5)
-    >>> x
-    [ 1. 1. 1. 1. 1.]
-
-    >>> x = np.ones([2, 2], dtype=int)
-    >>> x
-    [[1 1]
-     [1 1]]
-    ```
-- [`numpy.ones_like`](https://numpy.org/doc/stable/reference/generated/numpy.ones_like.html)
-    - Return an array of zeros with the same shape and type as a given array.
-    - Signature: 
-    ```
-    numpy.ones_like(a, dtype=None, order='K', subok=True, shape=None)
-    ```
-    - Parameters: 
-        - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
-        - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
-        - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
-        - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
-        - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
-    - Returns: 
-        - `out`: `ndarray`. Array of zeros with the same shape and type as `a`. 
-    ```
-    >>> x = np.arange(6).reshape((2, 3))
-    >>> x
-    array([[0, 1, 2],
-           [3, 4, 5]])
-
-    >>> np.ones_like(x)
-    array([[1, 1, 1],
-           [1, 1, 1]])
-           
-    >>> y = np.arange(3, dtype=float)
-    >>> y
-    array([0., 1., 2.])
-
-    >>> np.ones_like(y)
-    array([1.,  1.,  1.])
-    ```
-- [`numpy.full`](https://numpy.org/doc/stable/reference/generated/numpy.full.html#numpy.full)
-    - RReturn a new array of given shape and type, filled with `fill_value`. 
-    - Signature
-    ```
-    numpy.full(shape, fill_value, dtype=None, order='C')[source]
-    ```
-    - Parameters
-        - `shape`: `int` or `Tuple[int]`. Shape of an empty array, e.g., `(2, 3)` or `2`. 
-        - `fill_value`: `scalar` or `array_like`, Fill value.
-        - `dtype`: `data-type`, *optional*. The desired data-type for the array. The default, `None`, means `np.array(fill_value).dtype`.
-        - `order`: `{'C', 'F'}`, *optional*. Whether to store multi-dimensional data in row-major (C-style) or column-major (Fortran-style) order in memory.
-    - Returns: 
-        - `out`: `ndarray`. Array of `fill_value` with the given shape, dtype, and order.
-    ```
-    >>> np.full((2, 2), np.inf)
-    array([[inf, inf],
-           [inf, inf]])
-
-    >>> np.full((2, 2), 10)
-    array([[10, 10],
-           [10, 10]])
-    
-    >>> np.full((2, 2), [1, 2])
-    array([[1, 2],
-           [1, 2]])
-    ```
-- [`numpy.full_like`](https://numpy.org/doc/stable/reference/generated/numpy.full_like.html#numpy.full_like)
-    - Return a full array with the same shape and type as a given array. 
-    - Signature: 
-    ```
-    numpy.full_like(a, fill_value, dtype=None, order='K', subok=True, shape=None)
-    ```
-    - Parameters: 
-        - `a`: `array_like`. The shape and data-type of `a` define these same attributes of the returned array.
-        - `fill_value`: `scalar`. Fill value.
-        - `dtype`: `data-type`, *optional*. Overrides the data type of the result.
-        - `order`: `{'C', 'F', 'A', 'K'}`, *optional*. Overrides the memory layout of the result. 
-        - `subok`: `bool`, *optional*. If `True`, then the newly created array will use the sub-class type of `a`, otherwise it will be a base-class array. Defaults to `True`.
-        - `shape`: `int` or `Sequence[int]`, *optional*. Overrides the shape of the result. If `order='K'` and the number of dimensions is unchanged, will try to keep order, otherwise, `order='C'` is implied.
-    - Returns: 
-        - `out`: `ndarray`. Array of `fill_value` with the same shape and type as `a`. 
-    ```
-    >>> x = np.arange(6, dtype=int)
-
-    >>> np.full_like(x, 1)
-    array([1, 1, 1, 1, 1, 1])
-
-    >>> np.full_like(x, 0.1)
-    array([0, 0, 0, 0, 0, 0])
-
-    >>> np.full_like(x, 0.1, dtype=np.double)
-    array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
-
-    >>> np.full_like(x, np.nan, dtype=np.double)
-    array([nan, nan, nan, nan, nan, nan])
-
-    >>> y = np.arange(6, dtype=np.double)
-
-    >>> np.full_like(y, 0.1)
-    array([0.1,  0.1,  0.1,  0.1,  0.1,  0.1])
-    ```
-
-### 🌱 [Array from Existing Data](https://numpy.org/doc/stable/reference/routines.array-creation.html)
-
-- `numpy.array`
-- [`numpy.asarray`](https://numpy.org/doc/stable/reference/generated/numpy.asarray.html?highlight=numpy%20asarray#numpy.asarray)
-    - Convert the input to an array. Similar to `numpy.array` except for the fact that it has fewer parameters. This routine is useful for converting `Python` sequence into `ndarray`
-    - Signature
-    ```
-    numpy.asarray(a, dtype=None, order=None)
-    ```
-    - Parameters
-        - `a`: `array_like`. Input data, in any form that can be converted to an array. This includes `List`, `List[Tuple]`, `Tuple`, `Tuple[Tuples]`, `Tuple[List[np.ndarray]]`.
-        - `dtype`: `data-type`, *optional*. By default, the data-type is inferred from the input data.
-        - `order`: `{'C', 'F'}`, *optional*. Whether to use row-major (C-style) or column-major (Fortran-style) memory representation. Defaults to ‘C’.
-    - Returns: 
-        - `out`: `ndarray`. Array interpretation of `a`. **NO** copy is performed if the input is already an `ndarray` with matching dtype and order. If `a` is a subclass of ndarray, a base class `ndarray` is returned. 
-
-    ```
-    >>> # convert list to ndarray
-    >>> import numpy as np
-    >>> x = [1, 2, 3]
-    >>> np.asarray(x)
-    [1 2 3]
-
-    >>> # dtype is set
-    >>> np.asarray(x, dtype=float)
-    [ 1. 2. 3.]
-
-    >>> # ndarray from tuple
-    >>> x = (1, 2, 3)
-    >>> np.asarray(x)
-    [1 2 3]
-
-    >>> # ndarray from list of tuples
-    >>> x = [(1, 2, 3), (4, 5)]
-    >>> np.asarray(x)
-    [(1, 2, 3) (4, 5)]
-    ```
-- `numpy.frombuffer`
-    - This function interprets a buffer as 1D array. Any object that exposes the buffer interface is used as parameter to return an `ndarray`
+    - `numpy.fromiter`
+        - This function builds an ndarray object from any iterable object. A new 1D array is returned by this function
     - signature
+        ```
+        numpy.fromiter(buffer, dtype=float, count=-1)
+        ```
+        - parameters
+            - `buffer`: Any iterable object
+            - `dtype`: Data type of returned ndarray. Defaults to `float`
+            - `count`: The number of items to be read from iterator. Default is `-1` which means all data to be read
     ```
-    numpy.frombuffer(buffer, dtype=float, count=-1, offset=0)
-    ```
-    - parameters
-        - `buffer`: Any object that exposes buffer interface
-        - `dtype`: Data type of returned ndarray. Defaults to `float`
-        - `count`: The number of items to read, default `-1` means all data
-        - `offset`: The starting position to read from. Default is `0`
-```
->>> import numpy as np
->>> s = 'Hello World'
->>> a = np.frombuffer(s, dtype='S1')
->>> a
-['H' 'e' 'l' 'l' 'o' ' ' 'W' 'o' 'r' 'l' 'd']
-```
-- `numpy.fromiter`
-    - This function builds an ndarray object from any iterable object. A new 1D array is returned by this function
-- signature
-    ```
-    numpy.fromiter(buffer, dtype=float, count=-1)
-    ```
-    - parameters
-        - `buffer`: Any iterable object
-        - `dtype`: Data type of returned ndarray. Defaults to `float`
-        - `count`: The number of items to be read from iterator. Default is `-1` which means all data to be read
-```
->>> # create list object using range function
->>> import numpy as np
->>> lst = range(5)
->>> lst
-[0, 1, 2, 3, 4]
-
->>> # use iterator to create ndarray
->>> it = iter(list)
->>> np.fromiter(it, dtype=float)
-[0. 1. 2. 3. 4.]
-```
-
-### 🌱 [Array from Numerical Ranges](https://numpy.org/doc/stable/reference/routines.array-creation.html)
-
-- [`numpy.arange`](https://numpy.org/doc/stable/reference/generated/numpy.arange.html?highlight=numpy%20arange#numpy.arange)
-    - Return evenly spaced values within a given interval.
-    - Values are generated within the half-open interval `[start, stop)`. For integer arguments the function is equivalent to the `Python` built-in range function, but returns an `ndarray` rather than a generator.
-    - When using a non-integer step, such as 0.1, the results will often **NOT** be consistent. It is better to use `numpy.linspace` for these cases.   
-    - Signature
-    ```
-    numpy.arange(start=0, stop, step=1, dtype=None)
-    ```
-    - Parameters
-        - `start`: `number`, *optional*. Start of interval. The interval includes this value. The default start value is `0`.
-        - `stop`: `number`. End of interval. The interval does **NOT** include this value, except in some cases where step is not an integer and floating point round-off affects the length of out.
-        - `step`: `number`, *optional*. Spacing between values. For any output `out`, this is the distance between two adjacent values, `out[i + 1] - out[i]`. The default step size is `1`. If step is specified as a position argument, `start` *must also be given*. 
-        - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
-    - Returns: 
-        - `argange`: `ndarray`. Array of evenly spaced values. For floating point arguments, the length of the result is `ceil((stop - start) / step)`. Because of floating point overflow, this rule may result in the last element of out being greater than stop.
-    ```
+    >>> # create list object using range function
     >>> import numpy as np
-    >>> x = np.arange(5)
-    >>> x
-    [0 1 2 3 4]
+    >>> lst = range(5)
+    >>> lst
+    [0, 1, 2, 3, 4]
 
-    >>> # dtype set
-    >>> x = np.arange(5, dtype=float)
-    >>> x
+    >>> # use iterator to create ndarray
+    >>> it = iter(list)
+    >>> np.fromiter(it, dtype=float)
     [0. 1. 2. 3. 4.]
+    ```
+- Numerical Ranges
+    - [`numpy.arange`](https://numpy.org/doc/stable/reference/generated/numpy.arange.html?highlight=numpy%20arange#numpy.arange)
+        - Return evenly spaced values within a given interval.
+        - Values are generated within the half-open interval `[start, stop)`. For integer arguments the function is equivalent to the `Python` built-in range function, but returns an `ndarray` rather than a generator.
+        - When using a non-integer step, such as 0.1, the results will often **NOT** be consistent. It is better to use `numpy.linspace` for these cases.   
+        - Signature
+        ```
+        numpy.arange(start=0, stop, step=1, dtype=None)
+        ```
+        - Parameters
+            - `start`: `number`, *optional*. Start of interval. The interval includes this value. The default start value is `0`.
+            - `stop`: `number`. End of interval. The interval does **NOT** include this value, except in some cases where step is not an integer and floating point round-off affects the length of out.
+            - `step`: `number`, *optional*. Spacing between values. For any output `out`, this is the distance between two adjacent values, `out[i + 1] - out[i]`. The default step size is `1`. If step is specified as a position argument, `start` *must also be given*. 
+            - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
+        - Returns: 
+            - `argange`: `ndarray`. Array of evenly spaced values. For floating point arguments, the length of the result is `ceil((stop - start) / step)`. Because of floating point overflow, this rule may result in the last element of out being greater than stop.
+        ```
+        >>> import numpy as np
+        >>> x = np.arange(5)
+        >>> x
+        [0 1 2 3 4]
 
-    >>> # start and stop parameters set
-    >>> x = np.arange(10, 20, 2)
-    >>> x
-    [10 12 14 16 18]
-    ```
-- [`numpy.linspace`](https://numpy.org/doc/stable/reference/generated/numpy.linspace.html)
-    - This function is similar to `numpy.arange` function. In this function, instead of step size, the *number* of evenly spaced values between the interval `[start, stop]`
-    - Signature
-    ```
-    numpy.linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis=0)
-    ```
-    - Parameters
-        - `start`: `array_like`. The starting value of the sequence
-        - `stop`: `array_like`. The end value of the sequence, *included* in the sequence if `endpoint=True`
-        - `num`: `int`, *optional*. The number of evenly spaced samples to be generated. Default is `50`
-        - `endpoint`: `bool`, *optional*. `True` by default, hence the stop value is included in the sequence. If `False`, it is **NOT** included
-        - `retstep`: `bool`, *optional*. If `True`, returns a tuple of (samples, step between the consecutive numbers)
-        - `dtype`: `data-type`, *optional*. Data type of output `ndarray`
-        - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if `start` or `stop` are `array-like`. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
-    - Returns: 
-        - `samples`: `ndarray`. There are num equally spaced samples in the closed interval `[start, stop]` or the half-open interval `[start, stop)` (depending on whether `endpoint` is `True` or `False`).
-        - `step`: `float`, *optional*. Only returned if `retstep=True`. Size of spacing between samples.
-    ```
-    >>> import numpy as np
-    >>> x = np.linspace(10, 20, 5)
-    >>> x
-    [10. 12.5 15. 17.5 20.]
+        >>> # dtype set
+        >>> x = np.arange(5, dtype=float)
+        >>> x
+        [0. 1. 2. 3. 4.]
 
-    >>> # endpoint set to false
-    >>> x = np.linspace(10, 20, 5, endpoint=False)
-    >>> x
-    [10. 12. 14. 16. 18.]
+        >>> # start and stop parameters set
+        >>> x = np.arange(10, 20, 2)
+        >>> x
+        [10 12 14 16 18]
+        ```
+    - [`numpy.linspace`](https://numpy.org/doc/stable/reference/generated/numpy.linspace.html)
+        - This function is similar to `numpy.arange` function. In this function, instead of step size, the *number* of evenly spaced values between the interval `[start, stop]`
+        - Signature
+        ```
+        numpy.linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis=0)
+        ```
+        - Parameters
+            - `start`: `array_like`. The starting value of the sequence
+            - `stop`: `array_like`. The end value of the sequence, *included* in the sequence if `endpoint=True`
+            - `num`: `int`, *optional*. The number of evenly spaced samples to be generated. Default is `50`
+            - `endpoint`: `bool`, *optional*. `True` by default, hence the stop value is included in the sequence. If `False`, it is **NOT** included
+            - `retstep`: `bool`, *optional*. If `True`, returns a tuple of (samples, step between the consecutive numbers)
+            - `dtype`: `data-type`, *optional*. Data type of output `ndarray`
+            - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if `start` or `stop` are `array-like`. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
+        - Returns: 
+            - `samples`: `ndarray`. There are num equally spaced samples in the closed interval `[start, stop]` or the half-open interval `[start, stop)` (depending on whether `endpoint` is `True` or `False`).
+            - `step`: `float`, *optional*. Only returned if `retstep=True`. Size of spacing between samples.
+        ```
+        >>> import numpy as np
+        >>> x = np.linspace(10, 20, 5)
+        >>> x
+        [10. 12.5 15. 17.5 20.]
 
-    >>> # find retstep value
-    >>> x = np.linspace(1, 2, 5, retstep=True)
-    >>> x
-    (array([ 1. , 1.25, 1.5 , 1.75, 2. ]), 0.25)
-    ```
-- [`numpy.logspace`](https://numpy.org/doc/stable/reference/generated/numpy.logspace.html#numpy.logspace)
-    - Return numbers spaced evenly on a log scale. In linear space, the sequence starts at `base ** start` and ends with `base ** stop`. 
-    - Signature
-    ```
-    numpy.logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0)
-    ```
-    - Parameters
-        - `start`: `array_like`. `base ** start` is the starting value of the sequence.
-        - `stop`: `array_like`. `base ** stop` is the final value of the sequence, unless `endpoint=False`. In that case, `num + 1` values are spaced over the interval in log-space, of which all but the last (a sequence of length num) are returned.
-        - `num`: `int`, *optional*. Number of samples to generate. Default is `50`.
-        - `endpoint`: `bool`, *optional*. If `True`, `stop` is the last sample. Otherwise, it is **NOT** included. Default is `True`.
-        - `base`: `float`, *optional*. The base of the log space. The step size between the elements in `ln(samples) / ln(base)` (or `log_base(samples)`) is uniform. Default is `10.0`.
-        - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
-        - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if start or stop are array-like. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
-    - Returns: 
-        - `samples`: `ndarray`. `num` samples equally spaced on a log scale.
-    ```
-    >>> # default base is 10
-    >>> import numpy as np
-    >>> a = np.logspace(1.0, 2.0, num=10)
-    >>> a
-    [ 10.         12.91549665 16.68100537 21.5443469  27.82559402
-      35.93813664 46.41588834 59.94842503 77.42636827 100.        ]
-      
-    >>> # set base of log space to 2
-    >>> a = np.logspace(1, 10, num=10, base=2)
-    >>> a
-    [ 2. 4. 8. 16. 32. 64. 128. 256. 512. 1024.]
-    ```
-- [`numpy.geomspace`](https://numpy.org/doc/stable/reference/generated/numpy.geomspace.html#numpy.geomspace)  
-    - Return numbers spaced evenly on a log scale (a geometric progression). This is similar to `logspace`, but with endpoints specified *directly*. Each output sample is a constant multiple of the previous.
-    - Signature: 
-    ```
-    numpy.geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0)
-    ```
-    - Parameters
-        - `start`: `array_like`. The starting value of the sequence.
-        - `stop`: `array_like`. The final value of the sequence, unless `endpoint=False`. In that case, `num + 1` values are spaced over the interval in log-space, of which all but the last (a sequence of length num) are returned.
-        - `num`: `int`, *optional*. Number of samples to generate. Default is `50`.
-        - `endpoint`: `bool`, *optional*. If `True`, `stop` is the last sample. Otherwise, it is **NOT** included. Default is `True`.
-        - `base`: `float`, *optional*. The base of the log space. The step size between the elements in `ln(samples) / ln(base)` (or `log_base(samples)`) is uniform. Default is `10.0`.
-        - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
-        - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if start or stop are array-like. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
-    - Returns: 
-        - `samples`: `ndarray`. `num` samples equally spaced on a log scale.
-- [`numpy.meshgrid`](https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html#numpy.meshgrid)
-    - Return coordinate matrices from coordinate vectors. Make N-D coordinate arrays for vectorized evaluations of N-D scalar/vector fields over N-D grids, given one-dimensional coordinate arrays `x1, x2, ..., xn`.
-    - Signature: 
-    ```
-    numpy.meshgrid(*xi, copy=True, sparse=False, indexing='xy')
-    ```
-    - Parameters: 
-        - `x1, x2, ..., xn`: `array_like`. 1-D arrays representing the coordinates of a grid. 
-        - `indexing`: `{'xy', 'ij'}`, *optional*. Cartesian (`'xy'`, default) or matrix (`'ij'`) indexing of output. 
-        - `sparse`: `bool`, *optional*. If `True` a sparse grid is returned in order to conserve memory. Default is `False`. 
-        - `copy`: `bool`, *optional*. If `False`, a *view* into the original arrays are returned in order to conserve memory.  Default is `True`. Please note that `sparse=False`, `copy=False` will likely return *non-contiguous* arrays.  Furthermore, more than one element of a broadcast array may refer to a single memory location. If you need to write to the arrays, make copies first. 
-    - Returns: 
-        - `X1, X2, ..., XN`: `ndarray`. For vectors `x1, x2, ..., xn` with lengths `Ni = len(xi)`, return `(N1, N2, N3, ..., Nn)` shaped arrays if `indexing='ij'` or `(N2, N1, N3, ..., Nn)` shaped arrays if `indexing='xy'` with the elements of `xi` repeated to fill the matrix along the first dimension for `x1`, the second for `x2` and so on. 
-    - Notes: 
-        - This function supports both indexing conventions through the indexing keyword argument. Giving the string `'ij'` returns a meshgrid with matrix indexing, while `'xy'` returns a meshgrid with Cartesian indexing. In the 2-D case with inputs of length `M` and `N`, the outputs are of shape `(N, M)` for `'xy'` indexing and `(M, N)` for `'ij'` indexing. In the 3-D case with inputs of length `M`, `N` and `P`, outputs are of shape `(N, M, P)` for `'xy'`indexing and `(M, N, P)` for `'ij'` indexing.
-    - Examples: 
-    ```
-    >>> nx, ny = (3, 2)
-    >>> x = np.linspace(0, 1, nx)
-    >>> y = np.linspace(0, 1, ny)
-    
-    >>> xv, yv = np.meshgrid(x, y)
+        >>> # endpoint set to false
+        >>> x = np.linspace(10, 20, 5, endpoint=False)
+        >>> x
+        [10. 12. 14. 16. 18.]
 
-    >>> xv
-    array([[0. , 0.5, 1. ],
-           [0. , 0.5, 1. ]])
+        >>> # find retstep value
+        >>> x = np.linspace(1, 2, 5, retstep=True)
+        >>> x
+        (array([ 1. , 1.25, 1.5 , 1.75, 2. ]), 0.25)
+        ```
+    - [`numpy.logspace`](https://numpy.org/doc/stable/reference/generated/numpy.logspace.html#numpy.logspace)
+        - Return numbers spaced evenly on a log scale. In linear space, the sequence starts at `base ** start` and ends with `base ** stop`. 
+        - Signature
+        ```
+        numpy.logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0)
+        ```
+        - Parameters
+            - `start`: `array_like`. `base ** start` is the starting value of the sequence.
+            - `stop`: `array_like`. `base ** stop` is the final value of the sequence, unless `endpoint=False`. In that case, `num + 1` values are spaced over the interval in log-space, of which all but the last (a sequence of length num) are returned.
+            - `num`: `int`, *optional*. Number of samples to generate. Default is `50`.
+            - `endpoint`: `bool`, *optional*. If `True`, `stop` is the last sample. Otherwise, it is **NOT** included. Default is `True`.
+            - `base`: `float`, *optional*. The base of the log space. The step size between the elements in `ln(samples) / ln(base)` (or `log_base(samples)`) is uniform. Default is `10.0`.
+            - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
+            - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if start or stop are array-like. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
+        - Returns: 
+            - `samples`: `ndarray`. `num` samples equally spaced on a log scale.
+        ```
+        >>> # default base is 10
+        >>> import numpy as np
+        >>> a = np.logspace(1.0, 2.0, num=10)
+        >>> a
+        [ 10.         12.91549665 16.68100537 21.5443469  27.82559402
+          35.93813664 46.41588834 59.94842503 77.42636827 100.        ]
+          
+        >>> # set base of log space to 2
+        >>> a = np.logspace(1, 10, num=10, base=2)
+        >>> a
+        [ 2. 4. 8. 16. 32. 64. 128. 256. 512. 1024.]
+        ```
+    - [`numpy.geomspace`](https://numpy.org/doc/stable/reference/generated/numpy.geomspace.html#numpy.geomspace)  
+        - Return numbers spaced evenly on a log scale (a geometric progression). This is similar to `logspace`, but with endpoints specified *directly*. Each output sample is a constant multiple of the previous.
+        - Signature: 
+        ```
+        numpy.geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0)
+        ```
+        - Parameters
+            - `start`: `array_like`. The starting value of the sequence.
+            - `stop`: `array_like`. The final value of the sequence, unless `endpoint=False`. In that case, `num + 1` values are spaced over the interval in log-space, of which all but the last (a sequence of length num) are returned.
+            - `num`: `int`, *optional*. Number of samples to generate. Default is `50`.
+            - `endpoint`: `bool`, *optional*. If `True`, `stop` is the last sample. Otherwise, it is **NOT** included. Default is `True`.
+            - `base`: `float`, *optional*. The base of the log space. The step size between the elements in `ln(samples) / ln(base)` (or `log_base(samples)`) is uniform. Default is `10.0`.
+            - `dtype`: `data-type`. The type of the output array. If dtype is not given, infer the data type from the other input arguments.
+            - `axis`: `int`, *optional*. The axis in the result to store the samples. Relevant only if start or stop are array-like. By default (`0`), the samples will be along a new axis inserted at the beginning. Use `-1` to get an axis at the end.
+        - Returns: 
+            - `samples`: `ndarray`. `num` samples equally spaced on a log scale.
+    - [`numpy.meshgrid`](https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html#numpy.meshgrid)
+        - Return coordinate matrices from coordinate vectors. Make N-D coordinate arrays for vectorized evaluations of N-D scalar/vector fields over N-D grids, given one-dimensional coordinate arrays `x1, x2, ..., xn`.
+        - Signature: 
+        ```
+        numpy.meshgrid(*xi, copy=True, sparse=False, indexing='xy')
+        ```
+        - Parameters: 
+            - `x1, x2, ..., xn`: `array_like`. 1-D arrays representing the coordinates of a grid. 
+            - `indexing`: `{'xy', 'ij'}`, *optional*. Cartesian (`'xy'`, default) or matrix (`'ij'`) indexing of output. 
+            - `sparse`: `bool`, *optional*. If `True` a sparse grid is returned in order to conserve memory. Default is `False`. 
+            - `copy`: `bool`, *optional*. If `False`, a *view* into the original arrays are returned in order to conserve memory.  Default is `True`. Please note that `sparse=False`, `copy=False` will likely return *non-contiguous* arrays.  Furthermore, more than one element of a broadcast array may refer to a single memory location. If you need to write to the arrays, make copies first. 
+        - Returns: 
+            - `X1, X2, ..., XN`: `ndarray`. For vectors `x1, x2, ..., xn` with lengths `Ni = len(xi)`, return `(N1, N2, N3, ..., Nn)` shaped arrays if `indexing='ij'` or `(N2, N1, N3, ..., Nn)` shaped arrays if `indexing='xy'` with the elements of `xi` repeated to fill the matrix along the first dimension for `x1`, the second for `x2` and so on. 
+        - Notes: 
+            - This function supports both indexing conventions through the indexing keyword argument. Giving the string `'ij'` returns a meshgrid with matrix indexing, while `'xy'` returns a meshgrid with Cartesian indexing. In the 2-D case with inputs of length `M` and `N`, the outputs are of shape `(N, M)` for `'xy'` indexing and `(M, N)` for `'ij'` indexing. In the 3-D case with inputs of length `M`, `N` and `P`, outputs are of shape `(N, M, P)` for `'xy'`indexing and `(M, N, P)` for `'ij'` indexing.
+        - Examples: 
+        ```
+        >>> nx, ny = (3, 2)
+        >>> x = np.linspace(0, 1, nx)
+        >>> y = np.linspace(0, 1, ny)
+        
+        >>> xv, yv = np.meshgrid(x, y)
 
-    >>> yv
-    array([[0.,  0.,  0.],
-           [1.,  1.,  1.]])
+        >>> xv
+        array([[0. , 0.5, 1. ],
+               [0. , 0.5, 1. ]])
 
-    >>> xv, yv = np.meshgrid(x, y, sparse=True)  # make sparse output arrays
+        >>> yv
+        array([[0.,  0.,  0.],
+               [1.,  1.,  1.]])
 
-    >>> xv
-    array([[0. ,  0.5,  1. ]])
+        >>> xv, yv = np.meshgrid(x, y, sparse=True)  # make sparse output arrays
 
-    >>> yv
-    array([[0.],
-           [1.]])
-    ```
-    
-### 🌱 [Building Matrices](https://numpy.org/doc/stable/reference/routines.array-creation.html)
+        >>> xv
+        array([[0. ,  0.5,  1. ]])
 
-- [`numpy.diag`](https://numpy.org/doc/stable/reference/generated/numpy.diag.html#numpy.diag)
-    - Extract a diagonal or construct a diagonal array. Whether it returns a copy or a view depends on what version of numpy you are using. 
-    - Signature: 
-    ```
-    numpy.diag(v, k=0)
-    ```
-    - Parameters: 
-        - `v`: `array_like`. If `v` is a 2-D array, return a *copy* of its `k`-th diagonal. If `v` is a 1-D array, return a 2-D array with `v` on the `k`-th diagonal. 
-        - `k`: `int`, *optional*. Diagonal in question. The default is `0`. Use `k > 0` for diagonals above the main diagonal, and `k < 0` for diagonals below the main diagonal. 
-    - Returns: 
-        - `out`: `ndarray`. The extracted diagonal or constructed diagonal array. 
-    ```
-    >>> x = np.arange(9).reshape(3, 3)
-    >>> x
-    array([[0, 1, 2],
-           [3, 4, 5],
-           [6, 7, 8]])
+        >>> yv
+        array([[0.],
+               [1.]])
+        ```
+- Building Matrices
+    - [`numpy.diag`](https://numpy.org/doc/stable/reference/generated/numpy.diag.html#numpy.diag)
+        - Extract a diagonal or construct a diagonal array. Whether it returns a copy or a view depends on what version of numpy you are using. 
+        - Signature: 
+        ```
+        numpy.diag(v, k=0)
+        ```
+        - Parameters: 
+            - `v`: `array_like`. If `v` is a 2-D array, return a *copy* of its `k`-th diagonal. If `v` is a 1-D array, return a 2-D array with `v` on the `k`-th diagonal. 
+            - `k`: `int`, *optional*. Diagonal in question. The default is `0`. Use `k > 0` for diagonals above the main diagonal, and `k < 0` for diagonals below the main diagonal. 
+        - Returns: 
+            - `out`: `ndarray`. The extracted diagonal or constructed diagonal array. 
+        ```
+        >>> x = np.arange(9).reshape(3, 3)
+        >>> x
+        array([[0, 1, 2],
+               [3, 4, 5],
+               [6, 7, 8]])
 
-    >>> np.diag(x)
-    array([0, 4, 8])
+        >>> np.diag(x)
+        array([0, 4, 8])
 
-    >>> np.diag(x, k=1)
-    array([1, 5])
+        >>> np.diag(x, k=1)
+        array([1, 5])
 
-    >>> np.diag(x, k=-1)
-    array([3, 7])
+        >>> np.diag(x, k=-1)
+        array([3, 7])
 
-    >>> np.diag(np.diag(x))
-    array([[0, 0, 0],
-           [0, 4, 0],
-           [0, 0, 8]])
-    ```
-- [`numpy.diagflat`](https://numpy.org/doc/stable/reference/generated/numpy.diagflat.html#numpy.diagflat)
-    - Create a 2-D array with the flattened input as a diagonal. 
-    - Signature: 
-    ```
-    numpy.diagflat(v, k=0)
-    ```
-    - Parameters: 
-        - `v`: `array_like`. Input data, which is flattened and set as the k-th diagonal of the output. 
-        - `k`: `int`, *optional*. Diagonal to set; `0`, the default, corresponds to the "main" diagonal, a positive (negative) k giving the number of the diagonal above (below) the main. 
-    - Returns: 
-        - `out`: `ndarray`. The 2-D output array. 
-    ```
-    >>> np.diagflat([[1, 2], [3, 4]])
-    array([[1, 0, 0, 0],
-           [0, 2, 0, 0],
-           [0, 0, 3, 0],
-           [0, 0, 0, 4]])
+        >>> np.diag(np.diag(x))
+        array([[0, 0, 0],
+               [0, 4, 0],
+               [0, 0, 8]])
+        ```
+    - [`numpy.diagflat`](https://numpy.org/doc/stable/reference/generated/numpy.diagflat.html#numpy.diagflat)
+        - Create a 2-D array with the flattened input as a diagonal. 
+        - Signature: 
+        ```
+        numpy.diagflat(v, k=0)
+        ```
+        - Parameters: 
+            - `v`: `array_like`. Input data, which is flattened and set as the k-th diagonal of the output. 
+            - `k`: `int`, *optional*. Diagonal to set; `0`, the default, corresponds to the "main" diagonal, a positive (negative) k giving the number of the diagonal above (below) the main. 
+        - Returns: 
+            - `out`: `ndarray`. The 2-D output array. 
+        ```
+        >>> np.diagflat([[1, 2], [3, 4]])
+        array([[1, 0, 0, 0],
+               [0, 2, 0, 0],
+               [0, 0, 3, 0],
+               [0, 0, 0, 4]])
 
-    >>> np.diagflat([1, 2], 1)
-    array([[0, 1, 0],
-           [0, 0, 2],
-           [0, 0, 0]])
-    ```
-- [`numpy.tri`](https://numpy.org/doc/stable/reference/generated/numpy.tri.html#numpy.tri)
-    - An array with ones at and below the given diagonal and zeros elsewhere. 
-    - Signature: 
-    ```
-    numpy.tri(N, M=None, k=0, dtype=<class 'float'>)
-    ```
-    - Parameters: 
-        - `N`: `int`. Number of rows in the array. 
-        - `M`: `int`, *optional*. Number of columns in the array. By default, `M` is taken equal to `N`. 
-        - `k`: `int`, *optional*. The sub-diagonal at and below which the array is filled. `k = 0` is the main diagonal, while `k < 0` is below it, and `k > 0` is above. The default is `0`. 
-        - `dtype``data-type`, *optional*. Data type of the returned array. The default is `float`. 
-    - Returns: 
-        - `tri`: `ndarray` of shape `(N, M)`. Array with its lower triangle filled with ones and zero elsewhere; in other words `T[i,j] == 1` for `j <= i + k`, `0` otherwise. 
-    ```
-    >>> np.tri(3, 5, 2, dtype=int)
-    array([[1, 1, 1, 0, 0],
-           [1, 1, 1, 1, 0],
-           [1, 1, 1, 1, 1]])
-    
-    >>> np.tri(3, 5, -1)
-    array([[0.,  0.,  0.,  0.,  0.],
-           [1.,  0.,  0.,  0.,  0.],
-           [1.,  1.,  0.,  0.,  0.]])
-    ```
-- [`numpy.tril`](https://numpy.org/doc/stable/reference/generated/numpy.tril.html#numpy.tril)
-    - Lower triangle of an array. Return a *copy* of an array with elements *above* the `k`-th diagonal zeroed. 
-    - Signature: 
-    ```
-    numpy.tril(m, k=0)
-    ```
-    - Parameters: 
-        - `m`: `array_like`, shape `(M, N)`. Input array. 
-        - `k`: `int`, *optional*. Diagonal above which to zero elements. `k = 0` (the default) is the main diagonal, `k < 0` is below it and `k > 0` is above. 
-    - Returns: 
-        - `tril`: `ndarray`, shape `(M, N)`. Lower triangle of `m`, of same shape and data-type as `m`. 
-    ```
-    >>> np.tril([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], -1)
-    array([[ 0,  0,  0], 
-           [ 4,  0,  0],
-           [ 7,  8,  0],
-           [10, 11, 12]])
-    ```
-- [`numpy.triu`](https://numpy.org/doc/stable/reference/generated/numpy.triu.html#numpy.triu)
-    - Upper triangle of an array. Return a *copy* of a matrix with the elements *below* the `k`-th diagonal zeroed. 
-    - Signature: 
-    ```
-    numpy.triu(m, k=0)
-    ```
-    - Examples: 
-    ```
-    >>> np.triu([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], -1)
-    array([[ 1,  2,  3],
-           [ 4,  5,  6],
-           [ 0,  8,  9],
-           [ 0,  0, 12]])
-    ```
+        >>> np.diagflat([1, 2], 1)
+        array([[0, 1, 0],
+               [0, 0, 2],
+               [0, 0, 0]])
+        ```
+    - [`numpy.tri`](https://numpy.org/doc/stable/reference/generated/numpy.tri.html#numpy.tri)
+        - An array with ones at and below the given diagonal and zeros elsewhere. 
+        - Signature: 
+        ```
+        numpy.tri(N, M=None, k=0, dtype=<class 'float'>)
+        ```
+        - Parameters: 
+            - `N`: `int`. Number of rows in the array. 
+            - `M`: `int`, *optional*. Number of columns in the array. By default, `M` is taken equal to `N`. 
+            - `k`: `int`, *optional*. The sub-diagonal at and below which the array is filled. `k = 0` is the main diagonal, while `k < 0` is below it, and `k > 0` is above. The default is `0`. 
+            - `dtype``data-type`, *optional*. Data type of the returned array. The default is `float`. 
+        - Returns: 
+            - `tri`: `ndarray` of shape `(N, M)`. Array with its lower triangle filled with ones and zero elsewhere; in other words `T[i,j] == 1` for `j <= i + k`, `0` otherwise. 
+        ```
+        >>> np.tri(3, 5, 2, dtype=int)
+        array([[1, 1, 1, 0, 0],
+               [1, 1, 1, 1, 0],
+               [1, 1, 1, 1, 1]])
+        
+        >>> np.tri(3, 5, -1)
+        array([[0.,  0.,  0.,  0.,  0.],
+               [1.,  0.,  0.,  0.,  0.],
+               [1.,  1.,  0.,  0.,  0.]])
+        ```
+    - [`numpy.tril`](https://numpy.org/doc/stable/reference/generated/numpy.tril.html#numpy.tril)
+        - Lower triangle of an array. Return a *copy* of an array with elements *above* the `k`-th diagonal zeroed. 
+        - Signature: 
+        ```
+        numpy.tril(m, k=0)
+        ```
+        - Parameters: 
+            - `m`: `array_like`, shape `(M, N)`. Input array. 
+            - `k`: `int`, *optional*. Diagonal above which to zero elements. `k = 0` (the default) is the main diagonal, `k < 0` is below it and `k > 0` is above. 
+        - Returns: 
+            - `tril`: `ndarray`, shape `(M, N)`. Lower triangle of `m`, of same shape and data-type as `m`. 
+        ```
+        >>> np.tril([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], -1)
+        array([[ 0,  0,  0], 
+               [ 4,  0,  0],
+               [ 7,  8,  0],
+               [10, 11, 12]])
+        ```
+    - [`numpy.triu`](https://numpy.org/doc/stable/reference/generated/numpy.triu.html#numpy.triu)
+        - Upper triangle of an array. Return a *copy* of a matrix with the elements *below* the `k`-th diagonal zeroed. 
+        - Signature: 
+        ```
+        numpy.triu(m, k=0)
+        ```
+        - Examples: 
+        ```
+        >>> np.triu([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], -1)
+        array([[ 1,  2,  3],
+               [ 4,  5,  6],
+               [ 0,  8,  9],
+               [ 0,  0, 12]])
+        ```
 
-### 🌱 [Basic Indexing & Slicing](https://numpy.org/doc/stable/reference/arrays.indexing.html)
+### 🌱 [Indexing](https://numpy.org/doc/stable/reference/arrays.indexing.html)
 
 - Contents of `ndarray` object can be accessed and modified by *indexing* or *slicing* 
     - items in `ndarray` object follows *zero-based index*, can be indexed using `x[obj]` syntax 
@@ -836,7 +831,7 @@ UPDATEIFCOPY : False
     >>> x['b'].dtype
     dtype('float64')
     ```
-- *Basic Slicing* 
+- *Basic Slicing and Indexing* 
     - Basic slicing occurs when `obj` is
         - a *slice*, or 
         - an *integer*, or 
@@ -922,144 +917,142 @@ UPDATEIFCOPY : False
         >>> x[:,None,:,:].shape
         (2, 1, 3, 1)
         ```
-
-### 🌱 [Advanced Indexing](https://numpy.org/doc/stable/reference/arrays.indexing.html#advanced-indexing)
-
-- Advanced indexing is triggered when the selection object `obj` is:
-    - a *non-tuple sequence object*, or 
-    - an `ndarray` (whose `dtype` is `int` or `bool`), or
-    - a *tuple* having one more *sequence object* or `ndarray` (whose `dtype` is `int` or `bool`)
-- Warning
-    - `x[(1, 2, 3), ]` is different from `x[(1, 2, 3)]`. The former triggers *advanced indexing*, while the latter one equals to `x[1, 2, 3]` and triggers *basic indexing*
-    - Also recognize that `x[[1, 2, 3]]` will trigger *advanced indexing*, whereas due to the deprecated Numeric compatibility mentioned above, `x[[1, 2, slice(None)]]` will trigger *basic slicing* 
-- Offical documents says that advanced indexing generates *copies*, however, as tested, advanced indexing can also be used to set values! WEIRD THING HERE. 
-- two types of advanced indexing: 
-    - *Integer Array Indexing* 
-    - *Boolean Array Indexing* 
-- [Integer Array Indexing](https://numpy.org/doc/stable/reference/arrays.indexing.html#integer-array-indexing)
-    - Index is a tuple of `x.ndim` `ndarray`s, all in same shape (same as output shape) (or boardcastable shape). For the following
-    ```
-    res = x[a_1, ..., a_N]  # N == x.ndim
-                            # M == res.ndim
-                            # res.shape == a_1.shape == ... == a_k.shape
-    ```
-    - We have: every scalar element in `res` is selected from `x`, with the `k-th` coordinate given by `a_k`'s cooresponding element, i.e. 
-    ```
-    res[i_1, ..., i_M] == x[a_1[i_1, ..., i_M], a_2[i_1, ..., i_M], ..., a_N[i_1, ..., i_M]]
-    ```
-    - **Example 1**: From each row, a specific element should be selected. The row index is just `[0, 1, 2]` and the column index specifies the element to choose for the corresponding row, here `[0, 1, 0]`
-    ```
-    >>> import numpy as np
-    >>> x = np.array([[1, 2], [3, 4], [5, 6]])
-    >>> x[[0, 1, 2], [0, 1, 0]]
-    [1 4 5]
-    ```
-    - **Example 2**: from a `4 * 3` array the corner elements should be selected using advanced indexing. Thus all elements for which the column is one of `[0, 2]` and the row is one of `[0, 3]` need to be selected. To use advanced indexing one needs to select all elements explicitly.
-    ```
-    >>> x = np.array([[ 0,  1,  2], 
-                      [ 3,  4,  5], 
-                      [ 6,  7,  8], 
-                      [ 9, 10, 11]])
-    >>> rows = np.array([[0, 0], [3, 3]])
-    >>> cols = np.array([[0, 2], [0, 2]])
-    >>> x[rows, cols]
-    [[ 0,  2],
-     [ 9, 11]]
-    ```
-    - **Example 2.1**: we can make use of *broadcasting* to generate `rows`, `cols` from simpler `ndarray`s
-    ```
-    >>> x = np.array([[ 0,  1,  2], 
-                      [ 3,  4,  5], 
-                      [ 6,  7,  8], 
-                      [ 9, 10, 11]])
-    >>> rows = np.array([0, 3])
-    >>> rows[:, np.newaxis]
-    [[0],
-     [3]]
-    
-    >>> cols = np.array([0, 2])
-    >>> x[rows[:, np.newaxis], cols]
-    [[ 0,  2],
-     [ 9, 11]]
-    ```
-    - **Example 2.2**: use of `np.ix_` function
-        - `numpy.ix_(*args)`: take `N` 1D arrays, return tuple of `N` arrays s.t. they can automatically broadcast into proper index array
-    ```
-    >>> x = np.array([[ 0,  1,  2], 
-                      [ 3,  4,  5], 
-                      [ 6,  7,  8], 
-                      [ 9, 10, 11]])
-    >>> rows = np.array([0, 3])
-    >>> cols = np.array([0, 2])
-    >>> idx = np.ix_(rows, cols)
-    >>> idx
-    (array([[0],
-            [3]]),
-            
-     array([[0, 2]]))
-    
-    >>> x[idx]
-    [[ 0,  2],
-     [ 9, 11]]
-    ```
-- Combining Advanced And Basic Indexing
-    - **Example 3**: Advanced and basic indexing can be combined by using one *slice* `:` or *ellipsis* `...` with an index array. The following example uses slice for row and advanced index for column. The result is the same when slice is used for both. But advanced index results in copy and may have different memory layout.
-    ```
-    >>> x = np.array([[ 0,  1,  2], 
-                      [ 3,  4,  5], 
-                      [ 6,  7,  8], 
-                      [ 9, 10, 11]])
-                      
-    >>> x[1:4, 1:3]
-    [[ 4  5]
-     [ 7  8]
-     [10 11]]
-    
-    >>> x[1:4, [1, 2]]
-    [[ 4  5]
-     [ 7  8]
-     [10 11]]
-    ```
-- [Boolean Array Indexing](https://numpy.org/doc/stable/reference/arrays.indexing.html#boolean-array-indexing)
-    - Occurs when `obj` is array object of `bool` type, such as may be returned from comparison operators
-    - Boolean array indexing `x[obj]` is practically identical to Integer array indexing `x[obj.nonzero()]`. However, Boolean Array Indexing is faster when `obj.shape == x.shape`. 
-        - `numpy.nonzero`
-            - `numpy.nonzero(a)` will return a tuple of `a.ndim` `ndarray`s, let `r_1, ..., r_N`. Then, `a`'s `i-th` non-zero element (counted in row-major, `C`-style order) is `a[r_1[i], ..., r_N[i]]`. 
-            - Offical expression: Returns a tuple of arrays, one for each dimension of `a`, containing the indices of the non-zero elements in that dimension. The values in `a` are always tested and returned in row-major, `C`-style order.
-    - If `obj.ndim == x.ndim`, `x[obj]` returns a 1D array filled with the elements of `x` corresponding to the `True` values of `obj`. The search order will be row-major, `C`-style. 
-        - If `obj` has True values at entries that are outside of the bounds of `x`, then an `IndexError` will be raised.
-        - If `obj` is smaller than `x`, it is identical to filling it with `False`.
-    - **Example 4**: In this example, items greater than 5 are returned as a result of Boolean indexing
-    ```
-    >>> x = np.array([[ 0,  1,  2], 
-                      [ 3,  4,  5], 
-                      [ 6,  7,  8], 
-                      [ 9, 10, 11]])
-    >>> x[x > 5]
-    [6 7 8 9 10 11]
-    ```
-    - **Example 5**: In this example, `NaN` (Not a Number) elements are omitted
-    ```
-    >>> a = np.array([np.nan, 1, 2, np.nan, 3, 4, 5])
-    >>> a[~np.isnan(a)]
-    [ 1. 2. 3. 4. 5.]
-    ```
-    - **Example 6**: The following example adds a constant to all negative elements
-    ```
-    >>> x = np.array([1., -1., -2., 3])
-    >>> x[x < 0] += 20
-    >>> x
-    array([  1.,  19.,  18.,   3.])
-    ```
-    - If an index includes a Boolean array, the result will be identical to inserting `obj.nonzero()` into the same position and using the integer array indexing mechanism. `x[a_1, boolean_array, a_2]` is equivalent to `x[(ind_1,) + boolean_array.nonzero() + (ind_2,)]`.
-    - **Example 7**: 
-    ```
-    >>> x = np.array([[0, 1], [1, 1], [2, 2]])
-    >>> rowsum = x.sum(-1)
-    >>> x[rowsum <= 2, :]
-    [[0, 1],
-     [1, 1]]
-    ```
+- *Advanced Indexing* 
+    - Advanced indexing is triggered when the selection object `obj` is:
+        - a *non-tuple sequence object*, or 
+        - an `ndarray` (whose `dtype` is `int` or `bool`), or
+        - a *tuple* having one more *sequence object* or `ndarray` (whose `dtype` is `int` or `bool`)
+    - Warning
+        - `x[(1, 2, 3), ]` is different from `x[(1, 2, 3)]`. The former triggers *advanced indexing*, while the latter one equals to `x[1, 2, 3]` and triggers *basic indexing*
+        - Also recognize that `x[[1, 2, 3]]` will trigger *advanced indexing*, whereas due to the deprecated Numeric compatibility mentioned above, `x[[1, 2, slice(None)]]` will trigger *basic slicing* 
+    - Offical documents says that advanced indexing generates *copies*, however, as tested, advanced indexing can also be used to set values! WEIRD THING HERE. 
+    - two types of advanced indexing: 
+        - *Integer Array Indexing* 
+        - *Boolean Array Indexing* 
+    - [**Integer Array Indexing**](https://numpy.org/doc/stable/reference/arrays.indexing.html#integer-array-indexing)
+        - Index is a tuple of `x.ndim` `ndarray`s, all in same shape (same as output shape) (or boardcastable shape). For the following
+        ```
+        res = x[a_1, ..., a_N]  # N == x.ndim
+                                # M == res.ndim
+                                # res.shape == a_1.shape == ... == a_k.shape
+        ```
+        - We have: every scalar element in `res` is selected from `x`, with the `k-th` coordinate given by `a_k`'s cooresponding element, i.e. 
+        ```
+        res[i_1, ..., i_M] == x[a_1[i_1, ..., i_M], a_2[i_1, ..., i_M], ..., a_N[i_1, ..., i_M]]
+        ```
+        - **Example 1**: From each row, a specific element should be selected. The row index is just `[0, 1, 2]` and the column index specifies the element to choose for the corresponding row, here `[0, 1, 0]`
+        ```
+        >>> import numpy as np
+        >>> x = np.array([[1, 2], [3, 4], [5, 6]])
+        >>> x[[0, 1, 2], [0, 1, 0]]
+        [1 4 5]
+        ```
+        - **Example 2**: from a `4 * 3` array the corner elements should be selected using advanced indexing. Thus all elements for which the column is one of `[0, 2]` and the row is one of `[0, 3]` need to be selected. To use advanced indexing one needs to select all elements explicitly.
+        ```
+        >>> x = np.array([[ 0,  1,  2], 
+                          [ 3,  4,  5], 
+                          [ 6,  7,  8], 
+                          [ 9, 10, 11]])
+        >>> rows = np.array([[0, 0], [3, 3]])
+        >>> cols = np.array([[0, 2], [0, 2]])
+        >>> x[rows, cols]
+        [[ 0,  2],
+         [ 9, 11]]
+        ```
+        - **Example 2.1**: we can make use of *broadcasting* to generate `rows`, `cols` from simpler `ndarray`s
+        ```
+        >>> x = np.array([[ 0,  1,  2], 
+                          [ 3,  4,  5], 
+                          [ 6,  7,  8], 
+                          [ 9, 10, 11]])
+        >>> rows = np.array([0, 3])
+        >>> rows[:, np.newaxis]
+        [[0],
+         [3]]
+        
+        >>> cols = np.array([0, 2])
+        >>> x[rows[:, np.newaxis], cols]
+        [[ 0,  2],
+         [ 9, 11]]
+        ```
+        - **Example 2.2**: use of `np.ix_` function
+            - `numpy.ix_(*args)`: take `N` 1D arrays, return tuple of `N` arrays s.t. they can automatically broadcast into proper index array
+        ```
+        >>> x = np.array([[ 0,  1,  2], 
+                          [ 3,  4,  5], 
+                          [ 6,  7,  8], 
+                          [ 9, 10, 11]])
+        >>> rows = np.array([0, 3])
+        >>> cols = np.array([0, 2])
+        >>> idx = np.ix_(rows, cols)
+        >>> idx
+        (array([[0],
+                [3]]),
+                
+         array([[0, 2]]))
+        
+        >>> x[idx]
+        [[ 0,  2],
+         [ 9, 11]]
+        ```
+    - Combining Advanced And Basic Indexing
+        - **Example 3**: Advanced and basic indexing can be combined by using one *slice* `:` or *ellipsis* `...` with an index array. The following example uses slice for row and advanced index for column. The result is the same when slice is used for both. But advanced index results in copy and may have different memory layout.
+        ```
+        >>> x = np.array([[ 0,  1,  2], 
+                          [ 3,  4,  5], 
+                          [ 6,  7,  8], 
+                          [ 9, 10, 11]])
+                          
+        >>> x[1:4, 1:3]
+        [[ 4  5]
+         [ 7  8]
+         [10 11]]
+        
+        >>> x[1:4, [1, 2]]
+        [[ 4  5]
+         [ 7  8]
+         [10 11]]
+        ```
+    - [**Boolean Array Indexing**](https://numpy.org/doc/stable/reference/arrays.indexing.html#boolean-array-indexing)
+        - Occurs when `obj` is array object of `bool` type, such as may be returned from comparison operators
+        - Boolean array indexing `x[obj]` is practically identical to Integer array indexing `x[obj.nonzero()]`. However, Boolean Array Indexing is faster when `obj.shape == x.shape`. 
+            - `numpy.nonzero`
+                - `numpy.nonzero(a)` will return a tuple of `a.ndim` `ndarray`s, let `r_1, ..., r_N`. Then, `a`'s `i-th` non-zero element (counted in row-major, `C`-style order) is `a[r_1[i], ..., r_N[i]]`. 
+                - Offical expression: Returns a tuple of arrays, one for each dimension of `a`, containing the indices of the non-zero elements in that dimension. The values in `a` are always tested and returned in row-major, `C`-style order.
+        - If `obj.ndim == x.ndim`, `x[obj]` returns a 1D array filled with the elements of `x` corresponding to the `True` values of `obj`. The search order will be row-major, `C`-style. 
+            - If `obj` has True values at entries that are outside of the bounds of `x`, then an `IndexError` will be raised.
+            - If `obj` is smaller than `x`, it is identical to filling it with `False`.
+        - **Example 4**: In this example, items greater than 5 are returned as a result of Boolean indexing
+        ```
+        >>> x = np.array([[ 0,  1,  2], 
+                          [ 3,  4,  5], 
+                          [ 6,  7,  8], 
+                          [ 9, 10, 11]])
+        >>> x[x > 5]
+        [6 7 8 9 10 11]
+        ```
+        - **Example 5**: In this example, `NaN` (Not a Number) elements are omitted
+        ```
+        >>> a = np.array([np.nan, 1, 2, np.nan, 3, 4, 5])
+        >>> a[~np.isnan(a)]
+        [ 1. 2. 3. 4. 5.]
+        ```
+        - **Example 6**: The following example adds a constant to all negative elements
+        ```
+        >>> x = np.array([1., -1., -2., 3])
+        >>> x[x < 0] += 20
+        >>> x
+        array([  1.,  19.,  18.,   3.])
+        ```
+        - If an index includes a Boolean array, the result will be identical to inserting `obj.nonzero()` into the same position and using the integer array indexing mechanism. `x[a_1, boolean_array, a_2]` is equivalent to `x[(ind_1,) + boolean_array.nonzero() + (ind_2,)]`.
+        - **Example 7**: 
+        ```
+        >>> x = np.array([[0, 1], [1, 1], [2, 2]])
+        >>> rowsum = x.sum(-1)
+        >>> x[rowsum <= 2, :]
+        [[0, 1],
+         [1, 1]]
+        ```
 
 ### 🌱 Broadcasting
 
@@ -2239,70 +2232,100 @@ UPDATEIFCOPY : False
             array([1, 2, 6, 4, 2, 3, 2])
             ```
 
-### 🌱 
+### 🌱 Binary Operations
 
+- [`numpy.bitwise_and`](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_and.html#numpy.bitwise_and), [`numpy.bitwise_or`](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_or.html#numpy.bitwise_or), [`numpy.bitwise_xor`](https://numpy.org/doc/stable/reference/generated/numpy.bitwise_xor.html#numpy.bitwise_xor), [`numpy.invert`](https://numpy.org/doc/stable/reference/generated/numpy.invert.html#numpy.invert)
+    - Compute the bit-wise AND/OR/XOR/NOT of two arrays element-wise. 
+    - Computes the bit-wise AND/OR/XOR/NOT of the underlying binary representation of the integers in the input arrays. This `ufunc`implements the `C/Python` operator `&`/`|`/`^`/`~`. 
+    - Signature: 
+    ```
+    numpy.bitwise_and(x1, x2, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'bitwise_and'>
+    
+    numpy.bitwise_or(x1, x2, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'bitwise_or'>
+    
+    numpy.bitwise_xor(x1, x2, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'bitwise_xor'>
+    
+    numpy.invert(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'invert'>
+    ```
+    - Parameters: 
+        - `x1, x2`: `array_like`. Only `int` and `bool` types are handled. If `x1.shape != x2.shape`, they must be broadcastable to a common shape (which becomes the shape of the output).
+        - `out`: `ndarray`, `None`, or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs. 
+        - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the `ufunc` result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized. 
+        - `**kwargs`: For other keyword-only arguments, see the [ufunc docs](https://numpy.org/doc/stable/reference/ufuncs.html#ufuncs-kwargs). 
+    - Returns: 
+        - `out`: `ndarray` or `scalar`. Result. This is a `scalar` if both `x1` and `x2` are `scalar`s. 
+    ```
+    >>> np.bitwise_and(13, 17)
+    1
 
+    >>> np.bitwise_and(14, 13)
+    12
 
+    >>> np.binary_repr(12)
+    '1100'
 
+    >>> np.bitwise_and([14, 3], 13)
+    array([12,  1])
 
+    >>> np.bitwise_and([11, 7], [4, 25])
+    array([0, 1])
 
+    >>> np.bitwise_and(np.array([2, 5, 255]), np.array([3, 14, 16]))
+    array([ 2,  4, 16])
 
+    >>> np.bitwise_and([True, True], [False, True])
+    array([False,  True])
+    ```
+- [`numpy.left_shift`](https://numpy.org/doc/stable/reference/generated/numpy.left_shift.html#numpy.left_shift), [`numpy.right_shift`](https://numpy.org/doc/stable/reference/generated/numpy.right_shift.html#numpy.right_shift
+    - Shift the bits of an integer to the left/right. 
+        - Bits are shifted to the left by appending `x2` `0`s at the right of `x1`. Since the internal representation of numbers is in binary format, this operation is equivalent to multiplying `x1` by `2 ** x2`. 
+        - Bits are shifted to the right `x2`. Because the internal representation of numbers is in binary format, this operation is equivalent to dividing `x1` by `2 ** x2`. 
+    - Parameters
+        - `x1`: `array_like` of integer type. Input values.
+        - `x2`: `array_like` of integer type. Number of zeros to append to `x1` (Number of bits to remove at the right of `x1`). Has to be non-negative. If `x1.shape != x2.shape`, they must be broadcastable to a common shape (which becomes the shape of the output).
+        - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or None, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs.
+        - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is True, the out array will be set to the ufunc result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default out=None, locations within it where the condition is False will remain uninitialized.
+        - `**kwargs`: For other keyword-only arguments, see the [ufunc docs](https://numpy.org/doc/stable/reference/ufuncs.html#ufuncs-kwargs). 
+    - Returns
+        - `out`: array of integer type. Return `x1` with bits shifted `x2` times to the left/right. This is a `scalar` if both `x1` and `x2` are `scalar`s.
+    ```
+    >>> np.binary_repr(5)
+    '101'
 
+    >>> np.left_shift(5, 2)
+    20
 
+    >>> np.binary_repr(20)
+    '10100'
 
+    >>> np.binary_repr(10)
+    '1010'
 
+    >>> np.right_shift(10, 1)
+    5
 
+    >>> np.binary_repr(5)
+    '101'
 
+    >>> np.right_shift(10, [1, 2, 3])
+    array([5, 2, 1])
+    ```
 
+### 🌱 Mathematical Functions
 
+- Trigonometric functions
 
+- Hyperbolic functions
 
+- Rounding
 
+- Sums, products, differences
 
+- Exponents and logarithms
 
+- Rational routines
 
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
+- Arithmetic operations
 
 
 
