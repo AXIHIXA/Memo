@@ -2314,29 +2314,66 @@ UPDATEIFCOPY : False
 ### 🌱 Mathematical Functions
 
 - Trigonometric functions
-    - [`numpy.sin`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-sin)
-        - Trigonometric sine, element-wise. 
+    - [`numpy.sin`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-sin), [`numpy.cos`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-cos), [`numpy.tan`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-tan), [`numpy.arcsin`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-arcsin), [`numpy.arccos`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-arccos), [`numpy.arctan`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-arctan)
+        - Trigonometric functions, element-wise. 
         - Signature: 
         ```
         numpy.sin(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'sin'>
+        
+        numpy.cos(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'cos'>
+        
+        numpy.tan(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'tan'>
+        
+        numpy.arcsin(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'arcsin'>
+        
+        numpy.arccos(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'arccos'>
+        
+        numpy.arctan(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'arctan'>
         ```
         - Parameters: 
             - `x`: `array_like`. Angle, in radians. 
-            - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs.
-    wherearray_like, optional
-
-        This condition is broadcast over the input. At locations where the condition is True, the out array will be set to the ufunc result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default out=None, locations within it where the condition is False will remain uninitialized.
-    **kwargs
-
-        For other keyword-only arguments, see the ufunc docs.
-
-Returns
-
-    yarray_like
-
-        The sine of each element of x. This is a scalar if x is a scalar.
-
-
+            - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs. 
+            - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the `ufunc` result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized. 
+            - `**kwargs`: For other keyword-only arguments, see the `ufunc` docs. 
+        - Returns: 
+            - `y`: `array_like`. The trigonometer of each element of `x`. This is a scalar if `x` is a scalar. 
+        ```
+        import matplotlib.pylab as plt
+        import numpy as np
+        
+        x = np.linspace(-np.pi, np.pi, 201)
+        
+        plt.plot(x, np.sin(x))
+        plt.xlabel('Angle [rad]')
+        plt.ylabel('sin(x)')
+        plt.axis('tight')
+        plt.show()
+        ```
+    - [`numpy.hypot`](https://numpy.org/doc/stable/reference/generated/numpy.hypot.html#numpy.hypot)
+        - Given the "legs" of a right triangle, return its hypotenuse. Equivalent to `sqrt(x1 ** 2 + x2 ** 2)`, element-wise. If `x1` or `x2` is `scalar_like` (i.e., unambiguously castable to a scalar type), it is broadcast for use with each element of the other argument. 
+        - Signature: 
+        ```
+        numpy.hypot(x1, x2, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'hypot'>
+        ```
+        - Parameters: 
+            - `x1, x2`: `array_like`. Leg of the triangle(s). If `x1.shape != x2.shape`, they must be broadcastable to a common shape (which becomes the shape of the output). 
+            - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs. 
+            - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the `ufunc` result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized. 
+            - `**kwargs`: For other keyword-only arguments, see the `ufunc` docs. 
+        - Returns: 
+            - `z`: `ndarray`. The hypotenuse of the triangle(s). This is a scalar if both `x1` and `x2` are scalars. 
+        ```
+        >>> np.hypot(3 * np.ones((3, 3)), 4 * np.ones((3, 3)))
+        array([[ 5.,  5.,  5.],
+               [ 5.,  5.,  5.],
+               [ 5.,  5.,  5.]]
+       
+        >>> np.hypot(3 * np.ones((3, 3)), [4])
+        array([[ 5.,  5.,  5.],
+               [ 5.,  5.,  5.],
+               [ 5.,  5.,  5.]])
+        ```
+    - 
 
 - Hyperbolic functions
 
