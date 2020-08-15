@@ -2283,8 +2283,8 @@ UPDATEIFCOPY : False
     - Parameters
         - `x1`: `array_like` of integer type. Input values.
         - `x2`: `array_like` of integer type. Number of zeros to append to `x1` (Number of bits to remove at the right of `x1`). Has to be non-negative. If `x1.shape != x2.shape`, they must be broadcastable to a common shape (which becomes the shape of the output).
-        - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or None, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs.
-        - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is True, the out array will be set to the ufunc result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default out=None, locations within it where the condition is False will remain uninitialized.
+        - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or None, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs. 
+        - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the ufunc result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized. 
         - `**kwargs`: For other keyword-only arguments, see the [ufunc docs](https://numpy.org/doc/stable/reference/ufuncs.html#ufuncs-kwargs). 
     - Returns
         - `out`: array of integer type. Return `x1` with bits shifted `x2` times to the left/right. This is a `scalar` if both `x1` and `x2` are `scalar`s.
@@ -2314,6 +2314,29 @@ UPDATEIFCOPY : False
 ### 🌱 Mathematical Functions
 
 - Trigonometric functions
+    - [`numpy.sin`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-sin)
+        - Trigonometric sine, element-wise. 
+        - Signature: 
+        ```
+        numpy.sin(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'sin'>
+        ```
+        - Parameters: 
+            - `x`: `array_like`. Angle, in radians. 
+            - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs.
+    wherearray_like, optional
+
+        This condition is broadcast over the input. At locations where the condition is True, the out array will be set to the ufunc result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default out=None, locations within it where the condition is False will remain uninitialized.
+    **kwargs
+
+        For other keyword-only arguments, see the ufunc docs.
+
+Returns
+
+    yarray_like
+
+        The sine of each element of x. This is a scalar if x is a scalar.
+
+
 
 - Hyperbolic functions
 
@@ -2327,7 +2350,7 @@ UPDATEIFCOPY : False
 
 - Arithmetic operations
 
-
+- Miscellaneous
 
 
 
