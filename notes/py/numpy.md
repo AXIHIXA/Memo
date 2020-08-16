@@ -2334,7 +2334,7 @@ UPDATEIFCOPY : False
             - `x`: `array_like`. Angle, in radians. 
             - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs. 
             - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the `ufunc` result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized. 
-            - `**kwargs`: For other keyword-only arguments, see the `ufunc` docs. 
+            - `**kwargs`: For other keyword-only arguments, see the [ufunc docs](https://numpy.org/doc/stable/reference/ufuncs.html#ufuncs-kwargs). 
         - Returns: 
             - `y`: `array_like`. The trigonometer of each element of `x`. This is a scalar if `x` is a scalar. 
         ```
@@ -2373,840 +2373,167 @@ UPDATEIFCOPY : False
                [ 5.,  5.,  5.],
                [ 5.,  5.,  5.]])
         ```
-    - 
+    - [`numpy.arctan2`](https://numpy.org/doc/stable/reference/generated/numpy.arctan2.html#numpy.arctan2)
+        - Element-wise arc tangent of `x1 / x2` choosing the quadrant correctly. This function is **NOT** defined for complex-valued arguments; for the so-called argument of complex values, use [`angle`](https://numpy.org/doc/stable/reference/generated/numpy.angle.html#numpy.angle). 
+        - Signature: 
+        ```
+        numpy.arctan2(x1, x2, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'arctan2'>
+        ```
+        - Parameters: 
+            - `x1`: `array_like` real-valued. y-coordinates. 
+            - `x2`: `array_like`, real-valued. x-coordinates. If `x1.shape != x2.shape`, they must be broadcastable to a common shape (which becomes the shape of the output).
+            - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs.
+            - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the `ufunc` result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized.
+            - `**kwargs`: For other keyword-only arguments, see the [ufunc docs](https://numpy.org/doc/stable/reference/ufuncs.html#ufuncs-kwargs). 
+        - Returns: 
+            - `angle`: `ndarray`. Array of angles in radians, in the range `[-pi, pi]`. This is a scalar if both `x1` and `x2` are scalars. 
+        ```
+        >>> x = np.array([-1, +1, +1, -1])
+        >>> y = np.array([-1, -1, +1, +1])
+        >>> np.arctan2(y, x) * 180 / np.pi
+        array([-135.,  -45.,   45.,  135.])
+        ```
+    - [`numpy.degrees`](https://numpy.org/doc/stable/reference/generated/numpy.degrees.html#numpy.degrees), [`numpy.rad2deg`](https://numpy.org/doc/stable/reference/generated/numpy.rad2deg.html#numpy.rad2deg)
+        - Convert angles from radians to degrees. 
+        - Signature: 
+        ```
+        numpy.degrees(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'degrees'>
+        
+        numpy.rad2deg(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'rad2deg'>
+        ```
+        - Parameters: 
+            - `x`: `array_like`. Input array, angle in radians. 
+            - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs.
+            - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the `ufunc` result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized.
+            - `**kwargs`: For other keyword-only arguments, see the [ufunc docs](https://numpy.org/doc/stable/reference/ufuncs.html#ufuncs-kwargs). 
+        - Returns: 
+            - `y`: `ndarray` of floats. The corresponding degree values; if out was supplied this is a reference to it. This is a scalar if `x` is a scalar. 
+        ```
+        >>> rad = np.arange(12.) * np.pi/6
+        >>> np.degrees(rad)
+        array([   0.,   30.,   60.,   90.,  120.,  150.,  180.,  210.,  240.,  270.,  300.,  330.])
+        
+        >>> out = np.zeros((rad.shape))
+        >>> r = np.degrees(rad, out)
+        >>> np.all(r == out)
+        True
+        ```
+    - [`numpy.radians`](https://numpy.org/doc/stable/reference/generated/numpy.radians.html#numpy.radians), [`numpy.deg2rad`](https://numpy.org/doc/stable/reference/generated/numpy.deg2rad.html#numpy.deg2rad)
+        - Convert angles from degrees to radians. 
+        - Signature: 
+        ```
+        numpy.radians(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'radians'>
+        
+        numpy.deg2rad(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'deg2rad'>
+        ```
+        - Parameters: 
+            - `x`: `array_like`. Input array, angles in degrees. 
+            - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs.
+            - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the `ufunc` result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized.
+            - `**kwargs`: For other keyword-only arguments, see the [ufunc docs](https://numpy.org/doc/stable/reference/ufuncs.html#ufuncs-kwargs). 
+        - Returns: 
+            - `y`: `ndarray` of floats. The corresponding radian values. This is a scalar if `x` is a scalar. 
+        ```
+        >>> deg = np.arange(12.) * 30.
+        >>> np.radians(deg)
+        array([ 0.        ,  0.52359878,  1.04719755,  1.57079633,  2.0943951 ,  2.61799388,  
+                3.14159265,  3.66519143,  4.1887902 ,  4.71238898,  5.23598776,  5.75958653])
 
+        >>> out = np.zeros((deg.shape))
+        >>> ret = np.radians(deg, out)
+        >>> ret is out
+        True
+        ```
 - Hyperbolic functions
-
+    - [`numpy.sinh`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-sinh), [`numpy.cosh`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-cosh), [`numpy.tanh`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-tanh), [`numpy.arcsinh`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-arcsinh), [`numpy.arccosh`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-arccosh), [`numpy.arctanh`](https://numpy.org/doc/stable/reference/generated/numpy.sin.html#numpy-arctanh)
+        - Hyperbolic functions, element-wise. 
+        - Signature: 
+        ```
+        numpy.sinh(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'sinh'>
+        
+        numpy.cosh(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'cosh'>
+        
+        numpy.tanh(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'tanh'>
+        
+        numpy.arcsinh(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'arcsinh'>
+        
+        numpy.arccosh(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'arccosh'>
+        
+        numpy.arctanh(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj]) = <ufunc 'arctanh'>
+        ```
+        - Parameters: 
+            - `x`: `array_like`. Input array. 
+            - `out`: `ndarray`, `None` or `Tuple[ndarray and None]`, *optional*. A location into which the result is stored. If provided, it must have a shape that the inputs broadcast to. If not provided or `None`, a freshly-allocated array is returned. A tuple (possible only as a keyword argument) must have length equal to the number of outputs. 
+            - `where`: `array_like`, *optional*. This condition is broadcast over the input. At locations where the condition is `True`, the out array will be set to the `ufunc` result. Elsewhere, the out array will retain its original value. Note that if an uninitialized out array is created via the default `out=None`, locations within it where the condition is `False` will remain uninitialized. 
+            - `**kwargs`: For other keyword-only arguments, see the [ufunc docs](https://numpy.org/doc/stable/reference/ufuncs.html#ufuncs-kwargs). 
+        - Returns: 
+            - `y`: `array_like`. Array of the same shape as `x`. This is a scalar if `x` is a scalar. 
 - Rounding
+    - [`numpy.around`](https://numpy.org/doc/stable/reference/generated/numpy.around.html#numpy.around), [`numpy.round_`](https://numpy.org/doc/stable/reference/generated/numpy.round_.html#numpy.round_), [`numpy.ndarray.round`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.round.html#numpy.ndarray.round)
+        - Evenly round to the given number of decimals. 
+        - Signature: 
+        ```
+        numpy.around(a, decimals=0, out=None)
+        
+        numpy.round_(a, decimals=0, out=None)
+        
+        numpy.ndarray.round(decimals=0, out=None)
+        ```
+        - Parameters: 
+            - `a`: `array_like`. Input data. 
+            - `decimals`: `int`, *optional*. Number of decimal places to round to (default: 0). If `decimals` is negative, it specifies the number of positions to the left of the decimal point.
+            - `out`: `ndarray`, *optional*. Alternative output array in which to place the result. It must have the same shape as the expected output, but the type of the output values will be cast if necessary. 
+        - Returns: 
+            - `rounded_array`: `ndarray`. An array of the same type as `a`, containing the rounded values. Unless out was specified, a new array is created. A *reference* to the result is returned. The real and imaginary parts of complex numbers are rounded separately. The result of rounding a `float` is a `float`. 
+        ```
+        >>> np.around([0.37, 1.64])
+        array([0.,  2.])
 
+        >>> np.around([0.37, 1.64], decimals=1)
+        array([0.4,  1.6])
+
+        >>> np.around([.5, 1.5, 2.5, 3.5, 4.5]) # rounds to nearest even value
+        array([0.,  2.,  2.,  4.,  4.])
+
+        >>> np.around([1,2,3,11], decimals=1) # ndarray of ints is returned
+        array([ 1,  2,  3, 11])
+
+        >>> np.around([1,2,3,11], decimals=-1)
+        array([ 0,  0,  0, 10])
+        ```
 - Sums, products, differences
-
 - Exponents and logarithms
-
 - Rational routines
-
 - Arithmetic operations
-
 - Miscellaneous
 
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### 🌱 
-
-
-
-
-
-
-
-
-
-
-
-
+### 🌱 Sorting, searching, and counting
+
+- [`numpy.argmax`](https://numpy.org/doc/stable/reference/generated/numpy.argmax.html#numpy.argmax), [`numpy.argmin`](https://numpy.org/doc/stable/reference/generated/numpy.argmin.html#numpy.argmin)
+    - Returns the indices of the maximum/minimum values along an axis. 
+    - Signature: 
+    ```
+    numpy.argmax(a, axis=None, out=None)
+    
+    numpy.argmin(a, axis=None, out=None)
+    ```
+    - Parameters: 
+        - `a`: `array_like`. Input array.
+        - `axis`: `int`, *optional*. By default, the index is into the flattened array, otherwise along the specified axis. 
+        - `out`: `array`, *optional*. If provided, the result will be inserted into this array. It should be of the appropriate shape and dtype.
+    - Returns: 
+        - `index_array`: `ndarray` of `int`s. Array of indices into the array. It has the same shape as `a.shape` with the dimension along axis removed. 
+- [`numpy.where`](https://numpy.org/doc/stable/reference/generated/numpy.where.html#numpy.where)
+    - Return elements chosen from `x` or `y` depending on condition. 
+    - Signature: 
+    ```
+    numpy.where(condition[, x, y])
+    ```
+    - Parameters: 
+        - `condition`: `array_like`, `bool`. Where `True`, yield `x`, otherwise yield `y`. 
+        - `x, y`: `array_like`. Values from which to choose. `x`, `y` and `condition` need to be broadcastable to some shape. 
+    - Returns: 
+        - `out`: `ndarray`. An array with elements from `x` where condition is `True`, and elements from `y` elsewhere. 
 
 
 
