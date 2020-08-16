@@ -6,10 +6,11 @@
 
     - [`C++ Primer 5th Edition` Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
 
-- `python`
+- `Python`
 
-    - [`python` Offical Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/py.md)
-    - [`numpy` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/numpy.md)
+    - [`Python` Offical Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/py.md)
+    - [`NumPy` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/numpy.md)
+    - [`Pytorch` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/pytorch.md)
     
 - `ubuntu` Management
 
@@ -29,12 +30,13 @@
     - [OpenGL](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/OpenGL/CMakeLists.txt)
     
 - `C/C++` Code
+
     - [debug.h](https://github.com/AXIHIXA/Memo/blob/master/code/debug.h)
     - [pipe_demo.c](https://github.com/AXIHIXA/Memo/blob/master/code/pipe_demo.c)
     - [Shader.h](https://github.com/AXIHIXA/Memo/blob/master/code/OpenGL/Shader.h)
     - [variadic.cpp](https://github.com/AXIHIXA/Memo/blob/master/code/variadic.cpp)
     
-- `python` Code
+- `Python` Code
 
     - [python codes](https://github.com/AXIHIXA/Memo/blob/master/code/python_code.md)
     
