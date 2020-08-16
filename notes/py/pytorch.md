@@ -7,7 +7,7 @@
 ### What is PyTorch? 
 
 - It’s a Python-based scientific computing package targeted at two sets of audiences: 
-    - A replacement for NumPy to use the power of GPUs; 
+    - A replacement for `NumPy` to use the power of GPUs; 
     - a deep learning research platform that provides maximum flexibility and speed. 
 
 ### Tensors
@@ -64,12 +64,56 @@ tensor([[-0.0970,  1.1034, -1.6941],
         [ 0.4683, -0.1217,  1.2467],
         [ 0.4624,  0.4772, -1.0577]])
 ```
+- Get a tensor's size (`torch.Size` is in fact a `tuple`, so it supports all `tuple` operations): 
+```
+>>> x.size()
+torch.Size([5, 3])
+```
 
+### Operations
 
-
-
-
-
+- There are multiple syntaxes for operations. In the following example, we will take a look at the addition operation. 
+- Addition: syntax 1
+```
+>>> y = torch.rand(5, 3)
+>>> x + y
+tensor([[ 0.4675,  1.7053, -1.2332],
+        [-1.6031,  0.1028, -0.6090],
+        [ 1.8545, -0.6408,  1.0778],
+        [ 0.9508,  0.7635,  2.1345],
+        [ 0.5693,  1.0205, -0.5476]])
+```
+- Addition: syntax 2
+```
+>>> torch.add(x, y)
+tensor([[ 0.4675,  1.7053, -1.2332],
+        [-1.6031,  0.1028, -0.6090],
+        [ 1.8545, -0.6408,  1.0778],
+        [ 0.9508,  0.7635,  2.1345],
+        [ 0.5693,  1.0205, -0.5476]])
+```
+- Addition: providing an output tensor as argument
+```
+>>> result = torch.empty(5, 3)
+>>> torch.add(x, y, out=result)
+>>> result
+tensor([[ 0.4675,  1.7053, -1.2332],
+        [-1.6031,  0.1028, -0.6090],
+        [ 1.8545, -0.6408,  1.0778],
+        [ 0.9508,  0.7635,  2.1345],
+        [ 0.5693,  1.0205, -0.5476]])
+```
+- Addition: in-place (Any operation that mutates a tensor in-place is post-fixed with an `_`. For example: `x.copy_(y)`, `x.t_()`, will change `x`.)
+```
+>>> # adds x to y
+>>> y.add_(x)
+>>> y
+tensor([[ 0.4675,  1.7053, -1.2332],
+        [-1.6031,  0.1028, -0.6090],
+        [ 1.8545, -0.6408,  1.0778],
+        [ 0.9508,  0.7635,  2.1345],
+        [ 0.5693,  1.0205, -0.5476]])
+```
 
 
 
