@@ -10,7 +10,7 @@
 
     - [`Python` Offical Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/py.md)
     - [`NumPy` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/numpy.md)
-    - [`Pytorch` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/pytorch.md)
+    - [`PyTorch` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/pytorch.md)
     
 - `ubuntu` Management
 

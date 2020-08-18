@@ -193,7 +193,7 @@ if torch.cuda.is_available():
     print(z)
     print(z.to("cpu", torch.double))       # ``.to`` can also change dtype together!
 ```
-Out: 
+    Out: 
 ```
 tensor([1.9551], device='cuda:0')
 tensor([1.9551], dtype=torch.float64)
