@@ -18,7 +18,7 @@ import numpy as np
     - Some useful constructor *keyword* parameters: 
         - `figsize`: 2-tuple of floats, default: `rcParams["figure.figsize"]` (default: `[6.4, 4.8]`)
         - `dpi`: float, default: `rcParams["figure.dpi"]` (default: `100.0`)
-- Each of which can contain one or more [`Axes`](https://matplotlib.org/api/axes_api.html#matplotlib.axes.Axes) (i.e., an area where points can be specified in terms of x-y coordinates (or theta-r in a polar plot, or x-y-z in a 3D plot, etc.)
+- Each `Figure` can contain one or more [`Axes`](https://matplotlib.org/api/axes_api.html#matplotlib.axes.Axes) (i.e., an area where points can be specified in terms of x-y coordinates (or theta-r in a polar plot, or x-y-z in a 3D plot, etc.)
     - The most simple way of creating a figure with an axes is using [`matplotlib.pyplot.subplots`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.subplots.html#matplotlib.pyplot.subplots): 
     ```
     matplotlib.pyplot.subplots(nrows=1, ncols=1, sharex=False, sharey=False, squeeze=True, subplot_kw=None, gridspec_kw=None, 
@@ -94,6 +94,7 @@ import numpy as np
     - We can then use [`Axes.plot`](https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.plot.html#matplotlib.axes.Axes.plot) to draw some data on the axes. 
     ```
     plot(self, *args, scalex=True, scaley=True, data=None, **kwargs)
+    
     Plot y versus x as lines and/or markers.
     
     Call signatures::
@@ -363,13 +364,32 @@ import numpy as np
     additionally use any  `matplotlib.colors` spec, e.g. full names
     (``'green'``) or hex strings (``'#008000'``).
     ```
+    - Example: 
+    ```
+    fig, ax = plt.subplots()             # Create a figure containing a single axes.
+    ax.plot([1, 2, 3, 4], [1, 4, 2, 3])  # Plot some data on the axes.
+    ```
+- For each `Axes` graphing method, there is a corresponding function in the `matplotlib.pyplot` module that performs that plot on the *"current"* axes, creating that axes (and its parent figure) if they don't exist yet. So the previous example can be written more shortly as: 
+```
+plt.plot([1, 2, 3, 4], [1, 4, 2, 3])  # Matplotlib plot.
+```
+
+![](https://matplotlib.org/_images/sphx_glr_usage_002.png)
+
+#### 📌 Parts of a Figure
+
+![Components of a Matplotlib figure](https://matplotlib.org/_images/anatomy.png)
+
+- Figure
 
 
+- Axes
 
 
+- Axis
 
 
-
+- Artist
 
 
 
