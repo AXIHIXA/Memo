@@ -6473,17 +6473,17 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - `bool comp(const T & a, const T & b);`
         - 参数类型：常引用不是强制的，但**不能更改传入的对象**
         - 返回值：`bool`亦不是强制的，但要求可以 *隐式转化* 为`bool`
-        - 要求：满足 *严格偏序* （Strict partial order）关系
-            1. *反自反性* （irreflexivity）：`comp(a, a) == false`
-            2. *非对称性* （asymmetry）：`comp(a, b) == true -> comp(b, a) == false`
-            3. *传递性* （transitivity）：`comp(a, b) == true AND comp(b, c) == true -> comp(a, c) == true`
+        - 要求：满足 *严格偏序* （strict partial order）关系
+            1. *反自反性* （irreflexivity）：`x < x`永不成立；
+            2. *反对称性* （asymmetry）：如`x < y`，则`y < x`不成立；
+            3. *传递性* （transitivity）：如`x < y`且`y < z`，则`x < z`。
     - `bool equiv(const T & a, const T & b);`
         - 参数类型：常引用不是强制的，但**不能更改传入的对象**
         - 返回值：`bool`亦不是强制的，但要求可以 *隐式转化* 为`bool`
-        - 要求：满足 *严格偏序* （Strict partial order）关系
-            1. *自反性* （reflexivity）：`equiv(a, a) == true`
-            2. *对称性* （symmetry）：`equiv(a, b) == true -> equiv(b, a) == true`
-            3. *传递性* （transitivity）：`equiv(a, b) == true AND equiv(b, c) == true -> equiv(a, c) == true` 
+        - 要求：满足 *等价* （equivalence）关系
+            1. *自反性* （irreflexivity）：`x == x`恒为真；
+            2. *对称性* （asymmetry）：如`x == y`，则`y == x`；
+            3. *传递性* （transitivity）：如`x == y`且`y == z`，则`x == z`。
 - 标准库提供以下预定义好的 [*函数对象*](https://en.cppreference.com/w/cpp/utility/functional)（模板类，用时给一个 *调用签名* 并创建对象即可）
     - 算术操作（Arithmetic operations）
         - [`std::plus`](https://en.cppreference.com/w/cpp/utility/functional/plus)：`x + y`
@@ -9124,10 +9124,11 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     cout << miset.size() << endl; // prints 20
     ```
 - 键类型要求
-    - 必须定义了 *严格弱序* （stirct weak ordering，例：`<=`运算符）
-        1. `a <= b`和`b <= a`有且仅能有一个成立
-        2. `a <= b`且`b <= c`，则`a <= c`
-        3. `!(a <= b) && !(b <= a)`意味着`a == b`
+    - 必须定义了 *严格弱序* （stirct weak ordering，例：`<`运算符）
+        1. *反自反性* （irreflexivity）：`x < x`永不成立；
+        2. *反对称性* （asymmetry）：如`x < y`，则`y < x`不成立；
+        3. *传递性* （transitivity）：如`x < y`且`y < z`，则`x < z`。以上三条构成 *严格偏序* 关系（strict partial ordering）的充要条件；
+        4. *不可比较性的传递性* （transitivity of incomparability）：如`x`和`y` *不可比* ，即`!(x < y) and !(y < x)`，且`y`与`z`也不可比，则`x`与`z`也不可比。这其实就是 *等价关系* 的传递性。
     - 在实际编程中重要的是，如果类型定义了 *行为正常* 的`<`运算符，则可以用它做键
     - 对于没有重载运算符的自定义类型，`std::multiset`允许传入 *谓词* 
     ```

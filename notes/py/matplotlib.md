@@ -24,345 +24,345 @@ import numpy as np
     matplotlib.pyplot.subplots(nrows=1, ncols=1, sharex=False, sharey=False, squeeze=True, subplot_kw=None, gridspec_kw=None, 
     **fig_kw)
     
-    Create a figure and a set of subplots.
-    
-    This utility wrapper makes it convenient to create common layouts of
-    subplots, including the enclosing figure object, in a single call.
-    
-    Parameters
-    ----------
-    nrows, ncols : int, optional, default: 1
-        Number of rows/columns of the subplot grid.
-    
-    sharex, sharey : bool or {'none', 'all', 'row', 'col'}, default: False
-        Controls sharing of properties among x (`sharex`) or y (`sharey`)
-        axes:
-    
-            - True or 'all': x- or y-axis will be shared among all
-              subplots.
-            - False or 'none': each subplot x- or y-axis will be
-              independent.
-            - 'row': each subplot row will share an x- or y-axis.
-            - 'col': each subplot column will share an x- or y-axis.
-    
-        When subplots have a shared x-axis along a column, only the x tick
-        labels of the bottom subplot are created. Similarly, when subplots
-        have a shared y-axis along a row, only the y tick labels of the first
-        column subplot are created. To later turn other subplots' ticklabels
-        on, use `~matplotlib.axes.Axes.tick_params`.
-    
-    squeeze : bool, optional, default: True
-        - If True, extra dimensions are squeezed out from the returned
-          array of `~matplotlib.axes.Axes`:
-    
-            - if only one subplot is constructed (nrows=ncols=1), the
-              resulting single Axes object is returned as a scalar.
-            - for Nx1 or 1xM subplots, the returned object is a 1D numpy
-              object array of Axes objects.
-            - for NxM, subplots with N>1 and M>1 are returned as a 2D array.
-    
-        - If False, no squeezing at all is done: the returned Axes object is
-          always a 2D array containing Axes instances, even if it ends up
-          being 1x1.
-    
-    num : integer or string, optional, default: None
-        A `.pyplot.figure` keyword that sets the figure number or label.
-    
-    subplot_kw : dict, optional
-        Dict with keywords passed to the
-        `~matplotlib.figure.Figure.add_subplot` call used to create each
-        subplot.
-    
-    gridspec_kw : dict, optional
-        Dict with keywords passed to the `~matplotlib.gridspec.GridSpec`
-        constructor used to create the grid the subplots are placed on.
-    
-    **fig_kw
-        All additional keyword arguments are passed to the
-        `.pyplot.figure` call.
-    
-    Returns
-    -------
-    fig : `~.figure.Figure`
-    
-    ax : `.axes.Axes` object or array of Axes objects.
-        *ax* can be either a single `~matplotlib.axes.Axes` object or an
-        array of Axes objects if more than one subplot was created.  The
-        dimensions of the resulting array can be controlled with the squeeze
-        keyword, see above.
+        Create a figure and a set of subplots.
+        
+        This utility wrapper makes it convenient to create common layouts of
+        subplots, including the enclosing figure object, in a single call.
+        
+        Parameters
+        ----------
+        nrows, ncols : int, optional, default: 1
+            Number of rows/columns of the subplot grid.
+        
+        sharex, sharey : bool or {'none', 'all', 'row', 'col'}, default: False
+            Controls sharing of properties among x (`sharex`) or y (`sharey`)
+            axes:
+        
+                - True or 'all': x- or y-axis will be shared among all
+                  subplots.
+                - False or 'none': each subplot x- or y-axis will be
+                  independent.
+                - 'row': each subplot row will share an x- or y-axis.
+                - 'col': each subplot column will share an x- or y-axis.
+        
+            When subplots have a shared x-axis along a column, only the x tick
+            labels of the bottom subplot are created. Similarly, when subplots
+            have a shared y-axis along a row, only the y tick labels of the first
+            column subplot are created. To later turn other subplots' ticklabels
+            on, use `~matplotlib.axes.Axes.tick_params`.
+        
+        squeeze : bool, optional, default: True
+            - If True, extra dimensions are squeezed out from the returned
+              array of `~matplotlib.axes.Axes`:
+        
+                - if only one subplot is constructed (nrows=ncols=1), the
+                  resulting single Axes object is returned as a scalar.
+                - for Nx1 or 1xM subplots, the returned object is a 1D numpy
+                  object array of Axes objects.
+                - for NxM, subplots with N>1 and M>1 are returned as a 2D array.
+        
+            - If False, no squeezing at all is done: the returned Axes object is
+              always a 2D array containing Axes instances, even if it ends up
+              being 1x1.
+        
+        num : integer or string, optional, default: None
+            A `.pyplot.figure` keyword that sets the figure number or label.
+        
+        subplot_kw : dict, optional
+            Dict with keywords passed to the
+            `~matplotlib.figure.Figure.add_subplot` call used to create each
+            subplot.
+        
+        gridspec_kw : dict, optional
+            Dict with keywords passed to the `~matplotlib.gridspec.GridSpec`
+            constructor used to create the grid the subplots are placed on.
+        
+        **fig_kw
+            All additional keyword arguments are passed to the
+            `.pyplot.figure` call.
+        
+        Returns
+        -------
+        fig : `~.figure.Figure`
+        
+        ax : `.axes.Axes` object or array of Axes objects.
+            *ax* can be either a single `~matplotlib.axes.Axes` object or an
+            array of Axes objects if more than one subplot was created.  The
+            dimensions of the resulting array can be controlled with the squeeze
+            keyword, see above.
     ```
     - We can then use [`Axes.plot`](https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.plot.html#matplotlib.axes.Axes.plot) to draw some data on the axes. 
     ```
     plot(self, *args, scalex=True, scaley=True, data=None, **kwargs)
     
-    Plot y versus x as lines and/or markers.
-    
-    Call signatures::
-    
-        plot([x], y, [fmt], *, data=None, **kwargs)
-        plot([x], y, [fmt], [x2], y2, [fmt2], ..., **kwargs)
-    
-    The coordinates of the points or line nodes are given by *x*, *y*.
-    
-    The optional parameter *fmt* is a convenient way for defining basic
-    formatting like color, marker and linestyle. It's a shortcut string
-    notation described in the *Notes* section below.
-    
-    >>> plot(x, y)        # plot x and y using default line style and color
-    >>> plot(x, y, 'bo')  # plot x and y using blue circle markers
-    >>> plot(y)           # plot y using x as index array 0..N-1
-    >>> plot(y, 'r+')     # ditto, but with red plusses
-    
-    You can use `.Line2D` properties as keyword arguments for more
-    control on the appearance. Line properties and *fmt* can be mixed.
-    The following two calls yield identical results:
-    
-    >>> plot(x, y, 'go--', linewidth=2, markersize=12)
-    >>> plot(x, y, color='green', marker='o', linestyle='dashed',
-    ...      linewidth=2, markersize=12)
-    
-    When conflicting with *fmt*, keyword arguments take precedence.
-    
-    
-    **Plotting labelled data**
-    
-    There's a convenient way for plotting objects with labelled data (i.e.
-    data that can be accessed by index ``obj['y']``). Instead of giving
-    the data in *x* and *y*, you can provide the object in the *data*
-    parameter and just give the labels for *x* and *y*::
-    
-    >>> plot('xlabel', 'ylabel', data=obj)
-    
-    All indexable objects are supported. This could e.g. be a `dict`, a
-    `pandas.DataFame` or a structured numpy array.
-    
-    
-    **Plotting multiple sets of data**
-    
-    There are various ways to plot multiple sets of data.
-    
-    - The most straight forward way is just to call `plot` multiple times.
-      Example:
-    
-      >>> plot(x1, y1, 'bo')
-      >>> plot(x2, y2, 'go')
-    
-    - Alternatively, if your data is already a 2d array, you can pass it
-      directly to *x*, *y*. A separate data set will be drawn for every
-      column.
-    
-      Example: an array ``a`` where the first column represents the *x*
-      values and the other columns are the *y* columns::
-    
-      >>> plot(a[0], a[1:])
-    
-    - The third way is to specify multiple sets of *[x]*, *y*, *[fmt]*
-      groups::
-    
-      >>> plot(x1, y1, 'g^', x2, y2, 'g-')
-    
-      In this case, any additional keyword argument applies to all
-      datasets. Also this syntax cannot be combined with the *data*
-      parameter.
-    
-    By default, each line is assigned a different style specified by a
-    'style cycle'. The *fmt* and line property parameters are only
-    necessary if you want explicit deviations from these defaults.
-    Alternatively, you can also change the style cycle using the
-    'axes.prop_cycle' rcParam.
-    
-    
-    Parameters
-    ----------
-    x, y : array-like or scalar
-        The horizontal / vertical coordinates of the data points.
-        *x* values are optional and default to `range(len(y))`.
-    
-        Commonly, these parameters are 1D arrays.
-    
-        They can also be scalars, or two-dimensional (in that case, the
-        columns represent separate data sets).
-    
-        These arguments cannot be passed as keywords.
-    
-    fmt : str, optional
-        A format string, e.g. 'ro' for red circles. See the *Notes*
-        section for a full description of the format strings.
-    
-        Format strings are just an abbreviation for quickly setting
-        basic line properties. All of these and more can also be
-        controlled by keyword arguments.
-    
-        This argument cannot be passed as keyword.
-    
-    data : indexable object, optional
-        An object with labelled data. If given, provide the label names to
-        plot in *x* and *y*.
-    
-        .. note::
-            Technically there's a slight ambiguity in calls where the
-            second label is a valid *fmt*. `plot('n', 'o', data=obj)`
-            could be `plt(x, y)` or `plt(y, fmt)`. In such cases,
-            the former interpretation is chosen, but a warning is issued.
-            You may suppress the warning by adding an empty format string
-            `plot('n', 'o', '', data=obj)`.
-    
-    Other Parameters
-    ----------------
-    scalex, scaley : bool, optional, default: True
-        These parameters determined if the view limits are adapted to
-        the data limits. The values are passed on to `autoscale_view`.
-    
-    **kwargs : `.Line2D` properties, optional
-        *kwargs* are used to specify properties like a line label (for
-        auto legends), linewidth, antialiasing, marker face color.
-        Example::
-    
-        >>> plot([1,2,3], [1,2,3], 'go-', label='line 1', linewidth=2)
-        >>> plot([1,2,3], [1,4,9], 'rs',  label='line 2')
-    
-        If you make multiple lines with one plot command, the kwargs
-        apply to all those lines.
-    
-        Here is a list of available `.Line2D` properties:
-    
-      agg_filter: a filter function, which takes a (m, n, 3) float array and a dpi value, and returns a (m, n, 3) array
-      alpha: float
-      animated: bool
-      antialiased or aa: bool
-      clip_box: `.Bbox`
-      clip_on: bool
-      clip_path: [(`~matplotlib.path.Path`, `.Transform`) | `.Patch` | None]
-      color or c: color
-      contains: callable
-      dash_capstyle: {'butt', 'round', 'projecting'}
-      dash_joinstyle: {'miter', 'round', 'bevel'}
-      dashes: sequence of floats (on/off ink in points) or (None, None)
-      drawstyle or ds: {'default', 'steps', 'steps-pre', 'steps-mid', 'steps-post'}, default: 'default'
-      figure: `.Figure`
-      fillstyle: {'full', 'left', 'right', 'bottom', 'top', 'none'}
-      gid: str
-      in_layout: bool
-      label: object
-      linestyle or ls: {'-', '--', '-.', ':', '', (offset, on-off-seq), ...}
-      linewidth or lw: float
-      marker: marker style
-      markeredgecolor or mec: color
-      markeredgewidth or mew: float
-      markerfacecolor or mfc: color
-      markerfacecoloralt or mfcalt: color
-      markersize or ms: float
-      markevery: None or int or (int, int) or slice or List[int] or float or (float, float)
-      path_effects: `.AbstractPathEffect`
-      picker: float or callable[[Artist, Event], Tuple[bool, dict]]
-      pickradius: float
-      rasterized: bool or None
-      sketch_params: (scale: float, length: float, randomness: float)
-      snap: bool or None
-      solid_capstyle: {'butt', 'round', 'projecting'}
-      solid_joinstyle: {'miter', 'round', 'bevel'}
-      transform: `matplotlib.transforms.Transform`
-      url: str
-      visible: bool
-      xdata: 1D array
-      ydata: 1D array
-      zorder: float
-    
-    Returns
-    -------
-    lines
-        A list of `.Line2D` objects representing the plotted data.
-    
-    See Also
-    --------
-    scatter : XY scatter plot with markers of varying size and/or color (
-        sometimes also called bubble chart).
-    
-    Notes
-    -----
-    **Format Strings**
-    
-    A format string consists of a part for color, marker and line::
-    
-        fmt = '[marker][line][color]'
-    
-    Each of them is optional. If not provided, the value from the style
-    cycle is used. Exception: If ``line`` is given, but no ``marker``,
-    the data will be a line without markers.
-    
-    Other combinations such as ``[color][marker][line]`` are also
-    supported, but note that their parsing may be ambiguous.
-    
-    **Markers**
-    
-    =============    ===============================
-    character        description
-    =============    ===============================
-    ``'.'``          point marker
-    ``','``          pixel marker
-    ``'o'``          circle marker
-    ``'v'``          triangle_down marker
-    ``'^'``          triangle_up marker
-    ``'<'``          triangle_left marker
-    ``'>'``          triangle_right marker
-    ``'1'``          tri_down marker
-    ``'2'``          tri_up marker
-    ``'3'``          tri_left marker
-    ``'4'``          tri_right marker
-    ``'s'``          square marker
-    ``'p'``          pentagon marker
-    ``'*'``          star marker
-    ``'h'``          hexagon1 marker
-    ``'H'``          hexagon2 marker
-    ``'+'``          plus marker
-    ``'x'``          x marker
-    ``'D'``          diamond marker
-    ``'d'``          thin_diamond marker
-    ``'|'``          vline marker
-    ``'_'``          hline marker
-    =============    ===============================
-    
-    **Line Styles**
-    
-    =============    ===============================
-    character        description
-    =============    ===============================
-    ``'-'``          solid line style
-    ``'--'``         dashed line style
-    ``'-.'``         dash-dot line style
-    ``':'``          dotted line style
-    =============    ===============================
-    
-    Example format strings::
-    
-        'b'    # blue markers with default shape
-        'or'   # red circles
-        '-g'   # green solid line
-        '--'   # dashed line with default color
-        '^k:'  # black triangle_up markers connected by a dotted line
-    
-    **Colors**
-    
-    The supported color abbreviations are the single letter codes
-    
-    =============    ===============================
-    character        color
-    =============    ===============================
-    ``'b'``          blue
-    ``'g'``          green
-    ``'r'``          red
-    ``'c'``          cyan
-    ``'m'``          magenta
-    ``'y'``          yellow
-    ``'k'``          black
-    ``'w'``          white
-    =============    ===============================
-    
-    and the ``'CN'`` colors that index into the default property cycle.
-    
-    If the color is the only part of the format string, you can
-    additionally use any  `matplotlib.colors` spec, e.g. full names
-    (``'green'``) or hex strings (``'#008000'``).
+        Plot y versus x as lines and/or markers.
+        
+        Call signatures::
+        
+            plot([x], y, [fmt], *, data=None, **kwargs)
+            plot([x], y, [fmt], [x2], y2, [fmt2], ..., **kwargs)
+        
+        The coordinates of the points or line nodes are given by *x*, *y*.
+        
+        The optional parameter *fmt* is a convenient way for defining basic
+        formatting like color, marker and linestyle. It's a shortcut string
+        notation described in the *Notes* section below.
+        
+        >>> plot(x, y)        # plot x and y using default line style and color
+        >>> plot(x, y, 'bo')  # plot x and y using blue circle markers
+        >>> plot(y)           # plot y using x as index array 0..N-1
+        >>> plot(y, 'r+')     # ditto, but with red plusses
+        
+        You can use `.Line2D` properties as keyword arguments for more
+        control on the appearance. Line properties and *fmt* can be mixed.
+        The following two calls yield identical results:
+        
+        >>> plot(x, y, 'go--', linewidth=2, markersize=12)
+        >>> plot(x, y, color='green', marker='o', linestyle='dashed',
+        ...      linewidth=2, markersize=12)
+        
+        When conflicting with *fmt*, keyword arguments take precedence.
+        
+        
+        **Plotting labelled data**
+        
+        There's a convenient way for plotting objects with labelled data (i.e.
+        data that can be accessed by index ``obj['y']``). Instead of giving
+        the data in *x* and *y*, you can provide the object in the *data*
+        parameter and just give the labels for *x* and *y*::
+        
+        >>> plot('xlabel', 'ylabel', data=obj)
+        
+        All indexable objects are supported. This could e.g. be a `dict`, a
+        `pandas.DataFame` or a structured numpy array.
+        
+        
+        **Plotting multiple sets of data**
+        
+        There are various ways to plot multiple sets of data.
+        
+        - The most straight forward way is just to call `plot` multiple times.
+          Example:
+        
+          >>> plot(x1, y1, 'bo')
+          >>> plot(x2, y2, 'go')
+        
+        - Alternatively, if your data is already a 2d array, you can pass it
+          directly to *x*, *y*. A separate data set will be drawn for every
+          column.
+        
+          Example: an array ``a`` where the first column represents the *x*
+          values and the other columns are the *y* columns::
+        
+          >>> plot(a[0], a[1:])
+        
+        - The third way is to specify multiple sets of *[x]*, *y*, *[fmt]*
+          groups::
+        
+          >>> plot(x1, y1, 'g^', x2, y2, 'g-')
+        
+          In this case, any additional keyword argument applies to all
+          datasets. Also this syntax cannot be combined with the *data*
+          parameter.
+        
+        By default, each line is assigned a different style specified by a
+        'style cycle'. The *fmt* and line property parameters are only
+        necessary if you want explicit deviations from these defaults.
+        Alternatively, you can also change the style cycle using the
+        'axes.prop_cycle' rcParam.
+        
+        
+        Parameters
+        ----------
+        x, y : array-like or scalar
+            The horizontal / vertical coordinates of the data points.
+            *x* values are optional and default to `range(len(y))`.
+        
+            Commonly, these parameters are 1D arrays.
+        
+            They can also be scalars, or two-dimensional (in that case, the
+            columns represent separate data sets).
+        
+            These arguments cannot be passed as keywords.
+        
+        fmt : str, optional
+            A format string, e.g. 'ro' for red circles. See the *Notes*
+            section for a full description of the format strings.
+        
+            Format strings are just an abbreviation for quickly setting
+            basic line properties. All of these and more can also be
+            controlled by keyword arguments.
+        
+            This argument cannot be passed as keyword.
+        
+        data : indexable object, optional
+            An object with labelled data. If given, provide the label names to
+            plot in *x* and *y*.
+        
+            .. note::
+                Technically there's a slight ambiguity in calls where the
+                second label is a valid *fmt*. `plot('n', 'o', data=obj)`
+                could be `plt(x, y)` or `plt(y, fmt)`. In such cases,
+                the former interpretation is chosen, but a warning is issued.
+                You may suppress the warning by adding an empty format string
+                `plot('n', 'o', '', data=obj)`.
+        
+        Other Parameters
+        ----------------
+        scalex, scaley : bool, optional, default: True
+            These parameters determined if the view limits are adapted to
+            the data limits. The values are passed on to `autoscale_view`.
+        
+        **kwargs : `.Line2D` properties, optional
+            *kwargs* are used to specify properties like a line label (for
+            auto legends), linewidth, antialiasing, marker face color.
+            Example::
+        
+            >>> plot([1,2,3], [1,2,3], 'go-', label='line 1', linewidth=2)
+            >>> plot([1,2,3], [1,4,9], 'rs',  label='line 2')
+        
+            If you make multiple lines with one plot command, the kwargs
+            apply to all those lines.
+        
+            Here is a list of available `.Line2D` properties:
+        
+          agg_filter: a filter function, which takes a (m, n, 3) float array and a dpi value, and returns a (m, n, 3) array
+          alpha: float
+          animated: bool
+          antialiased or aa: bool
+          clip_box: `.Bbox`
+          clip_on: bool
+          clip_path: [(`~matplotlib.path.Path`, `.Transform`) | `.Patch` | None]
+          color or c: color
+          contains: callable
+          dash_capstyle: {'butt', 'round', 'projecting'}
+          dash_joinstyle: {'miter', 'round', 'bevel'}
+          dashes: sequence of floats (on/off ink in points) or (None, None)
+          drawstyle or ds: {'default', 'steps', 'steps-pre', 'steps-mid', 'steps-post'}, default: 'default'
+          figure: `.Figure`
+          fillstyle: {'full', 'left', 'right', 'bottom', 'top', 'none'}
+          gid: str
+          in_layout: bool
+          label: object
+          linestyle or ls: {'-', '--', '-.', ':', '', (offset, on-off-seq), ...}
+          linewidth or lw: float
+          marker: marker style
+          markeredgecolor or mec: color
+          markeredgewidth or mew: float
+          markerfacecolor or mfc: color
+          markerfacecoloralt or mfcalt: color
+          markersize or ms: float
+          markevery: None or int or (int, int) or slice or List[int] or float or (float, float)
+          path_effects: `.AbstractPathEffect`
+          picker: float or callable[[Artist, Event], Tuple[bool, dict]]
+          pickradius: float
+          rasterized: bool or None
+          sketch_params: (scale: float, length: float, randomness: float)
+          snap: bool or None
+          solid_capstyle: {'butt', 'round', 'projecting'}
+          solid_joinstyle: {'miter', 'round', 'bevel'}
+          transform: `matplotlib.transforms.Transform`
+          url: str
+          visible: bool
+          xdata: 1D array
+          ydata: 1D array
+          zorder: float
+        
+        Returns
+        -------
+        lines
+            A list of `.Line2D` objects representing the plotted data.
+        
+        See Also
+        --------
+        scatter : XY scatter plot with markers of varying size and/or color (
+            sometimes also called bubble chart).
+        
+        Notes
+        -----
+        **Format Strings**
+        
+        A format string consists of a part for color, marker and line::
+        
+            fmt = '[marker][line][color]'
+        
+        Each of them is optional. If not provided, the value from the style
+        cycle is used. Exception: If ``line`` is given, but no ``marker``,
+        the data will be a line without markers.
+        
+        Other combinations such as ``[color][marker][line]`` are also
+        supported, but note that their parsing may be ambiguous.
+        
+        **Markers**
+        
+        =============    ===============================
+        character        description
+        =============    ===============================
+        ``'.'``          point marker
+        ``','``          pixel marker
+        ``'o'``          circle marker
+        ``'v'``          triangle_down marker
+        ``'^'``          triangle_up marker
+        ``'<'``          triangle_left marker
+        ``'>'``          triangle_right marker
+        ``'1'``          tri_down marker
+        ``'2'``          tri_up marker
+        ``'3'``          tri_left marker
+        ``'4'``          tri_right marker
+        ``'s'``          square marker
+        ``'p'``          pentagon marker
+        ``'*'``          star marker
+        ``'h'``          hexagon1 marker
+        ``'H'``          hexagon2 marker
+        ``'+'``          plus marker
+        ``'x'``          x marker
+        ``'D'``          diamond marker
+        ``'d'``          thin_diamond marker
+        ``'|'``          vline marker
+        ``'_'``          hline marker
+        =============    ===============================
+        
+        **Line Styles**
+        
+        =============    ===============================
+        character        description
+        =============    ===============================
+        ``'-'``          solid line style
+        ``'--'``         dashed line style
+        ``'-.'``         dash-dot line style
+        ``':'``          dotted line style
+        =============    ===============================
+        
+        Example format strings::
+        
+            'b'    # blue markers with default shape
+            'or'   # red circles
+            '-g'   # green solid line
+            '--'   # dashed line with default color
+            '^k:'  # black triangle_up markers connected by a dotted line
+        
+        **Colors**
+        
+        The supported color abbreviations are the single letter codes
+        
+        =============    ===============================
+        character        color
+        =============    ===============================
+        ``'b'``          blue
+        ``'g'``          green
+        ``'r'``          red
+        ``'c'``          cyan
+        ``'m'``          magenta
+        ``'y'``          yellow
+        ``'k'``          black
+        ``'w'``          white
+        =============    ===============================
+        
+        and the ``'CN'`` colors that index into the default property cycle.
+        
+        If the color is the only part of the format string, you can
+        additionally use any  `matplotlib.colors` spec, e.g. full names
+        (``'green'``) or hex strings (``'#008000'``).
     ```
     - Example: 
     ```
@@ -438,7 +438,6 @@ ax.set_ylabel('y label')              # Add a y-label to the axes.
 ax.set_title("Simple Plot")           # Add a title to the axes.
 ax.legend()                           # Add a legend.
 ```
-![](https://matplotlib.org/_images/sphx_glr_usage_003.png)
 - or (pyplot-style)
 ```
 x = np.linspace(0, 2, 100)
@@ -451,9 +450,146 @@ plt.ylabel('y label')
 plt.title("Simple Plot")
 plt.legend()
 ```
+![](https://matplotlib.org/_images/sphx_glr_usage_003.png)
+- Matplotlib's documentation and examples use both the OO and the pyplot approaches (which are equally powerful), and you should feel free to use either (however, it is preferable pick one of them and stick to it, instead of mixing them). In general, we suggest to restrict pyplot to interactive plotting (e.g., in a Jupyter notebook), and to prefer the OO-style for non-interactive plotting (in functions and scripts that are intended to be reused as part of a larger project). 
+
+#### 📌 Backends
+
+- Three ways to configure your backend: 
+    1. The `rcParams["backend"]` (default: `'agg'`) parameter in your matplotlibrc file; 
+    2. The `MPLBACKEND` environment variable; 
+    3. The function `matplotlib.use()`. 
+        - This function **overrides** setting in your matplotlibrc. 
+        - This should be done before any figure is created; otherwise Matplotlib may fail to switch the backend and raise an ImportError.
+        - Using use will require changes in your code if users want to use a different backend. Therefore, you should avoid explicitly calling use unless absolutely necessary.
+- [Built-in Backends](https://matplotlib.org/tutorials/introductory/usage.html#the-builtin-backends): 
+    - non-interactive backends, capable of writing to a file. To save plots using the non-interactive backends, use the `matplotlib.pyplot.savefig('filename')` method: 
+        - `agg`: `.png` file. raster graphics. 
+        - `pdf`: `.pdf` file. vector graphics. 
+        - `ps`: `.ps`, `.eps` file. postscript output. vector graphics. 
+        - `svg`: `.svg` file. vector graphics. 
+        - `pgf`: `.pgf`, `.pdf` file. using the `pgf` package. vector graphics. 
+        - `Cairo`: `.png`, `.pdf`, `.ps` or `.svg` file. using the `Cairo` library. raster or vector graphics. 
+    - interactive backends. 
+
+### 🌱 [Pyplot Tutorial](https://matplotlib.org/tutorials/introductory/pyplot.html#sphx-glr-tutorials-introductory-pyplot-py)
+
+#### 📌 Intro to pyplot
+
+[`matplotlib.pyplot`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.html#module-matplotlib.pyplot) is a collection of functions that make matplotlib work like MATLAB. Each pyplot function makes some change to a figure: e.g., creates a figure, creates a plotting area in a figure, plots some lines in a plotting area, decorates the plot with labels, etc.
+
+In `matplotlib.pyplot` various *states* are preserved across function calls, so that it keeps track of things like the current figure and plotting area, and the plotting functions are directed to the current axes (please note that "axes" here and in most places in the documentation refers to the axes part of a figure and not the strict mathematical term for more than one axis). 
+
+**Note**: the `pyplot` API is generally less-flexible than the object-oriented API. Most of the function calls you see here can also be called as methods from an `Axes` object. 
+
+```
+import matplotlib.pyplot as plt
+plt.plot([1, 2, 3, 4])  # this list regarded as y-values and x is set to range(len(y))
+plt.ylabel('some numbers')
+```
+
+#### 📌 Formatting the style of your plot
+
+For every x, y pair of arguments, there is an optional third argument which is the format string that indicates the color and line type of the plot. The letters and symbols of the format string are from MATLAB, and you concatenate a color string with a line style string. The default format string is 'b-', which is a solid blue line. For example, to plot the above with red circles, you would issue
+
+```
+# color red, marker filled circle, NO line.  
+plt.plot([1, 2, 3, 4], [1, 4, 9, 16], 'ro')  
+plt.axis([0, 6, 0, 20])
+```
+
+Help on [`matplotlib.pyplot.axis`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.axis.html#matplotlib.pyplot.axis):
+ 
+```
+axis(*args, **kwargs)
+
+    Convenience method to get or set some axis properties.
+    
+    Call signatures::
+    
+      xmin, xmax, ymin, ymax = axis()
+      xmin, xmax, ymin, ymax = axis([xmin, xmax, ymin, ymax])
+      xmin, xmax, ymin, ymax = axis(option)
+      xmin, xmax, ymin, ymax = axis(**kwargs)
+    
+    Parameters
+    ----------
+    xmin, xmax, ymin, ymax : float, optional
+        The axis limits to be set. Either none or all of the limits must
+        be given. This can also be achieved using ::
+    
+            ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+    
+    option : bool or str
+        If a bool, turns axis lines and labels on or off. If a string,
+        possible values are:
+    
+        ======== ==========================================================
+        Value    Description
+        ======== ==========================================================
+        'on'     Turn on axis lines and labels. Same as ``True``.
+        'off'    Turn off axis lines and labels. Same as ``False``.
+        'equal'  Set equal scaling (i.e., make circles circular) by
+                 changing axis limits.
+        'scaled' Set equal scaling (i.e., make circles circular) by
+                 changing dimensions of the plot box.
+        'tight'  Set limits just large enough to show all data.
+        'auto'   Automatic scaling (fill plot box with data).
+        'normal' Same as 'auto'; deprecated.
+        'image'  'scaled' with axis limits equal to data limits.
+        'square' Square plot; similar to 'scaled', but initially forcing
+                 ``xmax-xmin = ymax-ymin``.
+        ======== ==========================================================
+    
+    emit : bool, optional, default *True*
+        Whether observers are notified of the axis limit change.
+        This option is passed on to `~.Axes.set_xlim` and
+        `~.Axes.set_ylim`.
+    
+    Returns
+    -------
+    xmin, xmax, ymin, ymax : float
+        The axis limits.
+```
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 🌱
+
+#### 📌
 
 
 
