@@ -93,7 +93,7 @@ import numpy as np
     ```
     - We can then use [`Axes.plot`](https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.plot.html#matplotlib.axes.Axes.plot) to draw some data on the axes. 
     ```
-    plot(self, *args, scalex=True, scaley=True, data=None, **kwargs)
+    matplotlib.axes.Axes.plot(self, *args, scalex=True, scaley=True, data=None, **kwargs)
     
         Plot y versus x as lines and/or markers.
         
@@ -226,47 +226,47 @@ import numpy as np
         
             Here is a list of available `.Line2D` properties:
         
-          agg_filter: a filter function, which takes a (m, n, 3) float array and a dpi value, and returns a (m, n, 3) array
-          alpha: float
-          animated: bool
-          antialiased or aa: bool
-          clip_box: `.Bbox`
-          clip_on: bool
-          clip_path: [(`~matplotlib.path.Path`, `.Transform`) | `.Patch` | None]
-          color or c: color
-          contains: callable
-          dash_capstyle: {'butt', 'round', 'projecting'}
-          dash_joinstyle: {'miter', 'round', 'bevel'}
-          dashes: sequence of floats (on/off ink in points) or (None, None)
-          drawstyle or ds: {'default', 'steps', 'steps-pre', 'steps-mid', 'steps-post'}, default: 'default'
-          figure: `.Figure`
-          fillstyle: {'full', 'left', 'right', 'bottom', 'top', 'none'}
-          gid: str
-          in_layout: bool
-          label: object
-          linestyle or ls: {'-', '--', '-.', ':', '', (offset, on-off-seq), ...}
-          linewidth or lw: float
-          marker: marker style
-          markeredgecolor or mec: color
-          markeredgewidth or mew: float
-          markerfacecolor or mfc: color
-          markerfacecoloralt or mfcalt: color
-          markersize or ms: float
-          markevery: None or int or (int, int) or slice or List[int] or float or (float, float)
-          path_effects: `.AbstractPathEffect`
-          picker: float or callable[[Artist, Event], Tuple[bool, dict]]
-          pickradius: float
-          rasterized: bool or None
-          sketch_params: (scale: float, length: float, randomness: float)
-          snap: bool or None
-          solid_capstyle: {'butt', 'round', 'projecting'}
-          solid_joinstyle: {'miter', 'round', 'bevel'}
-          transform: `matplotlib.transforms.Transform`
-          url: str
-          visible: bool
-          xdata: 1D array
-          ydata: 1D array
-          zorder: float
+                agg_filter: a filter function, which takes a (m, n, 3) float array and a dpi value, and returns a (m, n, 3) array
+                alpha: float
+                animated: bool
+                antialiased or aa: bool
+                clip_box: `.Bbox`
+                clip_on: bool
+                clip_path: [(`~matplotlib.path.Path`, `.Transform`) | `.Patch` | None]
+                color or c: color
+                contains: callable
+                dash_capstyle: {'butt', 'round', 'projecting'}
+                dash_joinstyle: {'miter', 'round', 'bevel'}
+                dashes: sequence of floats (on/off ink in points) or (None, None)
+                drawstyle or ds: {'default', 'steps', 'steps-pre', 'steps-mid', 'steps-post'}, default: 'default'
+                figure: `.Figure`
+                fillstyle: {'full', 'left', 'right', 'bottom', 'top', 'none'}
+                gid: str
+                in_layout: bool
+                label: object
+                linestyle or ls: {'-', '--', '-.', ':', '', (offset, on-off-seq), ...}
+                linewidth or lw: float
+                marker: marker style
+                markeredgecolor or mec: color
+                markeredgewidth or mew: float
+                markerfacecolor or mfc: color
+                markerfacecoloralt or mfcalt: color
+                markersize or ms: float
+                markevery: None or int or (int, int) or slice or List[int] or float or (float, float)
+                path_effects: `.AbstractPathEffect`
+                picker: float or callable[[Artist, Event], Tuple[bool, dict]]
+                pickradius: float
+                rasterized: bool or None
+                sketch_params: (scale: float, length: float, randomness: float)
+                snap: bool or None
+                solid_capstyle: {'butt', 'round', 'projecting'}
+                solid_joinstyle: {'miter', 'round', 'bevel'}
+                transform: `matplotlib.transforms.Transform`
+                url: str
+                visible: bool
+                xdata: 1D array
+                ydata: 1D array
+                zorder: float
         
         Returns
         -------
@@ -493,24 +493,33 @@ plt.ylabel('some numbers')
 For every x, y pair of arguments, there is an optional third argument which is the format string that indicates the color and line type of the plot. The letters and symbols of the format string are from MATLAB, and you concatenate a color string with a line style string. The default format string is 'b-', which is a solid blue line. For example, to plot the above with red circles, you would issue
 
 ```
-# color red, marker filled circle, NO line.  
-plt.plot([1, 2, 3, 4], [1, 4, 9, 16], 'ro')  
-plt.axis([0, 6, 0, 20])
+import numpy as np
+ 
+# evenly sampled time at 200ms intervals
+t = np.arange(0., 5., 0.2)
+
+plt.axis([0, 5, 0, 120])
+
+# red dashes, blue squares and green triangles
+plt.plot(t, t, 'r--', t, t**2, 'bs', t, t**3, 'g^')
+plt.show()
 ```
+
+![](https://matplotlib.org/_images/sphx_glr_pyplot_004.png)
 
 Help on [`matplotlib.pyplot.axis`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.axis.html#matplotlib.pyplot.axis):
  
 ```
-axis(*args, **kwargs)
+matplotlib.pyplot.axis(*args, **kwargs)
 
     Convenience method to get or set some axis properties.
     
     Call signatures::
     
-      xmin, xmax, ymin, ymax = axis()
-      xmin, xmax, ymin, ymax = axis([xmin, xmax, ymin, ymax])
-      xmin, xmax, ymin, ymax = axis(option)
-      xmin, xmax, ymin, ymax = axis(**kwargs)
+        xmin, xmax, ymin, ymax = axis()
+        xmin, xmax, ymin, ymax = axis([xmin, xmax, ymin, ymax])
+        xmin, xmax, ymin, ymax = axis(option)
+        xmin, xmax, ymin, ymax = axis(**kwargs)
     
     Parameters
     ----------
@@ -552,17 +561,55 @@ axis(*args, **kwargs)
         The axis limits.
 ```
 
+#### 📌 Plotting with keyword strings
 
+```
+data = {'a': np.arange(50),
+        'c': np.random.randint(0, 50, 50),
+        'd': np.random.randn(50)}
+data['b'] = data['a'] + 10 * np.random.randn(50)
+data['d'] = np.abs(data['d']) * 100
 
+plt.scatter('a', 'b', c='c', s='d', data=data)
+plt.xlabel('entry a')
+plt.ylabel('entry b')
+plt.show()
+```
 
+![](https://matplotlib.org/_images/sphx_glr_pyplot_005.png)
 
+#### 📌 Plotting with categorical variables
 
+- `pyplot` way
+```
+names = ['group_a', 'group_b', 'group_c']
+values = [1, 10, 100]
 
+plt.figure(figsize=(9, 3))
 
+plt.subplot(131)
+plt.bar(names, values)
+plt.subplot(132)
+plt.scatter(names, values)
+plt.subplot(133)
+plt.plot(names, values)
+plt.suptitle('Categorical Plotting')
+plt.show()
+```
+- oop way
+```
+names = ['group_a', 'group_b', 'group_c']
+values = [1, 10, 100]
 
+fig, axs = plt.subplots(1, 3, figsize=(9, 3))
+fig.suptitle('Categorical Plotting')
+axs[0].bar(names, values)
+axs[1].scatter(names, values)
+axs[2].plot(names, values)
+fig.show()
+```
 
-
-
+![](https://matplotlib.org/_images/sphx_glr_pyplot_006.png)
 
 
 
