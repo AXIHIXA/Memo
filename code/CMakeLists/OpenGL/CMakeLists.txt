@@ -57,9 +57,21 @@ set(ALL_LIBRARIES
         pthread
         )
 
+# all definitions and options
+
+set(ALL_COMPILE_DEFS
+
+        )
+
+set(ALL_COMPILE_OPTS
+        -Wpessimizing-move
+        -Wredundant-move
+        )
+
 # executable target
 
 add_executable(${PROJECT_NAME} ${ALL_SOURCE_FILES})
-target_compile_options(${PROJECT_NAME} PUBLIC -Wpessimizing-move -Wredundant-move)
+target_compile_definitions(${PROJECT_NAME} PUBLIC ${ALL_COMPILE_DEFS})
+target_compile_options(${PROJECT_NAME} PUBLIC ${ALL_COMPILE_OPTS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ALL_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${ALL_LIBRARIES})
