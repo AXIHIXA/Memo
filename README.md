@@ -11,6 +11,8 @@
     - [`Python` Offical Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/py.md)
     - [`NumPy` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/numpy.md)
     - [`PyTorch` Tutorial Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/py/pytorch.md)
+    - [`matplotlib` Offical Tutorial](https://github.com/AXIHIXA/Memo/blob/master/notes/py/matplotlib.md)
+    - [`SymPy` Offical Tutorial](https://github.com/AXIHIXA/Memo/blob/master/notes/py/sympy.md)
     
 - `ubuntu` Management
 

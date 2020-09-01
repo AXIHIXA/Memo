@@ -141,10 +141,11 @@ tensor([0.9551])
 ```
 - **READ LATER**: 100+ Tensor operations, including transposing, indexing, slicing, mathematical operations, linear algebra, random numbers, etc., are described [here](https://pytorch.org/docs/stable/torch.html). 
 
-### `NumPy` Bridge
+### NumPy Bridge
 
-- Converting a `Torch Tensor to a NumPy array and vice versa is a breeze. 
-- The Torch Tensor and NumPy array will share their underlying memory locations (if the Torch Tensor is on CPU), and changing one will change the other.
+Converting a Torch Tensor to a NumPy array and vice versa is a breeze. 
+
+The Torch Tensor and NumPy array will share their underlying memory locations (if the Torch Tensor is on CPU), and changing one will change the other.
 
 #### Converting a Torch Tensor to a NumPy Array
 
@@ -157,7 +158,7 @@ tensor([1., 1., 1., 1., 1.])
 >>> b
 [1. 1. 1. 1. 1.]
 ```
-- See how the numpy array changed in value. 
+See how the numpy array changed in value. 
 ```
 >>> a.add_(1)
 >>> a
@@ -168,7 +169,7 @@ tensor([2., 2., 2., 2., 2.])
 
 #### Converting NumPy Array to Torch Tensor
 
-- All the Tensors on the CPU except a CharTensor support converting to NumPy and back. 
+All the Tensors on the CPU except a CharTensor support converting to NumPy and back. 
 ```
 >>> a = np.ones(5)
 >>> b = torch.from_numpy(a)
@@ -181,7 +182,7 @@ tensor([2., 2., 2., 2., 2.], dtype=torch.float64)
 
 #### CUDA Tensors
 
-- Tensors can be moved onto any device using the `.to` method. 
+Tensors can be moved onto any device using the `.to` method. 
 ```
 # let us run this cell only if CUDA is available
 # We will use ``torch.device`` objects to move tensors in and out of GPU
@@ -193,27 +194,85 @@ if torch.cuda.is_available():
     print(z)
     print(z.to("cpu", torch.double))       # ``.to`` can also change dtype together!
 ```
-    Out: 
+Out: 
 ```
 tensor([1.9551], device='cuda:0')
 tensor([1.9551], dtype=torch.float64)
 ```
 
+### Autograd: Automatic Differentiation
 
+Central to all neural networks in PyTorch is the `autograd` package. Let’s first briefly visit this, and we will then go to training our first neural network. 
 
+The `autograd` package provides automatic differentiation for all operations on Tensors. It is a define-by-run framework, which means that your backprop is defined by how your code is run, and that every single iteration can be different. 
 
+#### Tensor
 
+`torch.Tensor` is the central class of the package. If you set its attribute `.requires_grad` as `True`, it starts to track all operations on it. When you finish your computation you can call `.backward()` and have all the gradients computed automatically. The gradient for this tensor will be accumulated into `.grad` attribute. 
 
+To stop a tensor from tracking history, you can call `.detach()` to detach it from the computation history, and to prevent future computation from being tracked. 
 
+To prevent tracking history (and using memory), you can also wrap the code block in `with torch.no_grad():`. This can be particularly helpful when evaluating a model because the model may have trainable parameters with `requires_grad=True`, but for which we don’t need the gradients. 
 
+There’s one more class which is very important for autograd implementation: a `Function`. 
 
+`Tensor` and `Function` are interconnected and build up an acyclic graph, that encodes a complete history of computation. Each tensor has a `.grad_fn` attribute that references a Function that has created the Tensor (**except** for Tensors created by the user; their `grad_fn` is `None`). 
 
+If you want to compute the derivatives, you can call `.backward()` on a `Tensor`. If `Tensor` is a scalar (i.e. it holds a one element data), you don’t need to specify any arguments to `backward()`, however if it has more elements, you need to specify a gradient argument that is a tensor of matching shape. 
+ 
+```
+>>> x = torch.ones(2, 2, requires_grad=True)
+>>> x
+tensor([[1., 1.],
+        [1., 1.]], requires_grad=True)
 
+>>> y = x + 2
+>>> y
+tensor([[3., 3.],
+        [3., 3.]], grad_fn=<AddBackward0>)
+>>> y.grad_fn
+<AddBackward0 object at 0x7f67610c4160>
 
+>>> z = y * y * 3
+>>> out = z.mean()
+>>> z
+tensor([[27., 27.],
+        [27., 27.]], grad_fn=<MulBackward0>)
+>>> out
+tensor(27., grad_fn=<MeanBackward0>)
+```
 
+`.requires_grad_(...)` changes an existing Tensor’s `requires_grad` flag in-place. The input flag defaults to `False` if not given. 
 
+```
+>>> a = torch.randn(2, 2)
+>>> a = ((a * 3) / (a - 1))
+>>> a.requires_grad
+False
 
+>>> a.requires_grad_(True)
+>>> a.requires_grad
+True
 
+>>> b = (a * a).sum()
+>>> b.grad_fn
+<SumBackward0 object at 0x7f67610c4e48>
+```
+
+#### Gradients
+
+Let’s backprop now. Because `out` contains a single scalar, `out.backward()` is equivalent to `out.backward(torch.tensor(1.))`. 
+
+```
+>>> out.backward()
+>>> x.grad
+tensor([[4.5000, 4.5000],
+        [4.5000, 4.5000]])
+```
+
+Mathematically, if you have a vector valued function `y = f(x)`, then the gradient of `y` with respect to `x` is a Jacobian matrix. Generally speaking, `torch.autograd` is an engine for computing vector-Jacobian product. 
+
+### Neural Networks
 
 
 
