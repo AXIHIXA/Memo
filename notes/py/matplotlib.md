@@ -23,7 +23,6 @@ import numpy as np
     ```
     matplotlib.pyplot.subplots(nrows=1, ncols=1, sharex=False, sharey=False, squeeze=True, subplot_kw=None, gridspec_kw=None, 
     **fig_kw)
-    
         Create a figure and a set of subplots.
         
         This utility wrapper makes it convenient to create common layouts of
@@ -94,7 +93,6 @@ import numpy as np
     - We can then use [`Axes.plot`](https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.plot.html#matplotlib.axes.Axes.plot) to draw some data on the axes. 
     ```
     matplotlib.axes.Axes.plot(self, *args, scalex=True, scaley=True, data=None, **kwargs)
-    
         Plot y versus x as lines and/or markers.
         
         Call signatures::
@@ -511,7 +509,6 @@ Help on [`matplotlib.pyplot.axis`](https://matplotlib.org/api/_as_gen/matplotlib
  
 ```
 matplotlib.pyplot.axis(*args, **kwargs)
-
     Convenience method to get or set some axis properties.
     
     Call signatures::
@@ -611,17 +608,493 @@ fig.show()
 
 ![](https://matplotlib.org/_images/sphx_glr_pyplot_006.png)
 
+Help on function `matplotlib.pyplot.subplot`:
+
+```
+matplotlib.pyplot.subplot(*args, **kwargs)
+    Add a subplot to the current figure.
+    
+    Wrapper of `.Figure.add_subplot` with a difference in behavior
+    explained in the notes section.
+    
+    Call signatures::
+    
+        subplot(nrows, ncols, index, **kwargs)
+        subplot(pos, **kwargs)
+        subplot(ax)
+    
+    Parameters
+    ----------
+    *args
+        Either a 3-digit integer or three separate integers
+        describing the position of the subplot. If the three
+        integers are *nrows*, *ncols*, and *index* in order, the
+        subplot will take the *index* position on a grid with *nrows*
+        rows and *ncols* columns. *index* starts at 1 in the upper left
+        corner and increases to the right.
+    
+        *pos* is a three digit integer, where the first digit is the
+        number of rows, the second the number of columns, and the third
+        the index of the subplot. i.e. fig.add_subplot(235) is the same as
+        fig.add_subplot(2, 3, 5). Note that all integers must be less than
+        10 for this form to work.
+    
+    projection : {None, 'aitoff', 'hammer', 'lambert', 'mollweide', 'polar', 'rectilinear', str}, optional
+        The projection type of the subplot (`~.axes.Axes`). *str* is the name
+        of a custom projection, see `~matplotlib.projections`. The default
+        None results in a 'rectilinear' projection.
+    
+    polar : boolean, optional
+        If True, equivalent to projection='polar'.
+    
+    sharex, sharey : `~.axes.Axes`, optional
+        Share the x or y `~matplotlib.axis` with sharex and/or sharey. The
+        axis will have the same limits, ticks, and scale as the axis of the
+        shared axes.
+    
+    label : str
+        A label for the returned axes.
+    
+    Other Parameters
+    ----------------
+    **kwargs
+        This method also takes the keyword arguments for
+        the returned axes base class. The keyword arguments for the
+        rectilinear base class `~.axes.Axes` can be found in
+        the following table but there might also be other keyword
+        arguments if another projection is used.
+            adjustable: {'box', 'datalim'}
+            agg_filter: a filter function, which takes a (m, n, 3) float array and a dpi value, and returns a (m, n, 3) array
+            alpha: float
+            anchor: 2-tuple of floats or {'C', 'SW', 'S', 'SE', ...}
+            animated: bool
+            aspect: {'auto', 'equal'} or num
+            autoscale_on: bool
+            autoscalex_on: bool
+            autoscaley_on: bool
+            axes_locator: Callable[[Axes, Renderer], Bbox]
+            axisbelow: bool or 'line'
+            clip_box: `.Bbox`
+            clip_on: bool
+            clip_path: [(`~matplotlib.path.Path`, `.Transform`) | `.Patch` | None]
+            contains: callable
+            facecolor: color
+            fc: color
+            figure: `.Figure`
+            frame_on: bool
+            gid: str
+            in_layout: bool
+            label: object
+            navigate: bool
+            navigate_mode: unknown
+            path_effects: `.AbstractPathEffect`
+            picker: None or bool or float or callable
+            position: [left, bottom, width, height] or `~matplotlib.transforms.Bbox`
+            rasterization_zorder: float or None
+            rasterized: bool or None
+            sketch_params: (scale: float, length: float, randomness: float)
+            snap: bool or None
+            title: str
+            transform: `.Transform`
+            url: str
+            visible: bool
+            xbound: unknown
+            xlabel: str
+            xlim: (left: float, right: float)
+            xmargin: float greater than -0.5
+            xscale: {"linear", "log", "symlog", "logit", ...}
+            xticklabels: List[str]
+            xticks: list
+            ybound: unknown
+            ylabel: str
+            ylim: (bottom: float, top: float)
+            ymargin: float greater than -0.5
+            yscale: {"linear", "log", "symlog", "logit", ...}
+            yticklabels: List[str]
+            yticks: list
+            zorder: float
+    
+    Returns
+    -------
+    axes : an `.axes.SubplotBase` subclass of `~.axes.Axes` (or a subclass     of `~.axes.Axes`)
+    
+        The axes of the subplot. The returned axes base class depends on
+        the projection used. It is `~.axes.Axes` if rectilinear projection
+        are used and `.projections.polar.PolarAxes` if polar projection
+        are used. The returned axes is then a subplot subclass of the
+        base class.
+    
+    Notes
+    -----
+    Creating a subplot will delete any pre-existing subplot that overlaps
+    with it beyond sharing a boundary::
+    
+        import matplotlib.pyplot as plt
+        # plot a line, implicitly creating a subplot(111)
+        plt.plot([1,2,3])
+        # now create a subplot which represents the top plot of a grid
+        # with 2 rows and 1 column. Since this subplot will overlap the
+        # first, the plot (and its axes) previously created, will be removed
+        plt.subplot(211)
+    
+    If you do not want this behavior, use the `.Figure.add_subplot` method
+    or the `.pyplot.axes` function instead.
+    
+    If the figure already has a subplot with key (*args*,
+    *kwargs*) then it will simply make that subplot current and
+    return it.  This behavior is deprecated. Meanwhile, if you do
+    not want this behavior (i.e., you want to force the creation of a
+    new subplot), you must use a unique set of args and kwargs.  The axes
+    *label* attribute has been exposed for this purpose: if you want
+    two subplots that are otherwise identical to be added to the figure,
+    make sure you give them unique labels.
+    
+    In rare circumstances, `.add_subplot` may be called with a single
+    argument, a subplot axes instance already created in the
+    present figure but not in the figure's list of axes.
+```
+
+#### 📌 Controlling line properties
+
+- Lines have many attributes that you can set: linewidth, dash style, antialiased, etc; see [`matplotlib.lines.Line2D`](https://matplotlib.org/api/_as_gen/matplotlib.lines.Line2D.html#matplotlib.lines.Line2D). There are several ways to set line properties: 
+    - Use keyword args: 
+    ```
+    plt.plot(x, y, linewidth=2.0)
+    ```
+    - Use the setter methods of a `Line2D` instance. plot returns a list of Line2D objects; e.g., `line1, line2 = plot(x1, y1, x2, y2)`. In the code below we will suppose that we have only one line so that the list returned is of length 1. We use tuple unpacking with `line`, to get the first element of that list: 
+    ```
+    line, = plt.plot(x, y, '-')
+    line.set_antialiased(False) # turn off antialiasing
+    ```
+    - Use [`setp`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.setp.html#matplotlib.pyplot.setp): The example below uses a MATLAB-style function to set multiple properties on a list of lines. setp works transparently with a list of objects or a single object. You can either use python keyword arguments or MATLAB-style string/value pairs: 
+    ```
+    lines = plt.plot(x1, y1, x2, y2)
+    # use keyword args
+    plt.setp(lines, color='r', linewidth=2.0)
+    # or MATLAB style string value pairs
+    plt.setp(lines, 'color', 'r', 'linewidth', 2.0)
+    ```
+
+#### 📌 Working with multiple figures and axes
+
+```
+import matplotlib.pyplot as plt
+plt.figure(1)                # the first figure
+plt.subplot(211)             # the first subplot in the first figure
+plt.plot([1, 2, 3])
+plt.subplot(212)             # the second subplot in the first figure
+plt.plot([4, 5, 6])
 
 
+plt.figure(2)                # a second figure
+plt.plot([4, 5, 6])          # creates a subplot(111) by default
+
+plt.figure(1)                # figure 1 current; subplot(212) still current
+plt.subplot(211)             # make subplot(211) in figure1 current
+plt.title('Easy as 1, 2, 3') # subplot 211 title
+```
+
+#### 📌 Working with text
+
+```
+mu, sigma = 100, 15
+x = mu + sigma * np.random.randn(10000)
+
+# the histogram of the data
+n, bins, patches = plt.hist(x, 50, density=1, facecolor='g', alpha=0.75)
 
 
+plt.xlabel('Smarts', fontsize=14, color='red')
+plt.ylabel('Probability')
+plt.title(r'$\sigma_i=15$')  # raw str literal representing latex formula
+plt.text(60, .025, r'$\mu=100,\ \sigma=15$')
+plt.axis([40, 160, 0, 0.03])
+plt.grid(True)
+plt.show()
+```
 
+![](https://matplotlib.org/_images/sphx_glr_pyplot_008.png)
 
+**Annotating text**
 
+The uses of the basic [`text`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.text.html#matplotlib.pyplot.text) function above place text at an arbitrary position on the Axes. A common use for text is to annotate some feature of the plot, and the [`annotate`](https://matplotlib.org/api/_as_gen/matplotlib.pyplot.annotate.html#matplotlib.pyplot.annotate) method provides helper functionality to make annotations easy. In an annotation, there are two points to consider: the location being annotated represented by the argument xy and the location of the text xytext. Both of these arguments are (x, y) tuples. 
 
+```
+ax = plt.subplot(111)
 
+t = np.arange(0.0, 5.0, 0.01)
+s = np.cos(2*np.pi*t)
+line, = plt.plot(t, s, lw=2)
 
+plt.annotate('local max', xy=(2, 1), xytext=(3, 1.5),
+             arrowprops=dict(facecolor='black', shrink=0.05),
+             )
 
+plt.ylim(-2, 2)
+plt.show()
+```
+
+![](https://matplotlib.org/_images/sphx_glr_pyplot_009.png)
+
+Help on function `matplotlib.pyplot.text`:
+
+```
+matplotlib.pyplot.text(x, y, s, fontdict=None, withdash=<deprecated parameter>, **kwargs)
+    Add text to the axes.
+    
+    Add the text *s* to the axes at location *x*, *y* in data coordinates.
+    
+    Parameters
+    ----------
+    x, y : scalars
+        The position to place the text. By default, this is in data
+        coordinates. The coordinate system can be changed using the
+        *transform* parameter.
+    
+    s : str
+        The text.
+    
+    fontdict : dictionary, optional, default: None
+        A dictionary to override the default text properties. If fontdict
+        is None, the defaults are determined by your rc parameters.
+    
+    withdash : boolean, optional, default: False
+        Creates a `~matplotlib.text.TextWithDash` instance instead of a
+        `~matplotlib.text.Text` instance.
+    
+    Returns
+    -------
+    text : `.Text`
+        The created `.Text` instance.
+    
+    Other Parameters
+    ----------------
+    **kwargs : `~matplotlib.text.Text` properties.
+        Other miscellaneous text parameters.
+```
+
+Help on function `matplotlib.pyplot.annotate`:
+
+```
+matplotlib.pyplot.annotate(s, xy, *args, **kwargs)
+    Annotate the point *xy* with text *text*.
+    
+    In the simplest form, the text is placed at *xy*.
+    
+    Optionally, the text can be displayed in another position *xytext*.
+    An arrow pointing from the text to the annotated point *xy* can then
+    be added by defining *arrowprops*.
+    
+    Parameters
+    ----------
+    text : str
+        The text of the annotation.  *s* is a deprecated synonym for this
+        parameter.
+    
+    xy : (float, float)
+        The point *(x,y)* to annotate.
+    
+    xytext : (float, float), optional
+        The position *(x,y)* to place the text at.
+        If *None*, defaults to *xy*.
+    
+    xycoords : str, `.Artist`, `.Transform`, callable or tuple, optional
+    
+        The coordinate system that *xy* is given in. The following types
+        of values are supported:
+    
+        - One of the following strings:
+    
+          =================   =============================================
+          Value               Description
+          =================   =============================================
+          'figure points'     Points from the lower left of the figure
+          'figure pixels'     Pixels from the lower left of the figure
+          'figure fraction'   Fraction of figure from lower left
+          'axes points'       Points from lower left corner of axes
+          'axes pixels'       Pixels from lower left corner of axes
+          'axes fraction'     Fraction of axes from lower left
+          'data'              Use the coordinate system of the object being
+                              annotated (default)
+          'polar'             *(theta,r)* if not native 'data' coordinates
+          =================   =============================================
+    
+        - An `.Artist`: *xy* is interpreted as a fraction of the artists
+          `~matplotlib.transforms.Bbox`. E.g. *(0, 0)* would be the lower
+          left corner of the bounding box and *(0.5, 1)* would be the
+          center top of the bounding box.
+    
+        - A `.Transform` to transform *xy* to screen coordinates.
+    
+        - A function with one of the following signatures::
+    
+            def transform(renderer) -> Bbox
+            def transform(renderer) -> Transform
+    
+          where *renderer* is a `.RendererBase` subclass.
+    
+          The result of the function is interpreted like the `.Artist` and
+          `.Transform` cases above.
+    
+        - A tuple *(xcoords, ycoords)* specifying separate coordinate
+          systems for *x* and *y*. *xcoords* and *ycoords* must each be
+          of one of the above described types.
+    
+        See :ref:`plotting-guide-annotation` for more details.
+    
+        Defaults to 'data'.
+    
+    textcoords : str, `.Artist`, `.Transform`, callable or tuple, optional
+        The coordinate system that *xytext* is given in.
+    
+        All *xycoords* values are valid as well as the following
+        strings:
+    
+        =================   =========================================
+        Value               Description
+        =================   =========================================
+        'offset points'     Offset (in points) from the *xy* value
+        'offset pixels'     Offset (in pixels) from the *xy* value
+        =================   =========================================
+    
+        Defaults to the value of *xycoords*, i.e. use the same coordinate
+        system for annotation point and text position.
+    
+    arrowprops : dict, optional
+        The properties used to draw a
+        `~matplotlib.patches.FancyArrowPatch` arrow between the
+        positions *xy* and *xytext*.
+    
+        If *arrowprops* does not contain the key 'arrowstyle' the
+        allowed keys are:
+    
+        ==========   ======================================================
+        Key          Description
+        ==========   ======================================================
+        width        The width of the arrow in points
+        headwidth    The width of the base of the arrow head in points
+        headlength   The length of the arrow head in points
+        shrink       Fraction of total length to shrink from both ends
+        ?            Any key to :class:`matplotlib.patches.FancyArrowPatch`
+        ==========   ======================================================
+    
+        If *arrowprops* contains the key 'arrowstyle' the
+        above keys are forbidden.  The allowed values of
+        ``'arrowstyle'`` are:
+    
+        ============   =============================================
+        Name           Attrs
+        ============   =============================================
+        ``'-'``        None
+        ``'->'``       head_length=0.4,head_width=0.2
+        ``'-['``       widthB=1.0,lengthB=0.2,angleB=None
+        ``'|-|'``      widthA=1.0,widthB=1.0
+        ``'-|>'``      head_length=0.4,head_width=0.2
+        ``'<-'``       head_length=0.4,head_width=0.2
+        ``'<->'``      head_length=0.4,head_width=0.2
+        ``'<|-'``      head_length=0.4,head_width=0.2
+        ``'<|-|>'``    head_length=0.4,head_width=0.2
+        ``'fancy'``    head_length=0.4,head_width=0.4,tail_width=0.4
+        ``'simple'``   head_length=0.5,head_width=0.5,tail_width=0.2
+        ``'wedge'``    tail_width=0.3,shrink_factor=0.5
+        ============   =============================================
+    
+        Valid keys for `~matplotlib.patches.FancyArrowPatch` are:
+    
+        ===============  ==================================================
+        Key              Description
+        ===============  ==================================================
+        arrowstyle       the arrow style
+        connectionstyle  the connection style
+        relpos           default is (0.5, 0.5)
+        patchA           default is bounding box of the text
+        patchB           default is None
+        shrinkA          default is 2 points
+        shrinkB          default is 2 points
+        mutation_scale   default is text size (in points)
+        mutation_aspect  default is 1.
+        ?                any key for :class:`matplotlib.patches.PathPatch`
+        ===============  ==================================================
+    
+        Defaults to None, i.e. no arrow is drawn.
+    
+    annotation_clip : bool or None, optional
+        Whether to draw the annotation when the annotation point *xy* is
+        outside the axes area.
+    
+        - If *True*, the annotation will only be drawn when *xy* is
+          within the axes.
+        - If *False*, the annotation will always be drawn.
+        - If *None*, the annotation will only be drawn when *xy* is
+          within the axes and *xycoords* is 'data'.
+    
+        Defaults to *None*.
+    
+    **kwargs
+        Additional kwargs are passed to `~matplotlib.text.Text`.
+    
+    Returns
+    -------
+    annotation : `.Annotation`
+```
+​
+#### 📌 Logarithmic and other nonlinear axes
+
+`matplotlib.pyplot` supports not only linear axis scales, but also logarithmic and logit scales. This is commonly used if data spans many orders of magnitude. Changing the scale of an axis is easy:
+```
+plt.xscale('log')
+```
+An example of four plots with the same data and different scales for the y axis is shown below.
+
+```
+# Fixing random state for reproducibility
+np.random.seed(19680801)
+
+# make up some data in the open interval (0, 1)
+y = np.random.normal(loc=0.5, scale=0.4, size=1000)
+y = y[(y > 0) & (y < 1)]
+y.sort()
+x = np.arange(len(y))
+
+# plot with various axes scales
+plt.figure()
+
+# linear
+plt.subplot(221)
+plt.plot(x, y)
+plt.yscale('linear')
+plt.title('linear')
+plt.grid(True)
+
+# log
+plt.subplot(222)
+plt.plot(x, y)
+plt.yscale('log')
+plt.title('log')
+plt.grid(True)
+
+# symmetric log
+plt.subplot(223)
+plt.plot(x, y - y.mean())
+plt.yscale('symlog', linthresh=0.01)
+plt.title('symlog')
+plt.grid(True)
+
+# logit
+plt.subplot(224)
+plt.plot(x, y)
+plt.yscale('logit')
+plt.title('logit')
+plt.grid(True)
+# Adjust the subplot layout, because the logit one may take more space
+# than usual, due to y-tick labels like "1 - 10^{-3}"
+plt.subplots_adjust(top=0.92, bottom=0.08, left=0.10, right=0.95, hspace=0.25,
+                    wspace=0.35)
+
+plt.show()
+```
+
+![](https://matplotlib.org/_images/sphx_glr_pyplot_010.png)
 
 
 
