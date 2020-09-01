@@ -380,16 +380,19 @@ plt.plot([1, 2, 3, 4], [1, 4, 2, 3])  # Matplotlib plot.
 
 ![Components of a Matplotlib figure](https://matplotlib.org/_images/anatomy.png)
 
-- Figure
-
-
-- Axes
-
-
-- Axis
-
-
-- Artist
+- **Figure**
+    - The **whole** figure. 
+    - The figure keeps track of all the:
+        - Child Axes
+            - A figure can contain any number of Axes, but will typically have at least one. 
+        - Smattering of 'special' artists 
+            - titles
+            - figure legends, etc
+        - Canvas 
+            - Don't worry too much about the canvas, it is crucial as it is the object that actually does the drawing to get you your plot, but as the user it is more-or-less invisible to you)
+- **Axes**
+- **Axis**
+- **Artist**
 
 
 
