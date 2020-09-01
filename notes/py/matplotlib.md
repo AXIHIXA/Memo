@@ -373,32 +373,84 @@ import numpy as np
 ```
 plt.plot([1, 2, 3, 4], [1, 4, 2, 3])  # Matplotlib plot.
 ```
+
 ![](https://matplotlib.org/_images/sphx_glr_usage_002.png)
 
 #### 📌 Parts of a Figure
 
 ![Components of a Matplotlib figure](https://matplotlib.org/_images/anatomy.png)
-- **Figure**
+
+- `Figure`
     - The **whole** figure. 
-    - The figure keeps track of all the:
-        - Child Axes
-            - A figure can contain any number of Axes, but will typically have at least one. 
-        - Smattering of 'special' artists 
-            - titles
-            - figure legends, etc
-        - Canvas 
-            - Don't worry too much about the canvas, it is crucial as it is the object that actually does the drawing to get you your plot, but as the user it is more-or-less invisible to you)
-- **Axes**
-- **Axis**
-- **Artist**
+    - The figure keeps track of all the: 
+        - Child `Axes`; 
+            - A figure can contain any number of `Axes`, but will typically have at least one. 
+        - Smattering of 'special' artists; 
+            - titles; 
+            - figure legends, etc. 
+        - Canvas. 
+            - Don't worry too much about the canvas, it is crucial as it is the object that actually does the drawing to get you your plot, but as the user it is more-or-less invisible to you. 
+    - The easiest way to create a new figure is with `pyplot` (It's convenient to create the axes together with the figure, but you can also add axes later on, allowing for more complex axes layouts.): 
+    ```
+    fig = plt.figure()             # an empty figure with no Axes
+    fig, ax = plt.subplots()       # a figure with a single Axes
+    fig, axs = plt.subplots(2, 2)  # a figure with a 2x2 grid of Axes
+    ```
+- `Axes`
+    - What you think of as *'a plot'*, it is the region of the image with the data space. 
+    - A given `Figure` can contain many `Axes`, but a given `Axes` object can only be in one `Figure`. 
+    - The `Axes` contains two (or three in the case of 3D) `Axis` objects (be aware of the difference between **Axes** and **Axis**) which take care of the data limits (the data limits can also be controlled via the `axes.Axes.set_xlim()` and `axes.Axes.set_ylim()` methods). 
+    - Each `Axes` has a title (set via `set_title()`), an x-label (set via `set_xlabel()`), and a y-label set via `set_ylabel()`). 
+    - The Axes class and its member functions are the primary entry point to working with the OO interface. 
+- `Axis`
+    - These are the number-line-like objects. They take care of setting the graph limits and generating the ticks (the marks on the axis) and ticklabels (strings labeling the ticks). The location of the ticks is determined by a `Locator` object and the ticklabel strings are formatted by a `Formatter`. The combination of the correct `Locator` and `Formatter` gives very fine control over the tick locations and labels. 
+- `Artist`
+    - Basically everything you can see on the figure is an artist (even the `Figure`, `Axes`, and `Axis` objects). This includes `Text` objects, `Line2D` objects, `collections` objects, `Patch` objects ... (you get the idea). When the figure is rendered, all of the artists are drawn to the canvas. Most Artists are tied to an Axes; such an Artist cannot be shared by multiple Axes, or moved from one to another.
 
+#### 📌 Types of inputs to plotting functions
 
+- All of plotting functions expect `numpy.array` or `numpy.ma.masked_array` as input.  
+- Classes that are 'array-like' such as `pandas` data objects and `numpy.matrix` may or may not work as intended. It is best to convert these to `numpy.array` objects prior to plotting. 
+```
+a = pandas.DataFrame(np.random.rand(4, 5), columns = list('abcde'))
+a_asarray = a.values
 
+b = np.matrix([[1, 2], [3, 4]])
+b_asarray = np.asarray(b)
+```
 
+#### 📌 The object-oriented interface and the pyplot interface
 
+- As noted above, there are essentially two ways to use Matplotlib: 
+    - Explicitly create figures and axes, and call methods on them (the "object-oriented (OO) style"). 
+    - Rely on `pyplot` to automatically create and manage the figures and axes, and use pyplot functions for plotting. 
+- So one can do (OO-style)
+```
+x = np.linspace(0, 2, 100)
 
+# Note that even in the OO-style, we use `.pyplot.figure` to create the figure.
+fig, ax = plt.subplots()              # Create a figure and an axes.
+ax.plot(x, x, label='linear')         # Plot some data on the axes.
+ax.plot(x, x**2, label='quadratic')   # Plot more data on the axes...
+ax.plot(x, x**3, label='cubic')       # ... and some more.
+ax.set_xlabel('x label')              # Add an x-label to the axes.
+ax.set_ylabel('y label')              # Add a y-label to the axes.
+ax.set_title("Simple Plot")           # Add a title to the axes.
+ax.legend()                           # Add a legend.
+```
+![](https://matplotlib.org/_images/sphx_glr_usage_003.png)
+- or (pyplot-style)
+```
+x = np.linspace(0, 2, 100)
 
-
+plt.plot(x, x, label='linear')        # Plot some data on the (implicit) axes.
+plt.plot(x, x**2, label='quadratic')  # etc.
+plt.plot(x, x**3, label='cubic')
+plt.xlabel('x label')
+plt.ylabel('y label')
+plt.title("Simple Plot")
+plt.legend()
+```
 
 
 
