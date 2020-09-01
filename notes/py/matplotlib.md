@@ -373,13 +373,11 @@ import numpy as np
 ```
 plt.plot([1, 2, 3, 4], [1, 4, 2, 3])  # Matplotlib plot.
 ```
-
 ![](https://matplotlib.org/_images/sphx_glr_usage_002.png)
 
 #### 📌 Parts of a Figure
 
 ![Components of a Matplotlib figure](https://matplotlib.org/_images/anatomy.png)
-
 - **Figure**
     - The **whole** figure. 
     - The figure keeps track of all the:
