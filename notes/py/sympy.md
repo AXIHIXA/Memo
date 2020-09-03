@@ -769,9 +769,12 @@ sin(x + y)
 
 Before we introduce the power simplification functions, a mathematical discussion on the identities held by powers is in order. There are three kinds of identities satisfied by exponents: 
 
-1. `(x**a) * (x**b) == x**(a + b)`: is always true. 
-2. `(x**a) * (y**a) == (x*y)**a`: sufficient to hold when `x, y >= 0` and `a in R`. Counterexample: `x = y = -1`, `a = 1/2`, `sqrt(x)*sqrt(y) != sqrt(x*y)`. 
-3. `(x**a)**b == x**(a*b)`: sufficient to hold when `b in Z`. Counterexample: `x = -1`, `a = 2` and `b = 1/2`, `sqrt(x**2) != x` and `sqrt(1/x) != 1/sqrt(x)`. 
+1. `(x**a) * (x**b) == x**(a + b)`
+    - Is always true. 
+2. `(x**a) * (y**a) == (x*y)**a`
+    - Sufficient to hold when `x, y >= 0` and `a in R`. Counterexample: `x = y = -1`, `a = 1/2`, `sqrt(x)*sqrt(y) != sqrt(x*y)`. 
+3. `(x**a)**b == x**(a*b)`
+    - Sufficient to hold when `b in Z`. Counterexample: `x = -1`, `a = 2` and `b = 1/2`, `sqrt(x**2) != x` and `sqrt(1/x) != 1/sqrt(x)`. 
 
 This is important to remember, because by default, SymPy will **NOT** perform simplifications if they are not true in general. 
 
