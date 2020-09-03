@@ -357,7 +357,7 @@ As we have already seen, SymPy can pretty print its output using Unicode charact
 
 ### 🌱 Printers
 
-There are several printers available in SymPy. The most common ones are: 
+- There are several printers available in SymPy. The most common ones are: 
     - str
     - srepr
     - ASCII pretty printer
@@ -398,7 +398,7 @@ These commands were executed:
 Documentation can be found at http://www.sympy.org
 ```
 
-In any case, this is what will happen:
+- In any case, this is what will happen:
     - In the IPython QTConsole, if LATEX is installed, it will enable a printer that uses LATEX. If LATEX is not installed, but Matplotlib is installed, it will use the Matplotlib rendering engine. If Matplotlib is not installed, it uses the Unicode pretty printer. 
     - In the IPython notebook, it will use MathJax to render LATEX. 
     - In an IPython console session, or a regular Python session, it will use the Unicode pretty printer if the terminal supports Unicode. 
@@ -424,6 +424,503 @@ Integral(sqrt(1/x), x)
 ```
 
 #### 📌 `srepr`
+
+The srepr form of an expression is designed to show the exact form of an expression. It will be discussed more in the [Advanced Expression Manipulation](https://docs.sympy.org/latest/tutorial/manipulation.html#tutorial-manipulation) section. To get it, use `srepr()`. 
+
+```
+>>> srepr(Integral(sqrt(1/x), x))
+"Integral(Pow(Pow(Symbol('x'), Integer(-1)), Rational(1, 2)), Tuple(Symbol('x')))"
+```
+
+The srepr form is mostly useful for understanding how an expression is built *internally*. 
+
+#### 📌 ASCII Pretty Printer
+
+The ASCII pretty printer is accessed from `pprint()`. If the terminal does not support Unicode, the ASCII printer is used by default. Otherwise, you must pass `use_unicode=False`. 
+
+```
+>>> pprint(Integral(sqrt(1/x), x), use_unicode=False)
+  /
+ |
+ |     ___
+ |    / 1
+ |   /  -  dx
+ | \/   x
+ |
+/
+
+```
+
+`pprint()` prints the output to the screen. If you want the string form, use `pretty()`. 
+
+```
+>>> pretty(Integral(sqrt(1/x), x), use_unicode=False)
+'  /          \n |           \n |     ___   \n |    / 1    \n |   /  -  dx\n | \\/   x    \n |           \n/            '
+
+>>> print(pretty(Integral(sqrt(1/x), x), use_unicode=False))
+  /
+ |
+ |     ___
+ |    / 1
+ |   /  -  dx
+ | \/   x
+ |
+/
+
+```
+
+#### 📌 ASCII Pretty Printer
+
+The Unicode pretty printer is also accessed from `pprint()` and `pretty()`. If the terminal supports Unicode, it is used automatically. If `pprint()` is not able to detect that the terminal supports unicode, you can pass `use_unicode=True` to force it to use Unicode. 
+
+```
+>>> pprint(Integral(sqrt(1/x), x), use_unicode=True)
+```
+
+#### 📌 LATEX
+
+To get the LATEX form of an expression, use `latex()`. 
+
+```
+>>> print(latex(Integral(sqrt(1/x), x)))
+\int \sqrt{\frac{1}{x}}\, dx
+```
+
+The `latex()` function has many options to change the formatting of different things. See [its documentation](https://docs.sympy.org/latest/modules/printing.html#sympy.printing.latex.latex) for more details. 
+
+#### 📌 MathML
+
+There is also a printer to MathML, called `print_mathml()`. It must be imported from `sympy.printing.mathml`.
+
+```
+>>> from sympy.printing.mathml import print_mathml
+>>> print_mathml(Integral(sqrt(1/x), x))
+<apply>
+    <int/>
+    <bvar>
+        <ci>x</ci>
+    </bvar>
+    <apply>
+        <root/>
+        <apply>
+            <power/>
+            <ci>x</ci>
+            <cn>-1</cn>
+        </apply>
+    </apply>
+</apply>
+```
+
+`print_mathml()` prints the output. If you want the string, use the function `mathml()`. 
+
+#### 📌 Dot
+
+The `dotprint()` function in `sympy.printing.dot` prints output to dot format, which can be rendered with Graphviz. See the [Advanced Expression Manipulation](https://docs.sympy.org/latest/tutorial/manipulation.html#tutorial-manipulation) section for some examples of the output of this printer. 
+
+Here is an example of the raw output of the `dotprint()` function: 
+
+```
+>>> from sympy.printing.dot import dotprint
+>>> from sympy.abc import x
+>>> print(dotprint(x+2))
+digraph{
+
+# Graph style
+"ordering"="out"
+"rankdir"="TD"
+
+#########
+# Nodes #
+#########
+
+"Add(Integer(2), Symbol('x'))_()" ["color"="black", "label"="Add", "shape"="ellipse"];
+"Integer(2)_(0,)" ["color"="black", "label"="2", "shape"="ellipse"];
+"Symbol('x')_(1,)" ["color"="black", "label"="x", "shape"="ellipse"];
+
+#########
+# Edges #
+#########
+
+"Add(Integer(2), Symbol('x'))_()" -> "Integer(2)_(0,)";
+"Add(Integer(2), Symbol('x'))_()" -> "Symbol('x')_(1,)";
+}
+```
+
+## 🔱 [Simplification](https://docs.sympy.org/latest/tutorial/simplification.html)
+
+To make this document easier to read, we are going to enable pretty printing. 
+
+```
+>>> from sympy import *
+>>> from sympy.abc import x, y, z
+```
+
+### 🌱 `simplify`: General heuristical simplification
+
+SymPy has dozens of functions to perform various kinds of simplification. There is also one general function called `simplify()` that attempts to apply all of these functions in an intelligent way to arrive at the simplest form of an expression. Here are some examples: 
+
+```
+>>> simplify(sin(x)**2 + cos(x)**2)
+1
+
+>>> simplify((x**3 + x**2 - x - 1)/(x**2 + 2*x + 1))
+x - 1
+
+>>> simplify(gamma(x)/gamma(x - 2))
+(x - 2) * (x - 1)
+```
+
+But `simplify()` has a pitfall. It just applies all the major simplification operations in SymPy, and uses heuristics to determine the simplest result. But “simplest” is *not a well-defined term*. For example, say we wanted to “simplify” `x**2 + 2*x + 1` into `(x + 1)**2`: 
+
+```
+>>> simplify(x**2 + 2*x + 1)
+>>> x**2 + 2*x + 1
+```
+
+We did not get what we want. There is a function to perform this simplification, called `factor()`, which will be discussed below. 
+
+Another pitfall to `simplify()` is that it can be *unnecessarily slow*, since it tries many kinds of simplifications before picking the best one. If you already know exactly what kind of simplification you are after, it is better to apply the specific simplification function(s) that apply those simplifications. 
+
+Applying specific simplification functions instead of `simplify()` also has the advantage that specific functions have certain guarantees about the form of their output. These will be discussed with each function below. For example, `factor()`, when called on a polynomial with rational coefficients, is guaranteed to factor the polynomial into irreducible factors. `simplify()` has no guarantees. It is entirely heuristical, and, as we saw above, it may even miss a possible type of simplification that SymPy is capable of doing. 
+
+`simplify()` is best when used interactively, when you just want to whittle down an expression to a simpler form. You may then choose to apply specific functions once you see what `simplify()` returns, to get a more precise result. It is also useful when you have no idea what form an expression will take, and you need a catchall function to simplify it. 
+
+### 🌱 Polynomial/Rational Function Simplification
+
+#### 📌 `expand`
+
+`expand()` is one of the most common simplification functions in SymPy. Although it has a lot of scopes, for now, we will consider its function in expanding polynomial expressions. For example: 
+
+```
+>>> expand((x + 1)**2)
+x**2 + 2*x + 1
+
+>>> expand((x + 2)*(x - 3))
+x**2 - x - 6
+```
+
+Given a polynomial, `expand()` will put it into a canonical form of a sum of monomials. 
+
+`expand()` may not sound like a simplification function. After all, by its very name, it makes expressions bigger, not smaller. Usually this is the case, but often an expression will become smaller upon calling `expand()` on it due to cancellation. 
+
+```
+>>> expand((x + 1)*(x - 2) - (x - 1)*x)
+-2
+```
+
+#### 📌 `factor`
+
+`factor()` takes a polynomial and factors it into irreducible factors over the rational numbers. For example:
+
+```
+>>> factor(x**3 - x**2 + x - 1)
+(x - 1)*(x**2 + 1)
+
+>>> factor(x**2*z + 4*x*y*z + 4*y**2*z)
+z * (x + 2*y)**2
+```
+
+For polynomials, `factor()` is the opposite of `expand()`. `factor()` uses a complete multivariate factorization algorithm over the rational numbers, which means that each of the factors returned by `factor()` is guaranteed to be irreducible. 
+
+If you are interested in the factors themselves, `factor_list` returns a more structured output. 
+
+```
+factor_list(x**2*z + 4*x*y*z + 4*y**2*z)
+(1, [(z, 1), (x + 2*y, 2)])
+```
+
+Note that the input to `factor` and `expand` need **NOT** be polynomials in the strict sense. They will intelligently factor or expand any kind of expression (though note that the factors may not be irreducible if the input is no longer a polynomial over the rationals).
+
+```
+>>> expand((cos(x) + sin(x))**2)
+sin(x)**2 + 2*sin(x)*cos(x) + cos(x)**2
+
+>>> factor(cos(x)**2 + 2*cos(x)*sin(x) + sin(x)**2)
+(sin(x) + cos(x))**2
+```
+
+#### 📌 `collect`
+
+`collect()` collects common powers of a term in an expression. For example
+
+```
+>>> expr = x*y + x - 3 + 2*x**2 - z*(x**2) + x**3
+>>> expr
+x**3 - (x**2)*z + 2*(x**2) + x*y + x - 3
+
+>>> collected_expr = collect(expr, x)
+>>> collected_expr
+x**3 + (x**2)*(2 - z) + x*(y + 1) - 3
+```
+
+`collect()` is particularly useful in conjunction with the `.coeff()`method. `expr.coeff(x, n)` gives the coefficient of `x**n` in `expr`:
+
+```
+>>> collected_expr.coeff(x, 2)
+2 - z
+```
+
+#### 📌 `cancel`
+
+`cancel()` will take any rational function and put it into the standard *canonical form*, `p/q`, where `p` and `q` are expanded polynomials with no common factors, and the leading coefficients of `p` and `q` do not have denominators (i.e., are integers). 
+
+```
+>>> cancel((x**2 + 2*x + 1)/(x**2 + x))
+(x + 1)/x
+```
+
+```
+>>> expr = 1/x + (3*x/2 - 2)/(x - 4)
+>>> expr
+1/x + (3*x/2 - 2)/(x - 4)
+
+>>> cancel(expr)
+(3*x**2 - 2*x - 8)/(2*x**2 - 8*x)
+```
+
+```
+>>> expr = (x*y**2 - 2*x*y*z + x*z**2 + y**2 - 2*y*z + z**2)/(x**2 - 1)
+>>> expr
+(x*y**2 - 2*x*y*z + x*z**2 + y**2 - 2*y*z + z**2)/(x**2 - 1)
+
+>>> cancel(expr)
+(y**2 - 2*y*z + z**2)/(x - 1)
+```
+
+Note that since `factor()` will completely factorize both the numerator and the denominator of an expression, it can also be used to do the same thing: 
+
+```
+>>> factor(expr)
+(y - z)**2/(x - 1)
+```
+
+However, if you are only interested in making sure that the expression is in canceled form, `cancel()` is *more efficient* than `factor()`.
+
+#### 📌 `apart`
+
+`apart()` performs a [partial fraction decomposition](https://en.wikipedia.org/wiki/Partial_fraction_decomposition) on a rational function.
+
+```
+>>> expr = (4*x**3 + 21*x**2 + 10*x + 12)/(x**4 + 5*x**3 + 5*x**2 + 4*x)
+>>> expr
+(4*x**3 + 21*x**2 + 10*x + 12)/(x**4 + 5*x**3 + 5*x**2 + 4*x)
+
+>>> apart(expr)
+(2*x - 1)/(x**2 + x + 1) - 1/(x + 4) + 3/x
+```
+
+### 🌱 Trigonometric Simplification
+
+**Note**: SymPy follows Python’s naming conventions for inverse trigonometric functions, which is to append an `a` to the front of the function’s name. For example, the inverse cosine, or arc cosine, is called `acos()`. 
+
+```
+>>> acos(x)
+acos(x)
+
+>>> cos(acos(x))
+x
+
+>>> asin(1)
+pi/2
+```
+
+#### 📌 `trigsimp`
+
+To simplify expressions using trigonometric identities, use `trigsimp()`. 
+
+```
+>>> trigsimp(sin(x)**2 + cos(x)**2)
+1
+
+>>> trigsimp(sin(x)**4 - 2*cos(x)**2*sin(x)**2 + cos(x)**4)
+cos(4*x)/2 + 1/2
+
+>>> trigsimp(sin(x)*tan(x)/sec(x))
+   2
+sin(x)**2
+```
+
+`trigsimp()` also works with hyperbolic trig functions. 
+
+```
+>>> trigsimp(cosh(x)**2 + sinh(x)**2)
+cosh(2*x)
+
+>>> trigsimp(sinh(x)/tanh(x))
+cosh(x)
+```
+
+Much like `simplify()`, `trigsimp()` applies various trigonometric identities to the input expression, and then uses a heuristic to return the “best” one.
+
+#### 📌 `expand_trig`
+
+To expand trigonometric functions, that is, apply the sum or double angle identities, use `expand_trig()`. 
+
+```
+>>> expand_trig(sin(x + y))
+sin(x)*cos(y) + sin(y)*cos(x)
+
+>>> expand_trig(tan(2*x))
+2*tan(x)/(1 - tan(x)**2)
+```
+
+Because `expand_trig()` tends to make trigonometric expressions larger, and `trigsimp()` tends to make them smaller, these identities can be applied in reverse using `trigsimp()`
+
+```
+>>> trigsimp(sin(x)*cos(y) + sin(y)*cos(x))
+sin(x + y)
+```
+
+### 🌱 Powers
+
+Before we introduce the power simplification functions, a mathematical discussion on the identities held by powers is in order. There are three kinds of identities satisfied by exponents: 
+
+1. `(x**a) * (x**b) == x**(a + b)`
+2. `(x**a) * (y**a) == (x*y)**a`
+3. `(x**a)**b == x**(a*b)`
+
+Identity 1 is always true. 
+
+Identity 2 is **NOT** always true. For example, for complex numbers, `sqrt(x)*sqrt(y) != sqrt(x*y)`.  
+
+Identity 3 is **NOT** always true. For example, for complex numbers, `sqrt(x**2) != x` and `sqrt(1/x) != 1/sqrt(x)`. 
+
+
+
+#### 📌 ``
+
+
+
+
+
+
+
+
+
+### 🌱 Exponentials and logarithms
+
+
+### 🌱 Special Functions
+
+
+### 🌱 Example: Continued Fractions
+
+#### 📌 ``
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 🔱 [Calculus](https://docs.sympy.org/latest/tutorial/calculus.html)
+
+### 🌱 Derivatives
+
+### 🌱 Integrals
+
+### 🌱 Limits
+
+### 🌱 Series Expansion
+
+### 🌱 Finite differences
+
+
+
+
+## 🔱 [Solvers](https://docs.sympy.org/latest/tutorial/solvers.html)
+
+### 🌱 A Note about Equations
+
+### 🌱 Solving Equations Algebraically
+
+### 🌱 Solving Differential Equations
+
+
+
+
+## 🔱 [Matrices](https://docs.sympy.org/latest/tutorial/matrices.html)
+
+### 🌱 Basic Operations
+
+### 🌱 Basic Methods
+
+### 🌱 Matrix Constructors
+
+### 🌱 Advanced Methods
+
+### 🌱 Possible Issues
+
+
+
+
+## 🔱 [Advanced Expression Manipulation](https://docs.sympy.org/latest/tutorial/manipulation.html)
+
+### 🌱 Understanding Expression Trees
+
+### 🌱 Recursing through an Expression Tree
+
+### 🌱 Prevent expression evaluation
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
