@@ -4,12 +4,6 @@
 
 ## 🔱 [Gotchas](https://docs.sympy.org/latest/tutorial/gotchas.html)
 
-This will make all further examples pretty print with unicode characters: 
-
-```
-init_printing(use_unicode=True)
-```
-
 ### 🌱 Symbols
 
 SymPy can be used in any environment where Python is available. We just import it, like we would any other library: 
@@ -515,7 +509,7 @@ There is also a printer to MathML, called `print_mathml()`. It must be imported 
 
 #### 📌 Dot
 
-The `dotprint()` function in `sympy.printing.dot` prints output to dot format, which can be rendered with Graphviz. See the [Advanced Expression Manipulation](https://docs.sympy.org/latest/tutorial/manipulation.html#tutorial-manipulation) section for some examples of the output of this printer. 
+The `dotprint()` function in `sympy.printing.dot` prints output to dot format, which can be rendered with [Graphviz](http://www.graphviz.org/). See the [Advanced Expression Manipulation](https://docs.sympy.org/latest/tutorial/manipulation.html#tutorial-manipulation) section for some examples of the output of this printer. 
 
 Here is an example of the raw output of the `dotprint()` function: 
 
@@ -775,27 +769,134 @@ sin(x + y)
 
 Before we introduce the power simplification functions, a mathematical discussion on the identities held by powers is in order. There are three kinds of identities satisfied by exponents: 
 
-1. `(x**a) * (x**b) == x**(a + b)`
-2. `(x**a) * (y**a) == (x*y)**a`
-3. `(x**a)**b == x**(a*b)`
+1. `(x**a) * (x**b) == x**(a + b)`: is always true. 
+2. `(x**a) * (y**a) == (x*y)**a`: sufficient to hold when `x, y >= 0` and `a in R`. Counterexample: `x = y = -1`, `a = 1/2`, `sqrt(x)*sqrt(y) != sqrt(x*y)`. 
+3. `(x**a)**b == x**(a*b)`: sufficient to hold when `b in Z`. Counterexample: `x = -1`, `a = 2` and `b = 1/2`, `sqrt(x**2) != x` and `sqrt(1/x) != 1/sqrt(x)`. 
 
-Identity 1 is always true. 
+This is important to remember, because by default, SymPy will **NOT** perform simplifications if they are not true in general. 
 
-Identity 2 is **NOT** always true. For example, for complex numbers, `sqrt(x)*sqrt(y) != sqrt(x*y)`.  
+- In order to make SymPy perform simplifications involving identities that are only true under certain assumptions, we need to put assumptions on our Symbols. We will undertake a full discussion of the assumptions system later, but for now, all we need to know are the following.
+    - By default, SymPy Symbols are assumed to be *complex* (elements of `C`). That is, a simplification will **NOT** be applied to an expression with a given Symbol unless it holds for *all complex numbers*.
+    - Symbols can be given different assumptions by passing the assumption to `symbols()`. For the rest of this section, we will be assuming that `x` and `y` are *positive*, and that `a` and `b` are *real*. We will leave `z`, `t`, and `c` as *arbitrary complex* Symbols to demonstrate what happens in that case. 
+```
+>>> x, y = symbols('x y', positive=True)
+>>> a, b = symbols('a b', real=True)
+>>> z, t, c = symbols('z t c')
+```
 
-Identity 3 is **NOT** always true. For example, for complex numbers, `sqrt(x**2) != x` and `sqrt(1/x) != 1/sqrt(x)`. 
+**Note**: In SymPy, `sqrt(x)` is just a shortcut to `x**Rational(1, 2)`. They are *exactly the same* object. 
 
+```
+>>> sqrt(x) == x**Rational(1, 2)
+True
+```
 
+#### 📌 `powsimp`
 
-#### 📌 ``
+`powsimp()` applies identities 1 and 2 from above, from left to right.
 
+```
+>>> powsimp(x**a*x**b)
+x**(a + b)
 
+>>> powsimp(x**a*y**a)
+(x*y)**a
+```
 
+Notice that `powsimp()` **refuses** to do the simplification if it is not valid. 
 
+```
+>>> powsimp(t**c*z**c)
+t**c*z**c
+```
 
+If you know that you want to apply this simplification, but you don’t want to mess with assumptions, you can pass the `force=True` flag. This will force the simplification to take place, regardless of assumptions.
 
+```
+>>> powsimp(t**c*z**c, force=True)
+(t*z)**c
+```
 
+Note that in some instances, in particular, when the exponents are integers or rational numbers, and identity 2 holds, it will be applied automatically.
 
+```
+>>> (z*t)**2
+t**2 * z**2
+
+>>> sqrt(x*y)
+sqrt(x) * sqrt(y)
+```
+
+This means that it will be **impossible** to undo this identity with `powsimp()`, because even if `powsimp()` were to put the bases together, they would be automatically split apart again. 
+
+```
+>>> powsimp(z**2*t**2)
+t**2 * z**2
+
+>>> powsimp(sqrt(x)*sqrt(y))
+sqrt(x) * sqrt(y)
+```
+
+#### 📌 `expand_power_exp` / `expand_power_base`
+
+`expand_power_exp()` and `expand_power_base()` apply identities 1 and 2 from right to left, respectively. 
+
+```
+>>> expand_power_exp(x**(a + b))
+x**a * x**b
+```
+
+```
+>>> expand_power_base((x*y)**a)
+x**a * y**a
+```
+
+As with `powsimp()`, identity 2 is **NOT** applied if it is not valid.
+
+```
+>>> expand_power_base((z*t)**c)
+(t*z)**c
+```
+
+And as with `powsimp()`, you can force the expansion to happen without fiddling with assumptions by using `force=True`.
+
+```
+expand_power_base((z*t)**c, force=True)
+t**c * z**c
+```
+
+As with identity 2, identity 1 is applied automatically if the power is a number, and hence can **NOT** be undone with `expand_power_exp()`.
+
+```
+>>> x**2*x**3
+x**5
+
+>>> expand_power_exp(x**5)
+x**5
+```
+
+#### 📌 `powdenest`
+
+`powdenest()` applies identity 3, from left to right.
+
+```
+>>> powdenest((x**a)**b)
+x**(a*b)
+```
+
+As before, the identity is **NOT** applied if it is not true under the given assumptions. 
+
+```
+>>> powdenest((z**a)**b)
+(z**a)**b
+```
+
+And as before, this can be manually overridden with `force=True`.
+
+```
+>>> powdenest((z**a)**b, force=True)
+z**(a*b)
+```
 
 ### 🌱 Exponentials and logarithms
 
