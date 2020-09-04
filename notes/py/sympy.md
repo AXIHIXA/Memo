@@ -1052,9 +1052,15 @@ To take derivatives, use the `diff` function.
 24*x
 ```
 
-You can also take derivatives with respect to many variables at once. Just pass each derivative in order, using the same syntax as for single variable derivatives. For example, each of the following will compute `$\dfrac{\partial^7}{\partial x \partial y \partial z^4} e^{xyz}$`.  
+You can also take derivatives with respect to many variables at once. Just pass each derivative in order, using the same syntax as for single variable derivatives. For example, each of the following will compute `
+```math
+\dfrac{\partial^7}{\partial x \partial y \partial z^4} e^{xyz}.  
+```
 
-![formula](https://render.githubusercontent.com/render/math?math=e^{i %20\pi} = -1)
+
+
+
+
 
 
 ### 🌱 Integrals
