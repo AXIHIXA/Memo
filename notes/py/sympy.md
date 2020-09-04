@@ -1159,7 +1159,7 @@ SymPy can compute symbolic limits with the `limit` function. The syntax to compu
 1
 ```
 
-`limit` should be used instead of `subs` whenever the point of evaluation is a *singularity*. Even though SymPy has objects to represent ∞, using them for evaluation is **NOT** reliable because they do not keep track of things like rate of growth. Also, things like `∞ − ∞` and `∞ * ∞` return `nan` (not-a-number). For example
+`limit` should be used instead of `subs` whenever the point of evaluation is a *singularity*. Even though SymPy has objects to represent `oo`, using them for evaluation is **NOT** reliable because they do not keep track of things like rate of growth. Also, things like `oo − oo` and `oo * oo` return `nan` (not-a-number). For example
 
 ```
 >>> expr = x**2/exp(x)
@@ -1187,19 +1187,94 @@ To evaluate a limit at *one side only*, pass `'+'` or `'-'` as a fourth argument
 
 ```
 >>> limit(1/x, x, 0, '+')
-∞
+oo
 
 >>> limit(1/x, x, 0, '-')
--∞
+-oo
 ```
-
 
 ### 🌱 Series Expansion
 
-### 🌱 Finite differences
+SymPy can compute asymptotic series expansions of functions around a point. To compute the expansion of `f(x)` around the point `x = x0` terms of order `x**n`, use `f(x).series(x, x0, n)`. `x0` and `n` can be omitted, in which case the defaults `x0 = 0` and `n = 6` will be used. 
 
+```
+>>> expr = exp(sin(x))
+>>> expr.series(x, 0, 4)
+1 + x + x**2/2 + O(x**4)
+```
 
+The `O(x**4)` term at the end represents the Landau order term at `x = 0` (not to be confused with big O notation used in computer science, which generally represents the Landau order term at `x = oo`). It means that all x terms with power greater than or equal to `x**4` are omitted. Order terms can be created and manipulated outside of `series`. They automatically absorb higher order terms. 
 
+```
+>>> x + x**3 + x**6 + O(x**4)
+x + x**3 + O(x**4)
+
+>>> x*O(1)
+O(x)
+```
+
+If you do not want the order term, use the `removeO` method.
+
+```
+>>> expr.series(x, 0, 4).removeO()
+x**2/2 + x + 1
+```
+
+The O notation supports arbitrary limit points (other than 0):
+
+```
+>>> exp(x - 6).series(x, x0=6)
+-5 + (x - 6)**2/2 + (x - 6)**3/6 + (x - 6)**4/24 + (x - 6)**5/120 + x + O((x - 6)**6, (x, 6))
+```
+
+### 🌱 Finite Differences
+
+So far we have looked at expressions with analytic derivatives and primitive functions respectively. But what if we want to have an expression to estimate a derivative of a curve for which we lack a closed form representation, or for which we don’t know the functional values for yet. One approach would be to use a finite difference approach.
+
+The simplest way the differentiate using finite differences is to use the `differentiate_finite` function: 
+
+```
+>>> f, g = symbols('f g', cls=Function)
+>>> differentiate_finite(f(x)*g(x))
+-f(x - 1/2)*g(x - 1/2) + f(x + 1/2)*g(x + 1/2)
+```
+
+If you already have a `Derivative` instance, you can use the `as_finite_difference` method to generate approximations of the derivative to arbitrary order: 
+
+```
+>>> f = Function('f')
+>>> dfdx = f(x).diff(x)
+>>> dfdx.as_finite_difference()
+-f(x - 1/2) + f(x + 1/2)
+```
+
+here the first order derivative was approximated around x using a minimum number of points (2 for 1st order derivative) evaluated equidistantly using a step-size of 1. We can use arbitrary steps (possibly containing symbolic expressions):
+
+```
+>>> f = Function('f')
+>>> d2fdx2 = f(x).diff(x, 2)
+>>> h = Symbol('h')
+>>> d2fdx2.as_finite_difference([-3*h, -h, 2*h])
+f(-3*h)/(5*h**2) - f(-h)/(3*h**2) + 2*f(2*h)/(15*h**2)
+```
+
+If you are just interested in evaluating the weights, you can do so manually: 
+
+```
+>>> finite_diff_weights(2, [-3, -1, 2], 0)[-1][-1]
+[1/5, -1/3, 2/15]
+```
+
+note that we only need the last element in the last sublist returned from `finite_diff_weights`. The reason for this is that the function also generates weights for lower derivatives and using fewer points (see the documentation of `finite_diff_weights` for more details).
+
+If using `finite_diff_weights` directly looks complicated, and the `as_finite_difference` method of `Derivative` instances is not flexible enough, you can use `apply_finite_diff` which takes `order`, `x_list`, `y_list` and `x0` as parameters: 
+
+```
+>>> x_list = [-3, 1, 2]
+>>> y_list = symbols('a b c')
+>>> apply_finite_diff(1, x_list, y_list, 0)
+-3*a/20 - b/4 + 2*c/5
+```
 
 ## 🔱 [Solvers](https://docs.sympy.org/latest/tutorial/solvers.html)
 
