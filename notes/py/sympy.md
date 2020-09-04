@@ -1052,20 +1052,147 @@ To take derivatives, use the `diff` function.
 24*x
 ```
 
-You can also take derivatives with respect to many variables at once. Just pass each derivative in order, using the same syntax as for single variable derivatives. For example, each of the following will compute `
-```math
-\dfrac{\partial^7}{\partial x \partial y \partial z^4} e^{xyz}.  
+You can also take derivatives with respect to many variables at once. Just pass each derivative in order, using the same syntax as for single variable derivatives. For example, each of the following will compute `\dfrac{\partial^7}{\partial x \partial y \partial z^4} e^{xyz}`. 
+
+```
+>>> expr = exp(x*y*z)
+
+>>> diff(expr, x, y, y, z, z, z, z)ℯ
+x**3*y**2*(x**3*y**3*z**3 + 14*x**2*y**2*z**2 + 52*x*y*z + 48)*exp(x*y*z)
+
+>>> diff(expr, x, y, 2, z, 4)
+x**3*y**2*(x**3*y**3*z**3 + 14*x**2*y**2*z**2 + 52*x*y*z + 48)*exp(x*y*z)
+
+>>> diff(expr, x, y, y, z, 4)
+x**3*y**2*(x**3*y**3*z**3 + 14*x**2*y**2*z**2 + 52*x*y*z + 48)*exp(x*y*z)
 ```
 
+`diff` can also be called as a method. The two ways of calling `diff` are exactly the same, and are provided only for convenience. 
 
+```
+>>> expr.diff(x, y, y, z, 4)
+x**3*y**2*(x**3*y**3*z**3 + 14*x**2*y**2*z**2 + 52*x*y*z + 48)*exp(x*y*z)
+```
 
+To create an unevaluated derivative, use the `Derivative` class. It has the same syntax as `diff`. 
 
+```
+>>> deriv = Derivative(expr, x, y, y, z, 4)
+>>> deriv
+Derivative(exp(x*y*z), x, (y, 2), (z, 4))
+```
 
+To evaluate an unevaluated derivative, use the `doit` method. 
 
+```
+>>> deriv.doit()
+x**3*y**2*(x**3*y**3*z**3 + 14*x**2*y**2*z**2 + 52*x*y*z + 48)*exp(x*y*z)
+```
+
+These unevaluated objects are useful for delaying the evaluation of the derivative, or for printing purposes. They are also used when SymPy does not know how to compute the derivative of an expression (for example, if it contains an undefined function, which are described in the [Solving Differential Equations](https://docs.sympy.org/latest/tutorial/solvers.html#tutorial-dsolve) section).
+
+Derivatives of unspecified order can be created using tuple `(x, n)` where `n` is the order of the derivative with respect to `x`. 
+
+```
+>>> m, n, a, b = symbols('m n a b')
+>>> expr = (a*x + b)**m
+>>> expr.diff((x, n))
+Derivative((a*x + b)**m, (x, n))
+```
 
 ### 🌱 Integrals
 
+To compute an integral, use the `integrate` function. There are two kinds of integrals, definite and indefinite. 
+
+To compute an *indefinite integral*, that is, an antiderivative, or primitive, just pass the variable after the expression. 
+
+```
+>>> integrate(cos(x), x)
+sin(x)
+```
+
+Note that SymPy does **NOT** include the constant of integration. If you want it, you can add one yourself, or rephrase your problem as a differential equation and use `dsolve` to solve it, which does add the constant (see [Solving Differential Equations](https://docs.sympy.org/latest/tutorial/solvers.html#tutorial-dsolve)).
+
+To compute a *definite integral*, pass the *limit tuple*  `(integration_variable, lower_limit, upper_limit)`. For example, to compute `\int_0^\infty e^{-x} \, \mathrm{d} x`, we would do
+
+```
+>>> integrate(exp(-x), (x, 0, oo))
+1
+```
+
+**Quick Tip**: ∞ in SymPy is `oo` (that’s the lowercase letter “oh” twice). This is because `oo` looks like ∞, and is easy to type. 
+
+As with indefinite integrals, you can pass *multiple limit tuples* to perform a *multiple integral*. For example
+
+```
+>>> integrate(exp(-x**2 - y**2), (x, -oo, oo), (y, -oo, oo))
+pi
+```
+
+If `integrate` is unable to compute an integral, it returns an unevaluated `Integral` object.
+
+```
+>>> expr = integrate(x**x, x)
+>>> expr
+>>> Integral(x**x, x)
+```
+
+As with `Derivative`, you can create an unevaluated integral using `Integral`. To later evaluate this integral, call `doit`. 
+
+```
+>>> expr = Integral(log(x)**2, x)
+>>> expr
+Integral(log(x)**2, x)
+
+>>> expr.doit()
+x*log(x)**2 - 2*x*log(x) + 2*x
+```
+
+`integrate` uses powerful algorithms that are always improving to compute both definite and indefinite integrals, including heuristic pattern matching type algorithms, a partial implementation of the [Risch Algorithm](https://en.wikipedia.org/wiki/Risch_algorithm), and an algorithm using [Meijer G-functions](https://en.wikipedia.org/wiki/Meijer_G-function) that is useful for computing integrals in terms of special functions, especially definite integrals. 
+
 ### 🌱 Limits
+
+SymPy can compute symbolic limits with the `limit` function. The syntax to compute the limit of `f(x)` when `x` approaches `x0` is `limit(f(x), x, x0)`. 
+
+```
+>>> limit(sin(x)/x, x, 0)
+1
+```
+
+`limit` should be used instead of `subs` whenever the point of evaluation is a *singularity*. Even though SymPy has objects to represent ∞, using them for evaluation is **NOT** reliable because they do not keep track of things like rate of growth. Also, things like `∞ − ∞` and `∞ * ∞` return `nan` (not-a-number). For example
+
+```
+>>> expr = x**2/exp(x)
+
+>>> expr.subs(x, oo)
+nan
+
+>>> limit(expr, x, oo)
+0
+```
+
+Like `Derivative` and `Integral`, `limit` has an unevaluated counterpart, `Limit`. To evaluate it, use `doit`. 
+
+```
+>>> expr = Limit((cos(x) - 1)/x, x, 0)
+
+>>> expr
+Limit((cos(x) - 1)/x, x, 0)
+
+>>> expr.doit()
+0
+```
+
+To evaluate a limit at *one side only*, pass `'+'` or `'-'` as a fourth argument to `limit`. For example 
+
+```
+>>> limit(1/x, x, 0, '+')
+∞
+
+>>> limit(1/x, x, 0, '-')
+-∞
+```
+
 
 ### 🌱 Series Expansion
 
