@@ -903,47 +903,158 @@ z**(a*b)
 
 ### 🌱 Exponentials and logarithms
 
+**Note**: In SymPy, as in Python and most programming languages, `log` is the *natural logarithm*, also known as `ln`. SymPy automatically provides an alias `ln = log` in case you forget this.
+
+```
+>>> ln(x)
+log(x)
+```
+
+Logarithms have similar issues as powers. There are two main identities
+
+1. `log(x * y) == log(x) + log(y)`
+2. `log(x**n) == n * log(x)`
+
+Neither identity is true for arbitrary *complex* `x` and `y`, due to the branch cut in the complex plane for the complex logarithm. However, sufficient conditions for the identities to hold are if `x`and `y` are *positive* and `n` is *real*. 
+
+```
+>>> x, y = symbols('x y', positive=True)
+>>> n = symbols('n', real=True)
+```
+
+As before, `z` and `t` will be Symbols with no additional assumptions.
+
+Note that the identity `log(x / y) == log(x) − log(y)` is a special case of identities 1 and 2 by `log(x * y) == log(x * 1/y) == log(x) + log(y**(−1)) == log(x) − log(y)`, and thus it also holds if `x` and `y` are *positive*, but may **NOT** hold in general.
+
+We also see that `log(e * x) == x` comes from `log(e * x) = x * log(e) == x`, and thus holds when `x` is *real* (and it can be verified that it does **NOT** hold in general for *arbitrary complex* `x`, for example, `log(e*x + 2*pi*i) == log(e*x) == x != x + 2*pi*i)`. 
+
+#### 📌 `expand_log`
+
+To apply identities 1 and 2 from left to right, use expand_log(). As always, the identities will not be applied unless they are valid. 
+
+```
+>>> expand_log(log(x*y))
+log(x) + log(y)
+
+>>> expand_log(log(x/y))
+log(x) - log(y)
+
+>>> expand_log(log(x**2))
+2⋅* log(x)
+
+>>> expand_log(log(x**n))
+n⋅* log(x)
+
+>>> expand_log(log(z*t))
+log(t⋅* z)
+```
+
+As with `powsimp()` and `powdenest()`, `expand_log()` has a force option that can be used to ignore assumptions. 
+
+```
+>>> expand_log(log(z**2))
+log(z**2)
+
+>>> expand_log(log(z**2), force=True)
+2*log(z)
+```
+
+#### 📌 `logcombine`
+
+To apply identities 1 and 2 from right to left, use logcombine().
+
+```
+>>> logcombine(log(x) + log(y))
+log(x*y)
+
+>>> logcombine(n*log(x))
+log(x**n)
+
+>>> logcombine(n*log(z))
+n*log(z)
+```
+
+`logcombine()` also has a force option that can be used to ignore assumptions.
+
+```
+logcombine(n*log(z), force=True)
+log(z**n)
+```
 
 ### 🌱 Special Functions
 
+SymPy implements dozens of special functions, ranging from functions in combinatorics to mathematical physics.
 
-### 🌱 Example: Continued Fractions
+An extensive list of the special functions included with SymPy and their documentation is at the Functions Module page.
 
-#### 📌 ``
+For the purposes of this tutorial, let’s introduce a few special functions in SymPy.
 
+Let’s define `x`, `y`, and `z` as regular, complex Symbols, removing any assumptions we put on them in the previous section. We will also define `k`, `m`, and `n`. 
 
+```
+>>> x, y, z = symbols('x y z')
+>>> k, m, n = symbols('k m n')
+```
 
+#### 📌 `rewrite`
 
+A common way to deal with special functions is to rewrite them in terms of one another. This works for any function in SymPy, not just special functions. To rewrite an expression in terms of a function, use `expr.rewrite(function)`. For example,
 
+```
+tan(x).rewrite(sin)
+     2
+2⋅sin (x)
+─────────
+ sin(2⋅x)
 
+factorial(x).rewrite(gamma)
+Γ(x + 1)
+```
 
+For some tips on applying more targeted rewriting, see the [Advanced Expression Manipulation](https://docs.sympy.org/latest/tutorial/manipulation.html#tutorial-manipulation) section. 
 
+#### 📌 `expand_func`
 
+#### 📌 `hyperexpand`
 
+#### 📌 `combsimp`
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#### 📌 `gammasimp`
 
 ## 🔱 [Calculus](https://docs.sympy.org/latest/tutorial/calculus.html)
 
+This section covers how to do basic calculus tasks such as derivatives, integrals, limits, and series expansions in SymPy. If you are not familiar with the math of any part of this section, you may safely skip it.
+
+```
+>>> from sympy import *
+>>> x, y, z = symbols('x y z')
+```
+
 ### 🌱 Derivatives
+
+To take derivatives, use the `diff` function. 
+
+```
+>>> diff(cos(x), x)
+-sin(x)
+
+>>> diff(exp(x**2), x)
+(2*x*e)**(x**2)
+```
+
+`diff` can take *multiple derivatives* at once. To take multiple derivatives, pass the *variable as many times* as you wish to differentiate, or pass a *number* after the variable. For example, both of the following find the third derivative of `x**4`. 
+
+```
+>>> diff(x**4, x, x, x)
+24*x
+
+>>> diff(x**4, x, 3)
+24*x
+```
+
+You can also take derivatives with respect to many variables at once. Just pass each derivative in order, using the same syntax as for single variable derivatives. For example, each of the following will compute `\dfrac{\partial^7}{\partial x \partial y \partial z^4} e^{xyz}`. 
+
+
 
 ### 🌱 Integrals
 
