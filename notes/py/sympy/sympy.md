@@ -1098,7 +1098,7 @@ pi/sin(pi*x)
 
 Let’s use SymPy to explore continued fractions. A continued fraction is an expression of the form
 
-![](https://github.com/AXIHIXA/Memo/blob/master/notes/py/sympy/continued_fractions.gif)
+![](https://github.com/AXIHIXA/Memo/blob/master/notes/py/sympy/continued%20_fractions.gif)
 
 
 
