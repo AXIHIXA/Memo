@@ -46,9 +46,9 @@ https://www.anaconda.com/pycharm
 ```
 - New virtual environment:
 ```
-conda create -n py3 python=3.7 numpy scipy sympy matplotlib cython ipykernel h5py
+conda create -n py3 python=3.8 numpy scipy sympy matplotlib cython ipykernel h5py
 conda activate py3
-pip install opencv-python PrettyTable
+pip install opencv-python
 python -m ipykernel install --name py3 --user
 ```
     

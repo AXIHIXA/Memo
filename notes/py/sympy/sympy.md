@@ -996,6 +996,33 @@ Let’s define `x`, `y`, and `z` as regular, complex Symbols, removing any assum
 >>> k, m, n = symbols('k m n')
 ```
 
+#### 📌 `factorial`
+
+The factorial function is `factorial`. `factorial(n)` represents `n! = 1 * 2 * ... * (n − 1) * n`. `n!` represents the number of permutations of `n` distinct items. 
+
+```
+>>> factorial(n)
+n!
+```
+
+#### 📌 `binomial`
+
+The binomial coefficient function is `binomial`. `binomial(n, k)` represents `nCk`, the number of ways to choose `k` items from a set of `n` distinct items. It is pronounced “`n` choose `k`”. 
+
+```
+>>> binomial(n, k)
+binomial(n, k)
+```
+
+#### 📌 `gamma`
+
+The factorial function is closely related to the gamma function, `gamma`. `gamma(z)` represents ![](https://github.com/AXIHIXA/Memo/blob/master/notes/py/sympy/gamma_func.gif), which for positive integer `z` is the same as `(z − 1)!`. 
+
+```
+>>> gamma(z)
+gamma(z)
+```
+
 #### 📌 `rewrite`
 
 A common way to deal with special functions is to rewrite them in terms of one another. This works for any function in SymPy, not just special functions. To rewrite an expression in terms of a function, use `expr.rewrite(function)`. For example,
