@@ -1027,18 +1027,24 @@ which for positive integer `z` is the same as `(z − 1)!`.
 gamma(z)
 ```
 
+#### 📌 `hyper`
+
+The generalized hypergeometric function is `hyper`. `hyper([a_1, ..., a_p], [b_1, ..., b_q], z)` is `pFq`. 
+
+```
+>>> hyper([1, 2], [3], z)
+hyper([1, 2], [3], z)
+```
+
 #### 📌 `rewrite`
 
 A common way to deal with special functions is to rewrite them in terms of one another. This works for any function in SymPy, not just special functions. To rewrite an expression in terms of a function, use `expr.rewrite(function)`. For example,
 
 ```
-tan(x).rewrite(sin)
-     2
-2⋅sin (x)
-─────────
- sin(2⋅x)
+>>> tan(x).rewrite(sin)
+2*sin(x)**2/sin(2*x)
 
-factorial(x).rewrite(gamma)
+>>> factorial(x).rewrite(gamma)
 Γ(x + 1)
 ```
 
@@ -1046,11 +1052,59 @@ For some tips on applying more targeted rewriting, see the [Advanced Expression 
 
 #### 📌 `expand_func`
 
+To expand special functions in terms of some identities, use `expand_func()`. For example
+
+```
+>>> expand_func(gamma(x + 3))
+x*(x + 1)*(x + 2)*Γ(x)
+```
+
 #### 📌 `hyperexpand`
+
+To rewrite hyper in terms of more standard functions, use `hyperexpand()`. 
+
+```
+>>> hyperexpand(hyper([1, 1], [2], z))
+-log(1 - z)
+───────────────
+     z
+```
+
+`hyperexpand()` also works on the more general Meijer G-function (see [its documentation](https://docs.sympy.org/latest/modules/functions/special.html#sympy.functions.special.hyper.meijerg) for more information).
 
 #### 📌 `combsimp`
 
+To simplify combinatorial expressions, use `combsimp()`. 
+
+```
+>>> n, k = symbols('n k', integer = True)
+>>> combsimp(factorial(n)/factorial(n - 3))
+n*(n - 2)*(n - 1)
+
+>>> combsimp(binomial(n+1, k+1)/binomial(n, k))
+(n + 1)/(k + 1)
+```
+
 #### 📌 `gammasimp`
+
+To simplify expressions with gamma functions or combinatorial functions with non-integer argument, use `gammasimp()`. 
+
+```
+>>> gammasimp(gamma(x)*gamma(1 - x))
+pi/sin(pi*x)
+```
+
+### 🌱 Example: Continued Fractions
+
+Let’s use SymPy to explore continued fractions. A continued fraction is an expression of the form
+
+![](https://github.com/AXIHIXA/Memo/blob/master/notes/py/sympy/continued_fractions.gif)
+
+
+
+
+
+
 
 ## 🔱 [Calculus](https://docs.sympy.org/latest/tutorial/calculus.html)
 
