@@ -1017,7 +1017,9 @@ binomial(n, k)
 #### 📌 `gamma`
 
 The factorial function is closely related to the gamma function, `gamma`. `gamma(z)` represents 
+
 ![](https://github.com/AXIHIXA/Memo/blob/master/notes/py/sympy/gamma_func.gif) 
+
 which for positive integer `z` is the same as `(z − 1)!`. 
 
 ```
