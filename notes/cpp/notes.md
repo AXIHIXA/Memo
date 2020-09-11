@@ -16795,8 +16795,8 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 [[maybe_unused]]                 (since C++17)
 
-[[likely]]                       (since C++20)
-[[unlikely]]                     (since C++20)
+[[likely]]                       (since C++20)  // 用于分支条件，提示编译器优化
+[[unlikely]]                     (since C++20)  // 用于分支条件，提示编译器优化
 
 [[no_unique_address]]            (since C++20)
 ```
