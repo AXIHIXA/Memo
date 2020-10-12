@@ -167,6 +167,11 @@ gedit -idea64.vmoptions
 
 ## 🌱 C/C++ 
 
+### CLion
+
+- `__CLION_IDE__`：在 CLion 的 CMakeLists.txt 以及程序中都可使用的宏
+- `$ENV{USER}`： CMakeLists.txt 中调用系统变量
+
 ### Libraries
 
 ```
