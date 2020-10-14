@@ -27,7 +27,7 @@ set(OPENMESH_LIBRARIES
 # all sources
 
 set(MAIN
-        src/main/main.cpp
+        src/main.cpp
         )
 
 set(ALL_SOURCE_FILES

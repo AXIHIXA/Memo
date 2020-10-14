@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(Boost REQUIRED COMPONENTS filesystem)
 
 set(MAIN
-        src/main/main.cpp
+        src/main.cpp
         )
 
 set(ALL_SOURCE_FILES

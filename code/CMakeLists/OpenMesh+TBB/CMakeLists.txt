@@ -10,12 +10,12 @@ find_package(OpenCV REQUIRED)
 # OpenMesh
 
 set(OPENMESH_INCLUDE_DIRS
-        /home/ax/lib/OpenMesh/include
+        /home/$ENV{USER}/lib/OpenMesh/include
         )
 
 set(OPENMESH_LIBRARIES
-        /home/ax/lib/OpenMesh/lib/libOpenMeshCore.so
-        /home/ax/lib/OpenMesh/lib/libOpenMeshTools.so
+        /home/$ENV{USER}/lib/OpenMesh/lib/libOpenMeshCore.so
+        /home/$ENV{USER}/lib/OpenMesh/lib/libOpenMeshTools.so
         )
 
 # TBB
@@ -29,7 +29,7 @@ set(TBB_LIBRARIES
 # all sources
 
 set(MAIN
-        src/main/main.cpp
+        src/main.cpp
         )
 
 set(ALL_SOURCE_FILES
