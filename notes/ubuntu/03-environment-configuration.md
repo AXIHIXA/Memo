@@ -1,6 +1,29 @@
 # Environment Configuration
 
-## 🌱 python
+
+## 🌱 Terminal 
+
+### Shortcuts
+
+- `Ctrl` + `u`: Delete all text from cursor to head
+- `Ctrl` + `k`: Delete all text from cursor to tail
+- `Ctrl` + `w`: Delete one word ahead of cursor
+- `Ctrl` + `a`: Move cursor to head
+- `Ctrl` + `e`: Move cursor to end
+- `Alt` + `f`: Move cursor forward (towards head) by one word
+- `Alt` + `b`: Move cursor back (towards tail) by one word
+
+### Useful Commands
+
+- `man -k "copy files`: see man page of all commands with "copy files"
+- `!`
+- `df -h`: See storage occupation of all mounted dirs; where `-h` convert unit into human-readable (MB, GB...)
+- `du -h --max-depth=1 /home` (or `-d 1`): See storage occupation of `/home`
+- `free -h`: See current RAM usage
+- `pgrep hello`, `pidof hello`: find pid of process "hello"
+- `killall hello`, `pkill hello`: kill all processes called "hello"
+
+## 🌱 Python
 
 ### anaconda
 
