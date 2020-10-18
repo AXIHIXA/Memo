@@ -2335,6 +2335,12 @@ __DATE__
 ````
 
 
+### 🌱 `C++17`引入的语法糖大宝贝
+
+- [Structured Bindings](https://skebanga.github.io/structured-bindings/)
+- [`if`, `switch` with initializer](https://skebanga.github.io/if-with-initializer/)
+
+
 
 
 
