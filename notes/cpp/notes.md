@@ -3968,6 +3968,15 @@ if (std::ifstream fin {"input.txt", std::ifstream::in})
         std::cout << line << std::endl;
     }
 }
+else
+{
+    std::cout << std::unitbuf
+              << __FILE__ << ':' << __LINE__ << ' ' << __PRETTY_FUNCTION__ << ' '
+              << "!fin"
+              << std::nounitbuf << std::endl;
+
+    exit(1);
+}
 ```
 
 #### `C++`风格读取文件全部内容
@@ -3979,6 +3988,15 @@ if (std::ifstream fin {"input.txt", std::ifstream::in})
     sin >> fin.rdbuf();
     std::string fileBuf = sin.str();
     std::cout << fileBuf << std::endl;
+}
+else
+{
+    std::cout << std::unitbuf
+              << __FILE__ << ':' << __LINE__ << ' ' << __PRETTY_FUNCTION__ << ' '
+              << "!fin"
+              << std::nounitbuf << std::endl;
+
+    exit(1);
 }
 ```
 
