@@ -3984,6 +3984,20 @@ else
     exit(1);
 }
 ```
+- 使用`if with initializer`语法可以进一步适配不能自动转换成`bool`的文件流，例如`cv::FileStorage` `(since C++17)`
+```
+if (cv::FileStorage fin; fin.open("var/out/laplacian.yml", cv::FileStorage::READ))
+{
+    // do something...
+}
+else
+{
+    std::cout << std::unitbuf
+              << __FILE__ << ':' << __LINE__ << ' ' << __PRETTY_FUNCTION__ << ' '
+              << "!fin"
+              << std::nounitbuf << std::endl;
+}
+```
 
 #### `C++`风格读取文件全部内容
 
@@ -14689,13 +14703,23 @@ class tuple;
                 - 常用于用指定的参数解包`std::tuple`或`std::pair`
                 - 可以传入`std::ignore`表示该位置元素不需解包
             ```
-            std::tuple<int, std::string, double, double> 
-            tup {0, "pi", 3.14, 3.14159};
+            std::tuple<int, std::string, double, double> tup {0, "pi", 3.14, 3.14159};
             int a;
             std::string s;
             double pi;
             std::tie(a, s, pi, std::ignore) = tup;
-            printf("%d, %s, %lf\n", a, s, pi);         // 0, pi, 3.14
+            printf("%d, %s, %lf\n", a, s, pi);                   // 0, pi, 3.14
+            ```
+        - [Structured Binding](https://skebanga.github.io/structured-bindings/) `(since C++17)`
+            - `C++`早晚得活成`Python`的样子
+            ```
+            std::tuple<int, std::string, double, double> tup {0, "pi", 3.14, 3.14159};
+            auto [a, s, pi, pi2] = tup;
+            printf("%d %s %lf %lf\n", a, s.c_str(), pi, pi2);
+            
+            auto tup = std::make_tuple(0, "pi", 3.14, 3.14159);  // 0 pi 3.140000 3.141590
+            auto [a, s, pi, pi2] = tup;
+            printf("%d %s %lf %lf\n", a, s, pi, pi2);            // 0 pi 3.140000 3.141590
             ```
         - [`std::forward_as_tuple`](https://en.cppreference.com/w/cpp/utility/tuple/forward_as_tuple)
             - 可能的实现
