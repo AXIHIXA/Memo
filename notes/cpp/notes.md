@@ -4473,7 +4473,8 @@ if (cancelEntry)
             if (FILE * fp = fopen("test.txt", "r"))
             {
                 // char 可平凡复制
-                std::vector<char> buf1(4); 
+                std::vector<char> buf1(4);  // NOTE: SHOULD use buf(4) to value-initialize 4 elements
+                                            //       if use buf.reserve(4), buf.size() WON'T get updated!!! 
                 std::fread(&buf1[0], sizeof buf1[0], buf1.size(), fp);
                 fclose(fp);
             }
