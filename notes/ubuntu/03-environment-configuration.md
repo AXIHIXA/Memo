@@ -67,9 +67,10 @@ environments tightly integrated in the PyCharm IDE.
 PyCharm for Anaconda is available at:
 https://www.anaconda.com/pycharm
 ```
-- New virtual environment:
+- New virtual environment (do NOT use `opencv` package from `conda`. It's bullsh*t):
 ```
-conda create -n py3 python=3.7 numpy scipy sympy matplotlib opencv cython ipykernel h5py
+conda create -n py3 python=3.7 numpy scipy sympy matplotlib cython ipykernel h5py
+pip install opencv-python
 conda activate py3
 python -m ipykernel install --name py3 --user
 ```
