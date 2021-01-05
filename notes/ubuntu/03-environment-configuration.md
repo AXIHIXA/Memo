@@ -206,7 +206,7 @@ sudo apt install libeigen3-dev
 sudo apt install libopencv-dev
 
 # OpenGL
-sudo apt install libglm-dev libglew-dev libglfw3-dev freeglut3-dev libxmu-dev libxi-dev
+sudo apt install libglm-dev libglu libglew-dev libglfw3-dev mesa-utils libx11-dev libxi-dev libxrandr-dev 
 
 # Qt
 sudo apt install qt5-default

@@ -13,7 +13,7 @@ chmod 644 ~/.bashrc ~/.bash_history
 ## 🌱 dependencies
 
 ```
-sudo apt install vim tmux git gcc g++ make mlocate
+sudo apt install vim tmux git gcc g++ cmake mlocate
 
 touch ~/.tmux.conf
 gedit ~/.tmux.conf
