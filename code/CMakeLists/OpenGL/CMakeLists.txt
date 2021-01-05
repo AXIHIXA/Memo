@@ -28,6 +28,8 @@ set(ALL_SOURCE_FILES
 set(ALL_INCLUDE_DIRS
         ${GLEW_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIR}
+        ${OPENGL_EGL_INCLUDE_DIRS}
         include
         )
 
