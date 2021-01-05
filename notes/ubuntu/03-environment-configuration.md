@@ -217,9 +217,6 @@ sudo apt install libtbb-dev
 
 # boost + cgal
 sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
-
-# one-key w/o qtcreator
-sudo apt install libeigen3-dev libopencv-dev libglm-dev libglew-dev libglfw3-dev freeglut3-dev libxmu-dev libxi-dev qt5-default libtbb-dev libboost-all-dev libcgal-dev libcgal-qt5-dev
 ```
 
 ### `OpenGL`
