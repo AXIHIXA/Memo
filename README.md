@@ -4,7 +4,8 @@
 
 - `C/C++`
 
-    - [`C++ Primer 5th Edition` Notes](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
+    - [`C++ Primer 5th Edition`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/notes.md)
+    - [`CPP Concurrency In Action 2ed`](https://github.com/AXIHIXA/CPP-Concurrency-In-Action-2ed-2019)
 
 - `Python`
 
