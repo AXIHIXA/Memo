@@ -3976,12 +3976,7 @@ if (std::ifstream fin {"input.txt", std::ifstream::in})
 }
 else
 {
-    std::cout << std::unitbuf
-              << __FILE__ << ':' << __LINE__ << ' ' << __PRETTY_FUNCTION__ << ' '
-              << "!fin"
-              << std::nounitbuf << std::endl;
-
-    exit(1);
+    // ...
 }
 ```
 - 使用`if with initializer`语法可以进一步适配不能自动转换成`bool`的文件流，例如`cv::FileStorage` `(since C++17)`
@@ -3992,10 +3987,7 @@ if (cv::FileStorage fin; fin.open("var/out/laplacian.yml", cv::FileStorage::READ
 }
 else
 {
-    std::cout << std::unitbuf
-              << __FILE__ << ':' << __LINE__ << ' ' << __PRETTY_FUNCTION__ << ' '
-              << "!fin"
-              << std::nounitbuf << std::endl;
+    // ...
 }
 ```
 
@@ -4004,19 +3996,14 @@ else
 ```
 if (std::ifstream fin {"input.txt", std::ifstream::in})
 {
-    std::stringstream sin;
-    sin >> fin.rdbuf();
-    std::string fileBuf = sin.str();
+    std::ostringstream sout;
+    sout << fin.rdbuf();
+    std::string fileBuf = sout.str();
     std::cout << fileBuf << std::endl;
 }
 else
 {
-    std::cout << std::unitbuf
-              << __FILE__ << ':' << __LINE__ << ' ' << __PRETTY_FUNCTION__ << ' '
-              << "!fin"
-              << std::nounitbuf << std::endl;
-
-    exit(1);
+    // ...
 }
 ```
 
