@@ -16111,11 +16111,11 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
     - 线程类，定义于`<thread>`
         - [`std::thread`](https://en.cppreference.com/w/cpp/thread/thread)
             - 综述
-                - 表示一个线程，在与其关联的线程对象被构造之后立即开始执行
-                    - 以被提供给其构造函数的顶层函数作为入口
-                    - 顶层函数的返回值被忽略
+                - 表示一个线程，在与其关联的 *线程对象被构造之后立即开始执行* 
+                    - 以被提供给其构造函数的顶层函作为入口
+                    - 默认情况下顶层函数的返回值被忽略
+                        - 顶层函数可以通过[`std::promise`](https://en.cppreference.com/w/cpp/thread/promise))，或修改 *共享变量* 将其返回值或异常传递给调用方
                     - 如果顶层函数以抛异常终止，则程序将调用[`std::terminate`](https://en.cppreference.com/w/cpp/error/terminate)
-                    - 顶层函数可以通过[`std::promise`](https://en.cppreference.com/w/cpp/thread/promise))，或修改 *共享变量* 将其返回值或异常传递给调用方
                 - 在以下情况下，`std::thread`对象将处于**不**表示任何线程的状态，从而可安全销毁
                     - 被默认构造
                     - 已被移动
@@ -16124,28 +16124,384 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - 没有两个`std::thread`会表示同一线程
                     - `std::thread`**不可**复制构造、**不可**复制赋值
                     - `std::thread`可移动构造、可移动赋值
+                - 当`std::thread`对象销毁之前还没有被`join`或`detach`，程序就会异常终止
+                    - `std::thread`的析构函数会调用`std::terminate()`
+                    - 因此，即便是有异常存在，也需要确保线程能够正确`join`或`detach`
             - 构造和赋值
                 - `std::thread t;`：默认构造**不**表示线程的新`std::thread`对象
-                - `std::thread t1(t2);`：移动构造
-                - `std::thread t(fun, ...)`：显式构造，传入顶层函数`fun`和其参数`...`
-                - `t1 = t2;`：移动赋值
-            ```
-            int n = 0;
-            foo f;
-            baz b;
-            
-            std::thread t1;                   // t1 不是线程
-            std::thread t2(f1, 233);          // 按值传递
-            std::thread t3(f2, std::ref(n));  // 按引用传递
-            std::thread t4(std::move(t3));    // t4 现在运行 f2() 。 t3 不再是线程
-            std::thread t5(&foo::bar, &f);    // t5 在对象 f 上运行 foo::bar()
-            std::thread t6(std::ref(b));      // t6 在对象 b 上运行 baz::operator()
-            ```
+                - `std::thread t(fun, ...)`：显式构造，传入 *可调用对象* （Callable）`fun`和其参数`...`
+                    - 参数传递
+                        - 方式和`std::bind`相同
+                        ```
+                        class X
+                        {
+                        public:
+                            void do_lengthy_work(int);
+                        };
+                        X my_x;
+                        int num(0);
+                        std::thread t(&X::do_lengthy_work, &my_x, num); // 提供成员函数指针和对象指针，并传参
+                        ```
+                        - 提供的函数对象和参数会 **复制** 到新线程的存储空间中，函数对象的执行和调用都在线程的内存空间中进行
+                        ```
+                        int n = 0;
+                        foo f;
+                        baz b;
+                        
+                        std::thread t1;                   // t1不是线程
+                        std::thread t2(f1, 233);          // 按值传递
+                        std::thread t3(f2, std::ref(n));  // 按引用传递
+                        std::thread t4(std::move(t3));    // t4现在运行f2() 。t3不再是线程
+                        std::thread t5(&foo::bar, &f);    // t5在对象f上运行foo::bar()
+                        std::thread t6(std::ref(b));      // t6在对象b上运行baz::operator()
+                        ```
+                        - 即使函数中的参数是引用的形式，拷贝操作也会执行
+                        - **注意**：指向动态变量的指针作为参数的情况
+                        ```
+                        void f(int i, const std::string & s);
+                        
+                        void not_oops(int some_param)
+                        {
+                            char buffer[1024];
+                            sprintf(buffer, "%i", some_param);
+                            std::thread t(f, 3, std::string(buffer));  // 不显式构造，可能在构造执行之前oops函数就结束了，造成引用野指针
+                                                                       // 使用std::string，避免悬空指针
+                            t.detach();
+                        }
+                        ```
+                    - C++'s most vexing parse：如何给`std::thread`构造函数传递 *无名临时变量* ？
+                    ```
+                    class background_task
+                    {
+                    public:
+                        void operator()() const
+                        {
+                            do_something();
+                            do_something_else();
+                        }
+                    };
+
+                    background_task f;
+                    std::thread my_thread(f);                    // OK：命名对象
+                    
+                    std::thread my_thread(background_task());    // 错误
+                                                                 // 这里的background_task()会被解释为“参数列表为空、返回类型为background_task”的函数指针
+                                                                 // 则my_thread变成了函数声明，而非对象定义！
+                                                                 
+                    std::thread my_thread((background_task()));  // OK：使用多组括号
+                    
+                    std::thread my_thread {background_task()};   // OK：花括号初始化列表
+                    
+                    std::thread my_thread([]
+                    {
+                        do_something();
+                        do_something_else();
+                    });                                          // OK：lambda表达式
+                    ```
+                - `std::thread t1(t2);`，`t1 = t2;`：移动构造和赋值
+                    - 用例
+                    ```
+                    void some_function();
+                    void some_other_function();
+                    
+                    std::thread t1(some_function);          // 1
+                    std::thread t2 = std::move(t1);         // 2
+                    t1 = std::thread(some_other_function);  // 3
+                    std::thread t3;                         // 4
+                    t3 = std::move(t2);                     // 5
+                    t1 = std::move(t3);                     // 6 赋值操作将使程序崩溃
+                    ```
+                    - scoped_thread
+                    ```
+                    class scoped_thread
+                    {
+                    public:
+                        explicit scoped_thread(std::thread t_) : t(std::move(t_))
+                        {
+                            if (!t.joinable())
+                            {
+                                throw std::logic_error(“No thread”);
+                            }
+                        }
+                        
+                        scoped_thread(const scoped_thread &) = delete;
+                        
+                        ~scoped_thread()
+                        {
+                            t.join();
+                        }
+                        
+                        scoped_thread & operator=(const scoped_thread &) = delete;
+                        
+                    private:
+                        std::thread t;
+                    };
+
+                    struct func;
+
+                    void f()
+                    {
+                        int some_local_state;
+                        scoped_thread t(std::thread(func(some_local_state)));
+                        do_something_in_current_thread();
+                    }
+                    ```
+                    - joining_thread
+                    ```
+                    class joining_thread
+                    {
+                    public:
+                        joining_thread() noexcept = default;
+                        
+                        template<typename Callable, typename ... Args>
+                        explicit joining_thread(Callable && func, Args && ... args) : t(std::forward<Callable>(func), std::forward<Args>(args) ...)
+                        {
+                        
+                        }
+                        
+                        explicit joining_thread(std::thread t_) noexcept : t(std::move(t_))
+                        {
+                        
+                        }
+                        
+                        joining_thread(joining_thread && other) noexcept : t(std::move(other.t))
+                        {
+                        
+                        }
+                        
+                        ~joining_thread() noexcept
+                        {
+                            if (joinable())
+                            {
+                                join();
+                            }
+                            
+                        }
+                        
+                        joining_thread & operator=(joining_thread && other) noexcept
+                        {
+                            if (joinable())
+                            {
+                                join();
+                            }
+                            
+                            t = std::move(other.t);
+                            return *this;
+                        }
+                        
+                        joining_thread & operator=(std::thread other) noexcept
+                        {
+                            if (joinable())
+                            {
+                                join();
+                            }
+                            
+                            t = std::move(other);
+                            return *this;
+                        }
+                        
+                        void swap(joining_thread & other) noexcept
+                        {
+                            t.swap(other.t);
+                        }
+                        
+                        std::thread::id get_id() const noexcept
+                        {
+                            return t.get_id();
+                        }
+                        
+                        bool joinable() const noexcept
+                        {
+                            return t.joinable();
+                        }
+                        
+                        void join()
+                        {
+                            t.join();
+                        }
+                        
+                        void detach()
+                        {
+                            t.detach();
+                        }
+                        
+                        std::thread & as_thread() noexcept
+                        {
+                            return t;
+                        }
+                        
+                        const std::thread & as_thread() const noexcept
+                        {
+                            return t;
+                        }
+                    
+                    private:
+                        std::thread t;
+                    };
+                    ```
+            - 支持的操作
+                - `t.join()`： *合并* 线程
+                    - 阻塞 *当前线程* `std::this_thread`，直至`t`关联的线程结束
+                        - `t`所关联的线程的结束 *同步* 于对应的`join()`成功返回
+                        - `t`自身**不**进行 *同步* ，同时从多个线程对同一个`std::thread`调用`join`构成 *数据竞争* ，是 *未定义行为* 
+                        - `t.join`之后，`t.joinable()`为`false`
+                    - 出现异常，则抛出`std::system_error`
+                        - 若`t.get_id() == std::this_thread::get_id()`（检测到死锁），则抛出`std::resource_deadlock_would_occur`
+                        - 若线程非法，则抛出`std::no_such_process`
+                        - 若`!t.joinable()`，则抛出`std::invalid_argument`
+                    - **注意**：生命周期问题
+                        - 线程运行后产生的异常，会在`join()`调用之前抛出，这样就会跳过`join()`。因此在 *异常处理过程* 中也要记得调用`join()`
+                        ```
+                        void f()
+                        {
+                            int some_local_state = 0;
+                            func my_func(some_local_state);
+                            std::thread t(my_func);
+                            
+                            try
+                            {
+                                do_something_in_current_thread();
+                            }
+                            catch (...)
+                            {
+                                t.join();  // 1
+                                throw;
+                            }
+                            
+                            t.join();      // 2
+                        }
+                        ```
+                        - 另一种解决方法：`RAII`（Resource Acquisition Is Initialization），提供一个线程封装类，在析构函数中调用`join()`
+                            - 如果不想等待线程结束，可以分离线程，从而避免异常
+                            - 不过，这就打破了线程与std::thread对象的联系
+                            - 即使线程仍然在后台运行着，分离操作也能确保在std::thread对象销毁时不调用std::terminate()
+                        ```
+                        class thread_guard
+                        {
+                        public:
+                            explicit thread_guard(std::thread & t_) : t(t_)
+                            {
+                            
+                            }
+                            
+                            thread_guard(const thread_guard &) = delete;              // 3 保证thread_guard和std::thread对象一样不可复制
+                            
+                            thread_guard & operator=(const thread_guard &) = delete;  // 3 保证thread_guard和std::thread对象一样不可复制
+                            
+                            ~thread_guard()
+                            {
+                                if (t.joinable())  // 1
+                                {
+                                    t.join();      // 2
+                                }
+                            }
+                        
+                        private:
+                            std::thread & t;
+                        };
+                        
+                        void f()
+                        {
+                            int some_local_state=0;
+                            func my_func(some_local_state);
+                            std::thread t(my_func);
+                            thread_guard g(t);
+                            do_something_in_current_thread();
+                        }    
+                        ```
+                - `t.detach()`： *分离* 线程
+                    - 将`t`关联的线程从`t`中 *分离* ，独立地执行
+                        - 分离线程通常称 *守护线程* （daemon threads）
+                        - 让线程在后台运行，这就意味着与主线程**不能**直接交互
+                        - C++运行库保证，当线程退出时，相关资源的能够正确回收
+                        - `t.detach()`后，`t`不再占有任何线程，`t.joinable()`为`false`
+                        ```
+                        std::thread t(do_background_work);
+                        
+                        if (t.joinable())
+                        {
+                            t.detach();
+                        }
+                        
+                        assert(!t.joinable());
+                        ```
+                    - 异常
+                        - 若`!t.joinable()`或出现任何错误，则抛出`std::system_error`
+                        - 使用`detach()`前必须检查`t.joinable()`，返回的是`true`，才能`detach()`
+                    - **注意**：如不等待线程`join`而是将其`detach`，就必须保证线程结束时其占用的资源仍是有效的，否则是 *未定义行为* 
+                    ```
+                    struct func
+                    {
+                        func(int & i_) : i(i_) 
+                        {
+                        
+                        }
+                        
+                        void operator() ()
+                        {
+                            for (unsigned j = 0 ; j < 1000000 ; ++j)
+                            {
+                                do_something(i);           // 潜在访问隐患：空引用
+                            }
+                        }
+                        
+                        int & i;
+                    };
+
+                    void oops()
+                    {
+                        int some_local_state = 0;
+                        func my_func(some_local_state);
+                        std::thread my_thread(my_func);
+                        my_thread.detach();                // 不等待线程结束
+                                                           // oops返回时some_local_state便被析构
+                                                           // 此时my_thread还在执行，其对some_local_state的引用便是非法引用！
+                    }         
+                    ```
+                    - `detach`的应用场景举例：
+                    ```
+                    void edit_document(std::string const& filename)
+                    {
+                        open_document_and_display_gui(filename);
+                        
+                        while (!done_editing())
+                        {
+                            user_command cmd = get_user_input();
+                            
+                            if (cmd.type == user_command::open_new_document)
+                            {
+                                std::string const new_name = get_filename_from_user();
+                                std::thread t(edit_document, new_name);
+                                t.detach();
+                            }
+                            else
+                            {
+                                process_user_input(cmd);
+                            }
+                        }
+                    }
+                    ```
+                - `t1.swap(t2)`，`std::swap(t1, t2)`： *交换* 线程
+                    - 交换二个`std::thread`对象的底层柄
+                    ```
+                    std::thread t1([] () { std::this_thread::sleep_for(std::chrono::seconds(1)); });
+                    std::thread t2([] () { std::this_thread::sleep_for(std::chrono::seconds(1)); });
+                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 1 2
+                 
+                    std::swap(t1, t2);
+                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 2 1
+                 
+                    t1.swap(t2);
+                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 1 2
+                 
+                    t1.join();
+                    t2.join();
+                    ```
             - 观察器
                 - `t.joinable()`：返回线程是否 *可合并* 
                     - 返回
                         - 若`t`标识活跃的执行线程，即`get_id() != std::thread::id()`，则返回`true`
-                            - 因此， *默认构造* 的`std::thread` ***不**可合并* 
+                            - 因此， *默认构造* 的`std::thread` **不可合并**
                         - 已结束执行、但仍未被合并的线程仍被当作活跃的执行线程，从而 *可合并* 
                     - 示例
                     ```
@@ -16171,40 +16527,6 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 - `std::thread::hardware_concurrency()`：返回`unsigned int`，代表实现支持的并发线程数
                     - 应该只把该值当做提示
                     - 若该值非良定义或不可计算，则返回`0​` 
-            - 支持的操作
-                - `t.join()`： *合并* 线程
-                    - 阻塞 *当前线程* `std::this_thread`，直至`t`关联的线程结束
-                        - `t`所关联的线程的结束 *同步* 于对应的`join()`成功返回
-                        - `t`自身**不**进行 *同步* ，同时从多个线程对同一个`std::thread`调用`join`构成 *数据竞争* ，是 *未定义行为* 
-                        - `t.join`之后，`t.joinable()`为`false`
-                    - 出现异常，则抛出`std::system_error`
-                        - 若`t.get_id() == std::this_thread::get_id()`（检测到死锁），则抛出`std::resource_deadlock_would_occur`
-                        - 若线程非法，则抛出`std::no_such_process`
-                        - 若`!t.joinable()`，则抛出`std::invalid_argument`
-                - `t.detach()`： *分离* 线程
-                    - 将`t`关联的线程从`t`中 *分离* ，独立地执行
-                        - 一旦该线程退出，则释放任何分配的资源
-                        - `t.detach()`后，`t`不再占有任何线程，`t.joinable()`为`false`
-                    - 异常
-                        - 若`!t.joinable()`或出现任何错误，则抛出`std::system_error`
-                - `t1.swap(t2)`，`std::swap(t1, t2)`： *交换* 线程
-                    - 交换二个`std::thread`对象的底层柄
-                    - 示例
-                    ```
-                    std::thread t1([] () { std::this_thread::sleep_for(std::chrono::seconds(1)); });
-                    std::thread t2([] () { std::this_thread::sleep_for(std::chrono::seconds(1)); });
-                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 1 2
-                 
-                    std::swap(t1, t2);
-                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 2 1
-                 
-                    t1.swap(t2);
-                    std::cout << t1.get_id() << ' ' << t2.get_id() << '\n';  // 1 2
-                 
-                    t1.join();
-                    t2.join();
-                    ```
-        - [`std::jthread`](https://en.cppreference.com/w/cpp/thread/jthread)：支持自动`join`以及`cancel`的`std::thread` `(since C++20)`
     - 管理 *当前线程* `std::this_thread`的静态函数，定义于`<this_thread>`
         - [`std::this_thread::yield()`](https://en.cppreference.com/w/cpp/thread/yield)：提供提示给实现，以重调度线程的执行，允许其他线程运行
         - [`std::this_thread::get_id()`](https://en.cppreference.com/w/cpp/thread/get_id)：返回当前线程的`id`
@@ -16214,6 +16536,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - [`std::stop_token`](https://en.cppreference.com/w/cpp/thread/stop_token) `(since C++20)`
         - [`std::stop_source`](https://en.cppreference.com/w/cpp/thread/stop_source) `(since C++20)`
         - [`std::stop_callback`](https://en.cppreference.com/w/cpp/thread/stop_callback) `(since C++20)`
+    - [`std::jthread`](https://en.cppreference.com/w/cpp/thread/jthread)：支持自动`join`以及`cancel`的`std::thread` `(since C++20)`
 - *互斥* （mutual exclusion），定义于`<mutex>`
     - 互斥锁，定义于`<mutex>`
         - [`std::mutex`](https://en.cppreference.com/w/cpp/thread/mutex)
@@ -18896,7 +19219,7 @@ private:
                 S() = default;
                 S(int _a) : a(_a) {}
 
-                void add(int b) const { std::cout <<  a + b << '\n'; }
+                void add(int b) const { std::cout << a + b << '\n'; }
 
                 int a {0};
             };
