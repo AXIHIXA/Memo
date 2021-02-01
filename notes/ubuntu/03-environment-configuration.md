@@ -230,6 +230,15 @@ apt policy <package>
 ```
 sudo glxinfo | grep "OpenGL"
 ```
+- Upgrade to OpenGL 4.1 on VMWare Workstation Pro 16.x Guest ubuntu OS: 
+    - Requirements: `mesa >= 20.2` and Linux kernel `>= 5.8`
+```
+sudo add-apt-repository ppa:kisak/kisak-mesa
+sudo apt update
+sudo apt-get dist-upgrade
+sudo apt autoremove
+sudo reboot
+```
 
 ### `OpenMesh`
 
