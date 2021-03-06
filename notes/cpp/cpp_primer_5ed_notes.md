@@ -568,6 +568,12 @@
                 class Singleton
                 {
                 public:
+                    Singleton(const Singleton &) = delete;
+                    Singleton(Singleton &&) = delete;
+                    
+                    Singleton & operator=(const Singleton &) = delete;
+                    Singleton & operator=(Singleton &&) = delete;
+                
                     static Singleton & getInstance() 
                     {
                         static Singleton instance;
@@ -577,10 +583,6 @@
                 private:
                     Singleton() = default;
                     ~Singleton() = default;
-                    Singleton(const Singleton &) = delete;
-                    Singleton & operator=(const Singleton &) = delete;
-                    Singleton(Singleton &&) = default;
-                    Singleton & operator=(Singleton &&) = default;
                 };
                 ```
         - 和 *全局变量* 的区别
