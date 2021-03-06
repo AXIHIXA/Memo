@@ -565,6 +565,7 @@
             - `C++11`开始保证初始化是线程安全的，在一个线程开始局部静态对象的初始化后到完成初始化前，其他线程执行到这个局部静态对象的初始化语句就会等待，直到该对象初始化完成。
                 - 可用于优雅地构造`Meyers`单例
                 ```
+                // singleton.h
                 class Singleton
                 {
                 public:
@@ -574,7 +575,7 @@
                     Singleton & operator=(const Singleton &) = delete;
                     Singleton & operator=(Singleton &&) = delete;
                 
-                    static Singleton & getInstance() 
+                    static Singleton & getInstance() noexcept
                     {
                         static Singleton instance;
                         return instance;
@@ -584,6 +585,9 @@
                     Singleton() = default;
                     ~Singleton() = default;
                 };
+                
+                // blah.cpp
+                Singleton & singleton {Singleton::getInstance()};
                 ```
         - 和 *全局变量* 的区别
             - 全局变量对所有的函数可见的
