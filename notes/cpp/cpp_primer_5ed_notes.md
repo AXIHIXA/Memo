@@ -559,9 +559,30 @@
 - *局部静态变量* 
     - 具有 *块作用域* ，但存储于 *静态存储区* 
         - 是 *局部静态对象* （local static object）
-            - 在程序的执行路径第一次经过对象定义语句时初始化，并且直到整个程序终止时才被销毁。
+            - 在程序的控制流第一次经过对象定义语句时初始化，并且直到整个程序终止时才被销毁。
             - 在此期间，对象所在函数执行完毕也不会对它有影响。
             - 如没有显式初始化，则会执行 *默认初始化* （内置类型隐式初始化为`0`）
+            - `C++11`开始保证初始化是线程安全的，在一个线程开始局部静态对象的初始化后到完成初始化前，其他线程执行到这个局部静态对象的初始化语句就会等待，直到该对象初始化完成。
+                - 可用于优雅地构造`Meyers`单例
+                ```
+                class Singleton
+                {
+                public:
+                    static Singleton & getInstance() 
+                    {
+                        static Singleton instance;
+                        return instance;
+                    }
+                
+                private:
+                    Singleton() = default;
+                    ~Singleton() = default;
+                    Singleton(const Singleton &) = delete;
+                    Singleton & operator=(const Singleton &) = delete;
+                    Singleton(Singleton &&) = default;
+                    Singleton & operator=(Singleton &&) = default;
+                };
+                ```
         - 和 *全局变量* 的区别
             - 全局变量对所有的函数可见的
             - 静态局部变量只对定义自己的函数可见
@@ -573,6 +594,7 @@
         return ++ctr;
     }
     ```
+    - 
 - *静态函数* 
     - 函数的返回值类型前加上`static`关键字
     - 只在声明它的文件当中可见，**不能**被其他文件使用
@@ -10731,7 +10753,7 @@ private:
     - *合成析构函数* （synthesized destructor）
         - 类未定义自己的析构函数时，编译器会自动定义一个
         - 对某些类，用于阻止该类型对象被销毁（`= delete;`）
-- *三五法则* （The rule of three/five）
+- *三五三五法则* （The rule of three/five）
     - 三个基本操作可以控制类的拷贝操作
         1. 拷贝构造函数
         2. 拷贝赋值运算符
