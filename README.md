@@ -32,6 +32,8 @@
     - [OpenCV](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/OpenCV/CMakeLists.txt)
     - [OpenGL](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/OpenGL/CMakeLists.txt)
     - [OpenMesh + TBB](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/OpenMesh+TBB/CMakeLists.txt)
+    - [Qt5](https://github.com/AXIHIXA/Memo/blob/master/code/CMakeLists/Qt5/CMakeLists.txt)
+
     
 - `C/C++` Code
 
