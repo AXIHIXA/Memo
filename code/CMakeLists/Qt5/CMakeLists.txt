@@ -3,6 +3,7 @@ project(Qt5Demo)
 set(CMAKE_CXX_STANDARD 17)
 
 # These 3 options for Qt support
+# You need to add your header files in add_executable, otherwise the moc won't parse them
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
