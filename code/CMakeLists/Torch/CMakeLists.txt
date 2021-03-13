@@ -5,8 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(CUDAToolkit REQUIRED)
 
 # CMAKE_PREFIX_PATH can be gotten from `python -m "import torch;print(torch.utils.cmake_prefix_path)"`
-set(Torch_DIR
+set(CMAKE_PREFIX_PATH
         /home/xihan1/opt/anaconda3/envs/py3/lib/python3.7/site-packages/torch/share/cmake
+        ${CMAKE_PREFIX_PATH}
         )
 
 find_package(Torch REQUIRED)
