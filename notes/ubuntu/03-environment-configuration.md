@@ -206,13 +206,6 @@ sudo apt install libeigen3-dev
 # OpenCV
 sudo apt install libopencv-dev
 
-# OpenGL
-sudo apt install libglm-dev libglew-dev libglfw3-dev mesa-utils libx11-dev libxi-dev libxrandr-dev 
-
-# Qt
-sudo apt install qt5-default
-sudo apt install qtcreator
-
 # tbb
 sudo apt install libtbb-dev
 
@@ -222,6 +215,11 @@ sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
 
 ### `OpenGL`
 
+- Installation
+```
+# OpenGL
+sudo apt install libglm-dev libglew-dev libglfw3-dev mesa-utils libx11-dev libxi-dev libxrandr-dev 
+```
 - Check apt installed package version
 ```
 apt policy <package>
@@ -240,6 +238,16 @@ sudo apt autoremove
 sudo reboot
 ```
 
+### `CUDA`
+
+- Install NVIDIA `CUDA` Toolkit: 
+```
+sudo apt install nvidia-cuda-toolkit
+```
+- Install `CUDNN`: Follow instructions on 
+[NVIDIA CUDNN DOCUMENTAZTION](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#installlinux-deb)
+(I am using Debian Installation. Do NOT use Package Manager Installation. )
+
 ### `OpenMesh`
 
 ```
@@ -249,6 +257,33 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ax/lib/OpenMesh
 make -j4
 make install
 ```
+
+### `Qt`
+
+- Installation
+```
+# Qt
+sudo apt install qt5-default
+sudo apt install qtcreator
+```
+- `CMake` Options: 
+```
+# These 3 options for Qt support
+# You need to add your header files in add_executable, otherwise the moc won't parse them
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+# ...
+
+# Disable Qt's bad marco usage to avoid conflicts! 
+# After this, call original keywords such as: slots -> Q_SLOTS
+set(ALL_COMPILE_DEFS
+        -DQT_NO_KEYWORDS
+        )
+```
+- DO **include headers** in `add_executable` command, or `moc` will NOT parse them and there will be problems finding `vtable`!
+
 
 ## 🌱 Javascript
 

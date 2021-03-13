@@ -42,8 +42,10 @@ set(ALL_LIBRARIES
         Qt5::Widgets
         )
 
+# Disable Qt's bad marco usage to avoid conflicts! 
+# After this, call original keywords such as: slots -> Q_SLOTS
 set(ALL_COMPILE_DEFS
-
+        -DQT_NO_KEYWORDS
         )
 
 set(ALL_COMPILE_OPTS
