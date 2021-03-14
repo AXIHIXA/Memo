@@ -28,6 +28,8 @@ set(ALL_SOURCE_FILES
         )
 
 set(ALL_INCLUDE_DIRS
+        ${EIGEN3_INCLUDE_DIR}
+        ${OpenCV_INCLUDE_DIRS}
         include
         )
 
