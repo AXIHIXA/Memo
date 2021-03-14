@@ -1,29 +1,23 @@
 cmake_minimum_required(VERSION 3.16)
 project(SketchBoard)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 # These 3 options for Qt support
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# CMAKE_PREFIX_PATH can be gotten from `python -m "import torch;print(torch.utils.cmake_prefix_path)"`
-# libTorch conda build conflicts with OpenCV, so download compiled library directly from pytorch.org.
-set(CMAKE_PREFIX_PATH
-        /home/xihan1/lib/libtorch/share/cmake
-        ${CMAKE_PREFIX_PATH}
-        )
-
-# packages
 find_package(CUDAToolkit REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
 find_package(Python3 REQUIRED COMPONENTS Development NumPy)
-find_package(Torch REQUIRED)
 
-# sources
+# CMAKE_PREFIX_PATH can be gotten from `python -m "import torch;print(torch.utils.cmake_prefix_path)"`
+# libTorch conda build conflicts with OpenCV, so download compiled library directly from pytorch.org.
+find_package(Torch REQUIRED CONFIG HINTS /home/xihan1/lib/libtorch/share/cmake)
+
 set(GUI
         include/gui/SketchBoard.h
         include/gui/ScribbleArea.h
@@ -31,8 +25,17 @@ set(GUI
         src/gui/ScribbleArea.cpp
         )
 
-set(MATPLOTLIB-CPP
-        include/matplotlib-cpp/matplotlibcpp.h
+set(NET
+        include/net/UNet.h
+        include/net/UNetParts.h
+        src/net/UNet.cpp
+        src/net/UNetParts.cpp
+        )
+
+set(UTILS
+        include/utils/matplotlibcpp.h
+        include/utils/tensorhelper.h
+        src/utils/tensorhelper.cpp
         )
 
 set(MAIN
@@ -48,7 +51,8 @@ set(TBB_LIBS
 set(ALL_SOURCE_FILES
         ${GUI}
         ${MAIN}
-        ${MATPLOTLIB-CPP}
+        ${NET}
+        ${UTILS}
         )
 
 set(ALL_INCLUDE_DIRS
@@ -57,8 +61,6 @@ set(ALL_INCLUDE_DIRS
         ${Python3_NumPy_INCLUDE_DIRS}
         include
         )
-
-message(${OpenCV_LIBS})
 
 set(ALL_LIBRARIES
         ${Boost_LIBRARIES}
