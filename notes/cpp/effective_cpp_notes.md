@@ -1,6 +1,6 @@
 # *`Effective C++`* Notes
 
-- Notes of reading ++***Effective C++ Digital Collection: 140 Ways to Improve Your Programming***++S
+- Notes of reading ++***Effective C++ Digital Collection: 140 Ways to Improve Your Programming***++
 
 
 
