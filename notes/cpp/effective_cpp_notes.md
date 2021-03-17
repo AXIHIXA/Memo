@@ -1,6 +1,6 @@
-# `CPP Concurrency In Action 2ed` Tutorial Notes
+# `CPP Concurrency In Action 2ed` Notes
 
-- Notes of reading <i>`Effective C++ Digital Collection: 140 Ways to Improve Your Programming`</i>
+- Notes of reading *`Effective C++ Digital Collection: 140 Ways to Improve Your Programming`*
 
 
 
