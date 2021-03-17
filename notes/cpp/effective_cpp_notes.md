@@ -1,6 +1,6 @@
 # *`Effective C++`* Notes
 
-- Notes of reading ***Effective C++ Digital Collection: 140 Ways to Improve Your Programming***
+- Notes of reading ++***Effective C++ Digital Collection: 140 Ways to Improve Your Programming***++S
 
 
 
@@ -14,8 +14,8 @@
 ### 📌 Item 2: Prefer `const`s, `enum`s, and `inline`s to `#define`s
 
 - **Things to Remember**
-    1. For simple constants, prefer `const` objects or `enum`s to `#define`s.
-    2. For function-like macros, prefer `inline` functions to `#define`s.
+    - For simple constants, prefer `const` objects or `enum`s to `#define`s.
+    - For function-like macros, prefer `inline` functions to `#define`s.
 - **The `enum` hack**: For class-specific constants, use `enum`s instead of `static const` data members 
     ```
     // GamePlayer.h
@@ -100,20 +100,77 @@
     You can get all the efficiency of a macro plus all the predictable behavior and type safety 
     of a regular function by using a `template` for an `inline` function: 
     ```
-    //because we don't know what T is, we pass by reference-to-const
+    // because we don't know what T is, we pass by reference-to-const
     template <typename T> 
     inline void callWithMax(const T & a, const T & b) 
     { 
         f(a > b ? a : b);
     }
     ```
+    This template generates a whole family of functions, 
+    each of which takes two objects of the same type and calls `f` with the greater of the two objects. <br>
+    There's no need to parenthesize parameters inside the function body, 
+    no need to worry about evaluating parameters multiple times, etc. <br>
+    Furthermore, because callWithMax is a real function, it obeys scope and access rules. <br>
+    For example, it makes perfect sense to talk about an inline function that is private to a class. <br>
+    In general, there's just no way to do that with a macro.
 
+### 📌 Item 3: Use `const` whenever possible
 
-
-
-
-
-
+- **Things to Remember**
+    - Declaring something `const` helps compilers detect usage errors. 
+      `const` can be applied to objects at any scope, 
+      to function parameters and return types, 
+      and to member functions as a whole.
+    - Compilers enforce bitwise constness, but you should program using logical constness.
+    - When `const` and non-`const` member functions have essentially identical implementations, 
+      code duplication can be avoided by having the non-`const` version call the const version.
+- **`const` iterators**: <br>
+    *STL iterators are modeled on pointers*, so an iterator acts much like a `T *` pointer. <br>
+    Declaring an iterator `const` is like declaring a pointer const (i.e., declaring a `T * const` pointer): 
+    the iterator isn't allowed to point to something different, but the thing it points to may be modified. <br>
+    If you want an iterator that points to something that can't be modified 
+    (i.e., the STL analogue of a `const T *` pointer), you want a `const_iterator`:
+    ```
+    std::vector<int> vec {0, 1, 2, 3, 4, 5};
+    
+    const std::vector<int>::iterator iter = vec.begin();    // iter acts like a T * const
+    *iter = 10;                                             // OK, changes what iter points to
+    ++iter;                                                 // error! iter is const
+   
+    std::vector<int>::const_iterator cIter = vec.cbegin();  // cIter acts like a const T*
+    *cIter = 10;                                            // error! *cIter is const
+    ++cIter;                                                // fine, changescIter
+    ```
+- **`const`s in function return values**. <br>
+    Having a function return a constant value often makes it possible to 
+    reduce the incidence of client errors without giving up safety or efficiency: 
+    ```
+    class Rational { ... };
+    const Rational operator*(const Rational & lhs, const Rational & rhs);
+    ```
+    Many programmers squint when they first see this. <br>
+    Why should the result of `operator*` be a `const` object? <br>
+    Because if it weren't, clients would be able to commit atrocities like this:
+    ```
+    Rational a, b, c;
+    (a * b) = c;       // invoke operator= on the result of (a * b)!
+    ```
+    I don't know why any programmer would want to make an assignment to the product of two numbers, 
+    but I do know that many programmers have tried to do it without wanting to. <br>
+    All it takes is a simple typo (and a type that can be implicitly converted to `bool`):
+    ```
+    if (a * b = c)     // oops, meant to do a comparison!
+    {
+        // ...
+    }
+    ```
+    Such code would be flat-out illegal if `a` and `b` were of a built-in type. <br>
+    One of the hallmarks of good user-defined types is that they avoid gratuitous incompatibilities with the built-ins, 
+    and allowing assignments to the product of two numbers seems pretty gratuitous to me. <br>
+    Declaring `operator*`'s return value `const` prevents it, and that's why it's The Right Thing To Do. 
+- **`const` member functions**
+    
 
 
 
