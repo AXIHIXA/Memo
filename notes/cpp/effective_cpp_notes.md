@@ -1,6 +1,6 @@
 # *`Effective C++`* Notes
 
-- Notes of reading *`Effective C++ Digital Collection: 140 Ways to Improve Your Programming`*
+- Notes of reading ***Effective C++ Digital Collection: 140 Ways to Improve Your Programming***
 
 
 
@@ -13,6 +13,9 @@
 
 ### 📌 Item 2: Prefer `const`s, `enum`s, and `inline`s to `#define`s
 
+> Things to Remember
+>     • For simple constants, prefer const objects or enums to #defines.
+>     • For function-like macros, prefer inline functions to #defines.
 - **The `enum` hack**: For class-specific constants, use `enum`s instead of `static const` data members 
     ```
     // GamePlayer.h
@@ -85,16 +88,25 @@
       In fact, the `enum` hack is a fundamental technique of template metaprogramming. 
 - **Common (mis)use of `#define` directives**: 
   Using it to implement macros that look like functions but that don't incur the overhead of a function call
-```
-// call f with the maximum of a and b
-// even if everything is properly parenthesised, there can still be problems! 
-#define CALL_WITH_MAX(a, b) f((a) > (b) ? (a) : (b))
+    ```
+    // call f with the maximum of a and b
+    // even if everything is properly parenthesised, there can still be problems! 
+    #define CALL_WITH_MAX(a, b) f((a) > (b) ? (a) : (b))
 
-int a = 5, b = 0;
-CALL_WITH_MAX(++a, b);       // a is incremented twice
-CALL_WITH_MAX(++a, b + 10);  // a is incremented once
-```
-
+    int a = 5, b = 0;
+    CALL_WITH_MAX(++a, b);       // a is incremented twice
+    CALL_WITH_MAX(++a, b + 10);  // a is incremented once
+    ```
+    You can get all the efficiency of a macro plus all the predictable behavior and type safety 
+    of a regular function by using a `template` for an `inline` function: 
+    ```
+    //because we don't know what T is, we pass by reference-to-const
+    template <typename T> 
+    inline void callWithMax(const T & a, const T & b) 
+    { 
+        f(a > b ? a : b);
+    }
+    ```
 
 
 
