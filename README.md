@@ -4,8 +4,9 @@
 
 - `C/C++`
 
-    - [`C++ Primer 5th Edition`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_primer_5ed_notes.md)
-    - [`CPP Concurrency In Action 2ed`](https://github.com/AXIHIXA/CPP-Concurrency-In-Action-2ed-2019/blob/master/SUMMARY.md)
+    - [`C++ Primer`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_primer_notes.md)
+    - [`CPP Concurrency In Action`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_concurrency_in_action)
+    - [`Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes)
 
 - `Python`
 
