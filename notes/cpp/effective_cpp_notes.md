@@ -1,6 +1,6 @@
 # *`Effective C++`* Notes
 
-- Notes of reading ++***Effective C++ Digital Collection: 140 Ways to Improve Your Programming***++
+- Notes of reading ***Effective C++ Digital Collection: 140 Ways to Improve Your Programming***
 
 
 
@@ -124,7 +124,7 @@
       and to member functions as a whole.
     - Compilers enforce bitwise constness, but you should program using logical constness.
     - When `const` and non-`const` member functions have essentially identical implementations, 
-      code duplication can be avoided by having the non-`const` version call the const version.
+      code duplication can be avoided by having the non-`const` version call the `const` version.
 - **`const` iterators**: <br>
     *STL iterators are modeled on pointers*, so an iterator acts much like a `T *` pointer. <br>
     Declaring an iterator `const` is like declaring a pointer const (i.e., declaring a `T * const` pointer): 
@@ -169,10 +169,53 @@
     One of the hallmarks of good user-defined types is that they avoid gratuitous incompatibilities with the built-ins, 
     and allowing assignments to the product of two numbers seems pretty gratuitous to me. <br>
     Declaring `operator*`'s return value `const` prevents it, and that's why it's The Right Thing To Do. 
-- **`const` member functions**
-    
-
-
+- **`const` member functions** <br>
+    Many people overlook the fact that *member functions differing only in their constness can be overloaded*, but this is an important feature of C++. <br>
+    Incidentally, const objects most often arise in real programs as a result of being passed by pointer-to-const or reference-to-const.
+    What does it mean for a member function to be const? <br>
+    There are two prevailing notions: 
+    - *bitwise constness* (also known as *physical constness*) <br>
+      The bitwise `const` camp believes that a member function is `const`
+      iff. it doesn't modify any of the object's data members (excluding those that are `static`), 
+      i.e., iff. it *doesn't modify any of the bits inside the object*. <br>
+      The nicething about bitwise constness is that it's easy to detect violations: 
+      compilers just look for assignments to data members. <br>
+      In fact, bitwise constness is C++'s definition of constness, 
+      and a `const` member function isn't allowed to modify 
+      any of the non-`static` data members of the object on which it is invoked. <br>
+      Unfortunately, many member functions that don't act very `const` pass the bitwise test. <br>
+      In particular, *a member function that modifies what a pointer points* to frequently doesn't act `const`. <br>
+      But if only the pointer is in the object, the function is bitwise `const`, and compilers won't complain. <br>
+      That can lead to counterintuitive behavior. <br>
+      For example, suppose we have a `TextBlock`-like class that stores its data as a `char *` instead of a `string`, 
+      because it needs to communicate through a C API that doesn't understand `string` objects. <br>
+        ```
+        class CTextBlock 
+        {
+        public:
+            // inappropriate (but bitwise const) declaration of operator[]
+            char & operator[](std::size_t position) const 
+            { 
+                return pText[position]; 
+            } 
+            
+        private:
+            char * pText;
+        };
+        ```
+      This class (inappropriately) declares `operator[]` as a `const` member function,
+      even though that function returns a reference to the object's internal data. <br>
+      Set that aside and note that `operator[]`'s implementation doesn't modify `pText` in any way. <br>
+      As a result, compilers will happily generate code for `operator[]`; 
+      it is, after all, bitwise `const`, and that's all compilers check for. <br>
+      But look what it allows to happen:
+        ```
+        const CTextBlock cctb("Hello");  // declare constant object
+        char *pc = &cctb[0];             // call the const operator[] to get a  pointer to cctb's data
+        *pc = 'J';                       // cctb now has the value "Jello"
+        ```
+    - *logical constness* <br>
+      
 
 
 
