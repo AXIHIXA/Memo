@@ -5,8 +5,8 @@
 - `C/C++`
 
     - [`C++ Primer`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_primer_notes.md)
-    - [`CPP Concurrency In Action`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_concurrency_in_action)
-    - [`Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes)
+    - [`CPP Concurrency In Action`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_concurrency_in_action.md)
+    - [`Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes.md)
 
 - `Python`
 
