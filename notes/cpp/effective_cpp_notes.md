@@ -124,8 +124,7 @@
       and to member functions as a whole.
     - Compilers enforce bitwise constness, but you should program using logical constness.
     - When `const` and non-`const` member functions have essentially identical implementations, 
-      code duplication can be avoided by having the non-`const` version call the `const` version, 
-      by invoking `const_cast` to cast away constness.
+      code duplication can be avoided by having the non-`const` version call the `const` version. 
 - **`const` iterators**: <br>
     *STL iterators are modeled on pointers*, so an iterator acts much like a `T *` pointer. <br>
     Declaring an iterator `const` is like declaring a pointer const (i.e., declaring a `T * const` pointer): 
