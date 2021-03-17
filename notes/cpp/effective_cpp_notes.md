@@ -13,7 +13,7 @@
 
 ### 📌 Item 2: Prefer `const`s, `enum`s, and `inline`s to `#define`s
 
-- **"The `enum` hack"**: For class-specific constants, use `enum`s instead of `static const` data members 
+- **The `enum` hack**: For class-specific constants, use `enum`s instead of `static const` data members 
     ```
     // GamePlayer.h
     class GamePlayer 
@@ -55,7 +55,7 @@
     (where compilers insist on knowing the size of the array during compilation). <br>
     Then the accepted way to compensate for compilers that (incorrectly) forbid 
     the in-class specification of initial values for static integral class constants 
-    is to use what is affectionately (and non-pejoratively) known as *“the `enum` hack”*. <br>
+    is to use what is affectionately (and non-pejoratively) known as the `enum` hack. <br>
     This technique takes advantage of the fact that the values of an enumerated type can be used where ints are expected, 
     so `GamePlayer` could just as well be defined like this:
     ```
@@ -66,7 +66,25 @@
         int scores[NumTurns];  // fine
     };
     ```
-- An example of a nonsense marco: 
+    The `enum` hack is worth knowing about for several reasons. 
+    - *Access Constraints*. <br>
+      The `enum` hack behaves in some ways more like a `#define` than a `const` does, 
+      and sometimes that's what you want. <br>
+      For example, it's legal to take the address of a `const`, 
+      but it's **not legal** to take the address of an `enum`, 
+      and it's typically **not legal** to take the address of a `#define`, either. <br>
+      If you don't want to let people get a pointer or reference to one of your integral constants, 
+      an enum is a good way to enforce that constraint. 
+    - *Memory Allocation*. <br>
+      Though good compilers won't set aside storage for `const` objects of integral types 
+      (unless you create a pointer or reference to the object), 
+      sloppy compilers may, and you may not be willing to set aside memory for such objects. <br>
+      Like `#define`s, `enum`s never result in that kind of unnecessary memory allocation.
+    - *Pragmatic*. <br>
+      Lots of code employs it, so you need to recognize it when you see it. <br>
+      In fact, the `enum` hack is a fundamental technique of template metaprogramming. 
+- **Common (mis)use of `#define` directives**: 
+  Using it to implement macros that look like functions but that don't incur the overhead of a function call
 ```
 // call f with the maximum of a and b
 // even if everything is properly parenthesised, there can still be problems! 
