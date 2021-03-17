@@ -14,8 +14,11 @@
 ### 📌 Item 2: Prefer `const`s, `enum`s, and `inline`s to `#define`s
 
 > Things to Remember
+>
 >     • For simple constants, prefer const objects or enums to #defines.
+>
 >     • For function-like macros, prefer inline functions to #defines.
+
 - **The `enum` hack**: For class-specific constants, use `enum`s instead of `static const` data members 
     ```
     // GamePlayer.h
