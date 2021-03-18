@@ -87,7 +87,7 @@ The `enum` hack is worth knowing about for several reasons.
   If you don't want to let people get a pointer or reference to one of your integral constants, 
   an enum is a good way to enforce that constraint. 
 - *Memory Allocation*. <br>
-  Though good compilers won't set aside storage for `const` objects of integral types 
+  Though good compilers won't set aside storage for const objects of integral types 
   (unless you create a pointer or reference to the object), 
   sloppy compilers may, and you may not be willing to set aside memory for such objects. 
   Like `#define`s, `enum`s never result in that kind of unnecessary memory allocation.
@@ -139,7 +139,7 @@ In general, there's just no way to do that with a macro.
 #### `const` iterators
 
 *STL iterators are modeled on pointers*, so an iterator acts much like a `T *` pointer. 
-Declaring an iterator `const` is like declaring a pointer const (i.e., declaring a `T * const` pointer): 
+Declaring an iterator `const` is like declaring a pointer `const` (i.e., declaring a `T * const` pointer): 
 the iterator isn't allowed to point to something different, but the thing it points to may be modified. 
 If you want an iterator that points to something that can't be modified 
 (i.e., the STL analogue of a `const T *` pointer), you want a `const_iterator`:
@@ -163,15 +163,15 @@ reduce the incidence of client errors without giving up safety or efficiency:
 class Rational { ... };
 const Rational operator*(const Rational & lhs, const Rational & rhs);
 ```
-Many programmers squint when they first see this. <br>
-Why should the result of `operator*` be a `const` object? <br>
+Many programmers squint when they first see this. 
+Why should the result of `operator*` be a `const` object? 
 Because if it weren't, clients would be able to commit atrocities like this:
 ```
 Rational a, b, c;
 (a * b) = c;       // invoke operator= on the result of (a * b)!
 ```
 I don't know why any programmer would want to make an assignment to the product of two numbers, 
-but I do know that many programmers have tried to do it without wanting to. <br>
+but I do know that many programmers have tried to do it without wanting to. 
 All it takes is a simple typo (and a type that can be implicitly converted to `bool`):
 ```
 if (a * b = c)     // oops, meant to do a comparison!
@@ -179,32 +179,33 @@ if (a * b = c)     // oops, meant to do a comparison!
     // ...
 }
 ```
-Such code would be flat-out illegal if `a` and `b` were of a built-in type. <br>
+Such code would be flat-out illegal if `a` and `b` were of a built-in type. 
 One of the hallmarks of good user-defined types is that they avoid gratuitous incompatibilities with the built-ins, 
-and allowing assignments to the product of two numbers seems pretty gratuitous to me. <br>
+and allowing assignments to the product of two numbers seems pretty gratuitous to me. 
 Declaring `operator*`'s return value `const` prevents it, and that's why it's The Right Thing To Do. 
 
 #### `const` member functions
 
-Many people overlook the fact that *member functions differing only in their constness can be overloaded*, but this is an important feature of C++. <br>
+Many people overlook the fact that *member functions differing only in their constness can be overloaded*, but this is an important feature of C++. 
 Incidentally, const objects most often arise in real programs as a result of being passed by pointer-to-const or reference-to-const.
-What does it mean for a member function to be const? <br>
+What does it mean for a member function to be const? 
 There are two prevailing notions: 
-- *bitwise constness* (also known as *physical constness*) <br>
+- *bitwise constness* (also known as *physical constness*) 
     The bitwise `const` camp believes that a member function is `const`
     iff. it doesn't modify any of the object's data members (excluding those that are `static`), 
-    i.e., iff. it *doesn't modify any of the bits inside the object*. <br>
+    i.e., iff. it *doesn't modify any of the bits inside the object*. 
     The nice thing about bitwise constness is that it's easy to detect violations: 
-    compilers just look for assignments to data members. <br>
+    compilers just look for assignments to data members. 
     In fact, bitwise constness is C++'s definition of constness, 
     and a `const` member function isn't allowed to modify 
-    any of the non-`static` data members of the object on which it is invoked. <br><br>
-    Unfortunately, many member functions that don't act very `const` pass the bitwise test. <br>
-    In particular, *a member function that modifies what a pointer points* to frequently doesn't act `const`. <br>
-    But if only the pointer is in the object, the function is bitwise `const`, and compilers won't complain. <br>
-    That can lead to counterintuitive behavior. <br>
+    any of the non-`static` data members of the object on which it is invoked. 
+    <br><br>
+    Unfortunately, many member functions that don't act very `const` pass the bitwise test. 
+    In particular, *a member function that modifies what a pointer points* to frequently doesn't act `const`. 
+    But if only the pointer is in the object, the function is bitwise `const`, and compilers won't complain. 
+    That can lead to counterintuitive behavior. 
     For example, suppose we have a `TextBlock`-like class that stores its data as a `char *` instead of a `string`, 
-    because it needs to communicate through a C API that doesn't understand `string` objects. <br>
+    because it needs to communicate through a C API that doesn't understand `string` objects. 
     ```
     class CTextBlock 
     {
@@ -220,10 +221,10 @@ There are two prevailing notions:
     };
     ```
     This class (inappropriately) declares `operator[]` as a `const` member function,
-    even though that function returns a reference to the object's internal data. <br>
-    Set that aside and note that `operator[]`'s implementation doesn't modify `pText` in any way. <br>
+    even though that function returns a reference to the object's internal data. 
+    Set that aside and note that `operator[]`'s implementation doesn't modify `pText` in any way. 
     As a result, compilers will happily generate code for `operator[]`; 
-    it is, after all, bitwise `const`, and that's all compilers check for. <br>
+    it is, after all, bitwise `const`, and that's all compilers check for. 
     But look what it allows to happen:
     ```
     const CTextBlock cctb("Hello");  // declare constant object
@@ -232,7 +233,7 @@ There are two prevailing notions:
     ```
 - *logical constness* <br>
     A `const` member function *might modify some of the bits in the object* on which it's invoked, 
-    but *only in ways that clients cannot detect*. <br>
+    but *only in ways that clients cannot detect*. 
     For example, your `CTextBlock` class might want to cache the length of the textblock whenever it's requested:
     ```
     class CTextBlock 
@@ -521,15 +522,14 @@ f(x);                     // call f with an int
 The type deduced for `T` is **not** always the same as the type of the argument passed to the function, i.e., that `T` is the type of `expr`. 
 Because the type deduced for `T` is dependent not just on the type of `expr`, but also on the form of `ParamType`. 
 There are three cases: 
-- `ParamType` is a pointer or non-universal reference type. 
+- `ParamType` is a *pointer* or *non-universal reference* type 
     - Universal references are described in Item 24. 
       At this point, all you need to know is that they exist 
       and that they’re not the same as lvalue references or rvalue references. 
     - Workflow: 
         - If `expr`’s type is a reference, ignore the reference part.
         - Then pattern-match `expr`’s type against `ParamType` to determine `T`. 
-    
-    For example: 
+    - For example: 
     ```
     template <typename T>
     void f(T & param);     // param is a reference
@@ -540,18 +540,112 @@ There are three cases:
     ```
     The deduced types for `param` and `T` in various calls are as follows:
     ```
-    f(x);                  // T is int,
-                           // param's type is int &
-    f(cx);                 // T is const int,
-                           // param's type is const int &
-    f(rx);                 // T is const int,
-                           // param's type is const int &
+    f(x);                  // T is       int, param's type is int &
+    f(cx);                 // T is const int, param's type is const int &
+    f(rx);                 // T is const int, param's type is const int &
     ```
-    Passing a `const` object to a template taking a `T &` parameter is safe:
-    the constness of the object becomes part of the type deduced for `T`.
-- `ParamType` is a universal reference. 
-- `ParamType` is neither a pointer nor a reference. 
+    Passing a const object to a template taking a `T &` parameter is safe:
+    the constness of the object becomes part of the type deduced for `T`. 
+    <br><br>
+    These examples all show *lvalue reference* parameters, but type deduction works exactly the same way for *rvalue reference* parameters. 
+    Of course, only rvalue arguments may be passed to rvalue reference parameters, but that restriction has nothing to do with type deduction. 
+    <br><br>
+    If we change the type of `f`’s parameter from `T &` to `const T &`, 
+    things change a little, but not in any really surprising ways. 
+    The constness of `cx` and `rx` continues to be respected,
+    but because we’re now assuming that `param` is a reference-to-const, 
+    there’s no longer a need for `const` to be deduced as part of `T`:
+    ```
+    template <typename T>
+    void f(const T & param);  // param is now a ref-to-const
+    
+    int x = 27;               // as before
+    const int cx = x;         // as before
+    const int& rx = x;        // as before
+    
+    f(x);                     // T is int, param's type is const int &
+    f(cx);                    // T is int, param's type is const int &
+    f(rx);                    // T is int, param's type is const int &
+    ```
+    <br><br>
+    If param were a pointer (or a pointer to const) instead of a reference, things would work essentially the same way: 
+    ```
+    template <typename T>
+    void f(T * param);        // param is now a pointer
+    
+    int x = 27;               // as before
+    const int * px = &x;      // px is a ptr to x as a const int
+    
+    f(&x);                    // T is       int, param's type is int *
+    f(px);                    // T is const int, param's type is const int *
+    ```
+    By now, you may find yourself yawning and nodding off, 
+    because C++’s type deduction rules work so naturally for reference and pointer parameters, 
+    seeing them in written form is really dull. 
+    Everything’s just obvious! 
+    *Which is exactly what you want in a type deduction system*. 
+- `ParamType` is a *universal reference* <br>
+    Such parameters are declared like rvalue references 
+    (i.e., in a function template taking a type parameter `T`, a universal reference’s declared type is `T &&`), 
+    but they behave differently when lvalue arguments are passed in. 
+    The complete story is told in Item 24, but here’s the headline version: 
+    - If `expr` is an *lvalue*, both `T` and `ParamType` are deduced (*collapse*) to be *lvalue references*; 
+    - If `expr` is an *rvalue*, the normal (i.e., Case 1) rules apply.
+    - For example:
+    ```
+    template <typename T>
+    void f(T && param);    // param is now a universal reference
+    
+    int x = 27;            // as before
+    const int cx = x;      // as before
+    const int & rx = x;    // as before
+    
+    f(x);                  //  x is lvalue, so T is       int &, param's type is       int &
+    f(cx);                 // cx is lvalue, so T is const int &, param's type is const int &
+    f(rx);                 // rx is lvalue, so T is const int &, param's type is const int &
+    f(27);                 // 27 is rvalue, so T is       int  , param's type is       int &&
+    ```
+- `ParamType` is neither a ~~pointer~~ nor a ~~reference~~ <br>
+    We’re dealing with pass-by-value:
+    ```
+    template<typename T>
+    void f(T param);       // param is now passed by value
+    ```
+    That means that `param` will be a *copy* of whatever is passed in: a completely new object. 
+    The fact that `param` will be a new object motivates the rules that govern how `T` is deduced from `expr`:
+    - Remove reference-ness and top-level cv-constraints (top-level const-ness and/or volatile-ness)
+        - `volatile` objects are uncommon. They’re generally used only for implementing device drivers. For details, see Item 40.
+        - This is because reference-ness and top-level cv-constraints are **ignored** during parameter type deduction.
+    - For example: 
+    ```
+    int x = 27;            // as before
+    const int cx = x;      // as before
+    const int & rx = x;    // as before
+    
+    f(x);                  // T's and param's types are both int
+    f(cx);                 // T's and param's types are again both int
+    f(rx);                 // T's and param's types are still both int
+    ```
+    Note that even though `cx` and `rx` represent `const` values, param isn’t `const`. 
+    That makes sense. 
+    `param` is an object that’s completely independent of `cx` and `rx`: a copy of `cx` or `rx`. 
+    The fact that `cx` and `rx` can’t be modified says nothing about whether `param` can be. 
+    That’s why `expr`’s const-ness (and volatile-ness, if any) is ignored when deducing a type for `param`: 
+    just because `expr` can’t be modified doesn’t mean that a copy of it can’t be. 
+    <br><br>
+    It’s important to recognize that only *top-level cv-constraints* are ignored. 
+    *Low-level cv-constraints* are preserved properly. 
+    That is,  `const` (and `volatile`) is ignored only for by-value parameters. 
+    As we’ve seen, for parameters that are references-to-const or pointesr-to-const, 
+    the constness of `expr` is preserved during type deduction.  
+    Consider the case where `expr` is a `const` pointer to a `const` object, and `expr` is passed to a by-value `param`: 
+    ```
+    template <typename T>
+    void f(T param);                               // param is still passed by value
+    
+    const char * const ptr = "Fun with pointers";  // ptr is const pointer to const object
+    f(ptr);                                        // pass arg of type const char * const
+    ```
+    In this case, `T` is deducted to `const char *`.
 
-
-
-
+#### Array Arguments

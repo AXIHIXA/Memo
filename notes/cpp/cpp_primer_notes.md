@@ -1,4 +1,4 @@
-# `C++ Primer 5th Edition` Notes
+# *C++ Primee* Notes
 
 
 
@@ -13679,7 +13679,9 @@ protected:
     ```
 - 尾置返回类型与类型转换
     - 希望用户确定返回类型时，用显式模板形参表示函数模板的返回类型很简单明了
-    - 但有时返回值类型无法用模板形参表示，只能从返回对象直接获取，比如返回所处理序列的元素类型，此时则需要 *尾置返回* `decltype(ret)`
+    - 但有时返回值类型无法用模板形参表示，只能从返回对象直接获取，比如返回所处理序列的元素类型，此时
+        - 则需要 *尾置返回* `decltype(ret)` `(until C++11)`
+        - 不需要任何操作，编译器自动根据`return`语句推导返回值类型 `(since C++14)`
     ```
     // a trailing return lets us declare the return type after the parameter list is seen
     template <typename It>
