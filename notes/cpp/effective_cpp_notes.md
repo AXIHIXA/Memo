@@ -5,7 +5,7 @@
         - *Effective C++: 55 Specific Ways to Improve Your Programs and Designs*
         - *More Effective C++: 35 New Ways to Improve Your Programs and Designs*
         - *Effective STL: 50 Specific Ways to Improve Your Use of the Standard Template Library*
-    - *Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 and C++14*
+    - *Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 And C++14*
 
 
 
@@ -498,14 +498,13 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 --- 
 
-## 🌱 Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 and C++14
+## 🌱 Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 And C++14
 
 ### 📌 Item 1: Understand template type deduction
 
-- During template type deduction, arguments that are references are treated as non-references, i.e., their reference-ness is ignored.
-- When deducing types for universal reference parameters, lvalue arguments get special treatment.
-- When deducing types for by-value parameters, const and/or volatile arguments are treated as non-const and non-volatile.
-- During template type deduction, arguments that are array or function names decay to pointers, unless they’re used to initialize references.
+- During template type deduction, arguments' reference-ness and top-level cv-constraints are ignored.
+- When deducing types for universal reference parameters, reference collapse may occur. 
+- During template type deduction, arguments that are array or function names decay to pointers, unless they’re used to initialize references. 
 
 If you’re willing to overlook a pinch of pseudocode, we can think of a function template as looking like this:
 ```
@@ -750,13 +749,11 @@ With only one curious exception, `auto` type deduction is template type deductio
 There’s a direct mapping between template type deduction and `auto` type deduction. 
 There is literally an algorithmic transformation from one to the other. 
 <br><br>
-In Item 1, template type deduction is explained using this general function template
+In Item 1, template type deduction is explained using this general function template: 
 ```
 template <typename T>
 void f(ParamType param);
-```
-and this general call:
-```
+
 f(expr);  // call f with some expression
 ```
 In the call to `f`, compilers use `expr` to deduce types for `T` and `ParamType`. 
@@ -904,6 +901,184 @@ auto resetV = [&v](const auto & newValue)
 resetV({1, 2, 3});     // error! can't deduce type for {1, 2, 3}
 ```
 
+### 📌 Item 3: Understand `decltype`
+
+- `decltype` almost always yields the type of a variable or expression without any modifications.
+- For lvalue expressions of type `T` other than names, `decltype` always reports a type of `T &`.
+- C++14 supports `decltype(auto)`, which, like `auto`, deduces a type from its initializer, but it performs the type deduction using the `decltype` rules.
+
+In contrast to what happens during type deduction for templates and `auto` (see Items 1 and 2),
+`decltype` typically parrots back the exact type of the name or expression you give it:
+```
+const int i = 0;           // decltype(i) is const int
+bool f(const Widget & w);  // decltype(w) is const Widget &
+                           // decltype(f) is bool(const Widget &)
+
+struct Point 
+{
+int x; 
+int y;                     // decltype(Point::x) is int
+};                         // decltype(Point::y) is int
+
+Widget w;                  // decltype(w) is Widget
+
+if (f(w)) {}               // decltype(f(w)) is bool
+
+template<typename T>       // simplified version of std::vector
+class vector
+{
+public:
+    T & operator[](std::size_t index);
+};
+
+vector<int> v;             // decltype(v) is vector<int>
+
+if (v[0] == 0) {}          // decltype(v[0]) is int &
+```
+In C++11, perhaps the primary use for `decltype` is declaring function templates
+where the function’s return type depends on its parameter types. 
+<br><br>
+`operator[]` on a container of objects of type `T` typically returns a `T &`. 
+This is the case for `std::deque`, for example, and it’s almost always the case for `std::vector`. 
+For `std::vector<bool>`, however, `operator[]` does **not** ~~return a `bool &`~~. 
+Instead, it returns a brand new object. The whys and hows of this situation are explored in Item 6, 
+but what’s important here is that the type returned by a container’s `operator[]` depends on the container. 
+<br><br>
+`decltype` makes it easy to express that. 
+Here’s a first cut at the template we’d like to write, 
+showing the use of `decltype` to compute the return type. 
+```
+template <typename Container, typename Index>
+auto authAndAccess(Container & c, Index i) -> decltype(c[i])  // C++11; needs refinement if C++14
+{
+    authenticateUser();
+    return c[i];
+}
+```
+The use of `auto` in functions with *trailing return type* has nothing to do with type deduction.
+A *trailing return type* has the advantage that 
+the function’s parameters can be used in the specification of the return type. 
+<br><br>
+C++11 permits return types for *single-statement lambdas* to be deduced, 
+and C++14 extends this to both *all lambdas* and *all functions*, 
+including those with multiple statements. 
+In the case of `authAndAccess`, 
+that means that in C++14 we can omit the trailing return type, leaving just the leading `auto`. 
+With that form of declaration, `auto` does mean that type deduction will take place. 
+In particular, it means that compilers will deduce the function’s return type from the function’s implementation:
+```
+template <typename Container, typename Index>
+auto authAndAccess(Container & c, Index i)  // C++14; NOT quite correct
+{
+    authenticateUser();
+    return c[i];                            // return type deduced from c[i]
+}
+```
+Item 2 explains that for functions with an `auto` return type specification, 
+compilers employ template type deduction. 
+In this case, that’s problematic. 
+As we’ve discussed, `operator[]` for most containers-of-`T` returns a `T &`, 
+but Item 1 explains that during template type deduction, 
+the reference-ness of an initializing expression is ignored.
+Consider what that means for this client code:
+```
+std::deque<int> d;
+authAndAccess(d, 5) = 10;  // authenticate user, return d[5], then assign 10 to it; this won't compile!
+```
+Here, `d[5]` returns an `int &`, 
+but `auto` return type deduction for `authAndAccess` will strip off the reference, 
+thus yielding a return type of `int`. 
+That `int`, being the return value of a function, is an rvalue, 
+and the code above thus attempts to assign `10` to an rvalue `int`. 
+That’s forbidden in C++, so the code won’t compile.
+
+#### `decltype(auto)` Specifier: `auto` Type Deduction Using `decltype` Deduction Rule
+
+To get `authAndAccess` to work as we’d like, 
+we need to use `decltype` type deduction for its return type, 
+i.e., to specify that `authAndAccess` should return *exactly the same type* that the expression `c[i]` returns. 
+The guardians of C++, anticipating the need to use `decltype` type deduction rules in some cases where types are inferred, 
+make this possible in C++14 through the *`decltype(auto)` specifier*. 
+What may initially seem contradictory (`decltype` and `auto`?) actually makes perfect sense: 
+`auto` specifies that the type is to be deduced, and `decltype` says that `decltype` rules should be used during the deduction. 
+We can thus write `authAndAccess` like this:
+```
+template <typename Container, typename Index>
+decltype(auto) authAndAccess(Container && c, Index i)                                   // C++14
+{
+    authenticateUser();
+    return std::forward<Container>(c)[i];
+}
+
+template <typename Container, typename Index>
+auto authAndAccess(Container && c, Index i) -> decltype(std::forward<Container>(c)[i])  // C++11
+{
+    authenticateUser();
+    return std::forward<Container>(c)[i];
+}
+```
+Now authAndAccess will truly return whatever `c[i]` returns. 
+In particular, for the common case where `c[i]` returns a `T &`, 
+`authAndAccess` will also return a `T &`, 
+and in the uncommon case where `c[i]` returns an object, 
+`authAndAccess` will return an object, too.
+The use of `decltype(auto)` is not limited to function return types. 
+It can also be convenient for declaring variables 
+when you want to apply the `decltype` type deduction rules to the initializing expression:
+```
+Widget w;
+const Widget & cw = w;
+auto myWidget1 = cw;            //     auto type deduction: myWidget1's type is       Widget
+decltype(auto) myWidget2 = cw;  // decltype type deduction: myWidget2's type is const Widget &
+```
+
+#### `decltype((x))`: Enforce lvalue Reference-ness on Reported Type
+
+Applying `decltype` to a name yields the declared type for that name. 
+Names are lvalue expressions, but that doesn’t affect `decltype`’s behavior. 
+For lvalue expressions more complicated than names, however, 
+`decltype` ensures that the type reported is always an lvalue reference. 
+That is, if an lvalue expression other than a name has type `T`, 
+`decltype` reports that type as `T &`. 
+This seldom has any impact, 
+because the type of most lvalue expressions inherently includes an lvalue reference qualifier. 
+Functions returning lvalues, for example, always return lvalue references. 
+<br><br>
+There is an implication of this behavior that is worth being aware of, however. In
+```
+int x = 0;
+```
+`x` is the name of a variable, so `decltype(x)` is `int`. 
+But wrapping the name `x` in parentheses `(x)` yields an expression more complicated than a name. 
+Being a name, `x` is an lvalue, and C++ defines the expression `(x)` to be an lvalue, too.
+`decltype((x))` is therefore `int &`. 
+Putting parentheses around a name can change the type that decltype reports for it!
+<br><br>
+In C++11, this is little more than a curiosity; 
+but in conjunction with C++14’s support for `decltype(auto)`, 
+it means that a seemingly trivial change in the way you write a return statement can affect the deduced type for a function:
+```
+decltype(auto) f1()
+{
+    int x = 0;
+    return x;        // decltype(x)   is int  , so f1 returns int
+}
+
+decltype(auto) f2()
+{
+    int x = 0;
+    return (x);      // decltype((x)) is int &, so f2 returns int &
+}
+```
+Note that not only does `f2` have a different return type from `f1`, 
+it’s also returning a reference to a local variable, thus creating dangling references! 
+<br><br>
+The primary lesson is to *pay very close attention when using `decltype(auto)`*.
+Seemingly insignificant details in the expression whose type is being deduced 
+can affect the type that `decltype(auto)` reports. 
+To ensure that the type being deduced is the type you expect, use the techniques described in Item 4. 
+
+### 📌 Item 4: Know how to view deduced types.
 
 
 
@@ -919,25 +1094,67 @@ resetV({1, 2, 3});     // error! can't deduce type for {1, 2, 3}
 
 
 
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
-### 📌 Item 1: Understand template type deduction
+
+
+### 📌 
+### 📌 
+### 📌 
+### 📌
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+
 
 
 
