@@ -567,8 +567,7 @@ There are three cases:
     f(cx);                    // T is int, param's type is const int &
     f(rx);                    // T is int, param's type is const int &
     ```
-    <br><br>
-    If param were a pointer (or a pointer to const) instead of a reference, things would work essentially the same way: 
+    If `param` were a pointer (or a pointer to const) instead of a reference, things would work essentially the same way: 
     ```
     template <typename T>
     void f(T * param);        // param is now a pointer

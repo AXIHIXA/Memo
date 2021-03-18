@@ -1,4 +1,4 @@
-# *C++ Primee* Notes
+# *C++ Primer* Notes
 
 
 
