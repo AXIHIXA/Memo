@@ -739,11 +739,205 @@ f1(someFunc);                // param deduced as ptr-to-func; type is void (*)(i
 f2(someFunc);                // param deduced as ref-to-func; type is void (&)(int, double)
 ```
 
+### 📌 Item 2: Understand `auto` type deduction
+
+- `auto` type deduction is usually the same as template type deduction, 
+  but `auto` type deduction assumes that a *braced initializer* represents a `std::initializer_list`, 
+  and template type deduction **doesn’t**.
+- `auto` in a *function return type* or a *lambda parameter* implies *template type deduction*, **not** ~~auto type deduction~~.
+
+With only one curious exception, `auto` type deduction is template type deduction. 
+There’s a direct mapping between template type deduction and `auto` type deduction. 
+There is literally an algorithmic transformation from one to the other. 
+<br><br>
+In Item 1, template type deduction is explained using this general function template
+```
+template <typename T>
+void f(ParamType param);
+```
+and this general call:
+```
+f(expr);  // call f with some expression
+```
+In the call to `f`, compilers use `expr` to deduce types for `T` and `ParamType`. 
+<br><br>
+When a variable is declared using `auto`, 
+`auto` plays the role of `T` in the template, 
+and the type specifier for the variable acts as `ParamType`. 
+This is easier to show than to describe, so consider this example:
+```
+auto x = 27;
+const auto cx = x;
+const auto & rx = x;
+```
+To deduce types for `x`, `cx`, and `rx` in these examples,
+compilers act as if there were a template for each declaration 
+as well as a call to that template with the corresponding initializing expression:
+```
+template <typename T>
+void func_for_x(T param);
+
+func_for_x(27);
+
+template <typename T> 
+void func_for_cx(const T param); 
+
+func_for_cx(x); 
+
+
+template <typename T> 
+void func_for_rx(const T & param);
+
+func_for_rx(x);
+```
+As I said, deducing types for `auto` is, 
+with only one exception (which we’ll discuss soon), 
+the same as deducing types for templates. 
+<br><br>
+In a variable declaration using `auto`, 
+the type specifier takes the place of `ParamType`, 
+so there are three cases for that, too:
+- Case 1: The type specifier is a pointer or reference, but not a universal reference. 
+- Case 2: The type specifier is a universal reference. 
+- Case 3: The type specifier is neither a pointer nor a reference. 
+<br><br>
+Array and function names also decay into pointers for non-reference type specifiers in `auto` type deduction:
+```
+const char name[] = "R. N. Briggs";  // name's type is const char[13]
+
+auto arr1 = name;                    // arr1's type is const char *
+auto & arr2 = name;                  // arr2's type is const char (&)[13]
+
+void someFunc(int, double);          // someFunc is a function; type is void(int, double)
+
+auto func1 = someFunc;               // func1's type is void (*)(int, double)
+auto & func2 = someFunc;             // func2's type is void (&)(int, double)
+```
+
+#### `auto` with Braced Initializer
+
+One way that `auto` type deduction differs from template type deduction: 
+```
+// legacy initialization since C++98
+auto x1 = 27;    // type is int, value is 27
+auto x2(27);     // type is int, value is 27
+
+// uniform initialization since C++11
+auto x3 = {27};  // type is std::initializer_list<int>, value is {27}
+auto x4 {27};    // type is std::initializer_list<int>, value is {27}
+```
+This is due to a special type deduction rule for `auto`. 
+When the initializer for an auto-declared variable is enclosed in braces, 
+the deduced type is a `std::initializer_list`. 
+If such a type can’t be deduced 
+(e.g., because the values in the braced initializer are of different types), 
+the code will be rejected:
+```
+auto x5 = {1, 2, 3.0};  // error! can't deduce T for std::initializer_list<T>
+```
+As the comment indicates, type deduction will fail in this case, 
+but it’s important to recognize that there are actually *two kinds of type deduction* taking place. 
+One kind stems from the use of auto: `x5`’s type has to be deduced. 
+Because `x5`’s initializer is in braces, `x5` must be deduced to be a `std::initializer_list`. 
+But `std::initializer_list` is a *template*. 
+Instantiations are `std::initializer_list<T>` for some type `T`, and that means that `T`’s type must also be deduced. 
+Such deduction falls under the purview of the second kind of type deduction occurring here: 
+*template type deduction*. 
+In this example, that deduction fails, 
+because the values in the braced initializer don’t have a single type, 
+just like the following example for template functions: 
+```
+template <typename T>
+T add(T x1, T x2)
+{
+    return x1 + x2;
+}
+
+add(1, 2.0);           // error! dedeced conflict types for parameter 'T' ('int' vs. 'double')
+```
+<br><br>
+The treatment of braced initializers is the only way 
+in which `auto` type deduction and template type deduction differ. 
+When an auto-declared variable is initialized with a braced initializer, 
+the deduced type is an instantiation of `std::initializer_list`.
+But if the corresponding template is passed the same initializer, type deduction fails, and the code is rejected:
+```
+auto x = {11, 23, 9};  // x's type is std::initializer_list<int>
+
+template<typename T>   // template with parameter declaration equivalent to x's declaration
+void f(T param); 
+
+f({11, 23, 9});        // error! can't deduce type for T
+```
+However, if you specify in the template that param is a `std::initializer_list<T>` for some unknown `T`, 
+template type deduction will deduce what `T` is:
+```
+template <typename T>
+void f(std::initializer_list<T> initList);
+
+f({11, 23, 9});        // T deduced as int, and initList's type is std::initializer_list<int>
+```
+So the only real difference between `auto` and template type deduction is that 
+`auto` assumes that a braced initializer represents a `std::initializer_list`, 
+but template type deduction doesn’t.
+<br><br>
+For C++11, this is the full story, but for C++14, the tale continues. 
+C++14 permits `auto` to indicate that a *function’s return type* should be deduced (see Item 3), 
+and C++14 lambdas may use `auto` in parameter declarations. 
+However, these uses of `auto` employ template type deduction, **not** `auto` type deduction. 
+So a function with an `auto` return type that returns a braced initializer **won’t** compile:
+```
+auto createInitList()
+{
+    return {1, 2, 3};  // error: can't deduce type
+}
+```
+The same is true when `auto` is used in a parameter type specification in a C++14 lambda:
+```
+std::vector<int> v;
+
+auto resetV = [&v](const auto & newValue) 
+{
+    v = newValue;
+};
+
+resetV({1, 2, 3});     // error! can't deduce type for {1, 2, 3}
+```
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
+### 📌 Item 1: Understand template type deduction
 
 
 
