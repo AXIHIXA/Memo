@@ -528,9 +528,7 @@ There are three cases:
     - Workflow: 
         - If `expr`’s type is a reference, ignore the reference part.
         - Then pattern-match `expr`’s type against `ParamType` to determine `T`. 
-    <br>
     For example: 
-    
     ```
     template <typename T>
     void f(T & param);     // param is a reference
