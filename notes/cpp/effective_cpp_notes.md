@@ -16,6 +16,8 @@
 
 ## 🌱 Effective C++: 55 Specific Ways to Improve Your Programs and Designs
 
+## 1. Accustoming Yourself to C++
+
 ### 📌 Item 2: Prefer `const`s, `enum`s, and `inline`s to `#define`s
     
 - For simple constants, prefer `const` objects or `enum`s to `#define`s.
@@ -414,7 +416,28 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
         
         } 
         ```
-    
+        
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
 
 
 
@@ -449,9 +472,38 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 ## 🌱 More Effective C++: 35 New Ways to Improve Your Programs and Designs
 
-### 📌 Item 2
+### 📌 Item 1
 
 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
 
 
 
@@ -477,9 +529,38 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 ## 🌱 Effective STL: 50 Specific Ways to Improve Your Use of the Standard Template Library
 
-### 📌 Item 2
+### 📌 Item 1
 
 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
+### 📌 
 
 
 
@@ -499,6 +580,8 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 --- 
 
 ## 🌱 Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 And C++14
+
+## [CHAPTER 1] Deducing Types
 
 ### 📌 Item 1: Understand template type deduction
 
@@ -852,7 +935,6 @@ T add(T x1, T x2)
 
 add(1, 2.0);           // error! dedeced conflict types for parameter 'T' ('int' vs. 'double')
 ```
-<br><br>
 The treatment of braced initializers is the only way 
 in which `auto` type deduction and template type deduction differ. 
 When an auto-declared variable is initialized with a braced initializer, 
@@ -1035,7 +1117,7 @@ decltype(auto) myWidget2 = cw;  // decltype type deduction: myWidget2's type is 
 #### `decltype((x))`: Enforce lvalue Reference-ness on Reported Type
 
 Applying `decltype` to a name yields the declared type for that name. 
-Names are lvalue expressions, but that doesn’t affect `decltype`’s behavior. 
+(By the way, names are lvalue expressions, but that doesn’t affect `decltype`’s behavior. )
 For lvalue expressions more complicated than names, however, 
 `decltype` ensures that the type reported is always an lvalue reference. 
 That is, if an lvalue expression other than a name has type `T`, 
@@ -1080,14 +1162,89 @@ To ensure that the type being deduced is the type you expect, use the techniques
 
 ### 📌 Item 4: Know how to view deduced types.
 
+- Deduced types can often be seen using IDE editors, compiler error messages, and the Boost TypeIndex library. 
+- The results of some tools may be neither helpful nor accurate, so an understanding of C++’s type deduction rules remains essential. 
+
+#### IDE Editors
+ 
+```
+const int theAnswer = 42;
+auto x = theAnswer;            // int
+auto y = &theAnswer;           // const int *
+decltype(auto) z = theAnswer;  // const int
+                               // PS. CLion 2020.2.3 is telling you this is 'int'. 
+                               //     This bug was reported 4 years ago but still not fixed as of 03/18/2021. 
+```
 
+#### Compiler Diagnostics
 
+An effective way to get a compiler to show a type it has deduced is 
+to use that type in a way that leads to compilation problems. 
+The error message reporting the problem is virtually sure to mention the type that’s causing it. 
+Suppose, for example, we’d like to see the types that were deduced for `x` and `y` in the previous example. 
+We first declare a class template that we don’t define. Something
+like this does nicely:
+```
+template <typename T>   // declaration only for TD;
+class TD;               // TD == "Type Displayer"
+```
+Attempts to instantiate this template will elicit an error message, 
+because there’s no template definition to instantiate. 
+To see the types for `x` and `y`, just try to instantiate `TD` with their types:
+```
+TD<decltype(x)> xType;  // elicit errors containing
+TD<decltype(y)> yType;  // x's and y's types
+```
+Error message (`g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0`):
+```
+error: aggregate 'TD<int> xType' has incomplete type and cannot be defined
+error: aggregate 'TD<const int *> yType' has incomplete type and cannot be defined
+```
 
+#### Runtime Output
 
+```
+boost::core::demangle(typeid(x).name());
+```
+Sadly, the results of `std::type_info::name` are **not** reliable. 
+In this case, for example, the type that all three compilers report for param are incorrect. 
+Furthermore, they’re essentially required to be incorrect, 
+because the specification for `std::type_info::name` mandates that the type be treated 
+*as if it had been passed to a template function as a by-value parameter*. 
+As Item 1 explains, that means that if the type is a reference, its reference-ness is ignored, 
+and if the type after reference removal is const (or volatile), its constness (or volatileness) is also ignored. 
+That’s why param’s type (which is `const Widget * const &`) is reported as `const Widget *`.
+First the type’s reference-ness is removed, and then the constness of the resulting pointer is eliminated.
+<br><br>
+Equally sadly, the type information displayed by IDE editors is also not reliable, or at least not reliably useful. 
+<br><br>
+If you’re more inclined to rely on libraries than luck, 
+you’ll be pleased to know that where `std::type_info::name` and IDEs may fail, 
+the *Boost TypeIndex library* (often written as `Boost.TypeIndex`) is designed to succeed. 
+The library isn’t part of Standard C++, but neither are IDEs or templates like TD. 
+Furthermore, the fact that Boost libraries (available at [boost.org](https://www.boost.org/)) 
+are cross-platform, open source, 
+and available under a license designed to be palatable to even the most paranoid corporate legal team 
+means that code using Boost libraries is nearly as portable as code relying on the Standard Library.
+```
+#include <boost/type_index.hpp>
 
+template <typename T>
+void f(const T & param)
+{
+    std::cout << "T = "
+              << type_id_with_cvr<T>().pretty_name()
+              << '\n';
 
+    std::cout << "param = "
+              << boost::typeindex::type_id_with_cvr<decltype(param)>().pretty_name()
+              << '\n';
+}
+```
 
+## [CHAPTER 2] `auto`
 
+### 📌 Item 5: Prefer `auto` to explicit type declarations
 
 
 
@@ -1095,92 +1252,42 @@ To ensure that the type being deduced is the type you expect, use the techniques
 
 
 
+### 📌 Item 6: Use the explicitly typed initializer idiom when `auto` deduces undesired types
 
-### 📌 
-### 📌 
-### 📌 
-### 📌
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
 
 
 
+## [CHAPTER 3] Moving to Modern C++
 
 
+### 📌 Item 7: Distinguish between `()` and `{}` when creating objects
 
 
 
 
+### 📌 Item 8: Prefer `nullptr` to `0` and `NULL`
 
 
 
 
+### 📌 Item 9: Prefer alias declarations to typedefs
 
 
 
 
 
+### 📌 Item 10: Prefer scoped `enum`s to unscoped `enum`s
 
 
 
 
 
+### 📌 Item 11: Prefer deleted functions to private undefined ones
 
 
 
 
+### 📌 Item 12: Declare overriding functions `override`
 
 
 
@@ -1188,12 +1295,14 @@ To ensure that the type being deduced is the type you expect, use the techniques
 
 
 
+### 📌 Item 13: Prefer `const_iterator`s to `iterator`s
 
 
 
 
 
 
+### 📌 Item 14: Declare functions `noexcept` if they won’t emit exceptions
 
 
 
@@ -1202,6 +1311,7 @@ To ensure that the type being deduced is the type you expect, use the techniques
 
 
 
+### 📌 Item 15: Use `constexpr` whenever possible
 
 
 
@@ -1210,26 +1320,152 @@ To ensure that the type being deduced is the type you expect, use the techniques
 
 
 
+### 📌 Item 16: Make `const` member functions thread safe
 
 
 
 
+### 📌 Item 17: Understand special member function generation
 
 
 
 
 
+## [CHAPTER 4] Smart Pointers
 
+### 📌 Item 18: Use `std::unique_ptr` for exclusive-ownership resource management
 
 
 
 
+### 📌 Item 19: Use `std::shared_ptr` for shared-ownership resource management
 
 
 
+### 📌 Item 20: Use `std::weak_ptr` for `std::shared_ptr`-like pointers that can dangle
 
 
 
+### 📌 Item 21: Prefer `std::make_unique` and `std::make_shared` to direct use of `new`
+
+
+
+
+
+### 📌 Item 22: When using the Pimpl Idiom, define special member functions in the implementation file
+
+
+
+
+
+
+
+## [CHAPTER 5] Rvalue References, Move Semantics, and Perfect Forwarding
+
+### 📌 Item 23: Understand `std::move` and `std::forward`
+
+
+
+### 📌 Item 24: Distinguish universal references from rvalue references
+
+
+
+### 📌 Item 25: Use `std::move` on rvalue references, `std::forward` on universal references
+
+
+
+
+### 📌 Item 26: Avoid overloading on universal references
+
+
+
+
+
+### 📌 Item 27: Familiarize yourself with alternatives to overloading on universal references
+
+
+
+
+### 📌 Item 28: Understand reference collapsing
+
+
+
+
+
+### 📌 Item 29: Assume that move operations are not present, not cheap, and not used
+
+
+
+### 📌 Item 30: Familiarize yourself with perfect forwarding failure cases
+
+
+
+## [CHAPTER 6] Lambda Expressions
+
+### 📌 Item 31: Avoid default capture modes
+
+
+
+
+### 📌 Item 32: Use init capture to move objects into closures
+
+
+
+
+
+### 📌 Item 33: Use `decltype` on `auto &&` parameters to `std::forward` them
+
+
+
+
+### 📌 Item 34: Prefer lambdas to `std::bind`
+
+
+
+
+
+## [CHAPTER 7] The Concurrency API
+
+### 📌 Item 35: Prefer task-based programming to threadbased
+
+
+
+### 📌 Item 36: Specify `std::launch::async` if asynchronicity is essential
+
+
+
+
+### 📌 Item 37: Make `std::thread`s unjoinable on all paths
+
+
+
+
+
+
+### 📌 Item 38: Be aware of varying thread handle destructor behavior
+
+
+
+
+
+### 📌 Item 39: Consider `void` futures for one-shot event communication
+
+
+
+
+### 📌 Item 40: Use `std::atomic` for concurrency, `volatile` for special memory
+
+
+
+## [CHAPTER 8] Tweaks
+
+### 📌 Item 41: Consider pass by value for copyable parameters that are cheap to move and always copied
+
+
+
+
+
+### 📌 Item 42: Consider emplacement instead of insertion
 
 
 
