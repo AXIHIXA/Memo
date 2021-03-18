@@ -501,18 +501,23 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 ### 📌 Item 1: Understand template type deduction
 
-If you’re willing to overlook a pinch of pseudocode, 
-we can think of a function template
-as looking like this:
-template<typename T>
+If you’re willing to overlook a pinch of pseudocode, we can think of a function template as looking like this:
+```
+template <typename T>
 void f(ParamType param);
-A call can look like this:
-f(expr); // call f with some expression
 
+f(expr);  // call f with some expression
+```
+During compilation, compilers use expr to deduce two types: one for `T` and one for `ParamType`. 
+These types are frequently **different**, because `ParamType` often contains adornments, e.g., `const` or reference qualifiers. 
+E.g., for the following case, `T` is deduced to be `int`, but `ParamType` is deduced to be `const int &`. 
+```
+template <typename T>
+void f(const T & param);  // ParamType is const T &
 
-
-
-
+int x = 0;
+f(x);                     // call f with an int
+```
 
 
 
