@@ -502,6 +502,11 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 ### 📌 Item 1: Understand template type deduction
 
+- During template type deduction, arguments that are references are treated as non-references, i.e., their reference-ness is ignored.
+- When deducing types for universal reference parameters, lvalue arguments get special treatment.
+- When deducing types for by-value parameters, const and/or volatile arguments are treated as non-const and non-volatile.
+- During template type deduction, arguments that are array or function names decay to pointers, unless they’re used to initialize references.
+
 If you’re willing to overlook a pinch of pseudocode, we can think of a function template as looking like this:
 ```
 template <typename T>
@@ -635,7 +640,7 @@ There are three cases:
     It’s important to recognize that only *top-level cv-constraints* are ignored. 
     *Low-level cv-constraints* are preserved properly. 
     That is,  `const` (and `volatile`) is ignored only for by-value parameters. 
-    As we’ve seen, for parameters that are references-to-const or pointesr-to-const, 
+    As we’ve seen, for parameters that are references-to-const or pointers-to-const, 
     the constness of `expr` is preserved during type deduction.  
     Consider the case where `expr` is a `const` pointer to a `const` object, and `expr` is passed to a by-value `param`: 
     ```
@@ -648,3 +653,173 @@ There are three cases:
     In this case, `T` is deducted to `const char *`.
 
 #### Array Arguments
+
+In many contexts, an array decays into a pointer to its first element. 
+This decay is what permits code like this to compile:
+```
+const char name[] = "J. P. Briggs";  // name's type is const char[13]
+const char * ptrToName = name;       // array decays to pointer
+```
+Here, the `const char *` pointer `ptrToName` is being initialized with `name`, which is a `const char[13]`. 
+These types (`const char *` and `const char[13]`) are **not** the same, but because of the array-to-pointer decay rule, the code compiles. 
+<br><br>
+But what if an array is passed to a template taking a by-value parameter? What happens then?
+```
+template <typename T>
+void f(T param);                     // template with by-value parameter
+
+f(name);                             // what types are deduced for T and param?
+```
+We begin with the observation that there is no such thing as a function parameter that’s an array. 
+In parameter lists, an array declaration is treated as a pointer declaration: 
+```
+void myFunc(int param[]);
+void myFunc(int * param);            // same function as above
+```
+Because array parameter declarations are treated as if they were pointer parameters,
+the type of an array that’s passed to a template function by value is deduced to be a pointer type. 
+That means that in the call to the template `f`, its type parameter `T` is deduced to be `const char *`. 
+<br><br>
+But now comes a curve ball. 
+Although functions can’t declare parameters that are truly arrays, 
+they can declare parameters that are *references to arrays*! 
+So if we modify the template `f` to take its argument by reference, 
+```
+template <typename T>
+void f(T & param);                   // template with by-reference parameter
+
+f(name);                             // what types are deduced for T and param?
+```
+the type deduced for `T` is the *actual type of the array*! 
+That type includes the size of the array, so in this example, 
+`T` is deduced to be `const char [13]`, 
+and the type of `f`’s parameter (a reference to this array) is `const char (&)[13]`. 
+<br><br>
+Interestingly, the ability to declare references to arrays enables creation of a template
+that deduces the number of elements that an array contains:
+```
+// return size of an array as a compile-time constant. 
+// (The array parameter has no name, 
+// because we care only about the number of elements it contains.)
+template <typename T, std::size_t N> 
+constexpr std::size_t arraySize(T (&)[N]) noexcept
+{
+    return N;
+}
+```
+As Item 15 explains, declaring this function `constexpr` makes its result available during compilation. 
+That makes it possible to declare, say, an array 
+with the same number of elements as a second array whose size is computed from a *braced initializer*: 
+```
+int keyVals[] = {1, 3, 7, 9, 11, 22, 35};        // keyVals has 7 elements
+int mappedVals[arraySize(keyVals)];              // so does mappedVals
+```
+Of course, as a modern C++ developer, you’d naturally prefer a `std::array` to a built-in array:
+```
+std::array<int, arraySize(keyVals)> mappedVals;  // mappedVals' size is 7
+```
+As for `arraySize` being declared `noexcept`, that’s to help compilers generate better code. For details, see Item 14. 
+
+#### Function Arguments
+
+Function types can decay into function pointers, 
+and everything we’ve discussed regarding type deduction for arrays 
+applies to type deduction for functions and their decay into function pointers. 
+As a result:
+```
+void someFunc(int, double);  // someFunc is a function; type is void(int, double)
+
+template <typename T>
+void f1(T param);            // in f1, param passed by value
+
+template<typename T>
+void f2(T & param);          // in f2, param passed by ref
+
+f1(someFunc);                // param deduced as ptr-to-func; type is void (*)(int, double)
+f2(someFunc);                // param deduced as ref-to-func; type is void (&)(int, double)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
