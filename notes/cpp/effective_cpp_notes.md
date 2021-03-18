@@ -1,11 +1,11 @@
 # *`Effective C++`* Notes
 
 - Notes of reading: 
-    - ***Effective C++ Digital Collection: 140 Ways to Improve Your Programming***
-        - ***Effective C++: 55 Specific Ways to Improve Your Programs and Designs***
-        - ***More Effective C++: 35 New Ways to Improve Your Programs and Designs***
-        - ***Effective STL: 50 Specific Ways to Improve Your Use of the Standard Template Library***
-    - ***Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 and C++14***
+    - *Effective C++ Digital Collection: 140 Ways to Improve Your Programming*
+        - *Effective C++: 55 Specific Ways to Improve Your Programs and Designs*
+        - *More Effective C++: 35 New Ways to Improve Your Programs and Designs*
+        - *Effective STL: 50 Specific Ways to Improve Your Use of the Standard Template Library*
+    - *Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 and C++14*
 
 
 
@@ -446,7 +446,7 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 ---
 
-## 🌱 Effective Modern C++: 42 Ways to Improve Your of C++11 and C++14
+## 🌱 More Effective C++: 35 New Ways to Improve Your Programs and Designs
 
 ### 📌 Item 2
 
@@ -518,8 +518,39 @@ void f(const T & param);  // ParamType is const T &
 int x = 0;
 f(x);                     // call f with an int
 ```
+The type deduced for `T` is **not** always the same as the type of the argument passed to the function, i.e., that `T` is the type of `expr`. 
+Because the type deduced for `T` is dependent not just on the type of `expr`, but also on the form of `ParamType`. 
+There are three cases: 
+- `ParamType` is a pointer or non-universal reference type. 
+    - Universal references are described in Item 24. 
+      At this point, all you need to know is that they exist 
+      and that they’re not the same as lvalue references or rvalue references. 
+    - Workflow: 
+        - If `expr`’s type is a reference, ignore the reference part.
+        - Then pattern-match `expr`’s type against `ParamType` to determine `T`. 
+    <br>
+    For example: 
+    ```
+    template <typename T>
+    void f(T & param);     // param is a reference
 
-
+    int x = 27;            // x is an int
+    const int cx = x;      // cx is a const int
+    const int & rx = x;    // rx is a reference to x as a const int
+    ```
+    The deduced types for `param` and `T` in various calls are as follows:
+    ```
+    f(x);                  // T is int,
+                           // param's type is int &
+    f(cx);                 // T is const int,
+                           // param's type is const int &
+    f(rx);                 // T is const int,
+                           // param's type is const int &
+    ```
+    Passing a `const` object to a template taking a `T &` parameter is safe:
+    the constness of the object becomes part of the type deduced for `T`.
+- `ParamType` is a universal reference. 
+- `ParamType` is neither a pointer nor a reference. 
 
 
 
