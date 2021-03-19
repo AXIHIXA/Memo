@@ -1642,6 +1642,7 @@ int z {0};    // initializer is in braces
 In many cases, it’s also possible to use an equals sign and braces together: 
 ```
 int z = {0};  // initializer uses "=" and braces
+              // C++ usually treats it the same as the braces-only version
 ```
 C++ usually treats it the *same as the braces-only version*. 
 
@@ -1914,7 +1915,6 @@ T localObject {std::forward<Ts>(params)...};  // using braces
 ```
 So consider this calling code:
 ```
-std::vector<int> v;
 doSomeWork<std::vector<int>>(10, 20);
 ```
 If `doSomeWork` uses parentheses when creating `localObject`, the result is a `std::vector<int>` with 10 elements. 
