@@ -1556,8 +1556,177 @@ auto ep2 = static_cast<float>(calcEpsilon());
 
 ### 📌 Item 8: Prefer `nullptr` to `0` and `NULL`
 
+- Prefer `nullptr` to `0` and `NULL`. 
+- Avoid overloading on integral and pointer types. 
 
+So here’s the deal: the literal `0` is an `int`, **not** a pointer. 
+If C++ finds itself looking at `0` in a context where only a pointer can be used, 
+it’ll grudgingly interpret `0` as a null pointer, 
+but that’s a fallback position. 
+C++’s primary policy is that `0` is an `int`, not a pointer. 
+<br><br>
+Practically speaking, the same is true of `NULL`: 
+```
+// <stddef.h>
+// g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
 
+#ifdef __GNUG__
+#define NULL __null
+#else                      /* G++ */
+#ifndef __cplusplus
+#define NULL ((void *) 0)
+#else                      /* C++ */
+#define NULL 0
+#endif                     /* C++ */
+#endif                     /* G++ */
+```
+There is some uncertainty in the details in `NULL`’s case, 
+because implementations are allowed to give `NULL` an integral type other than `int` (e.g., `long`). 
+That’s not common, but it doesn’t really matter, 
+because the issue here isn’t the exact type of `NULL`, 
+it’s that neither `0` nor `NULL` has a pointer type. 
+<br><br>
+In C++98, the primary implication of this was that 
+overloading on pointer and integral types could lead to surprises. 
+Passing `0` or `NULL` to such overloads **never** ~~called a pointer overload~~: 
+```
+void f(int);     // three overloads of f
+void f(bool);
+void f(void *);
+
+f(0);            // calls f(int), not f(void*)
+f(NULL);         // might not compile, but typically calls f(int). Never calls f(void*)
+```
+The uncertainty regarding the behavior of `f(NULL)` 
+is a reflection of the leeway granted to implementations regarding the type of `NULL`. 
+If `NULL` is defined to be, say, `0L`, the call is *ambiguous*, 
+because conversion from `long` to `int`, `long` to `bool`, and `0L` to `void *` are considered equally good. 
+The interesting thing about that call is the contradiction between the apparent meaning of the source code 
+(“I’m calling `f` with `NULL`, the null pointer”) and its actual meaning (“I’m calling `f` with some kind of integer, **not** the null pointer”). 
+This counterintuitive behavior is what led to the guideline for C++98 programmers to avoid overloading on pointer and integral types. 
+That guideline remains valid in C++11, because, the advice of this item notwithstanding, 
+it’s likely that some developers will continue to use `0` and `NULL`,
+even though `nullptr` is a better choice. 
+<br><br>
+`nullptr`’s advantage is that it **doesn’t** have an integral type. 
+To be honest, it doesn’t have a pointer type, either, but you can think of it as a pointer of all types. 
+`nullptr`’s actual type is `std::nullptr_t`, and, 
+in a wonderfully circular definition,
+`std::nullptr_t` is defined to be the type of `nullptr`. 
+The type `std::nullptr_t` *implicitly converts to all raw pointer types*, 
+and that’s what makes `nullptr` act as if it were a pointer of all types. 
+Calling the overloaded function `f` with `nullptr` calls the `void *` overload, 
+because `nullptr` can’t be viewed as anything integral: 
+```
+f(nullptr);      // calls f(void*) overload
+```
+Using `nullptr` instead of `0` or `NULL` thus avoids overload resolution surprises, but that’s not its only advantage. 
+It can also improve code clarity, especially when `auto` variables are involved. 
+For example, suppose you encounter this in a code base: 
+```
+auto result = findRecord(/* arguments */);
+
+if (result == 0) 
+{
+    // ...
+}
+```
+If you don’t happen to know (or can’t easily find out) what `findRecord` returns, 
+it may not be clear whether result is a pointer type or an integral type. 
+After all, `0` (what result is tested against) could go either way. 
+If you see the following, on the other hand,
+```
+auto result = findRecord(/* arguments */);
+
+if (result == nullptr) 
+{
+    // ...
+}
+```
+there’s no ambiguity: result must be a pointer type. 
+<br><br>
+`nullptr` shines especially brightly when templates enter the picture. 
+Suppose you have some functions that should be called only when the appropriate mutex has been locked. 
+Each function takes a different kind of pointer: 
+```
+int f1(std::shared_ptr<Widget> spw);           // call these only when
+double f2(std::unique_ptr<Widget> upw);        // the appropriate
+bool f3(Widget * pw);                          // mutex is locked
+```
+Calling code that wants to pass null pointers could look like this: 
+```
+std::mutex f1m, f2m, f3m;                      // mutexes for f1, f2, and f3
+using MuxGuard = std::lock_guard<std::mutex>;
+
+{
+    MuxGuard g(f1m);                           // lock mutex for f1
+    auto result = f1(0);                       // pass 0 as null ptr to f1
+}                                              // unlock mutex
+
+{
+    MuxGuard g(f2m);                           // lock mutex for f2
+    auto result = f2(NULL);                    // pass NULL as null ptr to f2
+}                                              // unlock mutex
+
+{
+    MuxGuard g(f3m);                           // lock mutex for f3
+    auto result = f3(nullptr);                 // pass nullptr as null ptr to f3
+}
+```
+The failure to use `nullptr` in the first two calls in this code is sad, but the code works, and that counts for something. 
+However, the repeated pattern in the calling code: lock mutex, call function, unlock mutex, is more than sad: it’s disturbing.
+This kind of source code duplication is one of the things that templates are designed to avoid, so let’s templatize the pattern: 
+```
+template <typename FuncType, typename MuxType, typename PtrType>
+auto lockAndCall(FuncType func, MuxType & mutex, PtrType ptr) -> decltype(func(ptr))  // C++11 
+{
+    MuxGuard g(mutex);
+    return func(ptr);
+}
+
+template <typename FuncType, typename MuxType, typename PtrType>
+decltype(auto) lockAndCall(FuncType func, MuxType & mutex, PtrType ptr)               // C++14
+{
+    MuxGuard g(mutex);
+    return func(ptr);
+}
+```
+Given the `lockAndCall` template (either version), callers can write code like this: 
+```
+auto result1 = lockAndCall(f1, f1m, 0);        // error!
+auto result2 = lockAndCall(f2, f2m, NULL);     // error!
+auto result3 = lockAndCall(f3, f3m, nullptr);  // fine
+```
+In two of the three cases, the code won’t compile. 
+The problem in the first call is that when `0` is passed to `lockAndCall`, 
+template type deduction kicks in to figure out its type. 
+The type of `0` is, was, and always will be `int`, 
+so that’s the type of the parameter ptr inside the instantiation of this call to `lockAndCall`. 
+Unfortunately, this means that in the call to `func` inside `lockAndCall`, an `int` is being passed, 
+and that’s **not** compatible with the `std::shared_ptr<Widget>` parameter that `f1` expects. 
+The `0` passed in the call to `lockAndCall` was intended to represent a null pointer, 
+but what actually got passed was a run-of-the-mill `int`. 
+Trying to pass this `int` to `f1` as a `std::shared_ptr<Widget>` is a type error. 
+The call to `lockAndCall` with `0` fails because inside the template, 
+an `int` is being passed to a function that requires a `std::shared_ptr<Widget>`. 
+<br><br>
+The analysis for the call involving `NULL` is essentially the same. 
+When `NULL` is passed to `lockAndCall`, an integral type is deduced for the parameter `ptr`, 
+and a type error occurs when ptr, an `int` or `int`-like type, is passed to `f2`, 
+which expects to get a `std::unique_ptr<Widget>`. 
+<br><br>
+In contrast, the call involving `nullptr` has no trouble. 
+When `nullptr` is passed to `lockAndCall`, the type for `ptr` is deduced to be `std::nullptr_t`. 
+When `ptr` is passed to `f3`, there’s an *implicit conversion* from `std::nullptr_t` to `Widget *`,
+because std::nullptr_t implicitly converts to all pointer types.
+<br><br>
+The fact that template type deduction deduces the “wrong” types for `0` and `NULL` 
+(i.e., their true types, rather than their fallback meaning as a representation for a null pointer) 
+is the most compelling reason to use `nullptr` instead of `0` or `NULL` when you want to refer to a null pointer. 
+With `nullptr`, templates pose no special challenge. 
+Combined with the fact that `nullptr` doesn’t suffer from the overload resolution surprises that `0` and `NULL` are susceptible to, 
+the case is ironclad. 
+When you want to refer to a null pointer, use `nullptr`, **not** `0` or `NULL`.
 
 ### 📌 Item 9: Prefer alias declarations to typedefs
 
