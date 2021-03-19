@@ -1246,13 +1246,228 @@ void f(const T & param)
 
 ### 📌 Item 5: Prefer `auto` to explicit type declarations
 
+- Using `auto`-typed variables 
+    - *avoids uninitialized variables*
+    - *avoids verbose variable declarations*
+    - *the ability to directly hold closures*
+    - *avoids type shortcuts*
+    - *avoids unintentional type mismatches*
+- `auto`-typed variables are subject to the pitfalls described in Items 2 and 6. 
 
+Ah, the simple joy of
+```
+int x;
+```
+Wait. Damn. I forgot to initialize `x`, so its value is indeterminate. Maybe. 
+It might actually be initialized to zero. Depends on the context. Sigh. 
+<br><br>
+Never mind. Let’s move on to the simple joy of declaring a local variable to be initialized by dereferencing an iterator:
+```
+template <typename It>  // algorithm to dwim ("do what I mean")
+void dwim(It b, It e)   // for all elements in range from b to e
+{ 
+    while (b != e) 
+    {
+        typename std::iterator_traits<It>::value_type currValue = *b;
+    }
+}
+```
+Okay, simple joy (take three): 
+the delight of declaring a local variable whose type is that of a closure (lambda expression). 
+Oh, right. The type of a closure is known only to the compiler, hence can’t be written out. 
+<br><br>
+As of C++11, all these issues go away, courtesy of `auto`. 
+`auto` variables have their type deduced from their initializer, so they *must be initialized*.
+That means you can wave goodbye to a host of uninitialized variable problems as you speed by on the modern C++ superhighway: 
+```
+int x1;       // potentially uninitialized
+auto x2;      // error! initializer required
+auto x3 = 0;  // fine, x's value is well-defined
+```
+Said highway lacks the potholes associated with declaring a local variable whose value is that of a dereferenced iterator: 
+```
+template <typename It>  // algorithm to dwim ("do what I mean")
+void dwim(It b, It e)   // for all elements in range from b to e
+{ 
+    while (b != e) 
+    {
+        auto currValue = *b;
+    }
+}
+```
+And because `auto` uses *type deduction* (see Item 2), it can represent types known only to compilers:
+```
+// C++11 comparison func for Widgets pointed to by std::unique_ptrs
+auto derefUPLess = [](const std::unique_ptr<Widget> & p1, const std::unique_ptr<Widget> & p2) 
+{ 
+    return *p1 < *p2; 
+}; 
+```
+Very cool. In C++14, the temperature drops further, because parameters to lambda expressions may involve auto:
+```
+// C++14 comparison func for Widgets pointed to by anything pointer-like
+auto derefUPLess = [](const auto & p1, const auto & p2) 
+{ 
+    return *p1 < *p2; 
+}; 
+```
+Coolness notwithstanding, perhaps you’re thinking we don’t really need `auto` to declare a variable that holds a closure, 
+because we can use a `std::function` object. 
+It’s true, we can, but possibly that’s not what you were thinking. 
+And maybe now you’re thinking “What’s a `std::function` object?” So let’s clear that up. 
+<br><br>
+`std::function` is a template in the C++11 Standard Library that generalizes the idea of a function pointer. 
+Whereas function pointers can point only to functions, 
+however, `std::function` objects can refer to *any callable object*, 
+i.e., to anything that can be invoked like a function. 
+Just as you must specify the type of function to point to when you create a function pointer 
+(i.e., the signature of the functions you want to point to), 
+you must specify the type of function to refer to when you create a `std::function` object. 
+You do that through `std::function`’s template parameter.
+For example, to declare a `std::function` object named func 
+that could refer to any callable object acting as if it had this signature: 
+```
+std::function<bool (const std::unique_ptr<Widget> &,
+                    const std::unique_ptr<Widget> &)> func;
+```
+Because lambda expressions yield callable objects, closures can be stored in `std::function` objects. 
+That means we could declare the C++11 version of `derefUPLess` without using `auto` as follows:
+```
+std::function<bool (const std::unique_ptr<Widget> &,
+                    const std::unique_ptr<Widget> &)>
+derefUPLess = [](const std::unique_ptr<Widget> & p1, const std::unique_ptr<Widget> & p2) 
+{ 
+    return *p1 < *p2; 
+}; 
+```
+It’s important to recognize that even setting aside the syntactic verbosity and need to repeat the parameter types, 
+using `std::function` is **not** the same as using `auto`. 
 
+- *Memory* <br>
+    An `auto`-declared variable holding a closure has the *same type as the closure*, 
+    and as such it uses only as much memory as the closure requires. 
+    The type of a `std::function`-declared variable holding a closure is an *instantiation of the `std::function` template*,
+    and that has a fixed size for any given signature. 
+    This size may **not** be adequate for the closure it’s asked to store, and when that’s the case, 
+    the `std::function` constructor will allocate heap memory to store the closure. 
+    The result is that the `std::function` object typically *uses more memory* than the `auto`-declared object. 
+- *Efficiency* <br>
+    And, thanks to implementation details that *restrict inlining* and *yield indirect function calls*, 
+    invoking a closure via a `std::function` object is almost certain to be *slower* than calling it via an `auto`-declared object. 
+    In other words, the `std::function` approach is generally *bigger and slower* than the `auto` approach, 
+    and it may yield out-of-memory exceptions, too. 
+- *Verbosity* <br>
+    Plus, as you can see in the examples above, writing `auto` is a whole lot less work than writing the type of the `std::function` instantiation. 
 
+In the competition between `auto` and `std::function` for holding a closure, it’s pretty much game, set, and match for `auto`. 
+(A similar argument can be made for `auto` over `std::function` for holding the result of calls to `std::bind`, 
+but in Item 34, I do my best to convince you to use lambdas instead of `std::bind`, anyway. )
+<br><br>
+The advantages of `auto` extend beyond 
 
+- *the avoidance of uninitialized variables*, 
+- *verbose variable declarations*, 
+- *the ability to directly hold closures*. 
 
+One is the ability to avoid what I call problems related to *type shortcuts* and *unintentional type mismatches*. 
+<br><br>
+Here’s something you’ve probably seen, possibly even written: 
+```
+std::vector<int> v;
+unsigned sz = v.size();
+```
+The official return type of `v.size()` is `std::vector<int>::size_type`, but few developers are aware of that. 
+`std::vector<int>::size_type` is specified to be an unsigned integral type, 
+so a lot of programmers figure that `unsigned` is good enough and write code such as the above. 
+This can have some interesting consequences. 
+E.g., `g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0` implements `std::vector<int>::size_type` as `size_t` (aka. `unsigned long`). 
+On 32-bit ubuntu, for example, both `unsigned` and `size_t` are the same size, 32 bits; 
+but on 64-bit ubuntu, `unsigned` is 32 bits, while `size_t` is 64 bits. 
+This means that code that works under 32-bit ubuntu may behave incorrectly under 64-bit ubuntu, 
+and when porting your application from 32 to 64 bits, who wants to spend time on issues like that? 
+<br><br>
+Using `auto` ensures that you don’t have to: 
+```
+auto sz = v.size();  // sz's type is std::vector<int>::size_type, aka. size_t, aka. unsigned long
+```
+Still unsure about the wisdom of using `auto`? Then consider this code: 
+```
+std::unordered_map<std::string, int> m;
+
+for (const std::pair<std::string, int> & p : m)
+{
+    // do something with p
+}
+```
+Recognizing what’s amiss requires remembering that the key of a `std::unordered_map` is `const`, 
+so the type of `std::pair` in the hash table (which is what a `std::unordered_map` is) 
+**isn’t** `std::pair<std::string, int>`, it’s `std::pair<const std::string, int>`. 
+But that’s **not** the type declared for the variable `p` in the loop above. 
+As a result, compilers will strive to find a way to 
+*convert `std::pair<const std::string, int>` objects (i.e., what’s in the hash table) to 
+`std::pair<std::string, int>` objects (the declared type for `p`)*. 
+They’ll succeed by *creating a temporary object* of the type that `p` wants to bind to 
+*by copying each object in `m`*, then binding the reference `p` to that temporary object. 
+At the end of each loop iteration, the temporary object will be destroyed. 
+If you wrote this loop, you’d likely be surprised by this behavior, 
+because you’d almost certainly intend to simply bind the reference `p` to each element in `m`. 
+<br><br>
+Such *unintentional type mismatches* can be `auto`ed away:
+```
+std::unordered_map<std::string, int> m;
+
+for (const auto & p : m)
+{
+    // as before
+}
+```
+This is not only more efficient, it’s also easier to type. 
+Furthermore, this code has the very attractive characteristic that if you take `p`’s address, 
+you’re sure to get a pointer to an element within `m`. 
+In the code not using `auto`, you’d get a pointer to a temporary object: 
+an object that would be destroyed at the end of the loop iteration.
+<br><br>
+The last two examples: 
+writing `unsigned` when you should have written `std::vector<int>::size_type` and 
+writing `std::pair<std::string, int>` when you should have written `std::pair<const std::string, int>`
+demonstrate how explicitly specifying types can lead to implicit conversions that you neither want nor expect. 
+If you use `auto` as the type of the target variable, you need not worry about mismatches 
+between the type of variable you’re declaring and the type of the expression used to initialize it. 
 
 ### 📌 Item 6: Use the explicitly typed initializer idiom when `auto` deduces undesired types
+
+```
+std::vector<bool> vec {false, true}; 
+
+bool b1 = vec[0];                     // of type bool
+auto b2 = vec[1];                     // of type std::vector<bool>::reference
+```
+Though `std::vector<bool>` conceptually holds `bools`, 
+`operator[]` for `std::vector<bool>` **doesn’t** return a *reference to an element* of the container 
+(which is what `std::vector::operator[]` returns for every type **except** `bool`). 
+Instead, it returns an object of type `std::vector<bool>::reference` (a class nested inside `std::vector<bool>`). 
+<br><br>
+`std::vector<bool>::reference` exists 
+because `std::vector<bool>` is specified to represent its `bool`s in packed form, one bit per `bool`. 
+That creates a problem for `std::vector<bool>`’s `operator[]`, 
+because `operator[]` for `std::vector<T>` is supposed to return a `T &`, 
+but C++ forbids references to bits. 
+Not being able to return a `bool &`, 
+`operator[]` for `std::vector<bool>` returns an object that acts like a `bool &`.
+For this act to succeed, `std::vector<bool>::reference` objects must be usable in essentially all contexts where `bool &`s can be. 
+Among the features in `std::vector<bool>::reference` that make this work is an implicit conversion to `bool`. 
+(Not to `bool &`, to `bool`. 
+To explain the full set of techniques used by `std::vector<bool>::reference` to emulate the behavior of a `bool &` would take us too far afield, 
+so I’ll simply remark that this implicit conversion is only one stone in a larger mosaic. )
+
+
+
+
+
+
+
+
+
 
 
 
