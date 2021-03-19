@@ -1780,7 +1780,7 @@ Widget w8 {std::move(w4)};                          // uses braces, calls std::i
                                                     // (for same reason as w6)
 ```
 Compilers’ determination to match braced initializers with constructors taking `std::initializer_list`s is so strong, 
-it *prevails even if the best-match `std::initializer_list` constructor can’t be called*. For example: 
+it *prevails even if the best-match `std::initializer_list` constructor **can’t** be called*. For example: 
 ```
 class Widget 
 {
@@ -1902,7 +1902,7 @@ because, in general, it’s not possible to know which should be used.
 For example, suppose you’d like to create an object of an arbitrary type from an arbitrary number of arguments. 
 A variadic template makes this conceptually straightforward:
 ```
-template <typename T, typename... Ts>
+template <typename T, typename ... Ts>
 void doSomeWork(Ts && ... params)
 {
     // create local T object from params...
@@ -1910,8 +1910,8 @@ void doSomeWork(Ts && ... params)
 ```
 There are two ways to turn the line of pseudocode into real code (see Item 25 for information about `std::forward`): 
 ```
-T localObject(std::forward<Ts>(params)...);   // using parens
-T localObject {std::forward<Ts>(params)...};  // using braces
+T localObject(std::forward<Ts>(params) ...);   // using parens
+T localObject {std::forward<Ts>(params) ...};  // using braces
 ```
 So consider this calling code:
 ```
@@ -2105,7 +2105,182 @@ Combined with the fact that `nullptr` doesn’t suffer from the overload resolut
 the case is ironclad. 
 When you want to refer to a null pointer, use `nullptr`, **not** `0` or `NULL`.
 
-### 📌 Item 9: Prefer alias declarations to typedefs
+### 📌 Item 9: Prefer alias declarations to `typedef`s
+
+- `typedef`s **don’t** support templatization, but alias declarations do. 
+- Alias templates avoid the `::type` suffix; in templates, the `typename` prefix often required to refer to `typedef`s. 
+- C++14 offers alias templates for all the C++11 type traits transformations. 
+
+#### `typedef`s and alias declarations
+
+Avoiding medical tragedies is easy. Introduce a `typedef`:
+```
+typedef std::unique_ptr<std::unordered_map<std::string, std::string>> UPtrMapSS;
+```
+But `typedef`s are soooo C++98. They work in C++11, sure, but C++11 also offers *alias declarations*: 
+```
+using UPtrMapSS = std::unique_ptr<std::unordered_map<std::string, std::string>>;
+```
+
+The alias declaration easier to swallow when dealing with types involving function pointers: 
+```
+// FP is a synonym for a pointer to a function taking an int and a const std::string & and returning nothing
+typedef void (*FP)(int, const std::string &);   // typedef same meaning as above
+using FP = void (*)(int, const std::string &);  // alias declaration
+```
+
+#### Alias Templates 
+
+Alias declarations may be templatized (in which case they’re called *alias templates*), while `typedef`s **cannot**. 
+This gives C++11 programmers a straightforward mechanism for expressing things 
+that in C++98 had to be hacked together with `typedef`s nested inside templatized `struct`s. 
+For example, consider defining a synonym for a linked list that uses a custom allocator, `MyAlloc`. 
+With an alias template, it’s a piece of cake: 
+```
+template <typename T>
+using MyAllocList = std::list<T, MyAlloc<T>>;  // MyAllocList<T>is synonym form std::list<T, MyAlloc<T>>
+
+MyAllocList<Widget> lw;                        // client code
+```
+With a `typedef`, you pretty much have to create the cake from scratch: 
+```
+template <typename T>
+struct MyAllocList 
+{
+    typedef std::list<T, MyAlloc<T>> type;     // MyAllocList<T>::type is synonym for std::list<T, MyAlloc<T>>
+};
+
+MyAllocList<Widget>::type lw;                  // client code
+```
+It gets worse. If you want to use the `typedef` inside a template 
+for the purpose of creating a linked list holding objects of a type specified by a template parameter, 
+you have to precede the `typedef` name with `typename`: 
+```
+template <typename T>
+class Widget 
+{ 
+private:
+    typename MyAllocList<T>::type list;        // Widget<T> contains a MyAllocList<T> as a data member
+};
+```
+Here, `MyAllocList<T>::type` refers to *a type that’s dependent on a template type parameter (`T`)*. 
+`MyAllocList<T>::type` is thus a *dependent type*, and one of C++’s many endearing rules is that 
+the names of dependent types must be preceded by `typename` (reason to be stated a few lines later). 
+
+
+If `MyAllocList` is defined as an alias template, this need for `typename` vanishes 
+(as does the cumbersome `::type` suffix): 
+```
+template <typename T>
+using MyAllocList = std::list<T, MyAlloc<T>>;
+
+template<typename T>
+class Widget 
+{
+private:
+    MyAllocList<T> list;
+};
+```
+To you, `MyAllocList<T>` (i.e., use of the alias template) may look just as dependent
+on the template parameter `T` as `MyAllocList<T>::type` (i.e., use of the nested `typedef`), 
+but you’re not a compiler. 
+When compilers process the Widget template and encounter the use of `MyAllocList<T>` 
+(i.e., use of the alias template), they know that `MyAllocList<T>` is the name of a type, 
+because `MyAllocList` is an alias template: it must name a type.
+`MyAllocList<T>` is thus a non-dependent type, and a `typename` specifier is neither required nor permitted. 
+
+
+When compilers see `MyAllocList<T>::type` (i.e., use of the nested `typedef`) in the `Widget` template, 
+on the other hand, they can’t know for sure that it names a type, 
+because there might be a specialization of `MyAllocList` that they haven’t yet seen 
+where `MyAllocList<T>::type` refers to something other than a type. 
+That sounds crazy, but don’t blame compilers for this possibility. 
+It’s the humans who have been known to produce such code. 
+```
+class Wine 
+{
+    // ...
+};
+
+template <> 
+class MyAllocList<Wine>  // MyAllocList specialization for when T is Wine 
+{
+private:
+    enum class WineType 
+    { 
+        White, 
+        Red, 
+        Rose 
+    }; 
+
+    WineType type;       // in this class, type is a data member! 
+};
+```
+As you can see, `MyAllocList<Wine>::type` **doesn’t** refer to a type. 
+If `Widget` were to be instantiated with `Wine`, 
+`MyAllocList<T>::type` inside the `Widget` template would refer to a data member, **not** a type. 
+Inside the `Widget` template, then, whether `MyAllocList<T>::type` refers to a type is honestly dependent on what `T` is, 
+and that’s why compilers insist on your asserting that it is a type by preceding it with `typename`. 
+
+
+If you’ve done any template metaprogramming (TMP), 
+you’ve almost certainly bumped up against the need to take template type parameters and create revised types from them. 
+For example, given some type `T`, you might want to strip off any `const` or reference qualifiers that `T` contains, 
+e.g., you might want to turn `const std::string &` into `std::string`. 
+Or you might want to add `const` to a type or turn it into an lvalue reference, 
+e.g., turn `Widget` into `const Widget` or into `Widget &`. 
+
+
+C++11 gives you the tools to perform these kinds of transformations in the form of *type traits*, 
+an assortment of templates inside the header `<type_traits>`. 
+There are dozens of type traits in that header, 
+and not all of them perform type transformations, 
+but the ones that do offer a predictable interface. 
+Given a type `T` to which you’d like to apply a transformation, 
+the resulting type is `std::transformation<T>::type`. For example: 
+```
+std::remove_const<T>::type          // yields T from const T
+std::remove_reference<T>::type      // yields T from T & and T &&
+std::add_lvalue_reference<T>::type  // yields T & from T
+```
+Note that application of these transformations entails writing `::type` at the end of each use. 
+If you apply them to a type parameter inside a template 
+(which is virtually always how you employ them in real code), 
+you’d also have to precede each use with `typename`. 
+The reason for both of these syntactic speed bumps is that 
+the C++11 type traits are implemented as nested `typedef`s inside templatized `structs`. 
+
+
+There’s a historical reason for that, 
+because the Standardization Committee belatedly recognized that alias templates are the better way to go, 
+and they included such templates in C++14 for all the C++11 type transformations. 
+The aliases have a common form: 
+for each C++11 transformation `std::transformation<T>::type`, 
+there’s a corresponding C++14 alias template named `std::transformation_t`: 
+```
+std::remove_const<T>::type          // C++11 const T -> T
+std::remove_const_t<T>              // C++14 equivalent
+std::remove_reference<T>::type      // C++11 T &, T && -> T
+std::remove_reference_t<T>          // C++14 equivalent
+std::add_lvalue_reference<T>::type  // C++11 T -> T&
+std::add_lvalue_reference_t<T>      // C++14 equivalent
+```
+The C++11 constructs remain valid in C++14, but there's no reason to use them except for legacy APIs. 
+Even if you don’t have access to C++14, writing the alias templates yourself is child’s play. 
+Only C++11 language features are required. 
+If you happen to have access to an electronic copy of the C++14 Standard, it’s easier still, 
+because all that’s required is some copying and pasting.
+```
+template <class T>
+using remove_const_t = typename remove_const<T>::type;
+
+template <class T>
+using remove_reference_t = typename remove_reference<T>::type;
+
+template <class T>
+using add_lvalue_reference_t = typename add_lvalue_reference<T>::type;
+```
+
 
 
 
