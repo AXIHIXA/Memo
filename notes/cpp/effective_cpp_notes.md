@@ -1445,7 +1445,8 @@ auto b2 = vec[1];                     // of type std::vector<bool>::reference
 Though `std::vector<bool>` conceptually holds `bools`, 
 `operator[]` for `std::vector<bool>` **doesn’t** return a *reference to an element* of the container 
 (which is what `std::vector::operator[]` returns for every type **except** `bool`). 
-Instead, it returns an object of type `std::vector<bool>::reference` (a class nested inside `std::vector<bool>`). 
+Instead, it returns an object of type [`std::vector<bool>::reference`](https://en.cppreference.com/w/cpp/container/vector_bool/reference) 
+(a class nested inside `std::vector<bool>`). 
 <br><br>
 `std::vector<bool>::reference` exists 
 because `std::vector<bool>` is specified to represent its `bool`s in packed form, one bit per `bool`. 
@@ -1456,9 +1457,7 @@ Not being able to return a `bool &`,
 `operator[]` for `std::vector<bool>` returns an object that acts like a `bool &`.
 For this act to succeed, `std::vector<bool>::reference` objects must be usable in essentially all contexts where `bool &`s can be. 
 Among the features in `std::vector<bool>::reference` that make this work is an implicit conversion to `bool`. 
-(Not to `bool &`, to `bool`. 
-To explain the full set of techniques used by `std::vector<bool>::reference` to emulate the behavior of a `bool &` would take us too far afield, 
-so I’ll simply remark that this implicit conversion is only one stone in a larger mosaic. )
+(Not to `bool &`, to `bool`. )
 
 
 
