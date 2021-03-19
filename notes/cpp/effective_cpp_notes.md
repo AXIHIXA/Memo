@@ -1453,7 +1453,8 @@ Though `std::vector<bool>` conceptually holds `bools`,
 (which is what `std::vector::operator[]` returns for every type **except** `bool`). 
 Instead, it returns an object of type [`std::vector<bool>::reference`](https://en.cppreference.com/w/cpp/container/vector_bool/reference) 
 (a class nested inside `std::vector<bool>`). 
-<br><br>
+
+
 `std::vector<bool>::reference` exists 
 because `std::vector<bool>` is specified to represent its `bool`s in packed form, one bit per `bool`. 
 That creates a problem for `std::vector<bool>`’s `operator[]`, 
@@ -1464,7 +1465,8 @@ Not being able to return a `bool &`,
 For this act to succeed, `std::vector<bool>::reference` objects must be usable in essentially all contexts where `bool &`s can be. 
 Among the features in `std::vector<bool>::reference` that make this work is an implicit conversion to `bool`. 
 (Not to `bool &`, to `bool`. )
-<br><br>
+
+
 The following code results in *undefined behavior*: 
 ```
 std::vector<bool> features(const Widget & w);
@@ -1474,14 +1476,16 @@ bool highPriority = features(w)[5];            // depending on implementation, t
 `features` returns a `std::vector<bool>` object, and, again, `operator[]` is invoked on it. 
 `operator[]` continues to return a `std::vector<bool>::reference` object, and `auto` deduces that as the type of `highPriority`. 
 `highPriority` **doesn’t** have the value of bit 5 of the `std::vector<bool>` returned by features at all. 
-<br><br>
+
+
 The value it does have depends on how `std::vector<bool>::reference` is implemented.
 One implementation is for such objects to contain 
 a *pointer to the machine word holding the referenced bit*, 
 plus the offset into that word for that bit. 
 Consider what that means for the initialization of `highPriority`, 
 assuming that such a `std::vector<bool>::reference` implementation is in place. 
-<br><br>
+
+
 The call to `features` returns a *temporary* `std::vector<bool>` object. 
 This object has no name, but for purposes of this discussion, I’ll call it `temp`. 
 `operator[]` is invoked on `temp`, 
@@ -1492,7 +1496,8 @@ plus the offset into that word corresponding to bit 5.
 so `highPriority`, too, contains a pointer to a word in `temp`, plus the offset corresponding to bit 5. 
 At the end of the statement, *`temp` is destroyed*, because it’s a temporary object. 
 Therefore, `highPriority` contains a dangling pointer, and that’s the cause of the undefined behavior. 
-<br><br>
+
+
 `std::vector<bool>::reference` is an example of a *proxy class*: 
 a class that exists for the purpose of emulating and augmenting the behavior of some other type. 
 Proxy classes are employed for a variety of purposes. 
@@ -1507,7 +1512,8 @@ That’s the case for `std::shared_ptr` and `std::unique_ptr`, for example.
 Other proxy classes are designed to act more or less invisibly. 
 `std::vector<bool>::reference` is an example of such “invisible” proxies, 
 as is its `std::bitset` compatriot, `std::bitset::reference`. 
-<br><br>
+
+
 Also in that camp are some classes in C++ libraries employing a technique known as *expression templates*. 
 Such libraries were originally developed to improve the efficiency of numeric code. 
 Given a class `Matrix` and `Matrix` objects `m1`, `m2`, `m3`, and `m4`, for example, the expression
@@ -1522,7 +1528,8 @@ which would permit the initialization of sum from the proxy object produced by t
 (The type of that object would traditionally encode the entire initialization expression, 
 i.e., be something like `Sum<Sum<Sum<Matrix, Matrix>, Matrix>, Matrix>`. 
 That’s definitely a type from which clients should be shielded. )
-<br><br>
+
+
 As a general rule, “invisible” proxy classes **don’t** play well with `auto`. 
 Objects of such classes are often **not** designed to live longer than a single statement, 
 so *creating variables of those types tends to violate fundamental library design assumptions*. 
@@ -1551,6 +1558,44 @@ auto ep2 = static_cast<float>(calcEpsilon());
 
 ### 📌 Item 7: Distinguish between `()` and `{}` when creating objects
 
+- Braced initialization is the most widely usable initialization syntax, 
+  it prevents narrowing conversions, 
+  and it’s immune to C++’s most vexing parse. 
+- During constructor overload resolution, 
+  braced initializers are matched to `std::initializer_list` parameters if at all possible, 
+  even if other constructors offer seemingly better matches. 
+- An example of where the choice between parentheses and braces can make a significant difference 
+  is creating a `std::vector<numeric type>` with two arguments. 
+- Choosing between parentheses and braces for object creation inside templates can be challenging. 
+
+#### Initialization Syntaxes
+
+Initialization values may be specified with parentheses, an equals sign, or braces: 
+```
+int x(0);     // initializer is in parentheses
+int y = 0;    // initializer follows "="
+int z {0};    // initializer is in braces
+```
+In many cases, it’s also possible to use an equals sign and braces together: 
+```
+int z = {0};  // initializer uses "=" and braces
+```
+C++ usually treats it the *same as the braces-only version*. 
+
+#### Uniform Initialization
+
+To address the confusion of multiple initialization syntaxes, 
+as well as the fact that they don’t cover all initialization scenarios, 
+C++11 introduces *uniform initialization*:
+a single initialization syntax that can, at least in concept, 
+be used anywhere and express everything. 
+It’s based on braces, and for that reason we should prefer the term braced initialization. 
+*Uniform initialization* is an idea. 
+*Braced initialization* is a syntactic construct. 
+
+
+Braced initialization lets you express the formerly inexpressible. Using braces, specifying
+the initial contents of a container is easy:
 
 
 
