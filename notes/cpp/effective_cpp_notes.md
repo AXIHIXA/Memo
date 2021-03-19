@@ -1649,16 +1649,279 @@ C++ usually treats it the *same as the braces-only version*.
 
 To address the confusion of multiple initialization syntaxes, 
 as well as the fact that they don’t cover all initialization scenarios, 
-C++11 introduces *uniform initialization*:
+C++11 introduces *uniform initialization* based on braces:
 a single initialization syntax that can, at least in concept, 
 be used anywhere and express everything. 
-It’s based on braces, and for that reason we should prefer the term braced initialization. 
 *Uniform initialization* is an idea. 
 *Braced initialization* is a syntactic construct. 
 
 
 Braced initialization lets you express the formerly inexpressible. Using braces, specifying
 the initial contents of a container is easy:
+```
+std::vector<int> v {1, 3, 5};  // v's initial content is 1, 3, 5
+```
+Braces can also be used to specify default initialization values for *non-static data members*. 
+This capability (new to C++11) is shared with the `=` initialization syntax, but **not** ~~with parentheses~~: 
+```
+class Widget 
+{
+private:
+    int x {0};  // fine, x's default value is 0
+    int y = 0;  // also fine
+    int z(0);   // error!
+};
+```
+On the other hand, *uncopyable objects* (e.g., `std::atomics`, see Item 40) 
+may be initialized using braces or parentheses, but **not** ~~using `=`~~: 
+```
+std::atomic<int> ai1 {0};  // fine
+std::atomic<int> ai2(0);   // fine
+std::atomic<int> ai3 = 0;  // error!
+```
+It’s thus easy to understand why braced initialization is called *uniform*. 
+Of C++’s three ways to designate an initializing expression, only braces can be used everywhere. 
+A novel feature of braced initialization is that it *prohibits ~~implicit narrowing conversions among built-in types~~*. 
+If the value of an expression in a braced initializer 
+isn’t guaranteed to be expressible by the type of the object being initialized, 
+the code won’t compile: 
+```
+double x, y, z;
+int sum1 {x + y + z};  // error! sum of doubles may not be expressible as int
+```
+Initialization using parentheses and `=` **doesn’t** ~~check for narrowing conversions~~, 
+because that could break too much legacy code: 
+```
+int sum2(x + y + z);   // okay (value of expression truncated to an int)
+int sum3 = x + y + z;  // okay (value of expression truncated to an int)
+```
+Another noteworthy characteristic of braced initialization is its immunity to *C++’s most vexing parse*. 
+A side effect of C++’s rule that anything that can be parsed as a declaration must be interpreted as one, 
+the most vexing parse most frequently afflicts developers 
+*when they want to default-construct an object, but inadvertently end up declaring a function instead*. 
+The root of the problem is that if you want to call a constructor with an argument, you can do it like this,
+```
+Widget w1(10);  // call Widget ctor with argument 10
+```
+but if you try to call a Widget constructor with zero arguments using the analogous syntax, 
+
+you declare a function instead of an object:
+```
+Widget w2();    // most vexing parse! declares a function named w2 that returns a Widget! 
+```
+Functions **can’t** be declared using braces for the parameter list, 
+so default-constructing an object using braces doesn’t have this problem: 
+```
+Widget w3 {};   // calls Widget ctor with no args
+```
+The drawback to braced initialization is the sometimes-surprising behavior that accompanies it. 
+Such behavior grows out of the unusually tangled relationship 
+among braced initializers, `std::initializer_lists`, and constructor overload resolution. 
+Their interactions can lead to code that seems like it should do one thing, 
+but actually does another. 
+For example, Item 2 explains that when an `auto`-declared variable has a braced initializer, 
+the type deduced is `std::initializer_list`, 
+even though other ways of declaring a variable with the same initializer would yield a more intuitive type. 
+As a result, the more you like `auto`, the less enthusiastic you’re likely to be about braced initialization. 
+In constructor calls, parentheses and braces have the same meaning as long as `std::initializer_list` parameters are not involved: 
+```
+class Widget 
+{
+public:
+    Widget(int i, bool b);
+    Widget(int i, double d);
+};
+
+Widget w1(10, true);          // calls first ctor
+Widget w2 {10, true};         // also calls first ctor
+Widget w3(10, 5.0);           // calls second ctor
+Widget w4 {10, 5.0};          // also calls second ctor
+```
+If, however, one or more constructors declare a parameter of type `std::initializer_list`, 
+calls using the braced initialization syntax strongly prefer the overloads taking `std::initializer_list`s. 
+Strongly. If there’s any way for compilers to construe a call using a braced initializer 
+to be to a constructor taking a `std::initializer_list`, compilers will employ that interpretation. 
+If the Widget class above is augmented with a constructor taking a `std::initializer_list<long double>`, for example,
+```
+class Widget 
+{
+public:
+    Widget(int i, bool b);
+    Widget(int i, double d);
+    Widget(std::initializer_list<long double> il);
+};
+```
+Widgets `w2` and `w4` will be constructed using the new constructor, 
+even though the type of the `std::initializer_list` elements (`long double`) is, 
+compared to the non-`std::initializer_list` constructors, a worse match for both arguments! 
+```
+Widget w1(10, true);   // uses parens and, as before, calls first ctor
+Widget w2 {10, true};  // uses braces, but now calls std::initializer_list ctor (10 and true convert to long double)
+Widget w3(10, 5.0);    // uses parens and, as before, calls second ctor
+Widget w4{10, 5.0};    // uses braces, but now calls std::initializer_list ctor (10 and 5.0 convert to long double)
+```
+Even what would normally be *copy and move construction can be hijacked* by `std::initializer_list` constructors: 
+```
+class Widget 
+{
+public:
+    Widget(int i, bool b);
+    Widget(int i, double d);
+    Widget(std::initializer_list<long double> il);
+    operator float() const;
+};
+
+Widget w5(w4);                                      // uses parens, calls copy ctor
+Widget w6 {w4};                                     // uses braces, calls std::initializer_list ctor 
+                                                    // (w4 converts to float, and float converts to long double)
+Widget w7(std::move(w4));                           // uses parens, calls move ctor
+Widget w8 {std::move(w4)};                          // uses braces, calls std::initializer_list ctor
+                                                    // (for same reason as w6)
+```
+Compilers’ determination to match braced initializers with constructors taking `std::initializer_list`s is so strong, 
+it *prevails even if the best-match `std::initializer_list` constructor can’t be called*. For example: 
+```
+class Widget 
+{
+public:
+    Widget(int i, bool b);
+    Widget(int i, double d);
+    Widget(std::initializer_list<bool> il); 
+}; 
+
+Widget w {10, 5.0};                          // error! requires narrowing conversions
+```
+Here, compilers will ignore the first two constructors 
+(the second of which offers an exact match on both argument types) 
+and try to call the constructor taking a `std::initializer_list<bool>`. 
+Calling that constructor would require converting an `int` (`10`) and a `double` (`5.0`) to `bool`s. 
+Both conversions would be narrowing (`bool` can’t exactly represent either value), 
+and narrowing conversions are prohibited inside braced initializers, so the call is invalid, and the code is rejected. 
+
+
+Only if there’s no way to convert the types of the arguments in a braced initializer to
+the type in a `std::initializer_list` do compilers fall back on normal overload resolution. 
+For example, if we replace the `std::initializer_list<bool>` constructor
+with one taking a `std::initializer_list<std::string>`, 
+the non-`std::initializer_list` constructors become candidates again, 
+because there is no way to convert `int`s and `bool`s to `std::string`s:
+```
+class Widget 
+{
+public:
+    Widget(int i, bool b);
+    Widget(int i, double d);
+    Widget(std::initializer_list<std::string> il);
+};
+
+Widget w1(10, true);                                // uses parens, still calls first ctor
+Widget w2 {10, true};                               // uses braces, now calls first ctor
+Widget w3(10, 5.0);                                 // uses parens, still calls second ctor
+Widget w4 {10, 5.0};                                // uses braces, now calls second ctor
+```
+This brings us near the end of our examination of braced initializers and constructor overloading, 
+but there’s an interesting edge case that needs to be addressed. 
+Suppose you use an empty set of braces to construct an object that supports default construction
+and also supports `std::initializer_list` construction. 
+What do your empty braces mean? If they mean “no arguments,” you get default construction, 
+but if they mean “empty `std::initializer_list`,” you get construction from a `std::initializer_list` with no elements.
+
+
+The rule is that you get default construction. 
+Empty braces mean no arguments, **not** ~~an empty `std::initializer_list`~~:
+```
+class Widget 
+{
+public:
+    Widget(); 
+    Widget(std::initializer_list<int> il);
+};
+
+Widget w1;                                  // calls default ctor
+Widget w2 {};                               // also calls default ctor
+Widget w3();                                // most vexing parse! declares a function!
+```
+If you *want to* call a `std::initializer_list` constructor with an empty `std::initializer_list`, 
+you do it by making the empty braces a constructor argument: 
+by putting the empty braces inside the parentheses or braces demarcating what you’re passing: 
+```
+Widget w4({});                              // calls std::initializer_list ctor with empty list
+Widget w5 {{}};                             // ditto
+```
+One of the classes directly affected by the above rule is `std::vector`.
+`std::vector` has a non-`std::initializer_list` constructor 
+that allows you to specify the initial size of the container and a value each of the initial elements should have, 
+but it also has a constructor taking a `std::initializer_list` 
+that permits you to specify the initial values in the container. 
+If you create a `std::vector` of a numeric type (e.g., a `std::vector<int>`) and you pass two arguments to the constructor,
+whether you enclose those arguments in parentheses or braces makes a tremendous difference: 
+```
+std::vector<int> v1(10, 20);   // use non-std::initializer_list ctor: create 10-element std::vector, all elements have value of 20
+std::vector<int> v2 {10, 20};  // use std::initializer_list ctor: create 2-element std::vector, element values are 10 and 20
+```
+But let’s step back from `std::vector` and also from the details of parentheses, braces, and constructor overloading resolution rules. 
+There are two primary takeaways from this discussion. 
+
+- First, as a class author, you need to be aware that if your set of overloaded constructors 
+  includes one or more functions taking a `std::initializer_list`, 
+  client code using braced initialization may see only the `std::initializer_list` overloads. 
+  As a result, it’s best to design your constructors so that the overload called **isn’t** affected by whether clients use parentheses or braces. 
+  In other words, learn from what is now viewed as an error in the design of the `std::vector` interface, and design your classes to avoid it. 
+  An implication is that 
+  if you have a class with no `std::initializer_list` constructor, and you add one, 
+  client code using braced initialization may find that 
+  calls that used to resolve to non-`std::initializer_list` constructors 
+  now resolve to the new function. 
+  Of course, this kind of thing can happen any time you add a new function to a set of overloads: 
+  calls that used to resolve to one of the old overloads might start calling the new one. 
+  The difference with `std::initializer_list` constructor overloads is that 
+  a `std::initializer_list` overload **doesn’t** just compete with other overloads, 
+  it *overshadows them* to the point where the other overloads may hardly be considered. 
+  So add such overloads only with great deliberation. 
+- The second lesson is that as a class client, you must choose carefully between parenthesesnand braces when creating objects. 
+  Most developers end up choosing one kind of delimiter as a default, using the other only when they have to. 
+  Braces-by-default folks are attracted by their unrivaled breadth of applicability, 
+  their prohibition of narrowing conversions, and their immunity to C++’s most vexing parse. 
+  Such folks understand that in some cases 
+  (e.g., creation of a `std::vector` with a given size and initial element value), 
+  parentheses are required. 
+  On the other hand, the go-parentheses-go crowd embraces parentheses as their default argument delimiter.
+  They’re attracted to its consistency with the C++98 syntactic tradition, 
+  its avoidance of the `auto`-deduced-a-`std::initializer_list` problem, 
+  and the knowledge that their object creation calls won’t be inadvertently waylaid by `std::initializer_list` constructors. 
+  They concede that sometimes only braces will do 
+  (e.g., when creating a container with particular values). 
+  There’s no consensus that either approach is better than the other, so my advice is to *pick one and apply it consistently*. 
+
+#### Braced Initialization in Templates
+
+If you’re a template author, 
+the tension between parentheses and braces for object creation can be especially frustrating, 
+because, in general, it’s not possible to know which should be used. 
+For example, suppose you’d like to create an object of an arbitrary type from an arbitrary number of arguments. 
+A variadic template makes this conceptually straightforward:
+```
+template <typename T, typename... Ts>
+void doSomeWork(Ts && ... params)
+{
+    // create local T object from params...
+}
+```
+There are two ways to turn the line of pseudocode into real code (see Item 25 for information about `std::forward`): 
+```
+T localObject(std::forward<Ts>(params)...);   // using parens
+T localObject {std::forward<Ts>(params)...};  // using braces
+```
+So consider this calling code:
+```
+std::vector<int> v;
+doSomeWork<std::vector<int>>(10, 20);
+```
+If `doSomeWork` uses parentheses when creating `localObject`, the result is a `std::vector<int>` with 10 elements. 
+If `doSomeWork` uses braces, the result is a `std::vector<int>` with 2 elements. 
+Which is correct? The author of `doSomeWork` can’t know. Only the caller can. 
+This is precisely the problem faced by the Standard Library functions `std::make_unique` and `std::make_shared` (see Item 21). 
+These functions resolve the problem by internally using parentheses and by documenting this decision as part of their interfaces. 
 
 
 
