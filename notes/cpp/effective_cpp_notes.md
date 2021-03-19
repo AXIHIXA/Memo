@@ -1558,8 +1558,9 @@ auto ep2 = static_cast<float>(calcEpsilon());
 
 - Prefer `nullptr` to `0` and `NULL`. 
     - Template type deduction will deduct `0` and `NULL` as their true type rather than the fallback meaning of null pointer. 
+    - Passing `0` or `NULL` to functions overloaded on integral and pointer types will never call the pointer version. 
 - Avoid overloading on integral and pointer types. 
-    - Passing `0` or `NULL` to these overloaded functions will never call the pointer version. 
+    
 
 So here’s the deal: the literal `0` is an `int`, **not** a pointer. 
 If C++ finds itself looking at `0` in a context where only a pointer can be used, 
