@@ -589,6 +589,7 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 - When deducing types for universal reference parameters, reference collapse may occur. 
 - During template type deduction, arguments that are array or function names decay to pointers, unless they’re used to initialize references. 
 
+
 If you’re willing to overlook a pinch of pseudocode, we can think of a function template as looking like this:
 ```
 template <typename T>
@@ -633,10 +634,12 @@ There are three cases:
     ```
     Passing a const object to a template taking a `T &` parameter is safe:
     the constness of the object becomes part of the type deduced for `T`. 
-    <br><br>
+    
+    
     These examples all show *lvalue reference* parameters, but type deduction works exactly the same way for *rvalue reference* parameters. 
     Of course, only rvalue arguments may be passed to rvalue reference parameters, but that restriction has nothing to do with type deduction. 
-    <br><br>
+    
+    
     If we change the type of `f`’s parameter from `T &` to `const T &`, 
     things change a little, but not in any really surprising ways. 
     The constness of `cx` and `rx` continues to be respected,
@@ -718,7 +721,8 @@ There are three cases:
     The fact that `cx` and `rx` can’t be modified says nothing about whether `param` can be. 
     That’s why `expr`’s const-ness (and volatile-ness, if any) is ignored when deducing a type for `param`: 
     just because `expr` can’t be modified doesn’t mean that a copy of it can’t be. 
-    <br><br>
+    
+    
     It’s important to recognize that only *top-level cv-constraints* are ignored. 
     *Low-level cv-constraints* are preserved properly. 
     That is,  `const` (and `volatile`) is ignored only for by-value parameters. 
@@ -744,7 +748,8 @@ const char * ptrToName = name;       // array decays to pointer
 ```
 Here, the `const char *` pointer `ptrToName` is being initialized with `name`, which is a `const char[13]`. 
 These types (`const char *` and `const char[13]`) are **not** the same, but because of the array-to-pointer decay rule, the code compiles. 
-<br><br>
+
+
 But what if an array is passed to a template taking a by-value parameter? What happens then?
 ```
 template <typename T>
@@ -761,7 +766,8 @@ void myFunc(int * param);            // same function as above
 Because array parameter declarations are treated as if they were pointer parameters,
 the type of an array that’s passed to a template function by value is deduced to be a pointer type. 
 That means that in the call to the template `f`, its type parameter `T` is deduced to be `const char *`. 
-<br><br>
+
+
 But now comes a curve ball. 
 Although functions can’t declare parameters that are truly arrays, 
 they can declare parameters that are *references to arrays*! 
@@ -776,7 +782,8 @@ the type deduced for `T` is the *actual type of the array*!
 That type includes the size of the array, so in this example, 
 `T` is deduced to be `const char [13]`, 
 and the type of `f`’s parameter (a reference to this array) is `const char (&)[13]`. 
-<br><br>
+
+
 Interestingly, the ability to declare references to arrays enables creation of a template
 that deduces the number of elements that an array contains:
 ```
@@ -821,6 +828,11 @@ f1(someFunc);                // param deduced as ptr-to-func; type is void (*)(i
 f2(someFunc);                // param deduced as ref-to-func; type is void (&)(int, double)
 ```
 
+
+
+
+
+
 ### 📌 Item 2: Understand `auto` type deduction
 
 - `auto` type deduction is usually the same as template type deduction, 
@@ -828,10 +840,12 @@ f2(someFunc);                // param deduced as ref-to-func; type is void (&)(i
   and template type deduction **doesn’t**.
 - `auto` in a *function return type* or a *lambda parameter* implies *template type deduction*, **not** ~~auto type deduction~~.
 
+
 With only one curious exception, `auto` type deduction is template type deduction. 
 There’s a direct mapping between template type deduction and `auto` type deduction. 
 There is literally an algorithmic transformation from one to the other. 
-<br><br>
+
+
 In Item 1, template type deduction is explained using this general function template: 
 ```
 template <typename T>
@@ -840,7 +854,8 @@ void f(ParamType param);
 f(expr);  // call f with some expression
 ```
 In the call to `f`, compilers use `expr` to deduce types for `T` and `ParamType`. 
-<br><br>
+
+
 When a variable is declared using `auto`, 
 `auto` plays the role of `T` in the template, 
 and the type specifier for the variable acts as `ParamType`. 
@@ -873,14 +888,16 @@ func_for_rx(x);
 As I said, deducing types for `auto` is, 
 with only one exception (which we’ll discuss soon), 
 the same as deducing types for templates. 
-<br><br>
+
+
 In a variable declaration using `auto`, 
 the type specifier takes the place of `ParamType`, 
 so there are three cases for that, too:
 - Case 1: The type specifier is a pointer or reference, but not a universal reference. 
 - Case 2: The type specifier is a universal reference. 
 - Case 3: The type specifier is neither a pointer nor a reference. 
-<br><br>
+
+
 Array and function names also decay into pointers for non-reference type specifiers in `auto` type deduction:
 ```
 const char name[] = "R. N. Briggs";  // name's type is const char[13]
@@ -959,7 +976,8 @@ f({11, 23, 9});        // T deduced as int, and initList's type is std::initiali
 So the only real difference between `auto` and template type deduction is that 
 `auto` assumes that a braced initializer represents a `std::initializer_list`, 
 but template type deduction doesn’t.
-<br><br>
+
+
 For C++11, this is the full story, but for C++14, the tale continues. 
 C++14 permits `auto` to indicate that a *function’s return type* should be deduced (see Item 3), 
 and C++14 lambdas may use `auto` in parameter declarations. 
@@ -983,11 +1001,17 @@ auto resetV = [&v](const auto & newValue)
 resetV({1, 2, 3});     // error! can't deduce type for {1, 2, 3}
 ```
 
+
+
+
+
+
 ### 📌 Item 3: Understand `decltype`
 
 - `decltype` almost always yields the type of a variable or expression without any modifications.
 - For lvalue expressions of type `T` other than names, `decltype` always reports a type of `T &`.
 - C++14 supports `decltype(auto)`, which, like `auto`, deduces a type from its initializer, but it performs the type deduction using the `decltype` rules.
+
 
 In contrast to what happens during type deduction for templates and `auto` (see Items 1 and 2),
 `decltype` typically parrots back the exact type of the name or expression you give it:
@@ -1019,13 +1043,15 @@ if (v[0] == 0) {}          // decltype(v[0]) is int &
 ```
 In C++11, perhaps the primary use for `decltype` is declaring function templates
 where the function’s return type depends on its parameter types. 
-<br><br>
+
+
 `operator[]` on a container of objects of type `T` typically returns a `T &`. 
 This is the case for `std::deque`, for example, and it’s almost always the case for `std::vector`. 
 For `std::vector<bool>`, however, `operator[]` does **not** ~~return a `bool &`~~. 
 Instead, it returns a brand new object. The whys and hows of this situation are explored in Item 6, 
 but what’s important here is that the type returned by a container’s `operator[]` depends on the container. 
-<br><br>
+
+
 `decltype` makes it easy to express that. 
 Here’s a first cut at the template we’d like to write, 
 showing the use of `decltype` to compute the return type. 
@@ -1040,7 +1066,8 @@ auto authAndAccess(Container & c, Index i) -> decltype(c[i])  // C++11; needs re
 The use of `auto` in functions with *trailing return type* has nothing to do with type deduction.
 A *trailing return type* has the advantage that 
 the function’s parameters can be used in the specification of the return type. 
-<br><br>
+
+
 C++11 permits return types for *single-statement lambdas* to be deduced, 
 and C++14 extends this to both *all lambdas* and *all functions*, 
 including those with multiple statements. 
@@ -1125,7 +1152,8 @@ That is, if an lvalue expression other than a name has type `T`,
 This seldom has any impact, 
 because the type of most lvalue expressions inherently includes an lvalue reference qualifier. 
 Functions returning lvalues, for example, always return lvalue references. 
-<br><br>
+
+
 There is an implication of this behavior that is worth being aware of, however. In
 ```
 int x = 0;
@@ -1135,7 +1163,8 @@ But wrapping the name `x` in parentheses `(x)` yields an expression more complic
 Being a name, `x` is an lvalue, and C++ defines the expression `(x)` to be an lvalue, too.
 `decltype((x))` is therefore `int &`. 
 Putting parentheses around a name can change the type that decltype reports for it!
-<br><br>
+
+
 In C++11, this is little more than a curiosity; 
 but in conjunction with C++14’s support for `decltype(auto)`, 
 it means that a seemingly trivial change in the way you write a return statement can affect the deduced type for a function:
@@ -1154,16 +1183,23 @@ decltype(auto) f2()
 ```
 Note that not only does `f2` have a different return type from `f1`, 
 it’s also returning a reference to a local variable, thus creating dangling references! 
-<br><br>
+
+
 The primary lesson is to *pay very close attention when using `decltype(auto)`*.
 Seemingly insignificant details in the expression whose type is being deduced 
 can affect the type that `decltype(auto)` reports. 
 To ensure that the type being deduced is the type you expect, use the techniques described in Item 4. 
 
+
+
+
+
+
 ### 📌 Item 4: Know how to view deduced types.
 
 - Deduced types can often be seen using IDE editors, compiler error messages, and the Boost TypeIndex library. 
 - The results of some tools may be neither helpful nor accurate, so an understanding of C++’s type deduction rules remains essential. 
+
 
 #### IDE Editors
  
@@ -1215,9 +1251,11 @@ As Item 1 explains, that means that if the type is a reference, its reference-ne
 and if the type after reference removal is const (or volatile), its constness (or volatileness) is also ignored. 
 That’s why param’s type (which is `const Widget * const &`) is reported as `const Widget *`.
 First the type’s reference-ness is removed, and then the constness of the resulting pointer is eliminated.
-<br><br>
+
+
 Equally sadly, the type information displayed by IDE editors is also not reliable, or at least not reliably useful. 
-<br><br>
+
+
 If you’re more inclined to rely on libraries than luck, 
 you’ll be pleased to know that where `std::type_info::name` and IDEs may fail, 
 the *Boost TypeIndex library* (often written as `Boost.TypeIndex`) is designed to succeed. 
@@ -1242,6 +1280,11 @@ void f(const T & param)
 }
 ```
 
+
+
+
+
+
 ## [CHAPTER 2] `auto`
 
 ### 📌 Item 5: Prefer `auto` to explicit type declarations
@@ -1261,7 +1304,8 @@ int x;
 ```
 Wait. Damn. I forgot to initialize `x`, so its value is indeterminate. Maybe. 
 It might actually be initialized to zero. Depends on the context. Sigh. 
-<br><br>
+
+
 Never mind. Let’s move on to the simple joy of declaring a local variable to be initialized by dereferencing an iterator:
 ```
 template <typename It>  // algorithm to dwim ("do what I mean")
@@ -1276,7 +1320,8 @@ void dwim(It b, It e)   // for all elements in range from b to e
 Okay, simple joy (take three): 
 the delight of declaring a local variable whose type is that of a closure (lambda expression). 
 Oh, right. The type of a closure is known only to the compiler, hence can’t be written out. 
-<br><br>
+
+
 As of C++11, all these issues go away, courtesy of `auto`. 
 `auto` variables have their type deduced from their initializer, so they *must be initialized*.
 That means you can wave goodbye to a host of uninitialized variable problems as you speed by on the modern C++ superhighway: 
@@ -1316,7 +1361,8 @@ Coolness notwithstanding, perhaps you’re thinking we don’t really need `auto
 because we can use a `std::function` object. 
 It’s true, we can, but possibly that’s not what you were thinking. 
 And maybe now you’re thinking “What’s a `std::function` object?” So let’s clear that up. 
-<br><br>
+
+
 `std::function` is a template in the C++11 Standard Library that generalizes the idea of a function pointer. 
 Whereas function pointers can point only to functions, 
 however, `std::function` objects can refer to *any callable object*, 
@@ -1363,15 +1409,19 @@ using `std::function` is **not** the same as using `auto`.
 In the competition between `auto` and `std::function` for holding a closure, it’s pretty much game, set, and match for `auto`. 
 (A similar argument can be made for `auto` over `std::function` for holding the result of calls to `std::bind`, 
 but in Item 34, I do my best to convince you to use lambdas instead of `std::bind`, anyway. )
-<br><br>
+
+
 The advantages of `auto` extend beyond 
 
-- *the avoidance of uninitialized variables*, 
-- *verbose variable declarations*, 
-- *the ability to directly hold closures*. 
+- *the avoidance of uninitialized variables*
+- *verbose variable declarations*
+- *the ability to directly hold closures*
+- *type shortcuts*
+- *unintentional type mismatches*
 
-One is the ability to avoid what I call problems related to *type shortcuts* and *unintentional type mismatches*. 
-<br><br>
+One is the ability to avoid what I call problems related to . 
+
+
 Here’s something you’ve probably seen, possibly even written: 
 ```
 std::vector<int> v;
@@ -1386,7 +1436,8 @@ On 32-bit ubuntu, for example, both `unsigned` and `size_t` are the same size, 3
 but on 64-bit ubuntu, `unsigned` is 32 bits, while `size_t` is 64 bits. 
 This means that code that works under 32-bit ubuntu may behave incorrectly under 64-bit ubuntu, 
 and when porting your application from 32 to 64 bits, who wants to spend time on issues like that? 
-<br><br>
+
+
 Using `auto` ensures that you don’t have to: 
 ```
 auto sz = v.size();  // sz's type is std::vector<int>::size_type, aka. size_t, aka. unsigned long
@@ -1412,7 +1463,8 @@ They’ll succeed by *creating a temporary object* of the type that `p` wants to
 At the end of each loop iteration, the temporary object will be destroyed. 
 If you wrote this loop, you’d likely be surprised by this behavior, 
 because you’d almost certainly intend to simply bind the reference `p` to each element in `m`. 
-<br><br>
+
+
 Such *unintentional type mismatches* can be `auto`ed away:
 ```
 std::unordered_map<std::string, int> m;
@@ -1427,13 +1479,19 @@ Furthermore, this code has the very attractive characteristic that if you take `
 you’re sure to get a pointer to an element within `m`. 
 In the code not using `auto`, you’d get a pointer to a temporary object: 
 an object that would be destroyed at the end of the loop iteration.
-<br><br>
+
+
 The last two examples: 
 writing `unsigned` when you should have written `std::vector<int>::size_type` and 
 writing `std::pair<std::string, int>` when you should have written `std::pair<const std::string, int>`
 demonstrate how explicitly specifying types can lead to implicit conversions that you neither want nor expect. 
 If you use `auto` as the type of the target variable, you need not worry about mismatches 
 between the type of variable you’re declaring and the type of the expression used to initialize it. 
+
+
+
+
+
 
 ### 📌 Item 6: Use the explicitly typed initializer idiom when `auto` deduces undesired types
 
@@ -1553,8 +1611,12 @@ float ep1 = calcEpsilon();                     // impliclitly convert double -> 
 auto ep2 = static_cast<float>(calcEpsilon());
 ```
 
-## [CHAPTER 3] Moving to Modern C++
 
+
+
+
+
+## [CHAPTER 3] Moving to Modern C++
 
 ### 📌 Item 7: Distinguish between `()` and `{}` when creating objects
 
@@ -1567,6 +1629,7 @@ auto ep2 = static_cast<float>(calcEpsilon());
 - An example of where the choice between parentheses and braces can make a significant difference 
   is creating a `std::vector<numeric type>` with two arguments. 
 - Choosing between parentheses and braces for object creation inside templates can be challenging. 
+
 
 #### Initialization Syntaxes
 
@@ -1596,6 +1659,9 @@ It’s based on braces, and for that reason we should prefer the term braced ini
 
 Braced initialization lets you express the formerly inexpressible. Using braces, specifying
 the initial contents of a container is easy:
+
+
+
 
 
 
