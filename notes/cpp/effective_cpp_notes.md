@@ -1246,12 +1246,13 @@ void f(const T & param)
 
 ### 📌 Item 5: Prefer `auto` to explicit type declarations
 
-- Using `auto`-typed variables 
+- Using `auto`
+    - *is the best choice to directly hold closures*
+    - *is the only choice for functions that need return type deduction*
     - *avoids uninitialized variables*
-    - *avoids verbose variable declarations*
-    - *the ability to directly hold closures*
     - *avoids type shortcuts*
     - *avoids unintentional type mismatches*
+    - *avoids verbose variable declarations and facilitates API reformatting*
 - `auto`-typed variables are subject to the pitfalls described in Items 2 and 6. 
 
 Ah, the simple joy of
@@ -1436,6 +1437,11 @@ between the type of variable you’re declaring and the type of the expression u
 
 ### 📌 Item 6: Use the explicitly typed initializer idiom when `auto` deduces undesired types
 
+- “Invisible” proxy types can cause `auto` to deduce the “wrong” type for an initializing expression. 
+- The *explicitly typed initializer idiom* forces auto to deduce the type you want it to have. 
+
+#### `auto` and proxy classes
+
 ```
 std::vector<bool> vec {false, true}; 
 
@@ -1458,18 +1464,87 @@ Not being able to return a `bool &`,
 For this act to succeed, `std::vector<bool>::reference` objects must be usable in essentially all contexts where `bool &`s can be. 
 Among the features in `std::vector<bool>::reference` that make this work is an implicit conversion to `bool`. 
 (Not to `bool &`, to `bool`. )
+<br><br>
+The following code results in *undefined behavior*: 
+```
+std::vector<bool> features(const Widget & w);
+Widget w;
+bool highPriority = features(w)[5];            // depending on implementation, this is maybe a dangling pointer!
+```
+`features` returns a `std::vector<bool>` object, and, again, `operator[]` is invoked on it. 
+`operator[]` continues to return a `std::vector<bool>::reference` object, and `auto` deduces that as the type of `highPriority`. 
+`highPriority` **doesn’t** have the value of bit 5 of the `std::vector<bool>` returned by features at all. 
+<br><br>
+The value it does have depends on how `std::vector<bool>::reference` is implemented.
+One implementation is for such objects to contain 
+a *pointer to the machine word holding the referenced bit*, 
+plus the offset into that word for that bit. 
+Consider what that means for the initialization of `highPriority`, 
+assuming that such a `std::vector<bool>::reference` implementation is in place. 
+<br><br>
+The call to `features` returns a *temporary* `std::vector<bool>` object. 
+This object has no name, but for purposes of this discussion, I’ll call it `temp`. 
+`operator[]` is invoked on `temp`, 
+and the `std::vector<bool>::reference` it returns 
+contains a pointer to a word in the data structure holding the bits that are managed by `temp`,
+plus the offset into that word corresponding to bit 5. 
+`highPriority` is a copy of this `std::vector<bool>::reference` object, 
+so `highPriority`, too, contains a pointer to a word in `temp`, plus the offset corresponding to bit 5. 
+At the end of the statement, *`temp` is destroyed*, because it’s a temporary object. 
+Therefore, `highPriority` contains a dangling pointer, and that’s the cause of the undefined behavior. 
+<br><br>
+`std::vector<bool>::reference` is an example of a *proxy class*: 
+a class that exists for the purpose of emulating and augmenting the behavior of some other type. 
+Proxy classes are employed for a variety of purposes. 
+`std::vector<bool>::reference` exists to offer the illusion that 
+`operator[]` for `std::vector<bool>` returns a reference to a bit, for example, 
+and the Standard Library’s *smart pointer types* (see Chapter 4) 
+are proxy classes that graft resource management onto raw pointers. 
+The utility of proxy classes is well-established. 
+In fact, the design pattern *Proxy* is one of the most longstanding members of the software design patterns Pantheon. 
+Some proxy classes are designed to be apparent to clients. 
+That’s the case for `std::shared_ptr` and `std::unique_ptr`, for example. 
+Other proxy classes are designed to act more or less invisibly. 
+`std::vector<bool>::reference` is an example of such “invisible” proxies, 
+as is its `std::bitset` compatriot, `std::bitset::reference`. 
+<br><br>
+Also in that camp are some classes in C++ libraries employing a technique known as *expression templates*. 
+Such libraries were originally developed to improve the efficiency of numeric code. 
+Given a class `Matrix` and `Matrix` objects `m1`, `m2`, `m3`, and `m4`, for example, the expression
+```
+Matrix sum = m1 + m2 + m3 + m4;
+```
+can be computed much more efficiently if `Matrix::operator+` returns a proxy for the result instead of the result itself. 
+That is, `Matrix::operator+` for would return an object of a proxy class such as `Sum<Matrix, Matrix>` instead of a `Matrix` object. 
+As was the case with `std::vector<bool>::reference` and `bool`, 
+there’d be an implicit conversion from the proxy class to `Matrix`, 
+which would permit the initialization of sum from the proxy object produced by the expression on the right side of the `=`. 
+(The type of that object would traditionally encode the entire initialization expression, 
+i.e., be something like `Sum<Sum<Sum<Matrix, Matrix>, Matrix>, Matrix>`. 
+That’s definitely a type from which clients should be shielded. )
+<br><br>
+As a general rule, “invisible” proxy classes **don’t** play well with `auto`. 
+Objects of such classes are often **not** designed to live longer than a single statement, 
+so *creating variables of those types tends to violate fundamental library design assumptions*. 
+That’s the case with `std::vector<bool>::reference`, and we’ve seen that violating that assumption can lead to undefined behavior.
 
+#### The explicitly typed initializer idiom
 
-
-
-
-
-
-
-
-
-
-
+The *explicitly typed initializer idiom* involves declaring a variable with `auto`, 
+but casting the initialization expression to the type you want auto to deduce. 
+Here’s how it can be used to force `highPriority` to be a `bool`, for example: 
+```
+auto highPriority = static_cast<bool>(features(w)[5]);
+```
+Applications of the idiom **aren’t** ~~limited to initializers yielding proxy class types~~. 
+It can also be useful to emphasize that you are deliberately creating a variable of a type
+that is different from that generated by the initializing expression. 
+For example, suppose you have a function to calculate some tolerance value: 
+```
+double calcEpsilon();                          // return tolerance value
+float ep1 = calcEpsilon();                     // impliclitly convert double -> float
+auto ep2 = static_cast<float>(calcEpsilon());
+```
 
 ## [CHAPTER 3] Moving to Modern C++
 
