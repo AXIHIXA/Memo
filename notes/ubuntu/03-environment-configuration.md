@@ -23,6 +23,31 @@
 - `pgrep hello`, `pidof hello`: find pid of process "hello"
 - `killall hello`, `pkill hello`: kill all processes called "hello"
 
+## System Utils
+
+### `apt` PPA Management
+
+- Remove PPAs:
+    - Use the --remove flag, similar to how the PPA was added:
+    ```
+    sudo add-apt-repository --remove ppa:whatever/ppa
+    ```
+    - You can also remove PPAs by deleting the `.list` files from `/etc/apt/sources.list.d` directory.
+    - As a safer alternative, you can install `ppa-purge`:
+    ```
+    sudo apt-get install ppa-purge
+    ```
+    - And then remove the PPA, downgrading gracefully packages it provided to packages provided by official repositories:
+    ```
+    sudo ppa-purge ppa:whatever/ppa
+    ```
+    - Note that this will uninstall packages provided by the PPA, 
+      but not those provided by the official repositories. 
+      If you want to remove them, you should tell it to `apt`:
+    ```
+    sudo apt-get purge package_name
+    ```
+
 ## 🌱 Python
 
 ### anaconda
@@ -197,6 +222,13 @@ gedit -idea64.vmoptions
 - `__CLION_IDE__`：在 CLion 的 CMakeLists.txt 以及程序中都可使用的宏
 - `$ENV{USER}`： CMakeLists.txt 中调用系统变量
 
+### `gcc-9` on `ubuntu 18.04 LTS`
+```
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt update
+sudo apt install gcc-9 g++-9
+```
+
 ### Libraries
 
 ```
@@ -209,8 +241,11 @@ sudo apt install libopencv-dev
 # tbb
 sudo apt install libtbb-dev
 
-# boost + cgal
-sudo apt install libboost-all-dev libcgal-dev libcgal-qt5-dev
+# Boost
+sudo apt install libboost-all-dev 
+
+# CGAL
+libcgal-dev libcgal-qt5-dev
 ```
 
 ### `OpenGL`

@@ -26,7 +26,7 @@
 #### The `enum` hack
 
 For class-specific constants, use `enum`s instead of `static const` data members 
-```
+```c++
 // GamePlayer.h
 class GamePlayer 
 {
@@ -51,7 +51,7 @@ Older compilers may not accept the syntax above,
 because it used to be ~~illegal to provide an initial value for a static class member at its point of declaration~~. 
 Furthermore, in-class initialization is allowed only for *integral types* and only for *constants*. 
 In cases where the above syntax can't be used, you put the initial value at the point of definition: 
-```
+```c++
 // CostEstimate.h
 class CostEstimate 
 {
@@ -71,7 +71,7 @@ the in-class specification of initial values for static integral class constants
 is to use what is affectionately (and non-pejoratively) known as the `enum` hack. 
 This technique takes advantage of the fact that the values of an enumerated type can be used where ints are expected, 
 so `GamePlayer` could just as well be defined like this:
-```
+```c++
 class GamePlayer 
 {
 private:
@@ -100,7 +100,7 @@ The `enum` hack is worth knowing about for several reasons.
 #### Common (mis)use of `#define` directives
 
 Using it to implement macros that look like functions but that don't incur the overhead of a function call
-```
+```c++
 // call f with the maximum of a and b
 // even if everything is properly parenthesised, there can still be problems! 
 #define CALL_WITH_MAX(a, b) f((a) > (b) ? (a) : (b))
@@ -111,7 +111,7 @@ CALL_WITH_MAX(++a, b + 10);  // a is incremented once
 ```
 You can get all the efficiency of a macro plus all the predictable behavior and type safety 
 of a regular function by using a `template` for an `inline` function: 
-```
+```c++
 // because we don't know what T is, we pass by reference-to-const
 template <typename T> 
 inline void callWithMax(const T & a, const T & b) 
@@ -145,7 +145,7 @@ Declaring an iterator `const` is like declaring a pointer `const` (i.e., declari
 the iterator isn't allowed to point to something different, but the thing it points to may be modified. 
 If you want an iterator that points to something that can't be modified 
 (i.e., the STL analogue of a `const T *` pointer), you want a `const_iterator`:
-```
+```c++
 std::vector<int> vec {0, 1, 2, 3, 4, 5};
 
 const std::vector<int>::iterator iter = vec.begin();    // iter acts like a T * const
@@ -161,21 +161,21 @@ std::vector<int>::const_iterator cIter = vec.cbegin();  // cIter acts like a con
 
 Having a function return a constant value often makes it possible to 
 reduce the incidence of client errors without giving up safety or efficiency: 
-```
+```c++
 class Rational { ... };
 const Rational operator*(const Rational & lhs, const Rational & rhs);
 ```
 Many programmers squint when they first see this. 
 Why should the result of `operator*` be a `const` object? 
 Because if it weren't, clients would be able to commit atrocities like this:
-```
+```c++
 Rational a, b, c;
 (a * b) = c;       // invoke operator= on the result of (a * b)!
 ```
 I don't know why any programmer would want to make an assignment to the product of two numbers, 
 but I do know that many programmers have tried to do it without wanting to. 
 All it takes is a simple typo (and a type that can be implicitly converted to `bool`):
-```
+```c++
 if (a * b = c)     // oops, meant to do a comparison!
 {
     // ...
@@ -208,7 +208,7 @@ There are two prevailing notions:
     That can lead to counterintuitive behavior. 
     For example, suppose we have a `TextBlock`-like class that stores its data as a `char *` instead of a `string`, 
     because it needs to communicate through a C API that doesn't understand `string` objects. 
-    ```
+    ```c++
     class CTextBlock 
     {
     public:
@@ -228,7 +228,7 @@ There are two prevailing notions:
     As a result, compilers will happily generate code for `operator[]`; 
     it is, after all, bitwise `const`, and that's all compilers check for. 
     But look what it allows to happen:
-    ```
+    ```c++
     const CTextBlock cctb("Hello");  // declare constant object
     char *pc = &cctb[0];             // call the const operator[] to get a  pointer to cctb's data
     *pc = 'J';                       // cctb now has the value "Jello"
@@ -237,7 +237,7 @@ There are two prevailing notions:
     A `const` member function *might modify some of the bits in the object* on which it's invoked, 
     but *only in ways that clients cannot detect*. 
     For example, your `CTextBlock` class might want to cache the length of the textblock whenever it's requested:
-    ```
+    ```c++
     class CTextBlock 
     {
     public:
@@ -262,7 +262,7 @@ There are two prevailing notions:
     ```
     The solution is simple: take advantage of C++'s `const`-related wiggle room known as `mutable`. 
     `mutable` frees non-`static` data members from the constraints of bitwise constness: 
-    ```
+    ```c++
     class CTextBlock 
     {
     public:
@@ -288,7 +288,7 @@ There are two prevailing notions:
 
 #### Avoiding Duplication in `const` and Non-`const` Member Functions
 
-```
+```c++
 class TextBlock 
 {
 public:
@@ -340,7 +340,7 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 - **Always initialize your objects before you use them** <br>
     For non-member objects of built-in types, you'll need to do this manually: 
-    ```
+    ```c++
     int x = 0;                               // manual initialization of an int
     const char * text = "A C-style string";  // manual initialization of a pointer
     double d;                                // "initialization" by reading from an input stream
@@ -350,7 +350,7 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
     The rule there is simple: make sure that *all constructors initialize everything in the object*. 
     - ***Not** to confuse assignment with initialization**. <br>
         Consider a constructor for a class representing entries in an address book:
-        ```
+        ```c++
         class PhoneNumber 
         { 
             // ... 
@@ -384,7 +384,7 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
         This isn't true for `numTimesConsulted`, because it's a built-in type. 
         For it, there's **no** guarantee it was initialized at all prior to its assignment.
     - *Member initialization list* <br>
-        ```
+        ```c++
         ABEntry::ABEntry(const std::string & name, 
                          const std::string & address, 
                          const std::list<PhoneNumber> & phones)
@@ -406,7 +406,7 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
         Similarly, you can use the member initialization list even when you want to default-construct a data member; 
         just specify nothing as an initialization argument. 
         For example, if `ABEntry` had a constructor taking no parameters, it could be implemented like this:
-        ```
+        ```c++
         ABEntry::ABEntry()
                 : theName(),            // call theName's default ctor;
                   theAddress(),         // do the same for theAddress;
@@ -591,7 +591,7 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 
 If you’re willing to overlook a pinch of pseudocode, we can think of a function template as looking like this:
-```
+```c++
 template <typename T>
 void f(ParamType param);
 
@@ -600,7 +600,7 @@ f(expr);  // call f with some expression
 During compilation, compilers use expr to deduce two types: one for `T` and one for `ParamType`. 
 These types are frequently **different**, because `ParamType` often contains adornments, e.g., `const` or reference qualifiers. 
 E.g., for the following case, `T` is deduced to be `int`, but `ParamType` is deduced to be `const int &`. 
-```
+```c++
 template <typename T>
 void f(const T & param);  // ParamType is const T &
 
@@ -618,7 +618,7 @@ There are three cases:
         - If `expr`’s type is a reference, ignore the reference part.
         - Then pattern-match `expr`’s type against `ParamType` to determine `T`. 
     - For example: 
-    ```
+    ```c++
     template <typename T>
     void f(T & param);     // param is a reference
 
@@ -627,25 +627,23 @@ There are three cases:
     const int & rx = x;    // rx is a reference to x as a const int
     ```
     The deduced types for `param` and `T` in various calls are as follows:
-    ```
+    ```c++
     f(x);                  // T is       int, param's type is int &
     f(cx);                 // T is const int, param's type is const int &
     f(rx);                 // T is const int, param's type is const int &
     ```
     Passing a const object to a template taking a `T &` parameter is safe:
-    the constness of the object becomes part of the type deduced for `T`. 
-    
-    
+    the constness of the object becomes part of the type deduced for `T`.
+    <br><br>
     These examples all show *lvalue reference* parameters, but type deduction works exactly the same way for *rvalue reference* parameters. 
-    Of course, only rvalue arguments may be passed to rvalue reference parameters, but that restriction has nothing to do with type deduction. 
-    
-    
+    Of course, only rvalue arguments may be passed to rvalue reference parameters, but that restriction has nothing to do with type deduction.
+    <br><br>
     If we change the type of `f`’s parameter from `T &` to `const T &`, 
     things change a little, but not in any really surprising ways. 
     The constness of `cx` and `rx` continues to be respected,
     but because we’re now assuming that `param` is a reference-to-const, 
     there’s no longer a need for `const` to be deduced as part of `T`:
-    ```
+    ```c++
     template <typename T>
     void f(const T & param);  // param is now a ref-to-const
     
@@ -658,7 +656,7 @@ There are three cases:
     f(rx);                    // T is int, param's type is const int &
     ```
     If `param` were a pointer (or a pointer to const) instead of a reference, things would work essentially the same way: 
-    ```
+    ```c++
     template <typename T>
     void f(T * param);        // param is now a pointer
     
@@ -681,7 +679,7 @@ There are three cases:
     - If `expr` is an *lvalue*, both `T` and `ParamType` are deduced (*collapse*) to be *lvalue references*; 
     - If `expr` is an *rvalue*, the normal (i.e., Case 1) rules apply.
     - For example:
-    ```
+    ```c++
     template <typename T>
     void f(T && param);    // param is now a universal reference
     
@@ -696,7 +694,7 @@ There are three cases:
     ```
 - `ParamType` is neither a ~~pointer~~ nor a ~~reference~~ <br>
     We’re dealing with pass-by-value:
-    ```
+    ```c++
     template<typename T>
     void f(T param);       // param is now passed by value
     ```
@@ -706,7 +704,7 @@ There are three cases:
         - `volatile` objects are uncommon. They’re generally used only for implementing device drivers. For details, see Item 40.
         - This is because reference-ness and top-level cv-constraints are **ignored** during parameter type deduction.
     - For example: 
-    ```
+    ```c++
     int x = 27;            // as before
     const int cx = x;      // as before
     const int & rx = x;    // as before
@@ -721,15 +719,14 @@ There are three cases:
     The fact that `cx` and `rx` can’t be modified says nothing about whether `param` can be. 
     That’s why `expr`’s const-ness (and volatile-ness, if any) is ignored when deducing a type for `param`: 
     just because `expr` can’t be modified doesn’t mean that a copy of it can’t be. 
-    
-    
+    <br><br>
     It’s important to recognize that only *top-level cv-constraints* are ignored. 
     *Low-level cv-constraints* are preserved properly. 
     That is,  `const` (and `volatile`) is ignored only for by-value parameters. 
     As we’ve seen, for parameters that are references-to-const or pointers-to-const, 
     the constness of `expr` is preserved during type deduction.  
     Consider the case where `expr` is a `const` pointer to a `const` object, and `expr` is passed to a by-value `param`: 
-    ```
+    ```c++
     template <typename T>
     void f(T param);                               // param is still passed by value
     
@@ -742,7 +739,7 @@ There are three cases:
 
 In many contexts, an array decays into a pointer to its first element. 
 This decay is what permits code like this to compile:
-```
+```c++
 const char name[] = "J. P. Briggs";  // name's type is const char[13]
 const char * ptrToName = name;       // array decays to pointer
 ```
@@ -751,7 +748,7 @@ These types (`const char *` and `const char[13]`) are **not** the same, but beca
 
 
 But what if an array is passed to a template taking a by-value parameter? What happens then?
-```
+```c++
 template <typename T>
 void f(T param);                     // template with by-value parameter
 
@@ -759,7 +756,7 @@ f(name);                             // what types are deduced for T and param?
 ```
 We begin with the observation that there is no such thing as a function parameter that’s an array. 
 In parameter lists, an array declaration is treated as a pointer declaration: 
-```
+```c++
 void myFunc(int param[]);
 void myFunc(int * param);            // same function as above
 ```
@@ -772,7 +769,7 @@ But now comes a curve ball.
 Although functions can’t declare parameters that are truly arrays, 
 they can declare parameters that are *references to arrays*! 
 So if we modify the template `f` to take its argument by reference, 
-```
+```c++
 template <typename T>
 void f(T & param);                   // template with by-reference parameter
 
@@ -786,7 +783,7 @@ and the type of `f`’s parameter (a reference to this array) is `const char (&)
 
 Interestingly, the ability to declare references to arrays enables creation of a template
 that deduces the number of elements that an array contains:
-```
+```c++
 // return size of an array as a compile-time constant. 
 // (The array parameter has no name, 
 // because we care only about the number of elements it contains.)
@@ -799,12 +796,12 @@ constexpr std::size_t arraySize(T (&)[N]) noexcept
 As Item 15 explains, declaring this function `constexpr` makes its result available during compilation. 
 That makes it possible to declare, say, an array 
 with the same number of elements as a second array whose size is computed from a *braced initializer*: 
-```
+```c++
 int keyVals[] = {1, 3, 7, 9, 11, 22, 35};        // keyVals has 7 elements
 int mappedVals[arraySize(keyVals)];              // so does mappedVals
 ```
 Of course, as a modern C++ developer, you’d naturally prefer a `std::array` to a built-in array:
-```
+```c++
 std::array<int, arraySize(keyVals)> mappedVals;  // mappedVals' size is 7
 ```
 As for `arraySize` being declared `noexcept`, that’s to help compilers generate better code. For details, see Item 14. 
@@ -815,7 +812,7 @@ Function types can decay into function pointers,
 and everything we’ve discussed regarding type deduction for arrays 
 applies to type deduction for functions and their decay into function pointers. 
 As a result:
-```
+```c++
 void someFunc(int, double);  // someFunc is a function; type is void(int, double)
 
 template <typename T>
@@ -847,7 +844,7 @@ There is literally an algorithmic transformation from one to the other.
 
 
 In Item 1, template type deduction is explained using this general function template: 
-```
+```c++
 template <typename T>
 void f(ParamType param);
 
@@ -860,7 +857,7 @@ When a variable is declared using `auto`,
 `auto` plays the role of `T` in the template, 
 and the type specifier for the variable acts as `ParamType`. 
 This is easier to show than to describe, so consider this example:
-```
+```c++
 auto x = 27;
 const auto cx = x;
 const auto & rx = x;
@@ -868,7 +865,7 @@ const auto & rx = x;
 To deduce types for `x`, `cx`, and `rx` in these examples,
 compilers act as if there were a template for each declaration 
 as well as a call to that template with the corresponding initializing expression:
-```
+```c++
 template <typename T>
 void func_for_x(T param);
 
@@ -899,7 +896,7 @@ so there are three cases for that, too:
 
 
 Array and function names also decay into pointers for non-reference type specifiers in `auto` type deduction:
-```
+```c++
 const char name[] = "R. N. Briggs";  // name's type is const char[13]
 
 auto arr1 = name;                    // arr1's type is const char *
@@ -914,7 +911,7 @@ auto & func2 = someFunc;             // func2's type is void (&)(int, double)
 #### `auto` with Braced Initializer
 
 One way that `auto` type deduction differs from template type deduction: 
-```
+```c++
 // legacy initialization since C++98
 auto x1 = 27;    // type is int, value is 27
 auto x2(27);     // type is int, value is 27
@@ -943,7 +940,7 @@ Such deduction falls under the purview of the second kind of type deduction occu
 In this example, that deduction fails, 
 because the values in the braced initializer don’t have a single type, 
 just like the following example for template functions: 
-```
+```c++
 template <typename T>
 T add(T x1, T x2)
 {
@@ -957,7 +954,7 @@ in which `auto` type deduction and template type deduction differ.
 When an auto-declared variable is initialized with a braced initializer, 
 the deduced type is an instantiation of `std::initializer_list`.
 But if the corresponding template is passed the same initializer, type deduction fails, and the code is rejected:
-```
+```c++
 auto x = {11, 23, 9};  // x's type is std::initializer_list<int>
 
 template<typename T>   // template with parameter declaration equivalent to x's declaration
@@ -967,7 +964,7 @@ f({11, 23, 9});        // error! can't deduce type for T
 ```
 However, if you specify in the template that param is a `std::initializer_list<T>` for some unknown `T`, 
 template type deduction will deduce what `T` is:
-```
+```c++
 template <typename T>
 void f(std::initializer_list<T> initList);
 
@@ -983,14 +980,14 @@ C++14 permits `auto` to indicate that a *function’s return type* should be ded
 and C++14 lambdas may use `auto` in parameter declarations. 
 However, these uses of `auto` employ template type deduction, **not** `auto` type deduction. 
 So a function with an `auto` return type that returns a braced initializer **won’t** compile:
-```
+```c++
 auto createInitList()
 {
     return {1, 2, 3};  // error: can't deduce type
 }
 ```
 The same is true when `auto` is used in a parameter type specification in a C++14 lambda:
-```
+```c++
 std::vector<int> v;
 
 auto resetV = [&v](const auto & newValue) 
@@ -1015,7 +1012,7 @@ resetV({1, 2, 3});     // error! can't deduce type for {1, 2, 3}
 
 In contrast to what happens during type deduction for templates and `auto` (see Items 1 and 2),
 `decltype` typically parrots back the exact type of the name or expression you give it:
-```
+```c++
 const int i = 0;           // decltype(i) is const int
 bool f(const Widget & w);  // decltype(w) is const Widget &
                            // decltype(f) is bool(const Widget &)
@@ -1055,7 +1052,7 @@ but what’s important here is that the type returned by a container’s `operat
 `decltype` makes it easy to express that. 
 Here’s a first cut at the template we’d like to write, 
 showing the use of `decltype` to compute the return type. 
-```
+```c++
 template <typename Container, typename Index>
 auto authAndAccess(Container & c, Index i) -> decltype(c[i])  // C++11; needs refinement if C++14
 {
@@ -1075,7 +1072,7 @@ In the case of `authAndAccess`,
 that means that in C++14 we can omit the trailing return type, leaving just the leading `auto`. 
 With that form of declaration, `auto` does mean that type deduction will take place. 
 In particular, it means that compilers will deduce the function’s return type from the function’s implementation:
-```
+```c++
 template <typename Container, typename Index>
 auto authAndAccess(Container & c, Index i)  // C++14; NOT quite correct
 {
@@ -1090,7 +1087,7 @@ As we’ve discussed, `operator[]` for most containers-of-`T` returns a `T &`,
 but Item 1 explains that during template type deduction, 
 the reference-ness of an initializing expression is ignored.
 Consider what that means for this client code:
-```
+```c++
 std::deque<int> d;
 authAndAccess(d, 5) = 10;  // authenticate user, return d[5], then assign 10 to it; this won't compile!
 ```
@@ -1111,7 +1108,7 @@ make this possible in C++14 through the *`decltype(auto)` specifier*.
 What may initially seem contradictory (`decltype` and `auto`?) actually makes perfect sense: 
 `auto` specifies that the type is to be deduced, and `decltype` says that `decltype` rules should be used during the deduction. 
 We can thus write `authAndAccess` like this:
-```
+```c++
 template <typename Container, typename Index>
 decltype(auto) authAndAccess(Container && c, Index i)                                   // C++14
 {
@@ -1134,7 +1131,7 @@ and in the uncommon case where `c[i]` returns an object,
 The use of `decltype(auto)` is not limited to function return types. 
 It can also be convenient for declaring variables 
 when you want to apply the `decltype` type deduction rules to the initializing expression:
-```
+```c++
 Widget w;
 const Widget & cw = w;
 auto myWidget1 = cw;            //     auto type deduction: myWidget1's type is       Widget
@@ -1155,7 +1152,7 @@ Functions returning lvalues, for example, always return lvalue references.
 
 
 There is an implication of this behavior that is worth being aware of, however. In
-```
+```c++
 int x = 0;
 ```
 `x` is the name of a variable, so `decltype(x)` is `int`. 
@@ -1168,7 +1165,7 @@ Putting parentheses around a name can change the type that decltype reports for 
 In C++11, this is little more than a curiosity; 
 but in conjunction with C++14’s support for `decltype(auto)`, 
 it means that a seemingly trivial change in the way you write a return statement can affect the deduced type for a function:
-```
+```c++
 decltype(auto) f1()
 {
     int x = 0;
@@ -1203,7 +1200,7 @@ To ensure that the type being deduced is the type you expect, use the techniques
 
 #### IDE Editors
  
-```
+```c++
 const int theAnswer = 42;
 auto x = theAnswer;            // int
 auto y = &theAnswer;           // const int *
@@ -1220,26 +1217,26 @@ The error message reporting the problem is virtually sure to mention the type th
 Suppose, for example, we’d like to see the types that were deduced for `x` and `y` in the previous example. 
 We first declare a class template that we don’t define. Something
 like this does nicely:
-```
+```c++
 template <typename T>   // declaration only for TD;
 class TD;               // TD == "Type Displayer"
 ```
 Attempts to instantiate this template will elicit an error message, 
 because there’s no template definition to instantiate. 
 To see the types for `x` and `y`, just try to instantiate `TD` with their types:
-```
+```c++
 TD<decltype(x)> xType;  // elicit errors containing
 TD<decltype(y)> yType;  // x's and y's types
 ```
 Error message (`g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0`):
-```
+```c++
 error: aggregate 'TD<int> xType' has incomplete type and cannot be defined
 error: aggregate 'TD<const int *> yType' has incomplete type and cannot be defined
 ```
 
 #### Runtime Output
 
-```
+```c++
 boost::core::demangle(typeid(x).name());
 ```
 Sadly, the results of `std::type_info::name` are **not** reliable. 
@@ -1264,7 +1261,7 @@ Furthermore, the fact that Boost libraries (available at [boost.org](https://www
 are cross-platform, open source, 
 and available under a license designed to be palatable to even the most paranoid corporate legal team 
 means that code using Boost libraries is nearly as portable as code relying on the Standard Library.
-```
+```c++
 #include <boost/type_index.hpp>
 
 template <typename T>
@@ -1299,7 +1296,7 @@ void f(const T & param)
 - `auto`-typed variables are subject to the pitfalls described in Items 2 and 6. 
 
 Ah, the simple joy of
-```
+```c++
 int x;
 ```
 Wait. Damn. I forgot to initialize `x`, so its value is indeterminate. Maybe. 
@@ -1307,7 +1304,7 @@ It might actually be initialized to zero. Depends on the context. Sigh.
 
 
 Never mind. Let’s move on to the simple joy of declaring a local variable to be initialized by dereferencing an iterator:
-```
+```c++
 template <typename It>  // algorithm to dwim ("do what I mean")
 void dwim(It b, It e)   // for all elements in range from b to e
 { 
@@ -1325,13 +1322,13 @@ Oh, right. The type of a closure is known only to the compiler, hence can’t be
 As of C++11, all these issues go away, courtesy of `auto`. 
 `auto` variables have their type deduced from their initializer, so they *must be initialized*.
 That means you can wave goodbye to a host of uninitialized variable problems as you speed by on the modern C++ superhighway: 
-```
+```c++
 int x1;       // potentially uninitialized
 auto x2;      // error! initializer required
 auto x3 = 0;  // fine, x's value is well-defined
 ```
 Said highway lacks the potholes associated with declaring a local variable whose value is that of a dereferenced iterator: 
-```
+```c++
 template <typename It>  // algorithm to dwim ("do what I mean")
 void dwim(It b, It e)   // for all elements in range from b to e
 { 
@@ -1342,7 +1339,7 @@ void dwim(It b, It e)   // for all elements in range from b to e
 }
 ```
 And because `auto` uses *type deduction* (see Item 2), it can represent types known only to compilers:
-```
+```c++
 // C++11 comparison func for Widgets pointed to by std::unique_ptrs
 auto derefUPLess = [](const std::unique_ptr<Widget> & p1, const std::unique_ptr<Widget> & p2) 
 { 
@@ -1350,7 +1347,7 @@ auto derefUPLess = [](const std::unique_ptr<Widget> & p1, const std::unique_ptr<
 }; 
 ```
 Very cool. In C++14, the temperature drops further, because parameters to lambda expressions may involve auto:
-```
+```c++
 // C++14 comparison func for Widgets pointed to by anything pointer-like
 auto derefUPLess = [](const auto & p1, const auto & p2) 
 { 
@@ -1373,13 +1370,13 @@ you must specify the type of function to refer to when you create a `std::functi
 You do that through `std::function`’s template parameter.
 For example, to declare a `std::function` object named func 
 that could refer to any callable object acting as if it had this signature: 
-```
+```c++
 std::function<bool (const std::unique_ptr<Widget> &,
                     const std::unique_ptr<Widget> &)> func;
 ```
 Because lambda expressions yield callable objects, closures can be stored in `std::function` objects. 
 That means we could declare the C++11 version of `derefUPLess` without using `auto` as follows:
-```
+```c++
 std::function<bool (const std::unique_ptr<Widget> &,
                     const std::unique_ptr<Widget> &)>
 derefUPLess = [](const std::unique_ptr<Widget> & p1, const std::unique_ptr<Widget> & p2) 
@@ -1423,7 +1420,7 @@ One is the ability to avoid what I call problems related to .
 
 
 Here’s something you’ve probably seen, possibly even written: 
-```
+```c++
 std::vector<int> v;
 unsigned sz = v.size();
 ```
@@ -1439,11 +1436,11 @@ and when porting your application from 32 to 64 bits, who wants to spend time on
 
 
 Using `auto` ensures that you don’t have to: 
-```
+```c++
 auto sz = v.size();  // sz's type is std::vector<int>::size_type, aka. size_t, aka. unsigned long
 ```
 Still unsure about the wisdom of using `auto`? Then consider this code: 
-```
+```c++
 std::unordered_map<std::string, int> m;
 
 for (const std::pair<std::string, int> & p : m)
@@ -1466,7 +1463,7 @@ because you’d almost certainly intend to simply bind the reference `p` to each
 
 
 Such *unintentional type mismatches* can be `auto`ed away:
-```
+```c++
 std::unordered_map<std::string, int> m;
 
 for (const auto & p : m)
@@ -1500,7 +1497,7 @@ between the type of variable you’re declaring and the type of the expression u
 
 #### `auto` and proxy classes
 
-```
+```c++
 std::vector<bool> vec {false, true}; 
 
 bool b1 = vec[0];                     // of type bool
@@ -1526,7 +1523,7 @@ Among the features in `std::vector<bool>::reference` that make this work is an i
 
 
 The following code results in *undefined behavior*: 
-```
+```c++
 std::vector<bool> features(const Widget & w);
 Widget w;
 bool highPriority = features(w)[5];            // depending on implementation, this is maybe a dangling pointer!
@@ -1575,7 +1572,7 @@ as is its `std::bitset` compatriot, `std::bitset::reference`.
 Also in that camp are some classes in C++ libraries employing a technique known as *expression templates*. 
 Such libraries were originally developed to improve the efficiency of numeric code. 
 Given a class `Matrix` and `Matrix` objects `m1`, `m2`, `m3`, and `m4`, for example, the expression
-```
+```c++
 Matrix sum = m1 + m2 + m3 + m4;
 ```
 can be computed much more efficiently if `Matrix::operator+` returns a proxy for the result instead of the result itself. 
@@ -1598,14 +1595,14 @@ That’s the case with `std::vector<bool>::reference`, and we’ve seen that vio
 The *explicitly typed initializer idiom* involves declaring a variable with `auto`, 
 but casting the initialization expression to the type you want auto to deduce. 
 Here’s how it can be used to force `highPriority` to be a `bool`, for example: 
-```
+```c++
 auto highPriority = static_cast<bool>(features(w)[5]);
 ```
 Applications of the idiom **aren’t** ~~limited to initializers yielding proxy class types~~. 
 It can also be useful to emphasize that you are deliberately creating a variable of a type
 that is different from that generated by the initializing expression. 
 For example, suppose you have a function to calculate some tolerance value: 
-```
+```c++
 double calcEpsilon();                          // return tolerance value
 float ep1 = calcEpsilon();                     // impliclitly convert double -> float
 auto ep2 = static_cast<float>(calcEpsilon());
@@ -1634,13 +1631,13 @@ auto ep2 = static_cast<float>(calcEpsilon());
 #### Initialization Syntaxes
 
 Initialization values may be specified with parentheses, an equals sign, or braces: 
-```
+```c++
 int x(0);     // initializer is in parentheses
 int y = 0;    // initializer follows "="
 int z {0};    // initializer is in braces
 ```
 In many cases, it’s also possible to use an equals sign and braces together: 
-```
+```c++
 int z = {0};  // initializer uses "=" and braces
               // C++ usually treats it the same as the braces-only version
 ```
@@ -1659,12 +1656,12 @@ be used anywhere and express everything.
 
 Braced initialization lets you express the formerly inexpressible. Using braces, specifying
 the initial contents of a container is easy:
-```
+```c++
 std::vector<int> v {1, 3, 5};  // v's initial content is 1, 3, 5
 ```
 Braces can also be used to specify default initialization values for *non-static data members*. 
 This capability (new to C++11) is shared with the `=` initialization syntax, but **not** ~~with parentheses~~: 
-```
+```c++
 class Widget 
 {
 private:
@@ -1675,7 +1672,7 @@ private:
 ```
 On the other hand, *uncopyable objects* (e.g., `std::atomics`, see Item 40) 
 may be initialized using braces or parentheses, but **not** ~~using `=`~~: 
-```
+```c++
 std::atomic<int> ai1 {0};  // fine
 std::atomic<int> ai2(0);   // fine
 std::atomic<int> ai3 = 0;  // error!
@@ -1686,13 +1683,13 @@ A novel feature of braced initialization is that it *prohibits ~~implicit narrow
 If the value of an expression in a braced initializer 
 isn’t guaranteed to be expressible by the type of the object being initialized, 
 the code won’t compile: 
-```
+```c++
 double x, y, z;
 int sum1 {x + y + z};  // error! sum of doubles may not be expressible as int
 ```
 Initialization using parentheses and `=` **doesn’t** ~~check for narrowing conversions~~, 
 because that could break too much legacy code: 
-```
+```c++
 int sum2(x + y + z);   // okay (value of expression truncated to an int)
 int sum3 = x + y + z;  // okay (value of expression truncated to an int)
 ```
@@ -1701,18 +1698,18 @@ A side effect of C++’s rule that anything that can be parsed as a declaration 
 the most vexing parse most frequently afflicts developers 
 *when they want to default-construct an object, but inadvertently end up declaring a function instead*. 
 The root of the problem is that if you want to call a constructor with an argument, you can do it like this,
-```
+```c++
 Widget w1(10);  // call Widget ctor with argument 10
 ```
 but if you try to call a Widget constructor with zero arguments using the analogous syntax, 
 
 you declare a function instead of an object:
-```
+```c++
 Widget w2();    // most vexing parse! declares a function named w2 that returns a Widget! 
 ```
 Functions **can’t** be declared using braces for the parameter list, 
 so default-constructing an object using braces doesn’t have this problem: 
-```
+```c++
 Widget w3 {};   // calls Widget ctor with no args
 ```
 The drawback to braced initialization is the sometimes-surprising behavior that accompanies it. 
@@ -1725,7 +1722,7 @@ the type deduced is `std::initializer_list`,
 even though other ways of declaring a variable with the same initializer would yield a more intuitive type. 
 As a result, the more you like `auto`, the less enthusiastic you’re likely to be about braced initialization. 
 In constructor calls, parentheses and braces have the same meaning as long as `std::initializer_list` parameters are not involved: 
-```
+```c++
 class Widget 
 {
 public:
@@ -1743,7 +1740,7 @@ calls using the braced initialization syntax strongly prefer the overloads takin
 Strongly. If there’s any way for compilers to construe a call using a braced initializer 
 to be to a constructor taking a `std::initializer_list`, compilers will employ that interpretation. 
 If the Widget class above is augmented with a constructor taking a `std::initializer_list<long double>`, for example,
-```
+```c++
 class Widget 
 {
 public:
@@ -1755,14 +1752,14 @@ public:
 Widgets `w2` and `w4` will be constructed using the new constructor, 
 even though the type of the `std::initializer_list` elements (`long double`) is, 
 compared to the non-`std::initializer_list` constructors, a worse match for both arguments! 
-```
+```c++
 Widget w1(10, true);   // uses parens and, as before, calls first ctor
 Widget w2 {10, true};  // uses braces, but now calls std::initializer_list ctor (10 and true convert to long double)
 Widget w3(10, 5.0);    // uses parens and, as before, calls second ctor
 Widget w4{10, 5.0};    // uses braces, but now calls std::initializer_list ctor (10 and 5.0 convert to long double)
 ```
 Even what would normally be *copy and move construction can be hijacked* by `std::initializer_list` constructors: 
-```
+```c++
 class Widget 
 {
 public:
@@ -1781,7 +1778,7 @@ Widget w8 {std::move(w4)};                          // uses braces, calls std::i
 ```
 Compilers’ determination to match braced initializers with constructors taking `std::initializer_list`s is so strong, 
 it *prevails even if the best-match `std::initializer_list` constructor **can’t** be called*. For example: 
-```
+```c++
 class Widget 
 {
 public:
@@ -1806,7 +1803,7 @@ For example, if we replace the `std::initializer_list<bool>` constructor
 with one taking a `std::initializer_list<std::string>`, 
 the non-`std::initializer_list` constructors become candidates again, 
 because there is no way to convert `int`s and `bool`s to `std::string`s:
-```
+```c++
 class Widget 
 {
 public:
@@ -1830,7 +1827,7 @@ but if they mean “empty `std::initializer_list`,” you get construction from 
 
 The rule is that you get default construction. 
 Empty braces mean no arguments, **not** ~~an empty `std::initializer_list`~~:
-```
+```c++
 class Widget 
 {
 public:
@@ -1845,7 +1842,7 @@ Widget w3();                                // most vexing parse! declares a fun
 If you *want to* call a `std::initializer_list` constructor with an empty `std::initializer_list`, 
 you do it by making the empty braces a constructor argument: 
 by putting the empty braces inside the parentheses or braces demarcating what you’re passing: 
-```
+```c++
 Widget w4({});                              // calls std::initializer_list ctor with empty list
 Widget w5 {{}};                             // ditto
 ```
@@ -1856,7 +1853,7 @@ but it also has a constructor taking a `std::initializer_list`
 that permits you to specify the initial values in the container. 
 If you create a `std::vector` of a numeric type (e.g., a `std::vector<int>`) and you pass two arguments to the constructor,
 whether you enclose those arguments in parentheses or braces makes a tremendous difference: 
-```
+```c++
 std::vector<int> v1(10, 20);   // use non-std::initializer_list ctor: create 10-element std::vector, all elements have value of 20
 std::vector<int> v2 {10, 20};  // use std::initializer_list ctor: create 2-element std::vector, element values are 10 and 20
 ```
@@ -1901,7 +1898,7 @@ the tension between parentheses and braces for object creation can be especially
 because, in general, it’s not possible to know which should be used. 
 For example, suppose you’d like to create an object of an arbitrary type from an arbitrary number of arguments. 
 A variadic template makes this conceptually straightforward:
-```
+```c++
 template <typename T, typename ... Ts>
 void doSomeWork(Ts && ... params)
 {
@@ -1909,12 +1906,12 @@ void doSomeWork(Ts && ... params)
 }
 ```
 There are two ways to turn the line of pseudocode into real code (see Item 25 for information about `std::forward`): 
-```
+```c++
 T localObject(std::forward<Ts>(params) ...);   // using parens
 T localObject {std::forward<Ts>(params) ...};  // using braces
 ```
 So consider this calling code:
-```
+```c++
 doSomeWork<std::vector<int>>(10, 20);
 ```
 If `doSomeWork` uses parentheses when creating `localObject`, the result is a `std::vector<int>` with 10 elements. 
@@ -1943,7 +1940,7 @@ but that’s a fallback position.
 C++’s primary policy is that `0` is an `int`, not a pointer. 
 <br><br>
 Practically speaking, the same is true of `NULL`: 
-```
+```c++
 // <stddef.h>
 // g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
 
@@ -1966,7 +1963,7 @@ it’s that neither `0` nor `NULL` has a pointer type.
 In C++98, the primary implication of this was that 
 overloading on pointer and integral types could lead to surprises. 
 Passing `0` or `NULL` to such overloads **never** ~~called a pointer overload~~: 
-```
+```c++
 void f(int);     // three overloads of f
 void f(bool);
 void f(void *);
@@ -1994,13 +1991,13 @@ The type `std::nullptr_t` *implicitly converts to all raw pointer types*,
 and that’s what makes `nullptr` act as if it were a pointer of all types. 
 Calling the overloaded function `f` with `nullptr` calls the `void *` overload, 
 because `nullptr` can’t be viewed as anything integral: 
-```
+```c++
 f(nullptr);      // calls f(void*) overload
 ```
 Using `nullptr` instead of `0` or `NULL` thus avoids overload resolution surprises, but that’s not its only advantage. 
 It can also improve code clarity, especially when `auto` variables are involved. 
 For example, suppose you encounter this in a code base: 
-```
+```c++
 auto result = findRecord(/* arguments */);
 
 if (result == 0) 
@@ -2012,7 +2009,7 @@ If you don’t happen to know (or can’t easily find out) what `findRecord` ret
 it may not be clear whether result is a pointer type or an integral type. 
 After all, `0` (what result is tested against) could go either way. 
 If you see the following, on the other hand,
-```
+```c++
 auto result = findRecord(/* arguments */);
 
 if (result == nullptr) 
@@ -2025,13 +2022,13 @@ there’s no ambiguity: result must be a pointer type.
 `nullptr` shines especially brightly when templates enter the picture. 
 Suppose you have some functions that should be called only when the appropriate mutex has been locked. 
 Each function takes a different kind of pointer: 
-```
+```c++
 int f1(std::shared_ptr<Widget> spw);           // call these only when
 double f2(std::unique_ptr<Widget> upw);        // the appropriate
 bool f3(Widget * pw);                          // mutex is locked
 ```
 Calling code that wants to pass null pointers could look like this: 
-```
+```c++
 std::mutex f1m, f2m, f3m;                      // mutexes for f1, f2, and f3
 using MuxGuard = std::lock_guard<std::mutex>;
 
@@ -2053,7 +2050,7 @@ using MuxGuard = std::lock_guard<std::mutex>;
 The failure to use `nullptr` in the first two calls in this code is sad, but the code works, and that counts for something. 
 However, the repeated pattern in the calling code: lock mutex, call function, unlock mutex, is more than sad: it’s disturbing.
 This kind of source code duplication is one of the things that templates are designed to avoid, so let’s templatize the pattern: 
-```
+```c++
 template <typename FuncType, typename MuxType, typename PtrType>
 auto lockAndCall(FuncType func, MuxType & mutex, PtrType ptr) -> decltype(func(ptr))  // C++11 
 {
@@ -2069,7 +2066,7 @@ decltype(auto) lockAndCall(FuncType func, MuxType & mutex, PtrType ptr)         
 }
 ```
 Given the `lockAndCall` template (either version), callers can write code like this: 
-```
+```c++
 auto result1 = lockAndCall(f1, f1m, 0);        // error!
 auto result2 = lockAndCall(f2, f2m, NULL);     // error!
 auto result3 = lockAndCall(f3, f3m, nullptr);  // fine
@@ -2114,16 +2111,16 @@ When you want to refer to a null pointer, use `nullptr`, **not** `0` or `NULL`.
 #### `typedef`s and alias declarations
 
 Avoiding medical tragedies is easy. Introduce a `typedef`:
-```
+```c++
 typedef std::unique_ptr<std::unordered_map<std::string, std::string>> UPtrMapSS;
 ```
 But `typedef`s are soooo C++98. They work in C++11, sure, but C++11 also offers *alias declarations*: 
-```
+```c++
 using UPtrMapSS = std::unique_ptr<std::unordered_map<std::string, std::string>>;
 ```
 
 The alias declaration easier to swallow when dealing with types involving function pointers: 
-```
+```c++
 // FP is a synonym for a pointer to a function taking an int and a const std::string & and returning nothing
 typedef void (*FP)(int, const std::string &);   // typedef same meaning as above
 using FP = void (*)(int, const std::string &);  // alias declaration
@@ -2136,14 +2133,14 @@ This gives C++11 programmers a straightforward mechanism for expressing things
 that in C++98 had to be hacked together with `typedef`s nested inside templatized `struct`s. 
 For example, consider defining a synonym for a linked list that uses a custom allocator, `MyAlloc`. 
 With an alias template, it’s a piece of cake: 
-```
+```c++
 template <typename T>
 using MyAllocList = std::list<T, MyAlloc<T>>;  // MyAllocList<T>is synonym form std::list<T, MyAlloc<T>>
 
 MyAllocList<Widget> lw;                        // client code
 ```
 With a `typedef`, you pretty much have to create the cake from scratch: 
-```
+```c++
 template <typename T>
 struct MyAllocList 
 {
@@ -2155,7 +2152,7 @@ MyAllocList<Widget>::type lw;                  // client code
 It gets worse. If you want to use the `typedef` inside a template 
 for the purpose of creating a linked list holding objects of a type specified by a template parameter, 
 you have to precede the `typedef` name with `typename`: 
-```
+```c++
 template <typename T>
 class Widget 
 { 
@@ -2170,7 +2167,7 @@ the names of dependent types must be preceded by `typename` (reason to be stated
 
 If `MyAllocList` is defined as an alias template, this need for `typename` vanishes 
 (as does the cumbersome `::type` suffix): 
-```
+```c++
 template <typename T>
 using MyAllocList = std::list<T, MyAlloc<T>>;
 
@@ -2196,7 +2193,7 @@ because there might be a specialization of `MyAllocList` that they haven’t yet
 where `MyAllocList<T>::type` refers to something other than a type. 
 That sounds crazy, but don’t blame compilers for this possibility. 
 It’s the humans who have been known to produce such code. 
-```
+```c++
 class Wine 
 {
     // ...
@@ -2238,7 +2235,7 @@ and not all of them perform type transformations,
 but the ones that do offer a predictable interface. 
 Given a type `T` to which you’d like to apply a transformation, 
 the resulting type is `std::transformation<T>::type`. For example: 
-```
+```c++
 std::remove_const<T>::type          // yields T from const T
 std::remove_reference<T>::type      // yields T from T & and T &&
 std::add_lvalue_reference<T>::type  // yields T & from T
@@ -2248,7 +2245,7 @@ If you apply them to a type parameter inside a template
 (which is virtually always how you employ them in real code), 
 you’d also have to precede each use with `typename`. 
 The reason for both of these syntactic speed bumps is that 
-the C++11 type traits are implemented as nested `typedef`s inside templatized `structs`. 
+the C++11 type traits are implemented as nested `typedef`s inside templatized `struct`s. 
 
 
 There’s a historical reason for that, 
@@ -2257,7 +2254,7 @@ and they included such templates in C++14 for all the C++11 type transformations
 The aliases have a common form: 
 for each C++11 transformation `std::transformation<T>::type`, 
 there’s a corresponding C++14 alias template named `std::transformation_t`: 
-```
+```c++
 std::remove_const<T>::type          // C++11 const T -> T
 std::remove_const_t<T>              // C++14 equivalent
 std::remove_reference<T>::type      // C++11 T &, T && -> T
@@ -2270,7 +2267,7 @@ Even if you don’t have access to C++14, writing the alias templates yourself i
 Only C++11 language features are required. 
 If you happen to have access to an electronic copy of the C++14 Standard, it’s easier still, 
 because all that’s required is some copying and pasting.
-```
+```c++
 template <class T>
 using remove_const_t = typename remove_const<T>::type;
 
@@ -2287,6 +2284,178 @@ using add_lvalue_reference_t = typename add_lvalue_reference<T>::type;
 
 
 ### 📌 Item 10: Prefer scoped `enum`s to unscoped `enum`s
+
+- C++98-style `enum`s are now known as *unscoped `enum`s*. 
+- Enumerators of scoped `enum`s are visible only within the `enum`. 
+  They convert to other types only explicitly with a cast. 
+  Enumerators of unscoped `enum`s convert to numeric types implicitly. 
+- Both scoped and unscoped enums support specification of the underlying type. 
+  The default underlying type for scoped `enum`s is `int`. 
+  Unscoped `enum`s have **no** ~~default underlying type~~. 
+- Scoped `enum`s may always be forward-declared. 
+  Unscoped `enum`s may be forward-declared only if their declaration specifies an underlying type. 
+
+The names of such C++98-style *unscoped* enumerators belong to *the scope containing the `enum`*, 
+and that means that nothing else in that scope may have the same name: 
+```c++
+enum Color 
+{ 
+    black, 
+    white, 
+    red 
+};                   // black, white, red are in same scope as Color
+
+auto white = false;  // error! white already declared in this scope
+```
+Their new C++11 counterparts, *scoped `enum`s*, don’t leak names in this way: 
+```c++
+enum class Color 
+{ 
+    black, 
+    white, 
+    red 
+};                       // black, white, red are scoped to Color
+
+auto white = false;      // fine, no other "white" in scope
+Color c = white;         // error! no enumerator named "white" is in this scope
+Color c = Color::white;  // fine
+auto c = Color::white;   // also fine (and in accord with Item 5's advice)
+```
+Because scoped `enum`s are declared via *`enum class`*, they’re sometimes referred to as *`enum` classes*. 
+
+
+The reduction in namespace pollution offered by scoped `enum`s 
+is reason enough to prefer them over their unscoped siblings, 
+but scoped `enum`s have a second compelling advantage: 
+their *enumerators are much more strongly typed*. 
+Enumerators for unscoped `enum`s implicitly convert to integral types (and, from there, to floating-point types). 
+Semantic travesties such as the following are therefore completely valid:
+```c++
+enum Color 
+{ 
+    black, 
+    white, 
+    red 
+};
+
+// func returning prime factors of x
+std::vector<std::size_t> primeFactors(std::size_t x);  
+
+Color c = red;
+
+if (c < 14.5)                        // compare Color to double (!)
+{ 
+    auto factors = primeFactors(c);  // compute prime factors of a Color (!)
+}
+```
+Throw a simple “`class`” after “`enum`”, however, 
+thus transforming an unscoped `enum` into a scoped one, 
+and it’s a very different story. 
+There are **no** ~~implicit conversions from enumerators in a scoped `enum` to any other type~~: 
+```c++
+enum class Color 
+{ 
+    black, 
+    white, 
+    red 
+};
+
+Color c = Color::red;
+
+if (c < 14.5)                        // error! can't compare Color and double
+{ 
+    auto factors = primeFactors(c);  // error! can't pass Color to primeFactors(c); function expecting std::size_t
+}
+```
+If you honestly want to perform a conversion from `Color` to a different type, 
+do what you always do to twist the type system to your wanton desires: use a cast:
+```c++
+if (static_cast<double>(c) < 14.5)                             // odd code, but it's valid
+{ 
+    auto factors = primeFactors(static_cast<std::size_t>(c));  // suspect, but it compiles
+}
+```
+It may seem that scoped `enum`s have a third advantage over unscoped `enum`s, 
+because scoped `enum`s may be *forward-declared*, 
+i.e., their names may be declared **without** ~~specifying their enumerators~~:
+```c++
+enum Color;        // error!
+enum class Color;  // fine
+```
+This is misleading. 
+In C++11, unscoped `enum`s may also be forward-declared, 
+but only after a bit of additional work. 
+The work grows out of the fact that every `enum` in C++ has an integral underlying type 
+that is determined by compilers. 
+For an unscoped `enum` like `Color`, 
+```c++
+enum Color 
+{ 
+    black, 
+    white, 
+    red 
+};
+```
+compilers might choose `char` as the underlying type, 
+because there are only three values to represent. 
+However, some `enum`s have a range of values that is much larger:
+```c++
+enum Status 
+{ 
+    good = 0,
+    failed = 1,
+    incomplete = 100,
+    corrupt = 200,
+    indeterminate = 0xFFFFFFFF
+};
+```
+Here the values to be represented range from `0` to `0xFFFFFFFF`. 
+Except on unusual machines (where a `char` consists of at least 32 bits), 
+compilers will have to select an integral type larger than char for the representation of Status values. 
+
+
+To make efficient use of memory, 
+compilers often want to choose the *smallest underlying type* 
+for an `enum` that’s sufficient to represent its range of enumerator values. 
+In some cases, compilers will optimize for speed instead of size, and in that case, 
+they may not choose the smallest permissible underlying type, 
+but they certainly want to be able to optimize for size. 
+To make that possible, 
+C++98 supports only *`enum` definitions* (where all enumerators are listed); 
+*`enum` declarations* are **not** allowed. 
+That makes it possible for compilers to select an underlying type for each enum prior to the `enum` being used. 
+
+But the inability to forward-declare `enum`s has drawbacks. 
+The most notable is probably the increase in compilation dependencies. 
+Consider again the `Status` `enum`.
+This is the kind of `enum` that’s likely to be used throughout a system, 
+hence included in a header file that every part of the system is dependent on. 
+If a new status value is then introduced,
+```c++
+enum Status
+{
+    good = 0,
+    failed = 1,
+    incomplete = 100,
+    corrupt = 200,
+    audited = 500,
+    indeterminate = 0xFFFFFFFF
+};
+```
+it’s likely that the entire system will have to be recompiled, 
+even if only a single subsystem, possibly only a single function!, uses the new enumerator. 
+This is the kind of thing that people hate. 
+And it’s the kind of thing that the ability to forward-declare `enum`s in C++11 eliminates. 
+For example, here’s a perfectly valid declaration of a scoped `enum` and a function that takes one as a parameter:
+```c++
+enum class Status;                  // forward declaration
+void continueProcessing(Status s);  // use of fwd-declared enum
+```
+
+
+
+
+
 
 
 
