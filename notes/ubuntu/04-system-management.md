@@ -14,6 +14,8 @@ ps -e | grep ssh  # 应该看到 sshd
 ```
 sudo /etc/init.d/ssh stop
 sudo /etc/init.d/ssh start
+
+sudo service ssh --full-restart
 ```
 
 - 配置相关：
@@ -32,8 +34,8 @@ sudo apt install openssh-server
 sudo vi /etc/ssh/sshd_config
 
 # change following things:
-# 1. remove the comment on `port 22`
-# 2. PermitRootLogin no => PermitRootLogin yes
+# 1. remove the comment on `port 22` (line 15)
+# 2. PermitRootLogin no => PermitRootLogin yes (line 58)
 
 sudo service ssh --full-restart
 

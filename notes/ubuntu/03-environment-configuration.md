@@ -95,8 +95,8 @@ https://www.anaconda.com/pycharm
 - New virtual environment (do NOT use `opencv` package from `conda`. It's bullsh*t):
 ```
 conda create -n py3 python=3.7 numpy scipy sympy matplotlib cython ipykernel h5py
-pip install opencv-python
 conda activate py3
+pip install opencv-python
 python -m ipykernel install --name py3 --user
 ```
     
@@ -146,10 +146,10 @@ jupyter notebook password
 edit `jupyter_notebook_config.py`:    
 
 ```
-c.NotebookApp.ip = '0.0.0.0'         # 204
-c.NotebookApp.open_browser = False   # 272
-c.NotebookApp.password = 'sha1:...'  # 281
-c.NotebookApp.port = 9000            # 292
+c.NotebookApp.ip = '0.0.0.0'           # 286
+c.NotebookApp.open_browser = False     # 382
+c.NotebookApp.password = 'argon2:...'  # 392
+c.NotebookApp.port = 9000              # 405
 ```
     
 #### view installed kernels
