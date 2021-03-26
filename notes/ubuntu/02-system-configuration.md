@@ -14,6 +14,8 @@ chmod 644 ~/.bashrc ~/.bash_history
 
 ```
 sudo apt install vim tmux git gcc g++ gdb cmake mlocate
+# do NOT install mlocate in WSL! 
+# no need to install vim tmux git in WSL! 
 
 touch ~/.tmux.conf
 gedit ~/.tmux.conf

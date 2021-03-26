@@ -30,11 +30,11 @@
         "defaults":
         {
             // Put settings here that you want to apply to all profiles.
-            "colorScheme": "Campbell Powershell",
+            "colorScheme": "Campbell",
             "fontFace": "JetBrains Mono",
             "fontSize": 18,
             "useAcrylic": true,
-            "acrylicOpacity": 0.9,
+            "acrylicOpacity": 0.5,
             "scrollbarState": "visible"
         },
         "list":

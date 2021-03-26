@@ -22,6 +22,7 @@
     2. [System Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/02-system-configuration.md)
     3. [Environment Configuration](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/03-environment-configuration.md)
     4. [System Management](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/04-system-management.md)
+    5. [WSL 2](https://github.com/AXIHIXA/Memo/blob/master/notes/ubuntu/05-wsl-2.md)
     
 ### 🌱 Sample Code
 
