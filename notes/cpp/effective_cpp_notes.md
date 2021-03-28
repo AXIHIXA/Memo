@@ -1,4 +1,4 @@
-# *`Effective C++`* Notes
+# *Effective C++* Notes
 
 - Notes of reading: 
     - *Effective C++ Digital Collection: 140 Ways to Improve Your Programming*
@@ -788,7 +788,7 @@ that deduces the number of elements that an array contains:
 // (The array parameter has no name, 
 // because we care only about the number of elements it contains.)
 template <typename T, std::size_t N> 
-constexpr std::size_t arraySize(T (&)[N]) noexcept
+constexpr std::size_t arraySize(T (& array)[N]) noexcept
 {
     return N;
 }
@@ -2576,7 +2576,7 @@ template<typename E>  // C++14
 constexpr auto
 toUType(E enumerator) noexcept
 {
-return static_cast<std::underlying_type_t<E>>(enumerator);
+    return static_cast<std::underlying_type_t<E>>(enumerator);
 }
 ```
 Regardless of how it’s written, `toUType` permits us to access a field of the tuple like this:
@@ -2596,30 +2596,201 @@ that dates to a time when the state of the art in digital telecommunications was
 
 ### 📌 Item 11: Prefer deleted functions to private undefined ones
 
+- Prefer deleted functions to private undefined ones. 
+- C++98-style private undefined functions don’t work outside classes, 
+  don’t always work inside classes,
+  and may not work until link-time. 
+- *Any* function may be deleted, including non-member functions and template instantiations.
 
 
+The C++98 approach to preventing use of the *special member functions* 
+is to declare them `private` and **not** ~~define~~ them. 
 
 
+For example, near the base of the `iostream`s hierarchy in the C++ Standard Library is the class template `basic_ios`. 
+All `istream` and `ostream` classes inherit (possibly indirectly) from this class. 
+Copying `istream`s and `ostream`s is undesirable, because it’s not really clear what such operations should do. 
+An `istream` object, for example, represents a stream of input values, 
+some of which may have already been read, and some of which will potentially be read later. 
+If an `istream` were to be copied, would that entail 
+copying all the values that had already been read as well as all the values that would be read in the future? 
+The easiest way to deal with such questions is to define them out of existence. 
+Prohibiting the copying of streams does just that. 
 
 
+To render `istream` and `ostream` classes uncopyable, 
+`basic_ios` is specified in C++98 as follows (including the comments):
+```c++
+template <class charT, class traits = char_traits <charT>>
+class basic_ios : public ios_base
+{
+public:
+    // ...
+    
+private:
+    basic_ios(const basic_ios &);              // not defined
+    basic_ios & operator=(const basic_ios &);  // not defined
+};
+```
+Declaring these functions `private` prevents clients from calling them. 
+Deliberately failing to define them means that if code that still has access to them 
+(i.e., member functions or friends of the class) uses them, 
+linking will fail due to missing function definitions.
+
+In C++11, there’s a better way to achieve essentially the same end: 
+use `= delete` to mark the copy constructor and the copy assignment operator as *deleted functions*. 
+Here’s the same part of `basic_ios` as it’s specified in C++11:
+```c++
+template <class charT, class traits = char_traits <charT>>
+class basic_ios : public ios_base
+{
+public:
+    // ...
+    basic_ios(const basic_ios &) = delete;
+    basic_ios & operator=(const basic_ios &) = delete;
+    // ...
+};
+```
+The difference between deleting these functions and declaring them `private` 
+may seem more a matter of fashion than anything else, 
+but there’s greater substance here than you might think. 
+Deleted functions may **not** be used in any way, 
+so even code that’s in member and friend functions will fail to *compile* (rather than fail to link) 
+if it tries to copy `basic_ios` objects. 
+That’s an improvement over the C++98 behavior, where such improper usage wouldn’t be diagnosed until link-time. 
+
+By convention, deleted functions are declared `public`, not `private`. There’s a reason for that. 
+When client code tries to use a member function, C++ checks accessibility before deleted status. 
+When client code tries to use a deleted private function, 
+some compilers complain only about the function being private, 
+even though the function’s accessibility doesn’t really affect whether it can be used. 
+It’s worth bearing this in mind when revising legacy code 
+to replace private-and-not-defined member functions with deleted ones, 
+because making the new functions `public` will generally result in better error messages. 
 
 
+An important advantage of deleted functions is that *any function may be deleted*, 
+while only member functions may be private. 
+For example, suppose we have a nonmember function that takes an integer and returns whether it’s a lucky number: 
+```c++
+bool isLucky(int number);
+```
+C++’s C heritage means that pretty much any type that can be viewed as vaguely numerical will implicitly convert to `int`, 
+but some calls that would compile might not make sense: 
+```c++
+if (isLucky('a'))   // is 'a' a lucky number?
+if (isLucky(true))  // is "true"?
+if (isLucky(3.5))   // should we truncate to 3 before checking for luckiness?
+```
+If lucky numbers must really be integers, we’d like to prevent calls such as these from compiling. 
 
 
+One way to accomplish that is to create deleted overloads for the types we want to filter out:
+```c++
+bool isLucky(int number);       // original function
+bool isLucky(char) = delete;    // reject chars
+bool isLucky(bool) = delete;    // reject bools
+bool isLucky(double) = delete;  // reject doubles and floats
+```
+(The comment on the `double` overload 
+that says that both `double`s and `float`s will be rejected may surprise you, 
+but your surprise will dissipate once you recall that,
+given a choice between converting a `float` to an `int` or to a `double`, 
+C++ prefers the conversion to `double`. 
+Calling `isLucky` with a `float` will therefore call the `double` overload, not the `int` one. 
+Well, it’ll try to. 
+The fact that that overload is deleted will prevent the call from compiling.)
 
 
+Although deleted functions can’t be used, they are part of your program. 
+As such, they are taken into account *during overload resolution*. 
+That’s why, with the deleted function declarations above, the undesirable calls to `isLucky` will be rejected: 
+```c++
+if (isLucky('a'))   // error! call to deleted function
+if (isLucky(true))  // error!
+if (isLucky(3.5f))  // error!
+```
+Another trick that deleted functions can perform (and that `private` member functions can’t) 
+is to prevent use of template instantiations that should be disabled. 
+For example, suppose you need a template that works with built-in pointers: 
+```c++
+template<typename T>
+void processPointer(T * ptr);
+```
+There are two special cases in the world of pointers. 
+One is `void *` pointers, 
+because there is no way to dereference them, to increment or decrement them, etc. 
+The other is `char *` pointers, 
+because they typically represent pointers to C-style strings, not pointers to individual characters. 
+These special cases often call for special handling, and, in the case of the `processPointer` template, 
+let’s assume the proper handling is to reject calls using those types. 
+That is, it should not be possible to call `processPointer` with `void *` or `char *` pointers.
+That’s easily enforced. Just delete those instantiations. 
+And, if calling `processPointer` with a `void *` or a `char *` is invalid,
+it’s probably also invalid to call it with a `const void *` or a `const char *`,
+so those instantiations will typically need to be deleted, too:
+```c++
+template<>
+void processPointer<void>(void *) = delete;
+
+template<>
+void processPointer<const void>(const void *) = delete;
+
+template<>
+void processPointer<char>(char *) = delete;
+
+template<>
+void processPointer<const char>(const char *) = delete;
+```
+And if you really want to be thorough, 
+you’ll also delete the `const volatile void *`and `const volatile char *` overloads, 
+and then you’ll get to work on the overloads for pointers to the other standard character types: 
+`std::wchar_t`, `std::char16_t`, and `std::char32_t`. 
 
 
+Interestingly, if you have a function template inside a class, 
+and you’d like to ~~disable some instantiations by declaring them private~~ (à la classic C++98 convention), 
+you **can’t**, because it’s **impossible** to 
+~~give a member function template specialization a different access level from that of the main template~~. 
+If `processPointer` were a member function template inside `Widget`, for example, 
+and you wanted to disable calls for `void *` pointers, this would be the C++98 approach, though it would not compile:
+```c++
+class Widget
+{
+public:
+    template <typename T>
+    void processPointer(T * ptr)
+    {
 
+    }
 
+private:
+    template <>  // error!
+    void processPointer<void>(void *);
+};
+```
+The problem is that template specializations must be written at *namespace scope*, **not** *class scope*. 
+This issue doesn’t arise for deleted functions, because they don’t need a different access level. 
+They can be deleted outside the class (hence at namespace scope):
+```c++
+class Widget 
+{
+public:
+    template<typename T>
+    void processPointer(T * ptr)
+    {
 
+    }
+};
 
-
-
-
-
-
-
+template<> 
+void Widget::processPointer<void>(void *) = delete;  // partial specification of mem func, still public, but deleted
+```
+The truth is that the C++98 practice of declaring functions private and not defining them 
+was really an attempt to achieve what C++11’s deleted functions actually accomplish. 
+As an emulation, the C++98 approach is not as good as the real thing. 
+It doesn’t work outside classes, it doesn’t always work inside classes, 
+and when it does work, it may not work until link-time. So stick to deleted functions. 
 
 
 
@@ -2628,8 +2799,143 @@ that dates to a time when the state of the art in digital telecommunications was
 
 ### 📌 Item 12: Declare overriding functions `override`
 
+- Declare overriding functions `override`.
+- *Member function reference qualifier*s make it possible to treat lvalue and rvalue objects (`*this`) differently.
+
+#### Virtual function overriding
+
+Virtual function overriding makes it possible to invoke a derived class function through a base class interface: 
+```c++
+class Base
+{
+public:
+    virtual void doWork();                                // base class virtual function
+};
+
+class Derived : public Base
+{
+public:
+    virtual void doWork();                                // overrides Base::doWork ("virtual" is optional here)
+}; 
+
+std::unique_ptr<Base> upb = std::make_unique<Derived>();  // create base class pointer to derived class object;
+upb->doWork();                                            // call doWork through base class ptr; 
+                                                          // derived class function is invoked
+```
+For overriding to occur, several requirements must be met: 
+- The base class function must be virtual.
+- The base and derived function names must be identical (except in the case of destructors).
+- The parameter types of the base and derived functions must be identical.
+- The const-ness of the base and derived functions must be identical.
+- The return types and exception specifications of the base and derived functions must be compatible.
+- The functions’ *reference qualifier*s must be identical. 
+
+Member function reference qualifiers are one of C++11’s less-publicized features, 
+so don’t be surprised if you’ve never heard of them. 
+They make it possible to limit use of a member function to lvalues only or to rvalues only. 
+Member functions need not be virtual to use them: 
+```c++
+class Widget
+{
+public:
+    void doWork() &;    // applies monly when *this is an lvalue
+    void doWork() &&;   // applies only when *this is an rvalue
+}; 
+
+Widget makeWidget();    // factory function (returns rvalue)
+Widget w;               // normal object (an lvalue)
+w.doWork();             // calls Widget::doWork for lvalues (i.e., Widget::doWork &)
+makeWidget().doWork();  // calls Widget::doWork for rvalues (i.e., Widget::doWork &&)
+```
+If a virtual function in a base class has a reference qualifier,
+derived class overrides of that function must have exactly the same reference qualifier. 
+If they don’t, the declared functions will still exist in the derived class,
+but they **won’t** override anything in the base class. 
 
 
+All these requirements for overriding mean that small mistakes can make a big difference. 
+Code containing overriding errors is typically valid, but its meaning isn’t what you intended. 
+You therefore **can’t** rely on compilers notifying you if you do something wrong. 
+For example, the following code is completely legal, but it contains **no** ~~virtual function overrides~~: 
+**not** a single `Derived` class function that is tied to a `Base` class function.
+```c++
+class Base
+{
+public:
+    virtual void mf1() const;
+    virtual void mf2(int x);
+    virtual void mf3() &;
+    void mf4() const;
+};
+
+class Derived : public Base
+{
+public:
+    virtual void mf1();                // const-ness mismatch
+    virtual void mf2(unsigned int x);  // parameter list mismatch
+    virtual void mf3() &&;             // reference qualifier mismatch
+    void mf4() const;                  // not virtual in Base
+};
+```
+Because declaring derived class overrides is important to get right, but easy to get wrong, 
+C++11 gives you a way to make explicit that a derived class function is supposed to override a base class version: 
+declare it `override`. 
+Applying this to the example above would yield this:
+```c++
+class Base
+{
+public:
+    virtual void mf1() const;
+    virtual void mf2(int x);
+    virtual void mf3() &;
+    virtual void mf4() const;
+};
+
+class Derived : public Base
+{
+public:
+    virtual void mf1() const override;
+    virtual void mf2(int x) override;
+    virtual void mf3() & override;
+    virtual void mf4() const override;  // adding "virtual" is OK but not necessary
+};
+```
+
+
+Note that in this example, part of getting things to work involves declaring `mf4` `virtual`in `Base`. 
+Most overriding-related errors occur in derived classes, but it’s possible for things to be incorrect in base classes, too.
+
+A policy of using `override` on all your derived class overrides can do more 
+than just enable compilers to tell you when would-be overrides aren’t overriding anything. 
+It can also help you gauge the ramifications 
+if you’re contemplating changing the signature of a virtual function in a base class. 
+If derived classes use override everywhere, you can just change the signature, recompile your system, 
+see how much damage you’ve caused (i.e., how many derived classes fail to compile), 
+then decide whether the signature change is worth the trouble. 
+Without override, you’d have to hope you have comprehensive unit tests in place, 
+because, as we’ve seen, derived class virtuals that are supposed to override base class functions, 
+but don’t, need not elicit compiler diagnostics.
+
+
+C++ has always had keywords, but C++11 introduces two *contextual keyword*s, `override` and `final`. b
+Applying `final` to a virtual function prevents the function from being overridden in derived classes. 
+`final`may also be applied to a class, in which case the class is prohibited from being used as a base class. 
+These keywords have the characteristic that they are reserved, but only in certain contexts. 
+In the case of `override`, it has a reserved meaning only when it occurs *at the end of a member function declaration*. 
+(Even after trailing return type, if there is one. )
+That means that if you have legacy code that already uses the name `override`, you don’t need to change it for C++11:
+```c++
+class Warning         // potential legacy class from C++98
+{
+public:
+    void override();  // legal in both C++98 and C++11 (with the same meaning)
+};
+```
+
+
+#### Member function reference qualifiers
+
+If we want to write a function that accepts only lvalue arguments, we declare a non-`const` lvalue reference parameter:
 
 
 
