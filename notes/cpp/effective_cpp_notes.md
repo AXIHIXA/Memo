@@ -1293,7 +1293,7 @@ void f(const T & param)
     - *avoids type shortcuts*
     - *avoids unintentional type mismatches*
     - *avoids verbose variable declarations and facilitates API reformatting*
-- `auto`-typed variables are subject to the pitfalls described in Items 2 and 6. 
+- `auto`-typed variables are subject to the pitfalls: `initializer_list`s, proxy types, etc. 
 
 Ah, the simple joy of
 ```c++
@@ -2105,7 +2105,7 @@ When you want to refer to a null pointer, use `nullptr`, **not** `0` or `NULL`.
 ### 📌 Item 9: Prefer alias declarations to `typedef`s
 
 - `typedef`s **don’t** support templatization, but alias declarations do. 
-- Alias templates avoid the `::type` suffix; in templates, the `typename` prefix often required to refer to `typedef`s. 
+- *Alias templates* avoid the `::type` suffix; in templates, the `typename` prefix is often required to refer to `typedef`s. 
 - C++14 offers alias templates for all the C++11 type traits transformations. 
 
 #### `typedef`s and alias declarations
@@ -2289,7 +2289,7 @@ using add_lvalue_reference_t = typename add_lvalue_reference<T>::type;
 - Enumerators of scoped `enum`s are visible only within the `enum`. 
   They convert to other types only explicitly with a cast. 
   Enumerators of unscoped `enum`s convert to numeric types implicitly. 
-- Both scoped and unscoped enums support specification of the underlying type. 
+- Both scoped and unscoped `enum`s support specification of the underlying type. 
   The default underlying type for scoped `enum`s is `int`. 
   Unscoped `enum`s have **no** ~~default underlying type~~. 
 - Scoped `enum`s may always be forward-declared. 
@@ -2443,7 +2443,7 @@ enum Status
 };
 ```
 it’s likely that the entire system will have to be recompiled, 
-even if only a single subsystem, possibly only a single function!, uses the new enumerator. 
+even if only a single function uses the new enumerator. 
 This is the kind of thing that people hate. 
 And it’s the kind of thing that the ability to forward-declare `enum`s in C++11 eliminates. 
 For example, here’s a perfectly valid declaration of a scoped `enum` and a function that takes one as a parameter:
@@ -2451,10 +2451,143 @@ For example, here’s a perfectly valid declaration of a scoped `enum` and a fun
 enum class Status;                  // forward declaration
 void continueProcessing(Status s);  // use of fwd-declared enum
 ```
+The header containing these declarations requires **no** ~~recompilation~~ if `Status`’s definition is revised. 
+Furthermore, if `Status` is modified (e.g., to add the `audited` enumerator), 
+but `continueProcessing`’s behavior is unaffected (e.g., because `continueProcessing` doesn’t use `audited`), 
+`continueProcessing`’s implementation need **not** ~~to be recompiled~~, either. 
 
 
+But if compilers need to know the size of an `enum` before it’s used, 
+how can C++11’s `enum`s get away with forward declarations when C++98’s enums can’t? 
+The answer is simple: 
+the *underlying type* for a scoped `enum` is always known, 
+and for unscoped `enum`s, you can specify it. 
 
 
+By default, the underlying type for scoped `enum`s is `int`:
+```c++
+enum class Status;                  // underlying type is int
+```
+If the default doesn’t suit you, you can override it:
+```c++
+enum class Status : std::uint32_t;  // underlying type is std::uint32_t
+```
+Either way, compilers know the size of the enumerators in a scoped `enum`. 
+
+
+To specify the underlying type for an unscoped `enum`, 
+you do the same thing as for a scoped `enum`, 
+and the result may be forward-declared: 
+```c++
+enum Color : std::uint8_t;          // fwd decl for unscoped enum; underlying type is std::uint8_t
+```
+
+Underlying type specifications can also go on an `enum`’s definition:
+```c++
+enum class Status : std::uint32_t
+{
+    good = 0,
+    failed = 1,
+    incomplete = 100,
+    corrupt = 200,
+    audited = 500,
+    indeterminate = 0xFFFFFFFF
+};
+```
+In view of the fact that scoped `enum`s avoid ~~namespace pollution~~
+and aren’t susceptible to ~~nonsensical implicit type conversions~~, 
+there’s still at least one situation where unscoped `enum`s may be useful. 
+That’s when *referring to fields within C++11’s `std::tuple`s*. 
+For example, suppose we have a tuple holding values 
+for the name, email address, and reputation value: 
+```c++
+// some_header.h
+using UserInfo = std::tuple<std::string, std::string, std::size_t>; 
+
+// some_source.cpp
+UserInfo uInfo;
+auto val = std::get<1>(uInfo);     // get value of field 1; but what does field 1 represent?
+```
+Using an unscoped `enum` to associate names with field numbers avoids the need to:
+```c++
+enum UserInfoFields
+{
+    uiName,
+    uiEmail,
+    uiReputation
+};
+
+UserInfo uInfo; 
+
+auto val = std::get<uiEmail>(uInfo);  // ah, get value of email field
+```
+What makes this work is the implicit conversion from `UserInfoFields` to `std::size_t`, 
+which is the type that `std::get` requires.
+The corresponding code with scoped `enum`s is substantially more verbose:
+```c++
+enum UserInfoFields
+{
+    uiName,
+    uiEmail,
+    uiReputation
+};
+
+UserInfo uInfo;
+
+auto val = std::get<static_cast<std::size_t>(UserInfoFields::uiEmail)>(uInfo);
+```
+The verbosity can be reduced by writing a function 
+that takes an enumerator and returns its corresponding `std::size_t` value, 
+but it’s a bit tricky. 
+`std::get` is a template, and the value you provide is a *template argument* 
+(notice the use of angle brackets, not parentheses), 
+so the function that transforms an enumerator into a `std::size_t` has to produce its result during compilation. 
+As Item 15 explains, that means it must be a `constexpr` function.
+In fact, it should really be a *`constexpr` function template*, 
+because it should work with any kind of `enum`. 
+And if we’re going to make that generalization, we should generalize the return type, too. 
+Rather than returning `std::size_t`, we’ll return the `enum`’s underlying type. 
+It’s available via the `std::underlying_type` type trait. 
+Finally, we’ll declare it `noexcept` (see Item 14), 
+because we know it will never yield an exception. 
+The result is a function template `toUType` 
+that takes an arbitrary enumerator and can return its value as a compiletime constant:
+```c++
+template<typename E>
+constexpr typename std::underlying_type<E>::type 
+toUType(E enumerator) noexcept
+{
+    return static_cast<typename std::underlying_type<E>::type>(enumerator);
+}
+```
+In C++14, `toUType` can be simplified by replacing `typename std::underlying_type<E>::type` 
+with the sleeker `std::underlying_type_t` (see Item 9):
+```c++
+template<typename E>  // C++14
+constexpr std::underlying_type_t<E>
+toUType(E enumerator) noexcept
+{
+    return static_cast<std::underlying_type_t<E>>(enumerator);
+}
+```
+The even-sleeker `auto` return type (see Item 3) is also valid in C++14:
+```c++
+template<typename E>  // C++14
+constexpr auto
+toUType(E enumerator) noexcept
+{
+return static_cast<std::underlying_type_t<E>>(enumerator);
+}
+```
+Regardless of how it’s written, `toUType` permits us to access a field of the tuple like this:
+```c++
+auto val = std::get<toUType(UserInfoFields::uiEmail)>(uInfo);
+```
+It’s still more to write than use of the unscoped `enum`, 
+but it also avoids namespace pollution and inadvertent conversions involving enumerators. 
+In many cases, you may decide that typing a few extra characters is a reasonable price to pay 
+for the ability to avoid the pitfalls of an `enum` technology 
+that dates to a time when the state of the art in digital telecommunications was the 2400-baud modem.
 
 
 
@@ -2462,6 +2595,33 @@ void continueProcessing(Status s);  // use of fwd-declared enum
 
 
 ### 📌 Item 11: Prefer deleted functions to private undefined ones
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
