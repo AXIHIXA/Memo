@@ -2917,7 +2917,7 @@ because, as we’ve seen, derived class virtuals that are supposed to override b
 but don’t, need not elicit compiler diagnostics.
 
 
-C++ has always had keywords, but C++11 introduces two *contextual keyword*s, `override` and `final`. b
+C++ has always had keywords, but C++11 introduces two *contextual keyword*s, `override` and `final`. 
 Applying `final` to a virtual function prevents the function from being overridden in derived classes. 
 `final`may also be applied to a class, in which case the class is prohibited from being used as a base class. 
 These keywords have the characteristic that they are reserved, but only in certain contexts. 
@@ -2932,15 +2932,203 @@ public:
 };
 ```
 
-
 #### Member function reference qualifiers
 
 If we want to write a function that accepts only lvalue arguments, we declare a non-`const` lvalue reference parameter:
+```c++
+void doSomething(Widget & w);   // accepts only lvalue Widgets
+```
+If we want to write a function that accepts only rvalue arguments, we declare an rvalue reference parameter:
+```c++
+void doSomething(Widget && w);  // accepts only rvalue Widgets
+```
+*Member function reference qualifier*s simply make it possible 
+to draw the same distinction for the object 
+on which a member function is invoked, i.e., `*this`. 
+It’s precisely analogous to the `const` at the end of a member function declaration, 
+which indicates that the object on which the member function is invoked (i.e., *this) is `const`.
+
+The need for reference-qualified member functions is not common, but it can arise.
+For example, suppose our `Widget` class has a `std::vector` data member, 
+and we offer an accessor function that gives clients direct access to it:
+```c++
+class Widget 
+{
+public:
+    using DataType = std::vector<double>; 
+    
+    DataType & data() 
+    { 
+        return values;
+    }
+
+private:
+    DataType values;
+};
+```
+This is hardly the most encapsulated design that’s seen the light of day, 
+but set that aside and consider what happens in this client code:
+```c++
+Widget w;
+auto vals1 = w.data();             // copy w.values into vals1
+```
+The return type of `Widget::data` is an lvalue reference (a `std::vector<double> &`, to be precise), 
+and because lvalue references are defined to be lvalues, we’re initializing `vals1` from an lvalue. 
+`vals1` is thus copy constructed from `w.values`, just as the comment says.
+Now suppose we have a factory function that creates `Widgets`,
+and we want to initialize a variable with the `std::vector` inside the `Widget` returned from `makeWidget`:
+```c++
+Widget makeWidget();
+auto vals2 = makeWidget().data();  // copy values inside the Widget into vals2
+```
+Again, `Widgets::data` returns an lvalue reference, and, again, the lvalue reference is an lvalue, 
+so, again, our new object (`vals2`) is copy constructed from values inside the `Widget`. 
+This time, though, the `Widget` is the temporary object returned from `makeWidget` (i.e., an rvalue), 
+so copying the `std::vector` inside it is a waste of time.
+It’d be preferable to *move* it, but, because `data` is returning an lvalue reference, 
+the rules of C++ require that compilers generate code for a copy. 
+(There’s some wiggle room for optimization through what is known as the “as if rule,” 
+but you’d be foolish to rely on your compilers finding a way to take advantage of it.)
+What’s needed is a way to specify that when data is invoked on an rvalue `Widget`, 
+the result should also be an rvalue. 
+Using reference qualifiers to overload data for lvalue and rvalue `Widgets` makes that possible:
+```c++
+class Widget 
+{
+public:
+    using DataType = std::vector<double>;
+    
+    DataType & data() &  // for lvalue Widgets, return lvalue
+    { 
+        return values; 
+    } 
+    
+    DataType data() &&   // for rvalue Widgets, return rvalue
+    { 
+        return std::move(values); 
+    } 
+
+private:
+    DataType values;
+};
+```
+Notice the differing return types from the data overloads. 
+The lvalue reference overload returns an lvalue reference (i.e., an lvalue), 
+and the rvalue reference overload returns a temporary object (i.e., an rvalue). 
+This means that client code now behaves as we’d like:
+```c++
+auto vals1 = w.data();             // calls lvalue overload for Widget::data, copy-constructs vals1
+auto vals2 = makeWidget().data();  // calls rvalue overload for Widget::data, move-constructs vals2
+```
+This is certainly nice, 
+but don’t let the warm glow of this happy ending 
+distract you from the true point of this Item. 
+That point is that whenever you declare a function in a derived class 
+that’s meant to override a virtual function in a base class, 
+be sure to declare that function `override`.
+
+
 
 
 
 
 ### 📌 Item 13: Prefer `const_iterator`s to `iterator`s
+
+- Prefer `const_iterator`s to `iterator`s.
+- In maximally generic code, 
+  prefer non-member versions of `begin`, `end`, `rbegin`, etc., 
+  over their member function counterparts.
+
+#### `const_iterator`s
+
+`const_iterator`s are the STL equivalent of pointers-to-`const`. 
+They point to values that may **not** be modified. 
+The standard practice of using `const` whenever possible dictates 
+that you should use `const_iterator`s any time you need an iterator, 
+yet have no need to modify what the iterator points to. 
+
+
+That’s as true for C++98 as for C++11, but in C++98, `const_iterator`s had only halfhearted support. 
+It wasn’t that easy to create them, and once you had one, the ways you could use it were limited. 
+For example, suppose you want to search a `std::vector<int>` for the first occurrence of `1983` 
+(the year “C++” replaced “C with Classes” as the name of the programming language), 
+then insert the value `1998` (the year the first ISO C++ Standard was adopted) at that location. 
+If there’s no `1983` in the vector, the insertion should go at the end of the vector. 
+Using iterators in C++98, that was easy:
+```c++
+std::vector<int> values;
+std::vector<int>::iterator it = std::find(values.begin(), values.end(), 1983);
+values.insert(it, 1998);
+```
+But `iterator`s **aren’t** really the proper choice here, because this code never modifies what an iterator points to. 
+Revising the code to use `const_iterator`s should be trivial, but in C++98, it was anything but. 
+Here’s one approach that’s conceptually sound, though still **incorrect**:
+```c++
+typedef std::vector<int>::iterator IterT;
+typedef std::vector<int>::const_iterator ConstIterT;
+
+std::vector<int> values;
+ConstIterT ci = std::find(static_cast<ConstIterT>(values.begin()), static_cast<ConstIterT>(values.end()), 1983);
+values.insert(static_cast<IterT>(ci), 1998);  // may not compile; see below
+```
+The `typedef`s **aren’t** ~~required~~, of course, but they make the casts in the code easier to write. 
+(If you’re wondering why I’m showing `typedef`s instead of alias declarations, 
+it’s because this example shows C++98 code, and alias declarations are a feature new to C++11.)
+
+
+The casts in the call to `std::find` are present because values is a non-`const` container and in C++98, 
+there was **no** simple way to get a `const_iterator` from a non-`const`container. 
+The casts **aren’t** strictly necessary, because it was possible to get `const_iterator`s in other ways 
+(e.g., you could bind values to a reference-to-`const` variable, 
+then use that variable in place of values in your code), 
+but one way or another, 
+the process of getting `const_iterator`s to elements of a non-`const` container involved some amount of contorting.
+
+
+Once you had the `const_iterator`s, matters often got worse, because in C++98, 
+locations for insertions (and erasures) could be specified only by `iterator`s. 
+`const_iterator`s **weren’t** acceptable. 
+That’s why, in the code above, I cast the `const_iterator` 
+(that I was so careful to get from `std::find`) into an `iterator`:
+passing a `const_iterator` to insert wouldn’t compile. 
+
+
+To be honest, the code I’ve shown might not compile, either, 
+because there’s **no** portable conversion from a `const_iterator` to an `iterator`, **not** even with a `static_cast`. 
+Even the semantic sledgehammer known as `reinterpret_cast` **can’t** do the job. 
+(That’s **not** a C++98 restriction. It’s true in C++11, too. 
+`const_iterator`s simply don’t ~~convert to `iterator`s~~, 
+no matter how much it might seem like they should.) 
+There are some portable ways to generate `iterator`s that point where `const_iterato`rs do, 
+but they’re not obvious, not universally applicable, and not worth discussing in this book. 
+Besides, I hope that by now my point is clear:
+`const_iterator`s were so much trouble in C++98, they were rarely worth the bother. 
+At the end of the day, developers don’t use `const` whenever possible, they use it whenever practical. 
+And, in C++98, `const_iterator`s just weren’t very practical. 
+
+
+All that changed in C++11. Now `const_iterator`s are both easy to get and easy to use. 
+The container member functions `cbegin` and `cend` produce `const_iterator`s,
+even for non-`const` containers, 
+and STL member functions that use `iterator`s to identify positions (e.g., `insert` and `erase`) 
+actually use `const_iterator`s. 
+Revising the original C++98 code that uses `iterator`s to use `const_iterator`s in C++11 is truly trivial:
+```c++
+std::vector<int> values;
+auto it = std::find(values.cbegin(), values.cend(), 1983);
+values.insert(it, 1998);
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 

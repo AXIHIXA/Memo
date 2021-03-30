@@ -10759,7 +10759,7 @@ private:
     - *合成析构函数* （synthesized destructor）
         - 类未定义自己的析构函数时，编译器会自动定义一个
         - 对某些类，用于阻止该类型对象被销毁（`= delete;`）
-- *三五三五法则* （The rule of three/five）
+- *三五法则* （The rule of three/five）
     - 三个基本操作可以控制类的拷贝操作
         1. 拷贝构造函数
         2. 拷贝赋值运算符

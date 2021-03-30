@@ -40,8 +40,9 @@ set(ALL_COMPILE_OPTS
 
 # executable target
 
-add_executable(${PROJECT_NAME} ${ALL_SOURCE_FILES})
-target_compile_definitions(${PROJECT_NAME} PUBLIC ${ALL_COMPILE_DEFS})
-target_compile_options(${PROJECT_NAME} PUBLIC ${ALL_COMPILE_OPTS})
-target_include_directories(${PROJECT_NAME} PUBLIC ${ALL_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${ALL_LIBRARIES})
+set(EXECUTABLE ${PROJECT_NAME})
+add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})
+target_compile_definitions(${EXECUTABLE} PUBLIC ${ALL_COMPILE_DEFS})
+target_compile_options(${EXECUTABLE} PUBLIC ${ALL_COMPILE_OPTS})
+target_include_directories(${EXECUTABLE} PUBLIC ${ALL_INCLUDE_DIRS})
+target_link_libraries(${EXECUTABLE} ${ALL_LIBRARIES})
