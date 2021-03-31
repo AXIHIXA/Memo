@@ -3743,7 +3743,7 @@ in a wider range of contexts than non-`constexpr` objects and functions.
 By using `constexpr` whenever possible, you maximize the range of situations 
 in which your objects and functions may be used.
 
-``
+
 It’s important to note that `constexpr` is part of an object’s or function’s interface.
 `constexpr` proclaims “I can be used in a context where C++ requires a constant expression.” 
 If you declare an object or function `constexpr`, clients may use it in such contexts. 
@@ -3761,15 +3761,229 @@ to make a long-term commitment to the constraints it imposes on the objects and 
 
 ### 📌 Item 16: Make `const` member functions thread safe
 
-- Make `const` member functions thread safe unless you’re certain they’ll never be used in a concurrent context.
+- Make `const` member functions thread safe unless you’re *certain* they’ll never be used in a concurrent context.
 - Use of `std::atomic` variables may offer better performance than a `mutex`, 
-  but they’re suited for manipulation of only a single variable or memory location.
+  but they’re suited for manipulation of only a *single* variable or memory location.
+
+#### `const` member functions modifying `mutable` data members
+
+An example on a polynomial class caching all its roots:
+```c++
+class Polynomial 
+{
+public:
+    using RootsType = std::vector<double>;
+
+    RootsType roots() const
+    {
+        if (!rootsAreValid) 
+        {
+            // compute roots and set rootVals
+            rootsAreValid = true;
+        }
+        
+        return rootVals;
+    }
+    
+private:
+    mutable bool rootsAreValid {false};
+    mutable RootsType rootVals {};
+};
+```
+Conceptually, `roots` doesn’t change the `Polynomial` object on which it operates, 
+but, as part of its caching activity, it may need to modify `rootVals` and `rootsAreValid`.
+That’s a classic use case for `mutable`, and that’s why it’s part of the declarations for these data members.
 
 
+Imagine now that two threads simultaneously call `roots` on a `Polynomial` object:
+```c++
+Polynomial p;
+// ...
+/*----- Thread 1 ----- */   /*------- Thread 2 ------- */
+auto rootsOfP = p.roots();  auto valsGivingZero = p.roots();
+```
+This client code is perfectly reasonable. 
+`roots` is a `const` member function, and that means it represents a read operation. 
+Having multiple threads perform a read operation without synchronization is safe. 
+At least it’s supposed to be. 
+In this case, it’s not, because inside roots, one or both of these threads 
+might try to modify the data members `rootsAreValid` and `rootVals`. 
+That means that this code could have different threads reading and writing the same memory without synchronization, 
+and that’s the definition of a data race. 
+This code has undefined behavior.
 
 
+The problem is that `roots` is declared `const`, but it’s **not** thread safe. 
+The `const` declaration is as correct in C++11 as it would be in C++98 
+(retrieving the roots of a polynomial doesn’t change the value of the polynomial), 
+so what requires rectification is the lack of thread safety.
+The easiest way to address the issue is the usual one: employ a `mutex`:
+```c++
+class Polynomial
+{
+public:
+    using RootsType = std::vector<double>;
+    
+    RootsType roots() const
+    {
+        std::lock_guard<std::mutex> g(m); 
+        
+        if (!rootsAreValid)
+        {
+            rootsAreValid = true;
+        }
+        
+        return rootVals;
+    }
+    
+private:
+    mutable std::mutex m;
+    mutable bool rootsAreValid {false};
+    mutable RootsType rootVals {};
+};
+```
+The `std::mutex m` is declared `mutable`, because locking and unlocking it are non-`const` member functions, 
+and within roots (a `const` member function),` m` would otherwise be considered a `const` object. 
 
 
+It’s worth noting that because `std::mutex` is a *move-only* type (i.e., a type that can be moved, but not copied), 
+a side effect of adding `m` to `Polynomial` is that `Polynomial`loses the ability to be copied. 
+It can still be moved, however. 
+
+
+In some situations, a mutex is overkill. 
+For example, if all you’re doing is counting how many times a member function is called, a `std::atomic` counter 
+(i.e, one where other threads are guaranteed to see its operations occur indivisibly; see Item 40) 
+will often be a less expensive way to go. 
+(Whether it actually is less expensive depends on the hardware you’re running on 
+and the implementation of mutexes in your Standard Library.) 
+Here’s how you can employ a `std::atomic` to count calls:
+```c++
+class Point
+{ 
+public:
+    double distanceFromOrigin() const noexcept
+    {
+        ++callCount;  // atomic increment
+        return std::sqrt((x * x) + (y * y));
+    }
+
+private:
+    mutable std::atomic<unsigned int> callCount {0};
+    double x;
+    double y;
+};
+```
+Like `std::mutex`es, `std::atomic`s are move-only types, 
+so the existence of `callCount` in `Point` means that `Point` is also move-only. 
+
+
+Because operations on `std::atomic` variables are often less expensive than mutex acquisition and release, 
+you may be tempted to lean on `std::atomics` more heavily than you should. 
+For example, in a class caching an expensive-to-compute `int`, 
+you might try to use a pair of `std::atomic` variables instead of a mutex: 
+```c++
+class Widget
+{
+public:
+    int magicValue() const
+    {
+        if (cacheValid)
+        {
+            return cachedValue;
+        }
+        else
+        {
+            auto val1 = expensiveComputation1();
+            auto val2 = expensiveComputation2();
+            cachedValue = val1 + val2;            // uh oh, part 1
+            cacheValid = true;                    // uh oh, part 2
+            return cachedValue;
+        }
+    }
+
+private:
+    mutable std::atomic<bool> cacheValid {false};
+    mutable std::atomic<int> cachedValue;
+};
+```
+This will work, but sometimes it will work a lot harder than it should. Consider:
+- A thread calls `Widget::magicValue`, sees `cacheValid` as `false`, 
+  performs the two expensive computations, and assigns their sum to `cachedValue`.
+- At that point, a second thread calls `Widget::magicValue`, also sees `cacheValid` as `false`, 
+  and thus carries out the same expensive computations that the first thread has just finished. 
+  (This “second thread” may in fact be several other threads.)
+
+
+Such behavior is contrary to the goal of caching. 
+Reversing the order of the assignments to `cachedValue` and `cacheValid` eliminates that problem, 
+but the result is even worse:
+```c++
+int Widget::magicValue() const
+{
+    if (cacheValid)
+    {
+        return cachedValue;
+    }
+    else
+    {
+        auto val1 = expensiveComputation1();
+        auto val2 = expensiveComputation2();
+        cacheValid = true;                    // uh oh, part 1
+        return cachedValue = val1 + val2;     // uh oh, part 2
+    }
+}
+```
+Imagine that cacheValid is `false`, and then:
+- One thread calls `Widget::magicValue` and executes through the point where `cacheValid` is set to `true`.
+- At that moment, a second thread calls `Widget::magicValue` and checks `cacheValid`. 
+  Seeing it `true`, the thread returns `cachedValue`, even though the first thread has not yet made an assignment to it. 
+  The returned value is therefore incorrect.
+
+
+There’s a lesson here. 
+For a *single* variable or memory location requiring synchronization, use of a `std::atomic` is adequate, 
+but once you get to *two or more* variables or memory locations that require manipulation as a unit, 
+you should reach for a mutex. For `Widget::magicValue`, that would look like this:
+```c++
+class Widget
+{
+public:
+    int magicValue() const
+    {
+        std::lock_guard<std::mutex> guard(m);
+        
+        if (cacheValid)
+        {
+            return cachedValue;
+        }
+        else
+        {
+            auto val1 = expensiveComputation1();
+            auto val2 = expensiveComputation2();
+            cachedValue = val1 + val2;
+            cacheValid = true;
+            return cachedValue;
+        }
+    }
+
+private:
+    mutable std::mutex m;
+    mutable int cachedValue;          // no longer atomic
+    mutable bool cacheValid {false};  // no longer atomic
+};
+```
+Now, this Item is predicated on the assumption that 
+multiple threads may simultaneously execute a const member function on an object. 
+If you’re writing a `const` member function where that’s not the case: 
+where you can guarantee that there will **never** be more than one thread executing that member function on an object, 
+the thread safety of the function is immaterial. 
+For example, it’s unimportant whether member functions of classes designed for exclusively single-threaded use are thread safe. 
+In such cases, you can avoid the costs associated with mutexes and `std::atomic`s, 
+as well as the side effect of their rendering the classes containing them move-only. 
+However, such threading-free scenarios are increasingly uncommon, and they’re likely to become rarer still. 
+The safe bet is that `const` member functions will be subject to concurrent execution, 
+and that’s why you should ensure that your const member functions are thread safe.
 
 
 
@@ -3779,31 +3993,328 @@ to make a long-term commitment to the constraints it imposes on the objects and 
 ### 📌 Item 17: Understand special member function generation
 
 - The special member functions are those compilers may generate on their own:
-    - default constructor
-    - destructor
-    - copy operations
-    - move operations
-- Move operations are generated only for classes 
-  lacking explicitly declared move operations, copy operations, and a destructor.
-- The copy constructor is generated only for classes 
-  lacking an explicitly declared copy constructor, 
-  and it’s deleted if a move operation is declared. 
-- The copy assignment operator is generated only for classes 
-  lacking an explicitly declared copy assignment operator, 
-  and it’s deleted if a move operation is declared. 
-  Generation of the copy operations in classes with an explicitly declared destructor is deprecated.
+    - **Default Constructor**: <br>
+      Generated only if the class contains **no** user-declared constructors; <br>
+      Implicitly `public` and `inline`;
+    - **Destructor**: <br>
+      Generated only if the class contains **no** user-declared destructors; <br>
+      Implicitly `public`, `inline`, and `noexcept`; <br>
+      `virtual` only if a base class destructor is `virtual`;
+    - **Copy Constructor**: <br>
+      Generated only if the class lacks a user-declared copy constructor; <br>
+      Implicitly `public` and `inline`; <br>
+      Deleted if the class declares a move operation; <br>
+      Generation in a class with a user-declared copy assignment operator or destructor is deprecated;
+    - **Copy Assignment Operator**: <br>
+      Generated only if the class lacks a user-declared copy assignment operator; <br>
+      Implicitly `public` and `inline`; <br>
+      Deleted if the class declares a move operation; <br>
+      Generation in a class with a user-declared copy constructor or destructor is deprecated;
+    - **Move Constructor** and **Move Assignment Operator**: <br>
+      Generated only if the class contains no user-declared copy operations, move operations, or destructor;
+      Implicitly `public` and `inline`.
 - *Member function template*s **never** ~~suppress generation of special member functions~~.
+- Explicitly define special member functions using `= default` even if you want compiler-generated versions. 
+  This prevents loss of these functions due to code reformatting. 
+- <u><i>The Rule of Three/Five</i></u>: 
+  If you need to user-define any of the five copy-control member functions: 
+  destructor, copy operations, and move operations, 
+  you should define all of the five. 
+
+#### Special member functions since C++98
+
+In official C++ parlance, the *special member functions* are the ones that C++ is willing to generate on its own. 
+C++98 has four such functions: 
+- Default constructor, 
+- Destructor, 
+- Copy constructor, 
+- Copy assignment operator. 
 
 
+These functions are generated only if they’re needed, i.e., 
+if some code uses them without their being expressly declared in the class. 
+A default constructor is generated only if the class declares **no** ~~constructors~~ at all. 
+(This prevents compilers from creating a default constructor for a class 
+where you’ve specified that constructor arguments are required.) 
+Generated special member functions are *implicitly `public` and `inline`*, 
+and they’re non-`virtual` unless the function in question 
+is a `destructor` in a derived class inheriting from a base class with a `virtual` destructor. 
+In that case, the compiler-generated destructor for the derived class is also `virtual`. 
+
+#### Move operations
+
+As of C++11, the special member functions club has two more inductees: 
+- Move constructor 
+- Move assignment operator
 
 
+Their signatures are:
+```c++
+class Widget 
+{
+public:
+    Widget(Widget && rhs);              // move constructor
+    Widget & operator=(Widget && rhs);  // move assignment operator
+};
+```
+The rules governing their generation and behavior are analogous to those for their copying siblings. 
+The move operations are generated only if they’re needed, and if they are generated, 
+they perform *member-wise moves* on the non-`static` data members of the class. 
+That means that the move constructor move-constructs each non-`static` data member of the class 
+from the corresponding member of its parameter `rhs`,
+and the move assignment operator move-assigns each non-`static` data member from its parameter. 
+The move constructor also move-constructs its base class parts (if there are any), 
+and the move assignment operator move-assigns its base class parts. 
 
 
+Now, when I refer to a move operation move-constructing or move-assigning a data member or base class, 
+there is no guarantee that a move will actually take place.
+*Member-wise move*s are, in reality, more like member-wise move *requests*, 
+because types that aren’t move-enabled 
+(i.e., that offer no special support for move operations, e.g., most C++98 legacy classes) 
+will be “moved” via their copy operations. 
+The heart of each member-wise “move” is application of `std::move` to the object to be moved from, 
+and the result is used during function overload resolution to determine whether a move or a copy should be performed. 
+Item 23 covers this process in detail.
+For this Item, simply remember that a member-wise move consists of move operations 
+on data members and base classes that support move operations, 
+but a copy operation for those that don’t.
 
 
+As is the case with the copy operations, the move operations aren’t generated if you declare them yourself. 
+However, the precise conditions under which they are generated differ a bit from those for the copy operations.
 
 
+The two copy operations are *independent*: 
+declaring one doesn’t prevent compilers from generating the other. 
+So if you declare a copy constructor, but no copy assignment operator, 
+then write code that requires copy assignment, 
+compilers will generate the copy assignment operator for you. 
+Similarly, if you declare a copy assignment operator, but no copy constructor, 
+yet your code requires copy construction, 
+compilers will generate the copy constructor for you. 
+That was true in C++98, and it’s still true in C++11.
 
+
+The two move operations are **not** ~~independent~~. 
+If you declare either, that prevents compilers from generating the other. 
+The rationale is that if you declare, say, a move constructor for your class, 
+you’re indicating that there’s something about how move construction should be implemented 
+that’s different from the default member-wise move that compilers would generate. 
+And if there’s something wrong with member-wise move construction, 
+there’d probably be something wrong with member-wise move assignment, too. 
+So declaring a move constructor prevents a move assignment operator from being generated, 
+and declaring a move assignment operator prevents compilers from generating a move constructor.
+
+
+Furthermore, move operations **won’t** be generated for any class that explicitly declares a copy operation. 
+The justification is that declaring a copy operation (construction or assignment) indicates 
+that the normal approach to copying an object (member-wise copy) isn’t appropriate for the class, 
+and compilers figure that if member-wise copy isn’t appropriate for the copy operations, 
+member-wise move probably isn’t appropriate for the move operations. 
+
+
+This goes in the other direction, too. 
+Declaring a move operation (construction or assignment) in a class causes compilers to disable the copy operations. 
+(The copy operations are disabled by deleting them). 
+After all, if member-wise move isn’t the proper way to move an object, 
+there’s no reason to expect that member-wise copy is the proper way to copy it. 
+This may sound like it could break C++98 code,
+because the conditions under which the copy operations are enabled are more constrained in C++11 than in C++98, 
+but this is not the case. 
+C++98 code can’t have move operations, because there was no such thing as “moving” objects in C++98. 
+The only way a legacy class can have user-declared move operations is 
+if they were added for C++11, 
+and classes that are modified to take advantage of move semantics 
+have to play by the C++11 rules for special member function generation.
+
+
+***<u>The Rule of Three</u>***. 
+The Rule of Three states that 
+if you declare any of a copy constructor, copy assignment operator, or destructor, 
+you should declare all three. 
+
+
+It grew out of the observation that 
+the need to take over the meaning of a copy operation almost always 
+stemmed from the class performing some kind of resource management, 
+and that almost always implied that
+1. Whatever resource management was being done in one copy operation 
+   probably needed to be done in the other copy operation;
+2. The class destructor would also be participating in management of the resource (usually releasing it).
+   
+
+The classic resource to be managed was memory, 
+and this is why all Standard Library classes that manage memory 
+(e.g., the STL containers that perform dynamic memory management)
+all declare *the big three*: both copy operations and a destructor.
+
+
+A consequence of the Rule of Three is that 
+the presence of a user-declared destructor indicates that simple member-wise copy 
+is unlikely to be appropriate for the copying operations in the class. 
+That, in turn, suggests that if a class declares a destructor, 
+the copy operations probably shouldn’t be automatically generated, 
+because they wouldn’t do the right thing. 
+At the time C++98 was adopted, the significance of this line of reasoning was not fully appreciated, 
+so in C++98, the existence of a user-declared destructor had no impact 
+on compilers’ willingness to generate copy operations.
+That continues to be the case in C++11, 
+but only because restricting the conditions under which 
+the copy operations are generated would break too much legacy code.
+
+
+The reasoning behind the Rule of Three remains valid, however, and that, 
+combined with the observation that declaration of a copy operation 
+precludes the implicit generation of the move operations, 
+motivates the fact that C++11 does not generate move operations for a class with a user-declared destructor.
+
+
+So move operations are generated for classes (when needed) only if these three things are true:
+- No copy operations are declared in the class.
+- No move operations are declared in the class.
+- No destructor is declared in the class.
+
+
+At some point, analogous rules may be extended to the copy operations, 
+because C++11 deprecates the automatic generation of copy operations 
+for classes declaring copy operations or a destructor. 
+This means that if you have code that depends on the generation of copy operations 
+in classes declaring a destructor or one of the copy operations, 
+you should consider upgrading these classes to eliminate the dependence.
+Provided the behavior of the compiler-generated functions is correct 
+(i.e, if member-wise copying of the class’s non-`static` data members is what you want), 
+your job is easy, because C++11’s `= default` lets you say that explicitly:
+```c++
+class Widget 
+{
+public:
+    Widget(const Widget &) = default;              // default copy ctor, behavior is OK
+    
+    ~Widget();                                     // user-declared dtor
+    
+    Widget & operator=(const Widget &) = default;  // default copy assign, behavior is OK
+};
+```
+This approach is often useful in polymorphic base classes, 
+i.e., classes defining interfaces through which derived class objects are manipulated. 
+*Polymorphic base classes normally have `virtual` destructors*, 
+because if they don’t, some operations 
+(e.g., the use of `delete` or `typeid` on a derived class object through a base class pointer or reference)
+yield undefined or misleading results. 
+Unless a class inherits a destructor that’s already `virtual`, 
+the only way to make a destructor `virtual` is to explicitly declare it that way. 
+Often, the default implementation would be correct, and `= default` is a good way to express that. 
+However, a user-declared destructor suppresses generation of the move operations, 
+so if movability is to be supported, `= default` often finds a second application. 
+Declaring the move operations disables the copy operations, so if
+copyability is also desired, one more round of `= default` does the job:
+```c++
+class Base 
+{
+public:
+    Base(const Base &) = default;
+    
+    Base(Base &&) = default;
+    
+    virtual ~Base() = default;
+    
+    Base & operator=(const Base &) = default;
+    
+    Base & operator=(Base &&) = default;
+};
+```
+In fact, even if you have a class where compilers are willing to generate the copy and move operations 
+and where the generated functions would behave as you want, 
+you may choose to adopt a policy of declaring them yourself and using `= default` for their definitions. 
+It’s more work, but it makes your intentions clearer, 
+and it can help you sidestep some fairly subtle bugs. 
+For example, suppose you have a class representing a string table, 
+i.e., a data structure that permits fast lookups of string values via an integer ID:
+```c++
+class StringTable 
+{
+public:
+    StringTable() {}
+    
+    // functions for insertion, erasure, lookup,
+    // etc., but no copy/move/dtor functionality
+
+private:
+    std::map<int, std::string> values;
+};
+```
+Assuming that the class declares no copy operations, no move operations, and no destructor, 
+compilers will automatically generate these functions if they are used.
+That’s very convenient.
+
+
+But suppose that sometime later, it’s decided that logging the default construction
+and the destruction of such objects would be useful. 
+Adding that functionality is easy:
+```c++
+class StringTable 
+{
+public:
+    StringTable() 
+    { 
+        makeLogEntry("Creating StringTable object"); 
+    }
+    
+    ~StringTable() 
+    { 
+        makeLogEntry("Destroying StringTable object"); 
+    } 
+    
+    // other funcs as before
+    
+private:
+    std::map<int, std::string> values;
+};
+```
+This looks reasonable, but declaring a destructor has a potentially significant side effect: 
+it prevents the move operations from being generated. 
+However, creation of the class’s copy operations is unaffected. 
+The code is therefore likely to compile, run, and pass its functional testing.
+That includes testing its move functionality, 
+because even though this class is no longer move-enabled, 
+requests to move it will compile and run. 
+Such requests will, as noted earlier in this Item, cause copies to be made.
+Which means that code “moving” `StringTable` objects actually copies them,
+i.e., copies the underlying `std::map<int, std::string>` objects. 
+And copying a `std::map<int, std::string>` is likely to be orders of magnitude slower than moving it.
+The simple act of adding a destructor to the class could thereby have introduced a significant performance problem! 
+Had the copy and move operations been explicitly defined using `= default`, the problem would not have arisen.
+
+
+Now, having endured my endless blathering about the rules governing the copy and
+move operations in C++11, you may wonder when I’ll turn my attention to the two
+other special member functions, the default constructor and the destructor. That
+time is now, but only for this sentence, because almost nothing has changed for these
+member functions: the rules in C++11 are nearly the same as in C++98.
+
+#### Member function templates
+
+Note that there’s **nothing** in the rules about 
+the existence of a *member function template* preventing compilers from generating the special member functions. 
+That means that if `Widget` looks like this: 
+```c++
+class Widget 
+{
+    template<typename T>                // construct Widget
+    Widget(const T & rhs);              // from anything
+    
+    template<typename T>                // assign Widget
+    Widget & operator=(const T & rhs);  // from anything
+};
+```
+Compilers will still generate copy and move operations for `Widget` 
+(assuming the usual conditions governing their generation are fulfilled), 
+even though these templates could be instantiated to produce 
+the signatures for the copy constructor and copy assignment operator. 
+(That would be the case when `T` is `Widget`.) 
+In all likelihood, this will strike you as an edge case barely worth acknowledging. 
+Item 26 demonstrates that it can have important consequences. 
 
 
 
@@ -3817,11 +4328,34 @@ to make a long-term commitment to the constraints it imposes on the objects and 
 
 
 
+
+
+
+
+
 ### 📌 Item 19: Use `std::shared_ptr` for shared-ownership resource management
 
 
 
+
+
+
+
+
+
+
+
 ### 📌 Item 20: Use `std::weak_ptr` for `std::shared_ptr`-like pointers that can dangle
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3831,7 +4365,22 @@ to make a long-term commitment to the constraints it imposes on the objects and 
 
 
 
+
+
+
+
+
+
+
+
+
 ### 📌 Item 22: When using the Pimpl Idiom, define special member functions in the implementation file
+
+
+
+
+
+
 
 
 
@@ -3879,6 +4428,22 @@ to make a long-term commitment to the constraints it imposes on the objects and 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## [CHAPTER 6] Lambda Expressions
 
 ### 📌 Item 31: Avoid default capture modes
@@ -3903,9 +4468,19 @@ to make a long-term commitment to the constraints it imposes on the objects and 
 
 
 
+
+
+
+
+
+
+
+
+
+
 ## [CHAPTER 7] The Concurrency API
 
-### 📌 Item 35: Prefer task-based programming to threadbased
+### 📌 Item 35: Prefer task-based programming to thread-based
 
 
 
@@ -3933,6 +4508,19 @@ to make a long-term commitment to the constraints it imposes on the objects and 
 
 
 ### 📌 Item 40: Use `std::atomic` for concurrency, `volatile` for special memory
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
