@@ -744,7 +744,8 @@ const char name[] = "J. P. Briggs";  // name's type is const char[13]
 const char * ptrToName = name;       // array decays to pointer
 ```
 Here, the `const char *` pointer `ptrToName` is being initialized with `name`, which is a `const char[13]`. 
-These types (`const char *` and `const char[13]`) are **not** the same, but because of the array-to-pointer decay rule, the code compiles. 
+These types (`const char *` and `const char[13]`) are **not** the same, 
+but because of the *array-to-pointer decay rule*, the code compiles. 
 
 
 But what if an array is passed to a template taking a by-value parameter? What happens then?
@@ -804,7 +805,8 @@ Of course, as a modern C++ developer, you’d naturally prefer a `std::array` to
 ```c++
 std::array<int, arraySize(keyVals)> mappedVals;  // mappedVals' size is 7
 ```
-As for `arraySize` being declared `noexcept`, that’s to help compilers generate better code. For details, see Item 14. 
+As for `arraySize` being declared `noexcept`, that’s to help compilers generate better code. 
+For details, see Item 14. 
 
 #### Function Arguments
 
@@ -835,7 +837,8 @@ f2(someFunc);                // param deduced as ref-to-func; type is void (&)(i
 - `auto` type deduction is usually the same as template type deduction, 
   but `auto` type deduction assumes that a *braced initializer* represents a `std::initializer_list`, 
   and template type deduction **doesn’t**.
-- `auto` in a *function return type* or a *lambda parameter* implies *template type deduction*, **not** ~~auto type deduction~~.
+- `auto` in a *function return type* or a *lambda parameter* implies 
+  *template type deduction*, **not** ~~auto type deduction~~.
 
 
 With only one curious exception, `auto` type deduction is template type deduction. 
@@ -1937,8 +1940,9 @@ So here’s the deal: the literal `0` is an `int`, **not** a pointer.
 If C++ finds itself looking at `0` in a context where only a pointer can be used, 
 it’ll grudgingly interpret `0` as a null pointer, 
 but that’s a fallback position. 
-C++’s primary policy is that `0` is an `int`, not a pointer. 
-<br><br>
+C++’s primary policy is that `0` is an `int`, not a pointer.
+
+
 Practically speaking, the same is true of `NULL`: 
 ```c++
 // <stddef.h>
@@ -3118,17 +3122,67 @@ std::vector<int> values;
 auto it = std::find(values.cbegin(), values.cend(), 1983);
 values.insert(it, 1998);
 ```
+About the only situation in which C++11’s support for `const_iterator`s comes up a bit short 
+is when you want to write maximally generic library code. 
+Such code takes into account that some containers and container-like data structures 
+offer `begin` and `end` (plus `cbegin`, `cend`, `rbegin`, etc.) as *non-member* functions, rather than ~~members~~. 
+This is the case for built-in arrays, for example, 
+and it’s also the case for some third-party libraries with interfaces consisting only of free functions.
+Maximally generic code thus uses non-member functions rather than assuming the existence of member versions.
+For example, we could generalize the code we’ve been working with into a `findAndInsert` template as follows:
+```c++
+// in container, find first occurrence of targetVal, then insert insertVal there
+template <typename C, typename V>
+void findAndInsert(C & container, const V & targetVal, const V & insertVal)
+{ 
+    using std::cbegin; 
+    using std::cend;
+    auto it = std::find(cbegin(container), cend(container), targetVal);
+    container.insert(it, insertVal);
+}
+```
+This works fine in C++14, but, sadly, not in C++11. 
+Through an oversight during standardization, C++11 added the non-member functions `begin` and `end`, 
+but it failed to add `cbegin`, `cend`, `rbegin`, `rend`, `crbegin`, and `crend`. 
+C++14 rectifies that oversight.
+If you’re using C++11, you want to write maximally generic code, 
+and none of the libraries you’re using provides the missing templates for non-member `cbegin` and friends, 
+you can throw your own implementations together with ease. 
+For example, here’s an implementation of non-member `cbegin`:
+```c++
+template <class C>
+auto cbegin(const C & container) -> decltype(std::begin(container))
+{
+    return std::begin(container);
+}
+```
+The non-member `cbegin` **doesn’t** ~~call member `cbegin`~~, 
+This `cbegin` template accepts any type of argument representing a container-like data structure, `C`, 
+and it accesses this argument through its reference-to-const parameter, `container`.
+If `C` is a conventional container type (e.g., a `std::vector<int>`), 
+container will be a reference to a `const` version of that container (e.g., a `const std::vector<int> &`). 
+Invoking the nonmember `begin` function (provided by C++11) on a `const` container yields a `const_iterator`, 
+and that iterator is what this template returns. 
+The advantage of implementing things this way is that 
+it works even for containers that offer a `begin`member function 
+(which, for containers, is what C++11’s non-member `begin` calls),
+but fail to offer a `cbegin` member. 
+You can thus use this non-member `cbegin` on containers that directly support only `begin`. 
 
 
+This template also works if `C` is a built-in array type. 
+In that case, `container` becomes a reference to a `const` array. 
+C++11 provides a specialized version of non-member `begin` for arrays that returns a pointer to the array’s first element. 
+The elements of a `const` array are `const`, 
+so the pointer that non-member `begin` returns for a `const` array is a pointer-to-`const`, 
+and a pointer-to-`const` is, in fact, a `const_iterator` for an array.
 
 
-
-
-
-
-
-
-
+But back to basics. 
+The point of this Item is to encourage you to use `const_iterator`s whenever you can. 
+The fundamental motivation (using const whenever it’s meaningful) predates C++11, 
+but in C++98, it simply wasn’t practical when working with `iterator`s. 
+In C++11, it’s eminently practical, and C++14 tidies up the few bits of unfinished business that C++11 left behind.
 
 
 
@@ -3137,7 +3191,317 @@ values.insert(it, 1998);
 
 ### 📌 Item 14: Declare functions `noexcept` if they won’t emit exceptions
 
+- `noexcept` is part of a function’s interface, and that means that callers may depend on it.
+- `noexcept` functions are more optimizable than non-noexcept functions.
+- `noexcept` is particularly valuable for the move operations, swap, memory deallocation functions, and destructors.
+- Most functions are exception-neutral rather than `noexcept`.
+  Use `noexcept` only for *exception-free* functions. 
+- Not all library functions that do not emit exceptions are marked `nonexcept`. 
+  C++ permits `noexcept` functions to call non-`noexcept` functions. 
 
+#### `noexcept` qualifier
+
+In C++11, unconditional `noexcept` is for functions that guarantee they won’t emit exceptions. 
+
+
+Whether a function should be so declared is a matter of interface design. 
+The exception-emitting behavior of a function is of key interest to clients. 
+Callers can query a function’s `noexcept` status, 
+and the results of such a query can affect the exception safety or efficiency of the calling code. 
+As such, whether a function is `noexcept` is as important a piece of information 
+as whether a member function is `const`. 
+Failure to declare a function `noexcept` when you know that it won’t emit an exception 
+is simply poor interface specification.
+
+
+But there’s an additional incentive to apply `noexcept` to functions that won’t produce exceptions: 
+it permits compilers to generate better object code. 
+To understand why, it helps to examine the difference between the C++98 and C++11 ways 
+of saying that a function won’t emit exceptions. 
+Consider a function `f` that promises callers they’ll never receive an exception. 
+The two ways of expressing that are:
+```c++
+int f(int x) throw();   // no exceptions from f: C++98 style
+int f(int x) noexcept;  // no exceptions from f: C++11 style
+```
+If, at runtime, an exception leaves `f`, `f`’s exception specification is violated. 
+With the C++98 exception specification, 
+the call stack is *promised to* be unwound to `f`’s caller, 
+and, after some actions not relevant here, program execution is terminated. 
+With the C++11 exception specification, runtime behavior is slightly different: 
+the stack is only *possibly* unwound before program execution is terminated.
+
+
+The difference between definitely unwinding the call stack and *possibly* unwinding it 
+has a surprisingly large impact on code generation. 
+In a `noexcept` function, optimizers need **not** ~~keep the runtime stack in an unwindable state~~ 
+if an exception would propagate out of the function, 
+**nor** must they ~~ensure that objects are destroyed in the inverse order of construction~~ 
+should an exception leave the function. 
+Functions with `throw()` exception specifications lack such optimization flexibility,
+as do functions with no exception specification at all. 
+The situation can be summarized this way:
+```c++
+RetType function(params) noexcept;  // most optimizable
+RetType function(params) throw();   // less optimizable
+RetType function(params);           // less optimizable
+```
+This alone is sufficient reason to declare functions `noexcept` whenever you know they won’t produce exceptions.
+
+#### `noexcept` qualifier with move semantics
+
+For some functions, the case is even stronger. 
+The move operations are the preeminent example. 
+Suppose you have a C++98 code base making use of a `std::vector<Widget>`. 
+`Widgets` are added to the `std::vector` from time to time via `push_back`:
+```c++
+std::vector<Widget> vw;
+Widget w;                // work with w
+vw.push_back(w);         // add w to vw
+```
+Assume this code works fine, and you have no interest in modifying it for C++11.
+However, you do want to take advantage of the fact that 
+C++11’s move semantics can improve the performance of legacy code when move-enabled types are involved.
+You therefore ensure that `Widget` has move operations, 
+either by writing them yourself or by seeing to it 
+that the conditions for their automatic generation are fulfilled (see Item 17).
+When a new element is added to a `std::vector`, it’s possible that the `std::vector` lacks space for it, 
+i.e., that the `std::vector`’s size is equal to its capacity. 
+When that happens, the `std::vector` allocates a new, larger, chunk of memory to hold its elements, 
+and it transfers the elements from the existing chunk of memory to the new one. 
+
+
+In C++98, the transfer was accomplished by *copying* each element from the old memory to the new memory, 
+then destroying the objects in the old memory. 
+This approach enabled `push_back` to offer the strong exception safety guarantee: 
+if an exception was thrown during the copying of the elements, the state of the `std::vector` remained unchanged, 
+because none of the elements in the old memory were destroyed 
+until all elements had been successfully copied into the new memory. 
+
+
+In C++11, a natural optimization would be to replace the copying of `std::vector` elements with *move*s. 
+Unfortunately, doing this runs the risk of violating `push_back`’s exception safety guarantee. 
+If `n` elements have been moved from the old memory and an exception is thrown moving element `n + 1`, 
+the `push_back` operation **can’t** run to completion. 
+But the original `std::vector` has been modified: `n` of its elements have been moved from. 
+Restoring their original state may not be possible,
+because attempting to move each object back into the original memory may itself yield an exception. 
+
+
+This is a serious problem, 
+because the behavior of legacy code could depend on `push_back`’s strong exception safety guarantee. 
+Therefore, C++11 implementations **can’t** silently replace copy operations inside `push_back` 
+with moves unless it’s known that the move operations won’t emit exceptions. 
+In that case, having moves replace copies would be safe, and the only side effect would be improved performance.
+
+
+`std::vector::push_back` takes advantage of this <u><i>move if you can, but copy if you must</i></u> strategy, 
+and it’s not the only function in the Standard Library that does. 
+Other functions sporting the strong exception safety guarantee in C++98 
+(e.g., `std::vector::reserve`, `std::deque::insert`, etc.) behave the same way. 
+All these functions replace calls to copy operations in C++98 with calls to move operations in C++11
+*only if the move operations are known to **not** ~~emit exceptions~~*. 
+But how can a function know if a move operation won’t produce an exception? 
+The answer is obvious: it checks to see if the operation is declared noexcept. 
+
+
+The checking is typically rather roundabout. 
+Functions like `std::vector::push_back` call `std::move_if_noexcept`, 
+a variation of `std::move` that conditionally casts to an rvalue (see Item 23),
+depending on whether the type’s move constructor is `noexcept`. 
+In turn, `std::move_if_noexcept` consults `std::is_nothrow_move_constructible`, 
+and the value of this type trait (see Item 9) is set by compilers,
+based on whether the move constructor has a `noexcept` (or `throw()`) designation.
+
+#### `noexcept` qualifier with `swap` functions
+
+`swap` functions comprise another case where `noexcept` is particularly desirable. 
+`swap`is a key component of many STL algorithm implementations, 
+and it’s commonly employed in copy assignment operators:
+```c++
+// copy-and-swap assign operator is born immune self-assignment, 
+// and serves automatically as both copy and move assign operator
+S35 & operator=(S35 rhs)
+{
+    using std::swap;
+    swap(this->data_ptr, rhs.data_ptr);
+    return *this;
+}
+```
+Its widespread use renders the optimizations that `noexcept` affords especially worthwhile. 
+Interestingly, whether `swap`s in the Standard Library are `noexcept` is sometimes dependent on 
+whether user-defined `swap`s are noexcept. 
+For example, the declarations for the Standard Library’s `swap`s for built-in arrays and `std::pair` are:
+```c++
+template <class T, size_t N>
+void swap(T (& a)[N],
+          T (& b)[N]) noexcept(noexcept(swap(*a, *b)));
+
+template <class T1, class T2>
+struct pair
+{
+    void swap(pair & p) noexcept(noexcept(swap(first, p.first)) && 
+                                 noexcept(swap(second, p.second)));
+};
+```
+These functions are *conditionally* `noexcept`: 
+whether they are `noexcept` depends on whether the expressions inside the `noexcept` clauses are `noexcept`. 
+Given two arrays of `Widget`, for example, 
+swapping them is `noexcept` only if swapping individual elements in the arrays is `noexcept`, 
+i.e., if `swap` for `Widget` is `noexcept`. 
+The author of `Widget`’s `swap` thus determines whether swapping arrays of `Widget` is `noexcept`. 
+That, in turn, determines whether other swaps, such as the one for arrays of arrays of `Widget`, are `noexcept`. 
+Similarly, whether swapping two `std::pair` objects containing `Widget`s is `noexcept` 
+depends on whether `swap` for `Widget`s is `noexcept`. 
+The fact that swapping higher-level data structures can generally be `noexcept` only if 
+swapping their lower-level constituents is `noexcept` 
+should motivate you to offer `noexcept` `swap` functions whenever you can. 
+
+
+**Use `noexcept` only for *exception-free* functions**. 
+Optimization is important, but correctness is more important. 
+`noexcept` is part of a function’s interface, so you should declare a function `noexcept` only if 
+you are willing to commit to a `noexcept` implementation over the long term. 
+If you declare a function `noexcept` and later regret that decision, your options are bleak.
+You can remove `noexcept` from the function’s declaration (i.e., change its interface),
+thus running the risk of breaking client code. 
+You can change the implementation such that an exception could escape, 
+yet keep the original (now **incorrect**) exception specification. 
+If you do that, your program will be terminated if an `exception` tries to leave the function. 
+Or you can resign yourself to your existing implementation, 
+abandoning whatever kindled your desire to change the implementation in the first place.
+None of these options is appealing. 
+
+
+The fact of the matter is that most functions are *exception-neutral*. 
+Such functions throw no exceptions themselves, but functions they call might emit one. 
+When that happens, the exception-neutral function allows the emitted exception 
+to pass through on its way to a handler further up the call chain. 
+Exception-neutral functions are **never** `noexcept`, 
+because they may emit such *just passing through* exceptions. 
+Most functions, therefore, quite properly lack the `noexcept` designation.
+
+**When you can honestly say that a function should never emit exceptions,
+you should definitely declare it `noexcept`. **
+Some functions, however, have natural implementations that emit no exceptions, 
+and for a few more, notably the move operations and `swap`, 
+being `noexcept` can have such a significant payoff, 
+it’s worth implementing them in a `noexcept` manner if at all possible. 
+For example, the interface specifications for move operations on containers in the Standard Library lack `noexcept`. 
+However, implementers are permitted to strengthen exception specifications for Standard Library functions, 
+and, in practice, it is common for at least some container move operations to be declared `noexcept`. 
+That practice exemplifies this Item’s advice. 
+Having found that it’s possible to write container move operations such that exceptions aren’t thrown, 
+implementers often declare the operations `noexcept`, even though the Standard does not require them to do so. 
+
+
+If a straightforward function implementation might yield exceptions 
+(e.g., by invoking a function that might `throw`), 
+the hoops you’ll jump through to hide that from callers 
+(e.g., catching all exceptions and replacing them with status codes or special return values) 
+will not only complicate your function’s implementation, 
+it will typically complicate code at call sites, too. 
+For example, callers may have to check for status codes or special return values. 
+The runtime cost of those complications 
+(e.g., extra branches, larger functions that put more pressure on instruction caches, etc.) 
+could exceed any speedup you’d hope to achieve via `noexcept`, 
+plus you’d be saddled with source code that’s more difficult to comprehend and maintain. 
+That’d be poor software engineering.
+
+
+For some functions, being `noexcept` is so important, they’re that way by default. 
+In C++98, it was considered bad style to permit the memory deallocation functions 
+(i.e., `operator delete` and `operator delete[]`) and destructors to emit exceptions, 
+and in C++11, this style rule has been all but upgraded to a language rule. 
+By default, *all memory deallocation functions and all destructors 
+(both user-defined and compiler-generated) are implicitly `noexcept`*. 
+There’s thus no need to declare them `noexcept`. 
+(Doing so doesn’t hurt anything, it’s just unconventional.) 
+The only time a destructor is not implicitly `noexcept` is when a data member of the class 
+(including inherited members and those contained inside other data members) 
+is of a type that expressly states that its destructor may emit exceptions (e.g., declares it `noexcept(false)`). 
+Such destructors are uncommon. 
+There are none in the Standard Library, and if the destructor for an object being used by the Standard Library 
+(e.g., because it’s in a container or was passed to an algorithm) emits an exception, 
+the behavior of the program is undefined.
+
+
+It’s worth noting that some library interface designers distinguish 
+functions with *wide contract*s from those with *narrow contract*s. 
+    - A function with a wide contract has **no** ~~preconditions~~. 
+Such a function may be called regardless of the state of the program,
+and it imposes no constraints on the arguments that callers pass it. 
+(*Regardless of the state of the program* and *no constraints* 
+**doesn’t** legitimize programs whose behavior is already undefined. 
+For example, `std::vector::size` has a wide contract, but that doesn’t require that it behave reasonably 
+if you invoke it on a random chunk of memory that you’ve cast to a `std::vector`. 
+The result of the cast is undefined, so there are no behavioral guarantees for the program containing the cast. )
+Functions with wide contracts never exhibit undefined behavior.
+
+
+Functions without wide contracts have narrow contracts. 
+For such functions, if a precondition is violated, results are undefined.
+
+
+If you’re writing a function with a wide contract and you know it won’t emit exceptions,
+following the advice of this Item and declaring it `noexcept` is easy. 
+For functions with narrow contracts, the situation is trickier. 
+For example, suppose you’re writing a function `f` taking a `std::string` parameter, 
+and suppose `f`’s natural implementation never yields an exception. 
+That suggests that `f` should be declared `noexcept`.
+
+
+Now suppose that `f` has a precondition: 
+the length of its `std::string` parameter **doesn’t** exceed 32 characters. 
+If `f` were to be called with a `std::string` whose length is greater than 32, behavior would be undefined, 
+because a precondition violation by definition results in undefined behavior. 
+`f` is under no obligation to check this precondition,
+because functions may assume that their preconditions are satisfied. 
+(Callers are responsible for ensuring that such assumptions are valid.) 
+Even with a precondition, then, declaring `f` `noexcept` seems appropriate:
+```c++
+void f(const std::string & s) noexcept;  // precondition: s.length() <= 32
+```
+But suppose that `f`’s implementer chooses to check for precondition violations.
+Checking isn’t required, but it’s also not forbidden, 
+and checking the precondition could be useful, e.g., during system testing. 
+Debugging an exception that’s been thrown is generally easier than trying to track down the cause of undefined behavior. 
+But how should a precondition violation be reported such that a test harness or a client error handler could detect it? 
+A straightforward approach would be to throw a *precondition was violated exception*, 
+but if `f` is declared `noexcept`, that would be impossible; 
+throwing an exception would lead to program termination. 
+For this reason, library designers who distinguish wide from narrow contracts 
+generally reserve `noexcept` for functions with wide contracts. 
+
+
+As a final point, let me elaborate on my earlier observation that compilers typically offer no help 
+in identifying inconsistencies between function implementations and their exception specifications. 
+Consider this code, which is perfectly legal:
+```c++
+// predefined non-noexcept functions
+void setup();
+void cleanup();
+
+void doWork() noexcept
+{
+    setup();
+    // do the actual work...
+    cleanup();
+}
+```
+Here, `doWork` is declared `noexcept`, even though it calls the non-`noexcept` functions `setup` and `cleanup`. 
+This seems contradictory, but it could be that `setup` and `cleanup` document that they never emit exceptions, 
+even though they’re not declared that way. 
+There could be good reasons for their non-`noexcept` declarations. 
+For example, they might be part of a library written in C. 
+(Even functions from the C Standard Library that have been moved into the `std` namespace 
+lack exception specifications, e.g., `std::strlen` **isn’t** declared `noexcept`.) 
+Or they could be part of a C++98 library that decided not to use C++98 exception specifications 
+and hasn’t yet been revised for C++11.
+
+
+Because there are legitimate reasons for `noexcept` functions to rely on code lacking the `noexcept` guarantee, 
+C++ permits such code, and compilers generally don’t issue warnings about it.
 
 
 
@@ -3146,7 +3510,61 @@ values.insert(it, 1998);
 
 ### 📌 Item 15: Use `constexpr` whenever possible
 
+- `constexpr` objects are const and are initialized with values known during compilation.
+- `constexpr` functions can produce compile-time results when called with arguments whose values are known during compilation.
+- `constexpr` objects and functions may be used in a wider range of contexts than non-constexpr objects and functions.
+- `constexpr` is part of an object’s or function’s interface.
 
+#### `constexpr` qualifier
+
+If there were an award for the most confusing new word in C++11, `constexpr` would probably win it. 
+When applied to objects, it’s essentially a beefed-up form of `const`,
+but when applied to functions, it has a quite different meaning.
+
+
+Conceptually, `constexpr` indicates a value that’s not only constant, it’s *known during compilation*. 
+The concept is only part of the story, though, because when `constexpr` is applied to functions, 
+things are more nuanced than this suggests: 
+`constexpr` functions need **not** ~~produce results that are `const` or known during compilation~~!
+Perhaps most intriguingly, these things are *feature*s.
+
+#### `constexpr` objects
+
+`constexpr` objects are `const`, and have values that are known at compile time. 
+(Technically, their values are determined during *translation*, 
+and *translation* consists not just of *compilation* but also of *linking*. 
+Unless you write compilers or linkers for C++, however, this has no effect on you, 
+so you can blithely program as if the values of constexpr objects were determined during compilation.)
+
+
+Values known during compilation are privileged. 
+They may be placed in read-only memory, for example, and, 
+especially for developers of embedded systems, this can be a feature of considerable importance. 
+Of broader applicability is that integral values that are constant and known during compilation 
+can be used in contexts where C++ requires an *integral constant expression*. 
+Such contexts include: 
+- specification of array sizes 
+- integral template arguments (including lengths of `std::array` objects),
+- enumerator values, 
+- alignment specifiers, 
+- and more. 
+If you want to use a variable for these kinds of things, you certainly want to declare it `constexpr`, 
+because then compilers will ensure that it has a compile-time value: 
+```c++
+int sz;                             // non-constexpr variable
+constexpr auto arraySize1 = sz;     // error! sz's value not known at compilation
+std::array<int, sz> data1;          // error! same problem
+
+constexpr auto arraySize2 = 10;     // fine, 10 is a compile-time constant
+std::array<int, arraySize2> data2;  // fine, arraySize2 is constexpr
+```
+Note that `const` **doesn’t** offer the same guarantee as `constexpr`, 
+because `const` objects need **not** be ~~initialized with values known during compilation~~:
+```c++
+int sz;                             // as before
+const auto arraySize = sz;          // fine, arraySize is const copy of sz
+std::array<int, arraySize> data;    // error! arraySize's value not known at compilation
+```
 
 
 
@@ -3155,10 +3573,50 @@ values.insert(it, 1998);
 
 ### 📌 Item 16: Make `const` member functions thread safe
 
+- Make `const` member functions thread safe unless you’re certain they’ll never be used in a concurrent context.
+- Use of `std::atomic` variables may offer better performance than a `mutex`, 
+  but they’re suited for manipulation of only a single variable or memory location.
+
+
+
+
+
+
+
+
+
 
 
 
 ### 📌 Item 17: Understand special member function generation
+
+- The special member functions are those compilers may generate on their own:
+    - default constructor
+    - destructor
+    - copy operations
+    - move operations
+- Move operations are generated only for classes 
+  lacking explicitly declared move operations, copy operations, and a destructor.
+- The copy constructor is generated only for classes 
+  lacking an explicitly declared copy constructor, 
+  and it’s deleted if a move operation is declared. 
+- The copy assignment operator is generated only for classes 
+  lacking an explicitly declared copy assignment operator, 
+  and it’s deleted if a move operation is declared. 
+  Generation of the copy operations in classes with an explicitly declared destructor is deprecated.
+- *Member function template*s **never** ~~suppress generation of special member functions~~.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

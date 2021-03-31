@@ -17308,7 +17308,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 因为跟在`throw`后面的语句将不再执行，所以`throw`语句的用法有点类似于`return`语句
             - 它通常作为条件语句的一部分
             - 或者作为某个函数的最后（或唯一）一条语句
-    - *栈展开* （stack unwinding）
+    - *栈展开* （stack unwinding / unwound）
         - 当抛出一个异常后，程序暂停当前函数的执行，并立即开始寻找与异常匹配的 *`catch`子句* 
         - 当`throw`或 *对抛出异常的函数的调用* 出现在一个 *`try`语句块* （`try` block）内时，检查与该`try`块相关联的`catch`子句
         - 如果找到了匹配的`catch`，就用该`catch`处理异常；处理完毕后，找到与`try`块关联的最后一个`catch`子句之后的点，并从这里继续执行
