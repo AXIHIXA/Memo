@@ -3510,10 +3510,10 @@ C++ permits such code, and compilers generally don’t issue warnings about it.
 
 ### 📌 Item 15: Use `constexpr` whenever possible
 
-- `constexpr` objects are const and are initialized with values known during compilation.
-- `constexpr` functions can produce compile-time results when called with arguments whose values are known during compilation.
-- `constexpr` objects and functions may be used in a wider range of contexts than non-constexpr objects and functions.
-- `constexpr` is part of an object’s or function’s interface.
+- `constexpr` objects are `const` objects that are initialized with values known during compilation. 
+- `constexpr` functions can produce compile-time results when called with arguments whose values are known during compilation. 
+- `constexpr` objects and functions may be used in a wider range of contexts than non-`constexpr` objects and functions. 
+- `constexpr` is part of an object’s or function’s interface. 
 
 #### `constexpr` qualifier
 
@@ -3548,6 +3548,8 @@ Such contexts include:
 - enumerator values, 
 - alignment specifiers, 
 - and more. 
+
+
 If you want to use a variable for these kinds of things, you certainly want to declare it `constexpr`, 
 because then compilers will ensure that it has a compile-time value: 
 ```c++
@@ -3565,6 +3567,192 @@ int sz;                             // as before
 const auto arraySize = sz;          // fine, arraySize is const copy of sz
 std::array<int, arraySize> data;    // error! arraySize's value not known at compilation
 ```
+Simply put, all `constexpr` objects are `const`, but not all `const` objects are `constexpr`. 
+If you want compilers to guarantee that a variable has a value 
+that can be *used in contexts requiring compile-time constants*, 
+the tool to reach for is `constexpr`, **not** `const`.
+
+#### `constexpr` functions
+
+*`constexpr` functions produce compile-time constants when they are called with compile-time constants*. 
+If they’re called with values not known until runtime, they produce runtime values. 
+This may sound as if you don’t know what they’ll do, but that’s the wrong way to think about it. 
+The right way to view it is this:
+- `constexpr` functions can be used in contexts that demand compile-time constants.
+  If the values of the arguments you pass to a `constexpr` function in such a context are known during compilation, 
+  the result will be computed during compilation. 
+  If any of the arguments’ values is not known during compilation, your code will be rejected.
+- When a `constexpr` function is called with one or more values that are not known during compilation, 
+  it acts like a normal function, computing its result at runtime. 
+  This means you don’t need two functions to perform the same operation,
+  one for compile-time constants and one for all other values. 
+  The `constexpr` function does it all.
+
+
+Suppose we need a data structure to hold the results of an experiment that can be run in a variety of ways. 
+For example, the lighting level can be high, low, or off during the course of the experiment, 
+as can the fan speed and the temperature, etc. 
+If there are `n` environmental conditions relevant to the experiment, 
+each of which has three possible states, the number of combinations is `3^n`. 
+Storing experimental results for all combinations of conditions thus requires 
+a data structure with enough room for `3^n` values.
+Assuming each result is an `int` and that `n` is known (or can be computed) during compilation, 
+a `std::array` could be a reasonable data structure choice. 
+But we’d need a way to compute `3^n` during compilation. 
+The C++ Standard Library provides `std::pow`, which is the mathematical functionality we need, 
+but, for our purposes, there are two problems with it. 
+First, `std::pow` works on floating-point types, and we need an integral result. 
+Second, `std::pow` **isn’t** `constexpr` 
+(i.e., **isn’t** guaranteed to return a compile-time result when called with compile-time values), 
+so we can’t use it to specify a `std::array`’s size.
+
+Fortunately, we can write the `pow` we need: 
+```c++
+constexpr int pow(int base, int exp) noexcept
+{
+    // implementation details to be discussed below
+}
+
+constexpr auto numConds = 5;                // # of conditions
+
+std::array<int, pow(3, numConds)> results;  // results has 3^numConds elements
+```
+Recall that the `constexpr` in front of `pow` **doesn’t** say that `pow` returns a `const` value,
+it says that if `base` and `exp` are compile-time constants, `pow`’s result may be used as a compile-time constant. 
+If `base` and/or `exp` are not compile-time constants, `pow`’s result will be computed at runtime. 
+That means that `pow` can not only be called to do things like compile-time-compute the size of a `std::array`, 
+it can also be called in runtime contexts such as this:
+```c++
+auto base = readFromDB("base");             // get these values at runtime
+auto exp = readFromDB("exponent");
+auto baseToExp = pow(base, exp);            // call pow function at runtime
+```
+Because `constexpr` functions must be able to return compile-time results when called with compile-time values, 
+restrictions are imposed on their implementations.
+The restrictions differ between C++11 and C++14. 
+
+In C++11, `constexpr` functions may contain *no more than a single executable statement: a `return`*. 
+Two tricks can be used to extend the expressiveness of `constexpr` functions.
+- *conditional operator* `? :` can be used in place of `if`-`else` statements, 
+- *recursion* can be used instead of loops. 
+  
+`pow` can therefore be implemented like this:
+```c++
+constexpr int pow(int base, int exp) noexcept
+{
+    return (exp == 0 ? 1 : base * pow(base, exp - 1));
+}
+```
+In C++14, the restrictions on `constexpr` functions are substantially looser, 
+so the following implementation becomes possible:
+```c++
+constexpr int pow(int base, int exp) noexcept  // C++14
+{
+    auto result = 1;
+    for (int i = 0; i < exp; ++i) result *= base;
+    return result;
+}
+```
+`constexpr` functions are limited to taking and returning *literal types*, 
+which essentially means types that can have values determined during compilation. 
+In C++11, all built-in types **except** `void` qualify, 
+but user-defined types may be literal, too, because constructors and other member functions may be `constexpr`:
+```c++
+class Point 
+{
+public:
+    constexpr Point(double xVal = 0, double yVal = 0) noexcept : x(xVal), y(yVal) {}
+    constexpr double xValue() const noexcept { return x; }
+    constexpr double yValue() const noexcept { return y; }
+    constexpr void setX(double newX) noexcept { x = newX; }  // constexpr only since C++14
+    constexpr void setY(double newY) noexcept { y = newY; }  // constexpr only since C++14
+
+private:
+    double x, y;
+};
+```
+Here, the `Point` constructor can be declared `constexpr`, 
+because if the arguments passed to it are known during compilation, 
+the value of the data members of the constructed `Point` can also be known during compilation. 
+`Point`s so initialized could thus be `constexpr`:
+```c++
+constexpr Point p1(9.4, 27.7);  // fine, "runs" constexpr ctor during compilation
+constexpr Point p2(28.8, 5.3);  // also fine
+```
+Similarly, the getters `xValue` and `yValue` can be `constexpr`, 
+because if they’re invoked on a `Point` object with a value known during compilation 
+(e.g., a `constexpr` `Point` object), the values of the data members `x` and `y` can be known during compilation.
+That makes it possible to write `constexpr` functions that call `Point`’s getters
+and to initialize `constexpr` objects with the results of such functions:
+```c++
+constexpr Point midpoint(const Point & p1, const Point & p2) noexcept
+{
+    // call constexpr member funcs
+    return {(p1.xValue() + p2.xValue()) / 2, (p1.yValue() + p2.yValue()) / 2}; 
+}
+
+constexpr auto mid = midpoint(p1, p2);  // init constexpr object w/result of constexpr function
+```
+This is very exciting. 
+It means that the object `mid`, 
+though its initialization involves calls to constructors, getters, and a non-member function, 
+can be created in read-only memory! 
+It means you could use an expression like `mid.xValue() * 10` in an argument 
+to a template or in an expression specifying the value of an enumerator! 
+(Because `Point::xValue` returns `double`, the type of `mid.xValue() * 10` is also `double`. 
+Floating-point types **can’t** ~~be used to instantiate templates or to specify enumerator values~~, 
+but they can be used as part of larger expressions that yield integral types. 
+For example, `static_cast<int>(mid.xValue() * 10)` 
+could be used to instantiate a template or to specify an enumerator value.)
+
+
+It means that the traditionally fairly strict line 
+between work done during compilation and work done at runtime begins to blur, 
+and some computations traditionally done at runtime can migrate to compile time. 
+The more code taking part in the migration, the faster your software will run. 
+(Compilation may take longer, however.)
+
+
+In C++11, two restrictions prevent `Point`’s member functions `setX` and `setY` from being declared `constexpr`. 
+- They modify the object they operate on, and in C++11, `constexpr` member functions are implicitly `const`. 
+- They have `void` return types, and void **isn’t** a literal type in C++11. 
+  
+Both these restrictions are lifted in C++14, 
+so in C++14, even `Point`’s setters can be `constexpr`,
+which makes it possible to write functions like this:
+```c++
+// return reflection of p with respect to the origin (C++14)
+constexpr Point reflection(const Point & p) noexcept
+{
+    Point result;              // create non-const Point
+    result.setX(-p.xValue());  // set its x and y values
+    result.setY(-p.yValue());
+    return result;             // return copy of it
+}
+```
+Client code could look like this:
+```c++
+constexpr Point p1(9.4, 27.7);
+constexpr Point p2(28.8, 5.3);
+constexpr auto mid = midpoint(p1, p2);          // (19.1, 16.5), known during compilation
+constexpr auto reflectedMid = reflection(mid);  // (-19.1 -16.5), known during compilation
+```
+The advice of this Item is to use `constexpr` whenever possible: 
+both `constexpr` objects and `constexpr` functions can be employed 
+in a wider range of contexts than non-`constexpr` objects and functions. 
+By using `constexpr` whenever possible, you maximize the range of situations 
+in which your objects and functions may be used.
+
+``
+It’s important to note that `constexpr` is part of an object’s or function’s interface.
+`constexpr` proclaims “I can be used in a context where C++ requires a constant expression.” 
+If you declare an object or function `constexpr`, clients may use it in such contexts. 
+If you later decide that your use of `constexpr` was a mistake and you remove it, 
+you may cause arbitrarily large amounts of client code to stop compiling.
+(The simple act of adding I/O to a function for debugging or performance tuning could lead to such a problem, 
+because I/O statements are generally not permitted in `constexpr` functions.) 
+Part of “whenever possible” in “Use `constexpr` whenever possible” is your willingness 
+to make a long-term commitment to the constraints it imposes on the objects and functions you apply it to.
 
 
 
