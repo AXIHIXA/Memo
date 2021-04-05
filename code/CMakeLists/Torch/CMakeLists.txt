@@ -10,36 +10,46 @@ set(CMAKE_AUTOUIC ON)
 find_package(CUDAToolkit REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(OpenCL REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
-find_package(Python3 REQUIRED COMPONENTS Development NumPy)
+find_package(OpenMP REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Development Interpreter NumPy)
 
 # CMAKE_PREFIX_PATH can be gotten from `python -m "import torch;print(torch.utils.cmake_prefix_path)"`
 # libTorch conda build conflicts with OpenCV, so download compiled library directly from pytorch.org.
 find_package(Torch REQUIRED CONFIG HINTS /home/xihan1/lib/libtorch/share/cmake)
 
+set(GLOBAL
+        include/global/global.h
+        include/global/Style.h
+        src/global/global.cpp
+        )
+
 set(GUI
         include/gui/SketchBoard.h
         include/gui/ScribbleArea.h
+        include/gui/Stroke.h
         src/gui/SketchBoard.cpp
         src/gui/ScribbleArea.cpp
-        )
-
-set(NET
-        include/net/UNet.h
-        include/net/UNetParts.h
-        src/net/UNet.cpp
-        src/net/UNetParts.cpp
-        )
-
-set(UTILS
-        include/utils/matplotlibcpp.h
-        include/utils/tensorhelper.h
-        src/utils/tensorhelper.cpp
+        src/gui/Stroke.cpp
         )
 
 set(MAIN
-        src/main.cpp
+        src/main/main.cpp
+        )
+
+set(MODULE
+        include/module/LaplacianNet.h
+        include/module/SolverNet.h
+        src/module/LaplacianNet.cpp
+        src/module/SolverNet.cpp
+        )
+
+set(UTILS
+        include/utils/helper.h
+        include/utils/matplotlibcpp.h
+        src/utils/helper.cpp
         )
 
 set(TBB_LIBS
@@ -49,25 +59,31 @@ set(TBB_LIBS
         )
 
 set(ALL_SOURCE_FILES
+        ${GLOBAL}
         ${GUI}
         ${MAIN}
-        ${NET}
+        ${MODULE}
         ${UTILS}
         )
 
 set(ALL_INCLUDE_DIRS
+        ${OpenCL_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
+        ${OpenMP_CXX_INCLUDE_DIRS}
         ${Python3_INCLUDE_DIRS}
         ${Python3_NumPy_INCLUDE_DIRS}
+        /home/$ENV{USER}/lib/amgcl
         include
         )
 
 set(ALL_LIBRARIES
         ${Boost_LIBRARIES}
         ${OpenCV_LIBS}
+        ${OpenCL_LIBRARIES}
         ${TBB_LIBS}
         ${TORCH_LIBRARIES}
         Eigen3::Eigen
+        OpenMP::OpenMP_CXX
         pthread
         Python3::Python
         Python3::NumPy

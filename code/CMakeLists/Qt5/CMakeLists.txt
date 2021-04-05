@@ -11,16 +11,20 @@ set(CMAKE_AUTOUIC ON)
 find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
 
-set(MAIN
-        src/main.cpp
+set(GUI
+        include/gui/MainWindow.h
+        src/gui/MainWindow.cpp
         )
 
-set(TBB_LIBS
-        /usr/lib/x86_64-linux-gnu/libtbb.so
-        /usr/lib/x86_64-linux-gnu/libtbbmalloc.so
-        /usr/lib/x86_64-linux-gnu/libtbbmalloc_proxy.so
+set(MAIN
+        src/main/main.cpp
+        )
+
+set(ALL_SOURCE_FILES
+        ${GUI}
+        ${MAIN}
         )
 
 set(ALL_SOURCE_FILES
@@ -36,9 +40,7 @@ set(ALL_INCLUDE_DIRS
 set(ALL_LIBRARIES
         ${Boost_LIBRARIES}
         ${OpenCV_LIBS}
-        ${TBB_LIBS}
         Eigen3::Eigen
-        pthread
         Qt5::Core
         Qt5::Gui
         Qt5::Widgets
