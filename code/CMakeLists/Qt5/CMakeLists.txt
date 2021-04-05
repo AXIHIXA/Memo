@@ -27,10 +27,6 @@ set(ALL_SOURCE_FILES
         ${MAIN}
         )
 
-set(ALL_SOURCE_FILES
-        ${MAIN}
-        )
-
 set(ALL_INCLUDE_DIRS
         ${EIGEN3_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
