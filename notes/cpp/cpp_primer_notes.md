@@ -118,8 +118,8 @@
 - 一些小知识
     - 类成员函数的各色说明符限定符相对顺序完整版
     ```
-    struct ABase                  { virtual auto fun(int) const && noexcept -> void          = 0; }
-    struct Derived : public ABase {         auto fun(int) const &&          -> void override {}   }
+    struct Base                  { virtual auto fun(int) const && noexcept -> void          = 0; }
+    struct Derived : public Base {         auto fun(int) const &&          -> void override {}   }
     ```
     - 概念辨析一
         - *多态* （polymorphism）指类定义了 *虚函数* （virtual function）

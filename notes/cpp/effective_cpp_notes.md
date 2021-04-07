@@ -695,7 +695,7 @@ There are three cases:
 - `ParamType` is neither a ~~pointer~~ nor a ~~reference~~ <br>
     We’re dealing with pass-by-value:
     ```c++
-    template<typename T>
+    template <typename T>
     void f(T param);       // param is now passed by value
     ```
     That means that `param` will be a *copy* of whatever is passed in: a completely new object. 
@@ -820,7 +820,7 @@ void someFunc(int, double);  // someFunc is a function; type is void(int, double
 template <typename T>
 void f1(T param);            // in f1, param passed by value
 
-template<typename T>
+template <typename T>
 void f2(T & param);          // in f2, param passed by ref
 
 f1(someFunc);                // param deduced as ptr-to-func; type is void (*)(int, double)
@@ -960,7 +960,7 @@ But if the corresponding template is passed the same initializer, type deduction
 ```c++
 auto x = {11, 23, 9};  // x's type is std::initializer_list<int>
 
-template<typename T>   // template with parameter declaration equivalent to x's declaration
+template <typename T>   // template with parameter declaration equivalent to x's declaration
 void f(T param); 
 
 f({11, 23, 9});        // error! can't deduce type for T
@@ -1030,7 +1030,7 @@ Widget w;                  // decltype(w) is Widget
 
 if (f(w)) {}               // decltype(f(w)) is bool
 
-template<typename T>       // simplified version of std::vector
+template <typename T>       // simplified version of std::vector
 class vector
 {
 public:
@@ -2175,7 +2175,7 @@ If `MyAllocList` is defined as an alias template, this need for `typename` vanis
 template <typename T>
 using MyAllocList = std::list<T, MyAlloc<T>>;
 
-template<typename T>
+template <typename T>
 class Widget 
 {
 private:
@@ -2557,7 +2557,7 @@ because we know it will never yield an exception.
 The result is a function template `toUType` 
 that takes an arbitrary enumerator and can return its value as a compiletime constant:
 ```c++
-template<typename E>
+template <typename E>
 constexpr typename std::underlying_type<E>::type 
 toUType(E enumerator) noexcept
 {
@@ -2567,7 +2567,7 @@ toUType(E enumerator) noexcept
 In C++14, `toUType` can be simplified by replacing `typename std::underlying_type<E>::type` 
 with the sleeker `std::underlying_type_t` (see Item 9):
 ```c++
-template<typename E>  // C++14
+template <typename E>  // C++14
 constexpr std::underlying_type_t<E>
 toUType(E enumerator) noexcept
 {
@@ -2576,7 +2576,7 @@ toUType(E enumerator) noexcept
 ```
 The even-sleeker `auto` return type (see Item 3) is also valid in C++14:
 ```c++
-template<typename E>  // C++14
+template <typename E>  // C++14
 constexpr auto
 toUType(E enumerator) noexcept
 {
@@ -2718,7 +2718,7 @@ Another trick that deleted functions can perform (and that `private` member func
 is to prevent use of template instantiations that should be disabled. 
 For example, suppose you need a template that works with built-in pointers: 
 ```c++
-template<typename T>
+template <typename T>
 void processPointer(T * ptr);
 ```
 There are two special cases in the world of pointers. 
@@ -2734,16 +2734,16 @@ And, if calling `processPointer` with a `void *` or a `char *` is invalid,
 it’s probably also invalid to call it with a `const void *` or a `const char *`,
 so those instantiations will typically need to be deleted, too:
 ```c++
-template<>
+template <>
 void processPointer<void>(void *) = delete;
 
-template<>
+template <>
 void processPointer<const void>(const void *) = delete;
 
-template<>
+template <>
 void processPointer<char>(char *) = delete;
 
-template<>
+template <>
 void processPointer<const char>(const char *) = delete;
 ```
 And if you really want to be thorough, 
@@ -2780,14 +2780,14 @@ They can be deleted outside the class (hence at namespace scope):
 class Widget 
 {
 public:
-    template<typename T>
+    template <typename T>
     void processPointer(T * ptr)
     {
 
     }
 };
 
-template<> 
+template <> 
 void Widget::processPointer<void>(void *) = delete;  // partial specification of mem func, still public, but deleted
 ```
 The truth is that the C++98 practice of declaring functions private and not defining them 
@@ -4001,25 +4001,30 @@ and that’s why you should ensure that your const member functions are thread s
       Implicitly `public`, `inline`, and `noexcept`; <br>
       `virtual` only if a base class destructor is `virtual`;
     - **Copy Constructor**: <br>
+      Member-wise copy construction of non-`static` data members; <br>
       Generated only if the class lacks a user-declared copy constructor; <br>
       Implicitly `public` and `inline`; <br>
       Deleted if the class declares a move operation; <br>
       Generation in a class with a user-declared copy assignment operator or destructor is deprecated;
     - **Copy Assignment Operator**: <br>
+      Member-wise copy assignment of non-`static` data members; <br>
       Generated only if the class lacks a user-declared copy assignment operator; <br>
       Implicitly `public` and `inline`; <br>
       Deleted if the class declares a move operation; <br>
       Generation in a class with a user-declared copy constructor or destructor is deprecated;
     - **Move Constructor** and **Move Assignment Operator**: <br>
+      Member-wise moving of non-`static` data members; <br>
       Generated only if the class contains no user-declared copy operations, move operations, or destructor;
       Implicitly `public` and `inline`.
 - *Member function template*s **never** ~~suppress generation of special member functions~~.
 - Explicitly define special member functions using `= default` even if you want compiler-generated versions. 
   This prevents loss of these functions due to code reformatting. 
-- <u><i>The Rule of Three/Five</i></u>: 
-  If you need to user-define any of the five copy-control member functions: 
-  destructor, copy operations, and move operations, 
-  you should define all of the five. 
+- <u><i>The Rule of Three / Five</i></u>:
+  If you declare any of the following copy-control member functions:
+  destructor,
+  copy constructor, copy assignment operator,
+  move constructor, and move assignment operator,
+  you should declare all five.
 
 #### Special member functions since C++98
 
@@ -4129,10 +4134,12 @@ and classes that are modified to take advantage of move semantics
 have to play by the C++11 rules for special member function generation.
 
 
-***<u>The Rule of Three</u>***. 
-The Rule of Three states that 
-if you declare any of a copy constructor, copy assignment operator, or destructor, 
-you should declare all three. 
+***<u>The Rule of Three / Five</u>***. 
+If you declare any of the following copy-control member functions: 
+destructor, 
+copy constructor, copy assignment operator, 
+move constructor, and move assignment operator, 
+you should declare all three (until C++98) or five (since C++11). 
 
 
 It grew out of the observation that 
@@ -4301,10 +4308,10 @@ That means that if `Widget` looks like this:
 ```c++
 class Widget 
 {
-    template<typename T>                // construct Widget
+    template <typename T>                // construct Widget
     Widget(const T & rhs);              // from anything
     
-    template<typename T>                // assign Widget
+    template <typename T>                // assign Widget
     Widget & operator=(const T & rhs);  // from anything
 };
 ```
@@ -4327,9 +4334,267 @@ Item 26 demonstrates that it can have important consequences.
 
 - `std::unique_ptr` is a small, fast, move-only smart pointer for managing resources with exclusive-ownership semantics.
 - By default, resource destruction takes place via `delete`, but custom deleters can be specified. 
-  Stateful deleters and function pointers as deleters increase the size of `std::unique_ptr` objects.
+  *Stateful* deleters and function pointers as deleters increase the size of `std::unique_ptr` objects. 
+  Captureless lambda expressions are more favored than function pointers and/or other callable objects. 
 - Converting a `std::unique_ptr` to a `std::shared_ptr` is easy.
 
+
+By default, `std::unique_ptr`s are the same size as *raw pointer*s, 
+and for most operations (including dereferencing), 
+they execute exactly the same instructions. 
+This means you can use them even in situations where memory and cycles are tight. 
+If a raw pointer is small enough and fast enough for you, 
+a `std::unique_ptr` almost certainly is, too.
+
+
+`std::unique_ptr` embodies exclusive ownership semantics. 
+A non-null `std::unique_ptr` always owns what it points to. 
+Moving a `std::unique_ptr` transfers ownership from the source pointer to the destination pointer. 
+(The source pointer is set to null.) 
+~~Copying a `std::unique_ptr`~~ **isn’t** allowed, 
+because if you could copy a `std::unique_ptr`, 
+you’d end up with two `std::unique_ptr`s to the same resource,
+each thinking it owned (and should therefore destroy) that resource.
+`std::unique_ptr` is thus a move-only type. 
+Upon destruction, a non-null `std::unique_ptr` destroys its resource. 
+By default, resource destruction is accomplished by applying `delete` to the raw pointer inside the `std::unique_ptr`.
+
+
+A common use for `std::unique_ptr` is as a factory function return type for objects in a hierarchy. 
+Suppose we have a hierarchy for types of investments with a base class `Investment`.
+```c++
+class Investment 
+{   
+    // ...
+};
+class Stock : public Investment 
+{ 
+    // ...
+};
+
+class Bond : public Investment 
+{ 
+    // ...
+};
+
+class RealEstate : public Investment 
+{
+    // ...
+};
+```
+A factory function for such a hierarchy typically allocates an object on the heap and returns a pointer to it, 
+with the caller being responsible for deleting the object when it’s no longer needed. 
+That’s a perfect match for `std::unique_ptr`, 
+because the caller acquires responsibility for the resource returned by the factory 
+(i.e., exclusive ownership of it), 
+and the `std::unique_ptr` automatically `delete`s what it points to when it is destroyed. 
+A factory function for the `Investment` hierarchy could be declared like this:
+```c++
+// return std::unique_ptr to an object created from the given args
+template <typename ... Ts> 
+std::unique_ptr<Investment> makeInvestment(Ts && ... params);
+```
+Callers could use the returned `std::unique_ptr` in a single scope as follows, 
+```c++
+{
+    auto pInvestment = makeInvestment(arguments); // pInvestment is of type std::unique_ptr<Investment>
+}  // destroy *pInvestment
+```
+but they could also use it in ownership-migration scenarios, 
+such as when the `std::unique_ptr` returned from the factory is moved into a container, 
+the container element is subsequently moved into a data member of an object, 
+and that object is later destroyed. 
+When that happens, the object’s `std::unique_ptr` data member would also be destroyed, 
+and its destruction would cause the resource returned from the factory to be destroyed. 
+If the ownership chain got interrupted due to an exception or other atypical control flow 
+(e.g., early function return or break from a loop),
+the `std::unique_ptr` owning the managed resource would eventually have its destructor called, 
+and the resource it was managing would thereby be destroyed. 
+
+
+There are a few exceptions to this rule. 
+Most stem from *abnormal program termination*. 
+If an exception propagates out of a thread’s primary function (e.g., `main`, for the program’s initial thread) 
+or if a `noexcept` specification is violated, 
+local objects may **not** be destroyed; 
+and if `std::abort` or an `exit` function(i.e., `std::_Exit`, `std::exit`, or `std::quick_exit`) is called, 
+they definitely **won’t** be.
+
+
+By default, that destruction would take place via `delete`, 
+but, during construction, `std::unique_ptr` objects can be configured to use *custom deleter*s: 
+arbitrary functions (or function objects, including those arising from lambda expressions) to be invoked 
+when it’s time for their resources to be destroyed. 
+If the object created by `makeInvestment` shouldn’t be directly deleted, 
+but instead should first have a log entry written, 
+`makeInvestment` could be implemented as follows. 
+```c++
+auto delInvmt = [](Investment * pInvestment) // custom deleter (a lambda expression)
+{ 
+    makeLogEntry(pInvestment);
+    delete pInvestment;
+};
+
+template <typename ... Ts>
+std::unique_ptr<Investment, decltype(delInvmt)> makeInvestment(Ts && ... params)
+{
+    std::unique_ptr<Investment, decltype(delInvmt)> pInv(nullptr, delInvmt);  // ptr to be returned
+    
+    if ( /* a Stock object should be created */ )
+    {
+        pInv.reset(new Stock(std::forward<Ts>(params)...));
+    }
+    else if ( /* a Bond object should be created */ )
+    {
+        pInv.reset(new Bond(std::forward<Ts>(params)...));
+    }
+    else if ( /* a RealEstate object should be created */ )
+    {
+        pInv.reset(new RealEstate(std::forward<Ts>(params)...));
+    }
+    
+    return pInv;
+}
+```
+First consider how things look if you’re a caller.
+Assuming you store the result of the `makeInvestment` call in an `auto` variable,
+you frolic in blissful ignorance of the fact that the resource you’re using 
+requires special treatment during deletion. 
+In fact, you veritably bathe in bliss, because the use of `std::unique_ptr` means 
+you need not concern yourself with when the resource should be destroyed, 
+much less ensure that the destruction happens exactly once along every path through the program. 
+`std::unique_ptr` takes care of all those things automatically. 
+From a client’s perspective, `makeInvestment`’s interface is sweet.
+
+
+The implementation is pretty nice, too, once you understand the following:
+- `delInvmt` is the custom deleter for the object returned from `makeInvestment`.
+  All custom deletion functions accept a raw pointer to the object to be destroyed,
+  then do what is necessary to destroy that object.
+  In this case, the action is to call `makeLogEntry` and then apply `delete`. 
+  Using a lambda expression to create `delInvmt` is convenient, but, as we’ll see shortly, 
+  it’s also *more efficient* than writing a conventional function.
+- When a custom deleter is to be used, its type must be specified as the second type argument to `std::unique_ptr`. 
+  In this case, that’s the type of `delInvmt`, 
+  and that’s why the return type of `makeInvestment` is `std::unique_ptr<Investment, decltype(delInvmt)>`. 
+- The basic strategy of `makeInvestment` is to create a null `std::unique_ptr`,
+  make it point to an object of the appropriate type, and then return it. 
+  To associate the custom deleter `delInvmt` with `pInv`, we pass that as its second constructor argument.
+- Attempting to assign a raw pointer (e.g., from `new`) to a `std::unique_ptr` **won’t** compile, 
+  because it would constitute an implicit conversion from a raw to a smart pointer. 
+  Such implicit conversions can be problematic, so C++11’s smart pointers prohibit them. 
+  That’s why `reset` is used to have `pInv` assume ownership of the object created via `new`.
+- With each use of `new`, we use `std::forward` to *perfect-forward* the arguments passed to makeInvestment (see Item 25). 
+  This makes all the information provided by callers available to the constructors of the objects being created.
+- The custom deleter takes a parameter of type `Investment *`. 
+  Regardless of the actual type of object created inside `makeInvestment` (i.e., `Stock`, `Bond`, or `RealEstate`), 
+  it will ultimately be deleted inside the lambda expression as an `Investment *` object. 
+  This means we’ll be deleting a derived class object via a base class pointer. 
+  For that to work, the base class `Investment` must have a `virtual` destructor:
+    ```c++
+    class Investment 
+    {
+    public:
+        virtual ~Investment(); 
+    // ...
+    };
+    ```
+
+
+In C++14, the existence of function return type deduction means that 
+`makeInvestment` could be implemented in this simpler and more encapsulated fashion:
+```c++
+template <typename ... Ts>
+auto makeInvestment(Ts && ... params)
+{
+    auto delInvmt = [](Investment * pInvestment)
+    {
+        makeLogEntry(pInvestment);
+        delete pInvestment;
+    };
+    
+    std::unique_ptr<Investment, decltype(delInvmt)> pInv(nullptr, delInvmt);  // ptr to be returned
+    
+    if ( /* a Stock object should be created */ )
+    {
+    pInv.reset(new Stock(std::forward<Ts>(params)...));
+    }
+    else if ( /* a Bond object should be created */ )
+    {
+    pInv.reset(new Bond(std::forward<Ts>(params)...));
+    }
+    else if ( /* a RealEstate object should be created */ )
+    {
+    pInv.reset(new RealEstate(std::forward<Ts>(params)...));
+    }
+    
+    return pInv;
+}
+```
+When using the default deleter (i.e., `delete`), 
+you can reasonably assume that `std::unique_ptr` objects are the *same size* as raw pointers. 
+When custom deleters enter the picture, this may no longer be the case. 
+Deleters that are *function pointer*s generally cause the size of a `std::unique_ptr` to grow from one word to two. 
+For deleters that are *function object*s, the change in size depends on how much state is stored in the function object. 
+<u><i>Stateless function objects (e.g., from lambda expressions with no captures) incur **no** size penalty*</i></u>, 
+and this means that when a custom deleter can be implemented as either a function or a captureless lambda expression, 
+the lambda is preferable:
+```c++
+// custom deleter as stateless lambda
+auto delInvmt1 = [](Investment * pInvestment)
+{
+    makeLogEntry(pInvestment);
+    delete pInvestment;
+};
+
+// return typehas size of Investment *
+template <typename ... Ts>
+std::unique_ptr<Investment, decltype(delInvmt1)> makeInvestment(Ts && ... args);
+
+// custom deleter as function
+void delInvmt2(Investment * pInvestment)
+{
+    makeLogEntry(pInvestment);
+    delete pInvestment;
+}
+
+// return type has size of Investment * plus at least size of function pointer!
+template <typename ... Ts>
+std::unique_ptr<Investment, void (*)(Investment *)> makeInvestment(Ts && ... params);
+```
+Function object deleters with extensive state can yield `std::unique_ptr` objects of significant size. 
+If you find that a custom deleter makes your `std::unique_ptr`s unacceptably large, you probably need to change your design.
+
+
+Factory functions are **not** the only common use case for `std::unique_ptr`s. 
+They’re even more popular as a mechanism for implementing the <u><i>Pimpl Idiom</i></u>. 
+The code for that isn’t complicated, but in some cases it’s less than straightforward, 
+so I’ll refer you to Item 22, which is dedicated to the topic.
+
+
+`std::unique_ptr` comes in two forms,
+one for individual objects (`std::unique_ptr<T>`) and one for arrays (`std::unique_ptr<T []>`). 
+As a result, there’s never any ambiguity about what kind of entity a `std::unique_ptr` points to. 
+The `std::unique_ptr` API is designed to match the form you’re using. 
+For example, there’s **no** indexing operator (`operator[]`) for the single-object form, 
+while the array form **lacks** dereferencing operators (`operator*` and `operator->`).
+The existence of `std::unique_ptr` for arrays should be of only intellectual interest to you, 
+because `std::array`, `std::vector`, and `std::string` are virtually always better data structure choices than raw arrays. 
+About the only situation I can conceive of when a `std::unique_ptr<T []>` would make sense would be 
+when you’re using a C-like API that returns a raw pointer to a heap array that you assume ownership of. 
+
+
+`std::unique_ptr` is the C++11 way to express exclusive ownership, 
+but one of its most attractive features is that it easily and efficiently converts to a `std::shared_ptr`:
+```c++
+// converts std::unique_ptr to std::shared_ptr
+std::shared_ptr<Investment> sp = makeInvestment(arguments);
+```
+This is a key part of why `std::unique_ptr` is so well suited as a factory function return type. 
+Factory functions can’t know whether callers will want to use exclusive ownership semantics for the object they return 
+or whether shared ownership (i.e., `std::shared_ptr`) would be more appropriate. 
+By returning a `std::unique_ptr`, factories provide callers with the most efficient smart pointer, 
+but they don’t hinder callers from replacing it with its more flexible sibling. 
 
 
 
