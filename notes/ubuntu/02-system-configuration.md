@@ -128,3 +128,10 @@ For people getting the white screen error, go to Library > History > Show All Hi
 
 1. 提高`Surface Pro 4`  /`Surface Book`屏幕亮度的键盘快捷键：`Fn + Del`
 2. 降低`Surface Pro 4` / `Surface Book`屏幕亮度的键盘快捷键：`Fn + Backspace`
+
+## 🌱 Some Windows 10 Stuff
+
+Register key location to modify display names of applications in Control Panel: 
+```
+Computer\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall
+```

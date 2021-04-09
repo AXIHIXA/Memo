@@ -4397,7 +4397,8 @@ std::unique_ptr<Investment> makeInvestment(Ts && ... params);
 Callers could use the returned `std::unique_ptr` in a single scope as follows, 
 ```c++
 {
-    auto pInvestment = makeInvestment(arguments); // pInvestment is of type std::unique_ptr<Investment>
+    // pInvestment is of type std::unique_ptr<Investment>
+    auto pInvestment = makeInvestment(arguments);
 }  // destroy *pInvestment
 ```
 but they could also use it in ownership-migration scenarios, 
@@ -4417,7 +4418,7 @@ Most stem from *abnormal program termination*.
 If an exception propagates out of a thread’s primary function (e.g., `main`, for the program’s initial thread) 
 or if a `noexcept` specification is violated, 
 local objects may **not** be destroyed; 
-and if `std::abort` or an `exit` function(i.e., `std::_Exit`, `std::exit`, or `std::quick_exit`) is called, 
+and if `std::abort` or an `exit` function (i.e., `std::_Exit`, `std::exit`, or `std::quick_exit`) is called, 
 they definitely **won’t** be.
 
 
@@ -4429,7 +4430,8 @@ If the object created by `makeInvestment` shouldn’t be directly deleted,
 but instead should first have a log entry written, 
 `makeInvestment` could be implemented as follows. 
 ```c++
-auto delInvmt = [](Investment * pInvestment) // custom deleter (a lambda expression)
+// custom deleter (a lambda expression)
+auto delInvmt = [](Investment * pInvestment) 
 { 
     makeLogEntry(pInvestment);
     delete pInvestment;
@@ -4438,7 +4440,8 @@ auto delInvmt = [](Investment * pInvestment) // custom deleter (a lambda express
 template <typename ... Ts>
 std::unique_ptr<Investment, decltype(delInvmt)> makeInvestment(Ts && ... params)
 {
-    std::unique_ptr<Investment, decltype(delInvmt)> pInv(nullptr, delInvmt);  // ptr to be returned
+    // ptr to be returned
+    std::unique_ptr<Investment, decltype(delInvmt)> pInv(nullptr, delInvmt);
     
     if ( /* a Stock object should be created */ )
     {
@@ -4496,7 +4499,7 @@ The implementation is pretty nice, too, once you understand the following:
     {
     public:
         virtual ~Investment(); 
-    // ...
+        // ...
     };
     ```
 
@@ -4513,7 +4516,7 @@ auto makeInvestment(Ts && ... params)
         delete pInvestment;
     };
     
-    std::unique_ptr<Investment, decltype(delInvmt)> pInv(nullptr, delInvmt);  // ptr to be returned
+    std::unique_ptr<Investment, decltype(delInvmt)> pInv(nullptr, delInvmt);
     
     if ( /* a Stock object should be created */ )
     {
