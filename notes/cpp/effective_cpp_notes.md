@@ -5295,12 +5295,97 @@ For details, continue on to Item 21.
        and `std::weak_ptr`s that outlive the corresponding `std::shared_ptr`s.
 
 
+Let’s begin by leveling the playing field for `std::make_unique` and `std::make_shared`. 
+`std::make_shared` is part of C++11, but, sadly, `std::make_unique` isn’t. It joined the Standard Library as of C++14. 
+If you’re using C++11, never fear, because a basic version of `std::make_unique` is easy to write yourself.
+Here, look:
+```c++
+/// <type_traits.h>
+/// g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
+
+template <typename _Tp>
+struct remove_extent
+{
+    typedef _Tp type;
+};
+
+template <typename _Tp, std::size_t _Size>
+struct remove_extent<_Tp[_Size]>
+{
+    typedef _Tp type;
+};
+
+template <typename _Tp>
+struct remove_extent<_Tp[]>
+{
+    typedef _Tp type;
+};
+
+/// Alias template for remove_extent
+template <typename _Tp>
+using remove_extent_t = typename remove_extent<_Tp>::type;
 
 
+/// <unique_ptr.h>
+/// g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
+
+template <typename _Tp>
+struct _MakeUniq
+{
+    typedef unique_ptr <_Tp> __single_object;
+};
+
+template <typename _Tp>
+struct _MakeUniq<_Tp[]>
+{
+    typedef unique_ptr<_Tp[]> __array;
+};
+
+template <typename _Tp, size_t _Bound>
+struct _MakeUniq<_Tp[_Bound]>
+{
+    struct __invalid_type
+    {
+    };
+};
+
+/// std::make_unique for single objects
+template <typename _Tp, typename... _Args>
+inline typename _MakeUniq<_Tp>::__single_object
+make_unique(_Args && ... __args)
+{
+    return unique_ptr<_Tp>(new _Tp(std::forward<_Args>(__args)...));
+}
+
+/// std::make_unique for arrays of unknown bound
+template <typename _Tp>
+inline typename _MakeUniq<_Tp>::__array
+make_unique(size_t __num)
+{
+    return unique_ptr<_Tp>(new remove_extent_t<_Tp>[__num]());
+}
+
+/// Disable std::make_unique for arrays of known bound
+template <typename _Tp, typename... _Args>
+inline typename _MakeUniq<_Tp>::__invalid_type
+make_unique(_Args && ...) = delete;
+```
+Just remember **not** to put your version in `namespace std`, 
+because you won’t want it to clash with a vendor-provided version 
+when you upgrade to a C++14 Standard Library implementation.
 
 
+`std::make_unique` and `std::make_shared` are two of the three *`make` functions*:
+functions that take an arbitrary set of arguments, 
+perfect-forward them to the constructor for a dynamically allocated object, 
+and return a smart pointer to that object.
+The third make function is `std::allocate_shared`. 
+It acts just like `std::make_shared`, 
+except its first argument is an allocator object to be used for the dynamic memory allocation.
 
 
+Even the most trivial comparison of smart pointer creation using and not using a make function 
+reveals the first reason why using such functions is preferable. Consider:
 
 
 
