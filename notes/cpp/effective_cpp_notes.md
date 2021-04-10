@@ -4686,6 +4686,9 @@ but they don’t hinder callers from replacing it with its more flexible sibling
 - Default resource destruction is via `delete`, but custom deleters are supported.
   The type of the deleter has no effect on the type of the `std::shared_ptr`.
 - Avoid creating `std::shared_ptr`s from variables of raw pointer type.
+- Classes derived from `std::enable_shared_from_this` may and must be managed by `std::shared_ptr`s. 
+  These classes ususally declare their constructors private and offer factory functions returning `std::shared_ptr`s. 
+  Calling `shared_from_this(this)` without a control block is <u><i>undefined behavior</i></u>. 
 
 
 `std::shared_ptr` is the C++11 way of binding best of multiple worlds together:
@@ -4933,7 +4936,7 @@ void Widget::process()
 The comment about this being wrong says it all—or at least most of it. 
 (The part that’s wrong is the passing of `this`, not the use of `emplace_back`.) 
 This code will compile, but it’s passing a raw pointer (`this`) to a container of `std::shared_ptr`s. 
-The std::shared_ptr thus constructed will <u><i>create a new control block</i></u> for the pointed-to `Widget` (`*this`). 
+The `std::shared_ptr` thus constructed will <u><i>create a new control block</i></u> for the pointed-to `Widget` (`*this`). 
 That doesn’t sound harmful until you realize that if there are `std::shared_ptr`s outside the member function 
 that already point to that `Widget`, it’s game, set, and match for <u><i>undefined behavior</i></u>. 
 
@@ -4952,28 +4955,135 @@ public:
     // ...
 };
 ```
+As I said, `std::enable_shared_from_this` is a base class template. 
+Its type parameter is always the name of the class being derived, 
+so `Widget` inherits from `std::enable_shared_from_this<Widget>`. 
+If the idea of a derived class inheriting from a base class templatized on the derived class makes your head hurt, 
+try not to think about it. 
+The code is completely legal, and the design pattern behind it is so well established,
+it has a standard name, called <u><i>Curiously Recurring Template Pattern (CRTP)</i></u>. 
+If you’d like to learn more about it, unleash your search engine,
+because here we need to get back to `std::enable_shared_from_this`.
 
 
+`std::enable_shared_from_this` defines a member function that creates a `std::shared_ptr` to the current object, 
+but it does it without duplicating control blocks. 
+The member function is `shared_from_this`, 
+and you use it in member functions whenever you want a `std::shared_ptr` that points to the same object as the this pointer. 
+Here’s a safe implementation of `Widget::process`:
+```c++
+void Widget::process()
+{
+    // process the Widget
+    processedWidgets.emplace_back(shared_from_this());
+}
+```
+Internally, `shared_from_this` looks up the control block for the current object, 
+and it creates a new `std::shared_ptr` that refers to that control block. 
+The design relies on the current object having an associated control block. 
+For that to be the case, there must be an existing `std::shared_ptr` 
+(e.g., one outside the member function calling `shared_from_this`) that points to the current object. 
+If **no** such `std::shared_ptr` exists (i.e., if the current object has **no** associated control block), 
+behavior is <u><i>undefined</i></u>, although shared_from_this typically throws an exception.
 
 
+To prevent clients from calling member functions that invoke `shared_from_this` before a `std::shared_ptr` points to the object, 
+classes inheriting from `std::enable_shared_from_this` often declare their constructors private 
+and have clients create objects by calling factory functions that return `std::shared_ptr`s. 
+`Widget`, for example, could look like this:
+```c++
+class Widget : public std::enable_shared_from_this<Widget>
+{
+public:
+    // factory function that perfect-forwards args to a private ctor
+    template <typename ... Ts>
+    static std::shared_ptr<Widget> create(Ts && ... params)
+    {
+        return std::make_shared<Widget>(std::forward<Ts>(params)...);
+    }
+
+    void process(); // as before
+    
+private:
+    // constructor
+};
+```
+By now, you may only dimly recall that our discussion of control blocks 
+was motivated by a desire to understand the costs associated with `std::shared_ptr`s. 
+Now that we understand how to avoid creating too many control blocks, 
+let’s return to the original topic.
+
+A control block is typically only a few words in size, 
+although custom deleters and allocators may make it larger. 
+The usual control block implementation is more sophisticated than you might expect. 
+It makes use of inheritance, and there’s even a virtual function. 
+(E.g., a virtual destructor to ensure that the pointed-to object is properly destroyed.)
+That means that using `std::shared_ptr`s also incurs the cost of the machinery 
+for the virtual function used by the control block.
+
+Having read about dynamically allocated control blocks, 
+arbitrarily large deleters and allocators, 
+virtual function machinery, 
+and atomic reference count manipulations,
+your enthusiasm for `std::shared_ptr`s may have waned somewhat. That’s fine. 
 
 
+They’re **not** the best solution to every resource management problem. 
+But for the functionality they provide, `std::shared_ptr`s exact a very reasonable cost. 
+Under typical conditions, where the default deleter and default allocator are used 
+and where the `std::shared_ptr` is created by `std::make_shared`, 
+the control block is only about three words in size, and its allocation is essentially free. 
+(It’s incorporated into the memory allocation for the object being pointed to. 
+For details, see Item 21.)
+Dereferencing a `std::shared_ptr` is no more expensive than dereferencing a raw pointer. 
+Performing an operation requiring a reference count manipulation 
+(e.g., copy construction or copy assignment, destruction) entails one or two atomic operations,
+but these operations typically map to individual machine instructions, 
+so although they may be expensive compared to non-atomic instructions, 
+they’re still just single instructions. 
+The virtual function machinery in the control block 
+is generally used only once per object managed by `std::shared_ptr`s: 
+when the object is destroyed.
 
 
+In exchange for these rather modest costs, 
+you get automatic lifetime management of dynamically allocated resources. 
+Most of the time, using `std::shared_ptr` is vastly preferable to 
+trying to manage the lifetime of an object with shared ownership by hand. 
+If you find yourself doubting whether you can afford use of `std::shared_ptr`,
+reconsider whether you really need shared ownership. 
+If exclusive ownership will do or even <u><i>may</i></u> do, `std::unique_ptr` is a better choice. 
+Its performance profile is close to that for raw pointers, 
+and “upgrading” from `std::unique_ptr` to `std::shared_ptr` is easy, 
+because a `std::shared_ptr` can be created from a `std::unique_ptr`.
 
 
+The reverse is **not** true. 
+Once you’ve turned lifetime management of a resource over to a `std::shared_ptr`, 
+there’s no changing your mind. 
+Even if the reference count is one, you **can’t** reclaim ownership of the resource in order to, 
+say, have a `std::unique_ptr` manage it. 
+The ownership contract between a resource and the `std::shared_ptr`s that point to it 
+is of the ’til-death-do-us-part variety. 
+No divorce, no annulment, no dispensations.
 
 
-
-
-
-
-
-
-
-
-
-
+Something else `std::shared_ptr`s can’t do is work with <u><i>arrays</i></u>. 
+In yet another difference from `std::unique_ptr`, 
+`std::shared_ptr` has an API that’s designed only for pointers to single objects. 
+There’s **no** `std::shared_ptr<T []>`. 
+From time to time, “clever” programmers stumble on the idea of 
+using a `std::shared_ptr<T>` to point to an array, 
+specifying a custom deleter to perform an array delete (i.e., `delete []`). 
+This can be made to compile, but it’s a horrible idea. 
+For one thing, `std::shared_ptr` offers **no** `operator[]`, 
+so indexing into the array requires awkward expressions based on pointer arithmetic. 
+For another, `std::shared_ptr` supports derived-to-base pointer conversions that make sense for single objects, 
+but that open holes in the type system when applied to arrays. 
+(For this reason, the `std::unique_ptr<T []>` API **prohibits** ~~derived-to-base pointer conversions~~.) 
+Most importantly, given the variety of C++11 alternatives to built-in arrays 
+(e.g., `std::array`, `std::vector`, `std::string`), 
+declaring a smart pointer to a dumb array is almost always a sign of bad design. 
 
 
 
@@ -4986,9 +5096,186 @@ public:
 - Potential use cases for `std::weak_ptr` include caching, observer lists, and the prevention of `std::shared_ptr` cycles.
 
 
+Paradoxically, it can be convenient to have a smart pointer that acts like a `std::shared_ptr`, 
+but that **doesn’t** participate in the shared ownership of the pointed-to resource. 
+In other words, a pointer like `std::shared_ptr` that **doesn’t** affect an object’s reference count. 
+This kind of smart pointer has to contend with a problem unknown to `std::shared_ptr`s: 
+the possibility that what it points to has been destroyed. 
+A truly smart pointer would deal with this problem by tracking when it <u><i>dangles</i></u>, 
+i.e., when the object it is supposed to point to no longer exists. 
+That’s precisely the kind of smart pointer `std::weak_ptr` is.
 
 
+You may be wondering how a `std::weak_ptr` could be useful. 
+You’ll probably wonder even more when you examine the `std::weak_ptr` API. 
+It looks anything but smart. 
+`std::weak_ptr`s **can’t** be ~~dereferenced~~, **nor** can they be ~~tested for nullness~~.
+That’s because `std::weak_ptr` **isn’t** a standalone smart pointer. 
+It’s an augmentation of `std::shared_ptr`.
 
+
+The relationship begins at birth. 
+`std::weak_ptr`s are typically created from `std::shared_ptr`s. 
+They point to the same place as the `std::shared_ptr`s initializing them, 
+but they **don’t** affect the reference count of the object they point to:
+```c++
+auto spw = std::make_shared<Widget>();  // after spw is constructed, the pointed-to Widget's ref count (RC) is 1. 
+std::weak_ptr<Widget> wpw(spw);         // wpw points to same Widget as spw. RC remains 1
+spw = nullptr;                          // RC goes to 0, and the Widget is destroyed. wpw now dangles
+```
+`std::weak_ptr`s that dangle are said to have <u><i>expired</i></u>. You can test for this directly,
+```c++
+if (wpw.expired())                      // if wpw doesn't point to an object...
+{
+    // ...
+}
+```
+but often what you desire is a check to see if a `std::weak_ptr` has expired and, 
+if it hasn’t (i.e., if it’s not dangling), to access the object it points to. 
+This is easier desired than done. 
+Because `std::weak_ptr`s **lack** ~~dereferencing operations~~, there’s **no** way to write the code. 
+Even if there were, separating the check and the dereference would introduce a <u><i>race condition</i></u>: 
+between the call to expired and the dereferencing action, 
+another thread might reassign or destroy the last `std::shared_ptr` pointing to the object, 
+thus causing that object to be destroyed. 
+In that case, your dereference would yield <u><i>undefined behavior</i></u>.
+
+
+What you need is an atomic operation that checks to see if the `std::weak_ptr` has expired and, 
+if not, gives you access to the object it points to. 
+This is done by creating a `std::shared_ptr` from the `std::weak_ptr`. 
+The operation comes in two forms, depending on what you’d like to have happen if the `std::weak_ptr` has expired
+when you try to create a `std::shared_ptr` from it. 
+One form is `std::weak_ptr::lock`, which returns a `std::shared_ptr`. 
+<u><i>The returned `std::shared_ptr`is null</i></u> if the `std::weak_ptr` has expired:
+```c++
+std::shared_ptr<Widget> spw1 = wpw.lock();  // if wpw's expired, spw1 is null
+auto spw2 = wpw.lock();                     // same as above, but uses auto
+```
+The other form is the `std::shared_ptr` constructor taking a `std::weak_ptr` as an argument. 
+In this case, if the `std::weak_ptr` has expired, <u><i>an exception is thrown</i></u>:
+```c++
+std::shared_ptr<Widget> spw3(wpw);          // if wpw's expired, throw std::bad_weak_ptr
+```
+But you’re probably still wondering about how `std::weak_ptr`s can be useful. 
+Consider a factory function that produces smart pointers to read-only objects based on a unique ID. 
+In accord with Item 18’s advice regarding factory function return types, it returns a `std::unique_ptr`:
+```c++
+std::unique_ptr<const Widget> loadWidget(WidgetID id);
+```
+If `loadWidget` is an expensive call (e.g., because it performs file or database I/O) 
+and it’s common for IDs to be used repeatedly, 
+a reasonable optimization would be to write a function that does what `loadWidget` does, 
+but also caches its results. 
+Clogging the cache with every `Widget` that has ever been requested can lead to performance problems of its own, 
+however, so another reasonable optimization would be to destroy cached `Widget`s when they’re no longer in use.
+
+
+For this caching factory function, a `std::unique_ptr` return type is **not** a good fit.
+Callers should certainly receive smart pointers to cached objects, 
+and callers should certainly determine the lifetime of those objects, 
+but the cache needs a pointer to the objects, too. 
+The cache’s pointers need to be able to detect when they dangle, 
+because when factory clients are finished using an object returned by the factory, 
+that object will be destroyed, and the corresponding cache entry will dangle. 
+The cached pointers should therefore be `std::weak_ptr`s: pointers that can detect when they dangle.
+That means that the factory’s return type should be a `std::shared_ptr`, 
+because`std::weak_ptr`s can detect when they dangle only when an object’s lifetime is managed by `std::shared_ptr`s.
+
+
+Here’s a quick-and-dirty implementation of a caching version of `loadWidget`:
+```c++
+std::shared_ptr<const Widget> fastLoadWidget(WidgetID id)
+{
+    static std::unordered_map<WidgetID, std::weak_ptr<const Widget>> cache;
+
+    // objPtr is std::shared_ptr to cached object (or null if object's not in cache)
+    auto objPtr = cache[id].lock();
+    
+    if (!objPtr)
+    { 
+        // if not in cache, load it, cache it
+        objPtr = loadWidget(id);
+        cache[id] = objPtr;
+    }
+    
+    return objPtr;
+}
+```
+This implementation employs one of C++11’s hash table containers (`std::unordered_map`), 
+though it doesn’t show the `WidgetID` hashing and equality-comparison functions that would also have to be present.
+The implementation of `fastLoadWidget` ignores the fact that the cache may accumulate expired `std::weak_ptr`s 
+corresponding to `Widget`s that are no longer in use (and have therefore been destroyed). 
+The implementation can be refined, but rather than spend time 
+on an issue that lends no additional insight into `std::weak_ptr`s,
+let’s consider a second use case: *<u>Observer Design Pattern</u>*. 
+The primary components of this pattern are subjects (objects whose state may change) 
+and observers (objects to be notified when state changes occur). 
+In most implementations, each subject contains a data member holding pointers to its observers. 
+That makes it easy for subjects to issue state change notifications. 
+Subjects have **no** interest in controlling the lifetime of their observers (i.e., when they’re destroyed), 
+but they have a great interest in making sure that 
+if an observer gets destroyed, subjects don’t try to subsequently access it. 
+A reasonable design is for each subject to hold a container of `std::weak_ptr`s to its observers, 
+thus making it possible for the subject to determine whether a pointer dangles before using it.
+
+
+As a final example of `std::weak_ptr`’s utility, 
+consider a data structure with objects `A`, `B`, and `C` in it, 
+where `A` and `C` share ownership of `B` and therefore hold `std::shared_ptr`s to it.
+Suppose it’d be useful to also have a pointer from `B` back to `A`. 
+What kind of pointer should this be?
+There are three choices:
+- **A raw pointer**. 
+  With this approach, if `A` is destroyed, but `C` continues to point to `B`, 
+  `B` will contain a pointer to **A** that will dangle. 
+  `B` won’t be able to detect that, so **B** may inadvertently dereference the dangling pointer. 
+  That would yield undefined behavior.
+- **A `std::shared_ptr`**. 
+  In this design, `A` and `B` contain `std::shared_ptr`s to each other. 
+  The resulting `std::shared_ptr` cycle (`A` points to `B` and `B` points to `A`) 
+  will prevent both `A` and `B` from being destroyed. 
+  Even if `A` and `B` are unreachable from other program data structures 
+  (e.g., because `C` no longer points to `B`), 
+  each will have a reference count of one. 
+  If that happens, `A` and `B` will have been *<u>leaked</u>*, for all practical purposes: 
+  it will be impossible for the program to access them, yet their resources will never be reclaimed.
+• **A `std::weak_ptr`**. 
+  This avoids both problems above. 
+  If `A` is destroyed, `B`’s pointer back to it will dangle, but `B` will be able to detect that. 
+  Furthermore, though `A` and `B` will point to one another, 
+  `B`’s pointer won’t affect `A`’s reference count, 
+  hence can’t keep `A` from being destroyed when `std::shared_ptr`s no longer point to it.
+
+
+Using `std::weak_ptr` is clearly the best of these choices. 
+However, it’s worth noting that the need to employ `std::weak_ptr`s 
+to break prospective cycles of `std::shared_ptr`s is **not** terribly common. 
+In strictly hierarchal data structures such as trees, child nodes are typically owned only by their parents. 
+When a parent node is destroyed, its child nodes should be destroyed, too. 
+Links from parents to children are thus generally best represented by `std::unique_ptr`s. 
+Back-links from children to parents can be safely implemented as raw pointers, 
+because a child node should **never** ~~have a lifetime longer than its parent~~. 
+There’s thus no risk of a child node dereferencing a dangling parent pointer.
+
+
+Of course, **not** all pointer-based data structures are strictly hierarchical, and when that’s the case, 
+as well as in situations such as caching and the implementation of lists of observers, 
+it’s nice to know that `std::weak_ptr` stands at the ready.
+
+
+From an efficiency perspective, the `std::weak_ptr` story is essentially the same as that for `std::shared_ptr`. 
+`std::weak_ptr` objects are the same size as `std::shared_ptr` objects, 
+they make use of the same control blocks as `std::shared_ptr`s, 
+and operations such as construction, destruction, and assignment involve atomic reference count manipulations. 
+That probably surprises you, because I wrote at the beginning of this Item 
+that `std::weak_ptr`s don’t participate in reference counting.
+Except that’s not quite what I wrote. 
+What I wrote was that `std::weak_ptr`s **don’t** participate in the shared ownership of objects 
+and hence don’t affect the pointed-to object’s reference count. 
+There’s actually *<u>a second reference count</u>* in the control block, 
+and it’s this second reference count that `std::weak_ptr`s manipulate. 
+For details, continue on to Item 21.
 
 
 

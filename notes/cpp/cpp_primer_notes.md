@@ -9603,7 +9603,7 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `w.reset()`：将`w` *置空* （**并不**释放对象）
         - `w.use_count()`：与`w`共享对象的`std::shared_ptr`的数量
         - `w.expired()`：`return w.use_count() == 0;`
-        - `w.lock()`：如果`w.expired() == true`，则返回一个 *空的* `std::shared_ptr`；否则，返回一个指向`w`对象的`std::shared_ptr`
+        - `w.lock()`：（线程安全）如果`w.expired() == true`，则返回一个 *空的* `std::shared_ptr`；否则，返回一个指向`w`对象的`std::shared_ptr`
 - `std::shared_ptr`
     - 智能指针使用方法与普通指针类似
         - *解引用* 返回对象 *左值* 
