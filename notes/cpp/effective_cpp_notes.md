@@ -3574,7 +3574,7 @@ the tool to reach for is `constexpr`, **not** `const`.
 
 #### `constexpr` functions
 
-*`constexpr` functions produce compile-time constants when they are called with compile-time constants*. 
+<u><i>`constexpr` functions produce compile-time constants when they are called with compile-time constants</i></u>.
 If they’re called with values not known until runtime, they produce runtime values. 
 This may sound as if you don’t know what they’ll do, but that’s the wrong way to think about it. 
 The right way to view it is this:
@@ -4133,8 +4133,7 @@ if they were added for C++11,
 and classes that are modified to take advantage of move semantics 
 have to play by the C++11 rules for special member function generation.
 
-
-***<u>The Rule of Three / Five</u>***. 
+**<u><i>The Rule of Three / Five</i></u>**. 
 If you declare any of the following copy-control member functions: 
 destructor, 
 copy constructor, copy assignment operator, 
@@ -4330,8 +4329,81 @@ Item 26 demonstrates that it can have important consequences.
 
 ## [CHAPTER 4] Smart Pointers
 
+Six reasons why a raw pointer is hard to love:
+1. Its declaration **doesn’t** indicate whether it points to a single object or to an array. 
+2. Its declaration reveals **nothing** about 
+   whether you should destroy what it points to 
+   when you’re done using it, i.e., if the pointer owns the thing it points to.
+3. If you determine that you should destroy what the pointer points to, 
+   there’s **no** way to tell how. 
+   Should you use `delete`, or is there a different destruction mechanism
+   (e.g., a dedicated destruction function the pointer should be passed to)?
+4. If you manage to find out that `delete` is the way to go, 
+   Reason 1 means it may **not** be possible to know 
+   whether to use the single-object form (`delete`) or the array form (`delete []`). 
+   If you use the wrong form, results are <u><i>undefined</i></u>. 
+5. Assuming you ascertain that the pointer owns what it points to and you discover how to destroy it, 
+   it’s **difficult** to ensure that you perform the destruction <u><i>exactly once</i></u> 
+   along every path in your code (including those due to exceptions). 
+   Missing a path leads to <u><i>resource leaks</i></u>, 
+   and doing the destruction more than once leads to <u><i>undefined behavior</i></u>.
+6. There’s typically **no** way to tell if the pointer dangles, 
+   i.e., points to memory that no longer holds the object the pointer is supposed to point to. 
+   Dangling pointers arise when objects are destroyed while pointers still point to them.
+
+
+Raw pointers are powerful tools, to be sure, 
+but decades of experience have demonstrated that 
+with only the slightest lapse in concentration or discipline, 
+these tools can turn on their ostensible masters.
+
+
+<u><i>Smart Pointers</i></u> are one way to address these issues. 
+Smart pointers are wrappers around raw pointers that act much like the raw pointers they wrap, 
+but that avoid many of their pitfalls. 
+<u><i>You should therefore prefer smart pointers to raw pointers</i></u>.
+Smart pointers can do virtually everything raw pointers can, 
+but with far fewer opportunities for error.
+
+
+There are four smart pointers in C++11: 
+`std::auto_ptr`, `std::unique_ptr`, `std::shared_ptr`, and `std::weak_ptr`. 
+All are designed to help manage the lifetimes of dynamically allocated objects, 
+i.e., to avoid resource leaks by ensuring that such objects are destroyed in the appropriate manner at the appropriate time 
+(including in the event of exceptions).
+
+
+<del>`std::auto_ptr`</del> is a deprecated leftover from C++98. 
+It was an attempt to standardize what later became C++11’s `std::unique_ptr`. 
+Doing the job right required move semantics, but C++98 **didn’t** have them. 
+As a workaround, `std::auto_ptr` co-opted its copy operations for moves. 
+This led to surprising code (copying a `std::auto_ptr` sets it to null!) 
+and frustrating usage restrictions 
+(e.g., it’s **not** possible to store `std::auto_ptr`s in containers).
+
+
+`std::unique_ptr` does everything `std::auto_ptr` does, plus more. 
+It does it as efficiently, and it does it without warping what it means to copy an object. 
+It’s better than `std::auto_ptr` in every way. 
+The only legitimate use case for `std::auto_ptr` is a need to compile code with C++98 compilers. 
+Unless you have that constraint, you should replace `std::auto_ptr` with `std::unique_ptr` and never look back. 
+
+
+The smart pointer APIs are remarkably varied. 
+About the only functionality common to all is <u><i>default construction</i></u>. 
+Because comprehensive references for these APIs are widely available, 
+I’ll focus my discussions on information that’s often missing from API overviews, 
+e.g., noteworthy use cases, runtime cost analyses, etc. 
+Mastering such information can be the difference between merely using these smart pointers and using them effectively.
+
+
+
+
+
+
 ### 📌 Item 18: Use `std::unique_ptr` for exclusive-ownership resource management
 
+- Prefer smart pointers to raw pointers. 
 - `std::unique_ptr` is a small, fast, move-only smart pointer for managing resources with exclusive-ownership semantics.
 - By default, resource destruction takes place via `delete`, but custom deleters can be specified. 
   *Stateful* deleters and function pointers as deleters increase the size of `std::unique_ptr` objects. 
@@ -4351,10 +4423,10 @@ a `std::unique_ptr` almost certainly is, too.
 A non-null `std::unique_ptr` always owns what it points to. 
 Moving a `std::unique_ptr` transfers ownership from the source pointer to the destination pointer. 
 (The source pointer is set to null.) 
-~~Copying a `std::unique_ptr`~~ **isn’t** allowed, 
+Copying a `std::unique_ptr` **isn’t** allowed, 
 because if you could copy a `std::unique_ptr`, 
-you’d end up with two `std::unique_ptr`s to the same resource,
-each thinking it owned (and should therefore destroy) that resource.
+you’d end up with two `std::unique_ptr`s to the same resource, 
+each thinking it owned (and should therefore destroy) that resource. 
 `std::unique_ptr` is thus a move-only type. 
 Upon destruction, a non-null `std::unique_ptr` destroys its resource. 
 By default, resource destruction is accomplished by applying `delete` to the raw pointer inside the `std::unique_ptr`.
@@ -4364,16 +4436,17 @@ A common use for `std::unique_ptr` is as a factory function return type for obje
 Suppose we have a hierarchy for types of investments with a base class `Investment`.
 ```c++
 class Investment 
-{   
+{
     // ...
 };
+
 class Stock : public Investment 
-{ 
+{
     // ...
 };
 
 class Bond : public Investment 
-{ 
+{
     // ...
 };
 
@@ -4520,15 +4593,15 @@ auto makeInvestment(Ts && ... params)
     
     if ( /* a Stock object should be created */ )
     {
-    pInv.reset(new Stock(std::forward<Ts>(params)...));
+        pInv.reset(new Stock(std::forward<Ts>(params)...));
     }
     else if ( /* a Bond object should be created */ )
     {
-    pInv.reset(new Bond(std::forward<Ts>(params)...));
+        pInv.reset(new Bond(std::forward<Ts>(params)...));
     }
     else if ( /* a RealEstate object should be created */ )
     {
-    pInv.reset(new RealEstate(std::forward<Ts>(params)...));
+        pInv.reset(new RealEstate(std::forward<Ts>(params)...));
     }
     
     return pInv;
@@ -4606,13 +4679,298 @@ but they don’t hinder callers from replacing it with its more flexible sibling
 
 ### 📌 Item 19: Use `std::shared_ptr` for shared-ownership resource management
 
-- `std::shared_pt`rs offer convenience approaching 
+- `std::shared_ptr`s offer convenience approaching 
   that of garbage collection for the shared lifetime management of arbitrary resources.
 - Compared to `std::unique_ptr`, `std::shared_ptr` objects are typically twice as big, 
   incur overhead for control blocks, and require atomic reference count manipulations. 
 - Default resource destruction is via `delete`, but custom deleters are supported.
   The type of the deleter has no effect on the type of the `std::shared_ptr`.
 - Avoid creating `std::shared_ptr`s from variables of raw pointer type.
+
+
+`std::shared_ptr` is the C++11 way of binding best of multiple worlds together:
+a system that works automatically (like garbage collection), 
+yet applies to all resources and has predictable timing (like destructors). 
+An object accessed via `std::shared_ptr`s has its lifetime managed by those pointers through <u><i>shared ownership</i></u>. 
+No specific `std::shared_ptr` owns the object. 
+Instead, all `std::shared_ptr`s pointing to it collaborate 
+to ensure its destruction at the point where it’s no longer needed. 
+When the last `std::shared_ptr` pointing to an object stops pointing there 
+(e.g., because the `std::shared_ptr` is destroyed or made to point to a different object), 
+that `std::shared_ptr` destroys the object it points to. 
+As with garbage collection, clients need **not** concern themselves with managing the lifetime of pointed-to objects, 
+but as with destructors, the timing of the objects’ destruction is deterministic. 
+
+
+A `std::shared_ptr` can tell whether it’s the last one pointing to a resource 
+by consulting the resource’s <u><i>reference count</i></u>, 
+a value associated with the resource that keeps track of how many `std::shared_ptr`s point to it. 
+`std::shared_ptr` constructors increment this count (usually, see below), 
+`std::shared_ptr` destructors decrement it, 
+and copy assignment operators do both. 
+(If `sp1` and `sp2` are `std::shared_ptr`s to different objects, 
+the assignment `sp1 = sp2;` modifies `sp1` such that it points to the object pointed to by `sp2`. 
+The net effect of the assignment is that the reference count for the object originally pointed to by `sp1` is decremented, 
+while that for the object pointed to by `sp2` is incremented.) 
+If a `std::shared_ptr` sees a reference count of zero after performing a decrement, 
+no more `std::shared_ptr`s point to the resource, so the `std::shared_ptr` destroys it. 
+
+
+The existence of the reference count has performance implications:
+- **`std::shared_ptr`s are twice the size of a raw pointer**, 
+  because they internally contain a raw pointer to the resource 
+  as well as a raw pointer to the resource’s reference count. 
+  (This implementation **isn't** required by the Standard, but many Standard Library implementation employs it.)
+- **Memory for the reference count must be dynamically allocated**. 
+  Conceptually, the reference count is associated with the object being pointed to, 
+  but pointed-to objects know nothing about this. 
+  They thus have no place to store a reference count. 
+  (A pleasant implication is that any object, even those of built-in types, may be managed by `std::shared_ptr`s.) 
+  Item 21 explains that the cost of the <u><i>dynamic allocation</i></u> is avoided 
+  when the `std::shared_ptr` is created by `std::make_shared`, 
+  but there are situations where `std::make_shared` can’t be used. 
+  Either way, the reference count is stored as dynamically allocated data.
+- **Increments and decrements of the reference count must be atomic**, 
+  because there can be simultaneous readers and writers in different threads. 
+  For example, a `std::shared_ptr` pointing to a resource in one thread could be executing its destructor 
+  (hence decrementing the reference count for the resource it points to),
+  while, in a different thread, a `std::shared_ptr` to the same object could be copied 
+  (and therefore incrementing the same reference count). 
+  Atomic operations are typically slower than non-atomic operations, 
+  so even though reference counts are usually only a word in size, 
+  you should assume that reading and writing them is comparatively costly.
+
+
+Did I pique your curiosity when I wrote that `std::shared_ptr` constructors 
+only “usually” increment the reference count for the object they point to? 
+Creating a `std::shared_ptr` pointing to an object always yields one more `std::shared_ptr` pointing to that object, 
+so why mustn’t we *always* increment the reference count?
+
+Move construction, that’s why. 
+Move-constructing a `std::shared_ptr` from another `std::shared_ptr` sets the source `std::shared_ptr` to null, 
+and that means that the old `std::shared_ptr` stops pointing to the resource at the moment the new `std::shared_ptr` starts. 
+As a result, **no** ~~reference count manipulation~~ is required.
+Moving `std::shared_ptr`s is therefore faster than copying them: 
+copying requires incrementing the reference count, but moving doesn’t. 
+This is as true for assignment as for construction, 
+so move construction is faster than copy construction, and move assignment is faster than copy assignment.
+
+
+Like `std::unique_ptr`, `std::shared_ptr` uses `delete` as its default resource-destruction mechanism, 
+but it also supports <u><i>custom deleters</i></u>.
+The design of this support differs from that for `std::unique_ptr`, however. 
+For `std::unique_ptr`, the type of the deleter is part of the type of the smart pointer. 
+For `std::shared_ptr`, it’s **not**:
+```c++
+auto loggingDel = [](Widget * pw)
+{
+    makeLogEntry(pw);
+    delete pw;
+};
+
+// deleter type ispart of ptr type
+std::unique_ptr<Widget, decltype(loggingDel)> upw(new Widget, loggingDel);
+
+// deleter type is not part of ptr type
+std::shared_ptr<Widget> spw(new Widget, loggingDel);  
+```
+The `std::shared_ptr` design is more flexible. 
+Consider two `std::shared_ptr<Widget>`s, each with a custom deleter of a different type 
+(e.g., because the custom deleters are specified via lambda expressions):
+```c++
+auto customDeleter1 = [](Widget *pw) { /* ... */ };  // custom deleters
+auto customDeleter2 = [](Widget *pw) { /* ... */ };  // each with a different type
+std::shared_ptr<Widget> pw1(new Widget, customDeleter1);
+std::shared_ptr<Widget> pw2(new Widget, customDeleter2);
+```
+Because `pw1` and `pw2` have the <u><i>same type</i></u>, they can be placed in a container of objects of that type:
+```c++
+std::vector<std::shared_ptr<Widget>> vpw{pw1, pw2};
+```
+They could also be assigned to one another, 
+and they could each be passed to a function taking a parameter of type `std::shared_ptr<Widget>`. 
+None of these things can be done with `std::unique_ptr`s that differ in the types of their custom deleters,
+because the type of the custom deleter is part of the type of the `std::unique_ptr`.
+
+
+In another difference from `std::unique_ptr`, 
+specifying a custom deleter **doesn’t** change the size of a `std::shared_ptr` object. 
+Regardless of deleter, a `std::shared_ptr` object is two pointers in size. 
+That’s great news, but it should make you vaguely uneasy. 
+Custom deleters can be function objects, and function objects can contain arbitrary amounts of data. 
+That means they can be arbitrarily large. 
+How can a `std::shared_ptr` refer to a deleter of arbitrary size without using any more memory? 
+
+
+It can’t. It may have to use more memory. 
+However, that memory isn’t part of the `std::shared_ptr` object. 
+It’s on the heap or, if the creator of the `std::shared_ptr` took advantage of 
+`std::shared_ptr` support for custom allocators, 
+it’s wherever the memory managed by the allocator is located. 
+I remarked earlier that a `std::shared_ptr` object contains 
+a pointer to the reference count for the object it points to. 
+That’s true, but it’s a bit misleading, 
+because the reference count is part of a larger data structure known as the <u><i>control block</i></u>. 
+There’s a control block for each object managed by `std::shared_ptr`s. 
+The control block contains, in addition to the reference count, a copy of the custom deleter, if one has been specified. 
+If a custom allocator was specified, the control block contains a copy of that, too. 
+The control block may also contain additional data, including, as Item 21 explains, 
+a secondary reference count known as the weak count, but we’ll ignore such data in this Item. 
+We can envision the memory associated with a `std::shared_ptr<T>` object as looking like this:
+```
+     std::shared_ptr<T>
+┌──────────────────────────┐           ┌──────────┐
+│       Pointer to T       │ --------→ │ T Object │
+├──────────────────────────┤           └──────────┘            Control Block
+│ Pointer to Control Block │                             ┌────────────────────────┐
+└──────────────────────────┘ --------------------------→ │    Reference Count     │
+                                                         ├────────────────────────┤
+                                                         │       Weak Count       │
+                                                         ├────────────────────────┤
+                                                         │       Other Data       │
+                                                         │ (E.g., Custom Deleter, │
+                                                         │  Allocator, etc.)      │
+                                                         └────────────────────────┘
+```
+An object’s control block is set up by the function creating the <u><i>first</i></u> `std::shared_ptr` to the object. 
+At least that’s what’s supposed to happen. 
+In general, it’s impossible for a function creating a `std::shared_ptr` to an object 
+to know whether some other `std::shared_ptr` already points to that object, 
+so the following rules for control block creation are used:
+- **<u><i>`std::make_shared`</i></u> (see Item 21) always creates a control block**. 
+  It manufactures a new object to point to, 
+  so there is certainly no control block for that object at the time `std::make_shared` is called.
+- **A control block is created when a `std::shared_ptr` is constructed from a <u><i>unique-ownership pointer</i></u> 
+  (i.e., a `std::unique_ptr` or `std::auto_ptr`)**.
+  Unique-ownership pointers **don’t** use control blocks, 
+  so there should be no control block for the pointed-to object. 
+  (As part of its construction, the `std::shared_ptr` assumes ownership of the pointed-to object, 
+  so the unique-ownership pointer is set to null.)
+- **When a `std::shared_ptr` constructor is called with a <u><i>raw pointer</i></u>, it creates a control block**. 
+  If you wanted to create a `std::shared_ptr` from an object that already had a control block, 
+  you’d presumably pass a `std::shared_ptr` or a `std::weak_ptr` (see Item 20) 
+  as a constructor argument, **not** a raw pointer.
+  `std::shared_ptr` constructors taking `std::shared_ptr`s or `std::weak_ptr`s as constructor arguments 
+  **don’t** create new control blocks, 
+  because they can rely on the smart pointers passed to them to point to any necessary control blocks.
+
+
+A consequence of these rules is that 
+~~constructing more than one `std::shared_ptr` from a single raw pointer~~
+gives you a complimentary ride on the particle accelerator of <u><i>undefined behavior</i></u>, 
+because the pointed-to object will have multiple control blocks. 
+Multiple control blocks means multiple reference counts, 
+and multiple reference counts means the object will be destroyed multiple times 
+(once for each reference count). 
+That means that code like this is bad, bad, bad:
+```c++
+auto pw = new Widget;                          // pw is raw ptr
+std::shared_ptr<Widget> spw1(pw, loggingDel);  // create control block for *pw
+std::shared_ptr<Widget> spw2(pw, loggingDel);  // create 2nd control block for *pw!
+```
+The creation of the raw pointer `pw` to a dynamically allocated object is bad, 
+because it runs contrary to the advice behind this entire chapter: 
+to prefer smart pointers to raw pointers. 
+But set that aside. 
+The line `auto pw = new Widget;` is a stylistic abomination, 
+but at least it **doesn’t** cause undefined program behavior.
+
+
+Now, the constructor for `spw1` is called with a raw pointer, 
+so it creates a control block (and thereby a reference count) for what’s pointed to. 
+In this case, that’s `*pw` (i.e., the object pointed to by `pw`). 
+In and of itself, that’s okay, 
+but the constructor for `spw2` is called with the same raw pointer, 
+so it also creates a control block (hence a reference count) for `*pw`. 
+`*pw` thus has two reference counts, each of which will eventually become zero, 
+and that will ultimately lead to an attempt to destroy `*pw` twice.
+The second destruction is responsible for the undefined behavior.
+
+
+There are at least two lessons regarding `std::shared_ptr` use here. 
+First, try to **avoid** ~~passing raw pointers to a `std::shared_ptr` constructor~~. 
+The usual alternative is to use `std::make_shared` (see Item 21), 
+but in the example above, we’re using <u><i>custom deleters</i></u>, 
+and that’s **not** possible with `std::make_shared`. 
+Second, if you must pass a raw pointer to a `std::shared_ptr` constructor, 
+pass the result of `new` directly instead of ~~going through a raw pointer variable~~. 
+If the first part of the code above were rewritten like this,
+```c++
+std::shared_ptr<Widget> spw1(new Widget, loggingDel);  // direct use of new
+```
+it’d be a lot less tempting to create a second `std::shared_ptr` from the same raw pointer. 
+Instead, the author of the code creating `spw2` would naturally use `spw1` as an initialization argument 
+(i.e., would call the `std::shared_ptr copy` constructor), 
+and that would pose no problem whatsoever:
+```c++
+std::shared_ptr<Widget> spw2(spw1);                    // spw2 uses same control block as spw1
+```
+An especially surprising way that using raw pointer variables as `std::shared_ptr` constructor arguments 
+can lead to multiple control blocks involves the this pointer.
+Suppose our program uses `std::shared_ptr`s to manage `Widget` objects:
+```c++
+std::vector<std::shared_ptr<Widget>> processedWidgets;
+```
+Further suppose that `Widget` has a member function that does the processing
+```c++
+class Widget 
+{
+public:
+    // ...
+    void process();
+    // ...
+};
+```
+Here’s a reasonable-looking approach for `Widget::process`:
+```c++
+void Widget::process()
+{ 
+                                          // process the Widget
+    processedWidgets.emplace_back(this);  // add it to list of processed Widgets;
+                                          // this is wrong!
+}
+```
+The comment about this being wrong says it all—or at least most of it. 
+(The part that’s wrong is the passing of `this`, not the use of `emplace_back`.) 
+This code will compile, but it’s passing a raw pointer (`this`) to a container of `std::shared_ptr`s. 
+The std::shared_ptr thus constructed will <u><i>create a new control block</i></u> for the pointed-to `Widget` (`*this`). 
+That doesn’t sound harmful until you realize that if there are `std::shared_ptr`s outside the member function 
+that already point to that `Widget`, it’s game, set, and match for <u><i>undefined behavior</i></u>. 
+
+
+The `std::shared_ptr` API includes a facility for just this kind of situation. 
+It has probably the oddest of all names in the Standard C++ Library: `std::enable_shared_from_this`. 
+That’s a template for a base class you inherit from if you want a class managed by `std::shared_ptr`s 
+to be able to safely create a `std::shared_ptr` from a `this` pointer. 
+In our example, `Widget` would inherit from `std::enable_shared_from_this` as follows:
+```c++
+class Widget : public std::enable_shared_from_this<Widget> 
+{
+public:
+    // ...
+    void process();
+    // ...
+};
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

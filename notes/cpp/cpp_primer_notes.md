@@ -2045,7 +2045,7 @@ sizeof expr   // 返回表达式 结果类型 大小
 
 
 
-### 🌱 [值类别](https://en.cppreference.com/w/cpp/language/value_category)（Value Categories）
+### 🌱 [值类别](https://en.cppreference.com/w/cpp/language/value_category)（Value Category）
 
 #### 基本值类别
 
@@ -2195,7 +2195,7 @@ sizeof expr   // 返回表达式 结果类型 大小
 #### [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
 
 - `dynamic_cast<T>(expr)`
-    - 支持运行时的类型识别 => 19.2
+    - 支持运行时的类型识别（Runtime Type Identification，RTTI） => 19.2
 
 #### [`const_cast`](https://en.cppreference.com/w/cpp/language/const_cast)
 
@@ -2214,15 +2214,15 @@ sizeof expr   // 返回表达式 结果类型 大小
     ```
     const char * pc;
     char * p = const_cast<char *>(pc);                           // 正确，但通过p写值是未定义的行为
-    char * q = static_cast<char *>(cp);                          // 错误，static_cast不能用于去除const
-    static_cast<std::string>(pc);                                // 正确，字符串字面值转换为std::string
-    const_cast<std::string>(pc);                                 // 错误，const_cast只能用于去除const
+    char * q = static_cast<char *>(pc);                          // 错误，static_cast不能用于去除const
+    auto s1 = static_cast<std::string>(pc);                      // 正确，字符串字面值转换为std::string
+    auto s2 = const_cast<std::string>(pc);                       // 错误，const_cast只能用于去除const
     ```
 
 #### [`reinterpret_cast`](https://en.cppreference.com/w/cpp/language/reinterpret_cast)
 
 - `reinterpret_cast<T>(expr)`
-    - 强制编译器按照`T`类型重新解读一块内存
+    - 强制编译器按照`T`类型（注意`T`不一定是指针类型）重新解读一块内存
     ```
     int * a = new int(1);
     char * pc = reinterpret_cast<char *>(a);                     // 正确
@@ -3612,7 +3612,7 @@ for (const PersonInfo & entry : people)
         } 
         else
         {
-            // ''writes'' to formatted's string
+            // "writes" to formatted's string
             formatted << " " << format(nums);
         }
     }
