@@ -5287,13 +5287,18 @@ For details, continue on to Item 21.
 - Compared to direct use of `new`, `make` functions eliminate source code duplication, 
   improve exception safety, and, 
   for `std::make_shared` and `std::allocate_shared`, generate code that’s smaller and faster.
-- Situations where use of `make` functions is inappropriate include 
-  the need to specify custom deleters and a desire to pass braced initializers.
-- For `std::shared_ptr`s, additional situations where make functions may be ill-advised include
+- Situations where use of `make` functions is inappropriate 
+  include the need to specify custom deleters 
+  and a desire to pass braced initializers.
+- For `std::shared_ptr`s, additional situations where `make` functions may be ill-advised include
     1. Classes with custom memory management
-    2. Systems with memory concerns, very large objects, 
+    2. Systems with memory concerns, 
+       very large objects, 
        and `std::weak_ptr`s that outlive the corresponding `std::shared_ptr`s.
-
+- When you use `new` directly, 
+  you should immediately pass the result to a smart pointer constructor 
+  in _<u>a statement that does nothing else</u>_, 
+  to prevent memory leaks due to exceptions emited between `new` and smart pointer constructor. 
 
 Let’s begin by leveling the playing field for `std::make_unique` and `std::make_shared`. 
 `std::make_shared` is part of C++11, but, sadly, `std::make_unique` isn’t. It joined the Standard Library as of C++14. 
@@ -5310,13 +5315,13 @@ struct remove_extent
 };
 
 template <typename _Tp, std::size_t _Size>
-struct remove_extent<_Tp[_Size]>
+struct remove_extent<_Tp [_Size]>
 {
     typedef _Tp type;
 };
 
 template <typename _Tp>
-struct remove_extent<_Tp[]>
+struct remove_extent<_Tp []>
 {
     typedef _Tp type;
 };
@@ -5332,17 +5337,17 @@ using remove_extent_t = typename remove_extent<_Tp>::type;
 template <typename _Tp>
 struct _MakeUniq
 {
-    typedef unique_ptr <_Tp> __single_object;
+    typedef unique_ptr<_Tp> __single_object;
 };
 
 template <typename _Tp>
-struct _MakeUniq<_Tp[]>
+struct _MakeUniq<_Tp []>
 {
-    typedef unique_ptr<_Tp[]> __array;
+    typedef unique_ptr<_Tp []> __array;
 };
 
 template <typename _Tp, size_t _Bound>
-struct _MakeUniq<_Tp[_Bound]>
+struct _MakeUniq<_Tp [_Bound]>
 {
     struct __invalid_type
     {
@@ -5376,23 +5381,364 @@ when you upgrade to a C++14 Standard Library implementation.
 
 
 `std::make_unique` and `std::make_shared` are two of the three *`make` functions*:
-functions that take an arbitrary set of arguments, 
-perfect-forward them to the constructor for a dynamically allocated object, 
+functions that take an arbitrary set of arguments,
+perfect-forward them to the constructor for a dynamically allocated object,
 and return a smart pointer to that object.
 The third make function is `std::allocate_shared`. 
 It acts just like `std::make_shared`, 
 except its first argument is an allocator object to be used for the dynamic memory allocation.
 
 
-Even the most trivial comparison of smart pointer creation using and not using a make function 
-reveals the first reason why using such functions is preferable. Consider:
+Even the most trivial comparison of smart pointer creation using and not using a `make` function 
+reveals the first reason why using such functions is preferable. 
+Consider:
+```c++
+auto upw1(std::make_unique<Widget>());     // with make func
+std::unique_ptr<Widget> upw2(new Widget);  // without make func
+
+auto spw1(std::make_shared<Widget>());     // with make func
+std::shared_ptr<Widget> spw2(new Widget);  // without make func
+```
+The versions using `new` repeat the type being created, but the make functions **don’t**. 
+Repeating types runs afoul of a key tenet of software engineering: 
+code duplication should be avoided. 
+Duplication in source code increases compilation times, 
+can lead to bloated object code, 
+and generally renders a code base more difficult to work with. 
+It often evolves into inconsistent code,
+and inconsistency in a code base often leads to bugs. 
+Besides, typing something twice takes more effort than typing it once. 
+
+
+The second reason to prefer make functions has to do with *<u>exception safety</u>*. 
+Suppose we have a function to process a `Widget` in accord with some priority:
+```c++
+void processWidget(std::shared_ptr<Widget> spw, int priority);
+```
+Passing the `std::shared_ptr` by value may look suspicious, 
+but Item 41 explains that if `processWidget` always makes a copy of the `std::shared_ptr` 
+(e.g., by storing it in a data structure tracking `Widget`s that have been processed), 
+this can be a reasonable design choice.
+
+
+Now suppose we have a function to compute the relevant priority,
+```c++
+int computePriority();
+```
+and we use that in a call to `processWidget` that uses `new` instead of `std::make_shared`:
+```c++
+// potential resource leak!
+processWidget(std::shared_ptr<Widget>(new Widget), computePriority());  
+```
+As the comment indicates, this code could leak the `Widget` conjured up by `new`. 
+But how? 
+Both the calling code and the called function are using `std::shared_ptr`s, 
+and `std::shared_ptr`s are designed to prevent resource leaks. 
+They automatically destroy what they point to when the last `std::shared_ptr` pointing there goes away.
+If everybody is using `std::shared_ptr`s everywhere, how can this code leak?
+
+
+The answer has to do with compilers’ translation of source code into object code. 
+At runtime, the arguments for a function must be evaluated before the function can be invoked, 
+so in the call to `processWidget`, the following things must occur before `processWidget` can begin execution:
+- The expression `new Widget` must be evaluated, i.e., a `Widget` must be created on the heap.
+- The constructor for the `std::shared_ptr<Widget>` responsible for managing the pointer produced by `new` must be executed.
+- `computePriority` must run.
+
+
+Compilers are **not** required to generate code that executes them in this order. 
+`new Widget` must be executed before the `std::shared_ptr` constructor may be called,
+because the result of that `new` is used as an argument to that constructor, 
+but `computePriority` may be executed before those calls, after them, or, crucially, between them.
+That is, compilers may emit code to execute the operations in this order:
+1. Perform `new Widget`.
+2. Execute `computePriority`.
+3. Run `std::shared_ptr` constructor.
+
+
+If such code is generated and, at runtime, `computePriority` produces an exception,
+the dynamically allocated `Widget` from Step 1 will be leaked, 
+because it will **never** be stored in the `std::shared_ptr` that’s supposed to start managing it in Step 3.
+
+
+Using `std::make_shared` avoids this problem. Calling code would look like this:
+```c++
+// no potential resource leak
+processWidget(std::make_shared<Widget>(), computePriority());
+```
+At runtime, either `std::make_shared` or `computePriority` will be called first. 
+If it’s `std::make_shared`, the raw pointer to the dynamically allocated `Widget` 
+is safely stored in the returned `std::shared_ptr` before computePriority is called. 
+If `computePriority` then yields an exception, 
+the `std::shared_ptr` destructor will see to it that the `Widget` it owns is destroyed. 
+And if `computePriority` is called first and yields an exception, 
+`std::make_shared` will **not** be invoked, 
+and there will hence be **no** dynamically allocated `Widget` to worry about.
+
+
+If we replace `std::shared_ptr` and `std::make_shared` with `std::unique_ptr` and `std::make_unique`, 
+exactly the same reasoning applies. 
+Using `std::make_unique`instead of `new` is thus 
+just as important in writing exception-safe code as using `std::make_shared`.
+
+
+A special feature of `std::make_shared` (compared to direct use of `new`) is *<u>improved efficiency</u>*. 
+Using `std::make_shared` allows compilers to generate smaller, faster code that employs leaner data structures. 
+Consider the following direct use of `new`:
+```c++
+std::shared_ptr<Widget> spw(new Widget);
+```
+It’s obvious that this code entails a memory allocation, but it actually performs two.
+Item 19 explains that every `std::shared_ptr` points to a control block containing, 
+among other things, the reference count for the pointed-to object. 
+Memory for this control block is allocated in the `std::shared_ptr` constructor. 
+Direct use of `new`, then, requires one memory allocation for the `Widget` 
+and a second allocation for the control block.
+
+
+If `std::make_shared` is used instead,
+```c++
+auto spw = std::make_shared<Widget>();
+```
+one allocation suffices. 
+That’s because `std::make_shared` allocates a single chunk of memory 
+to hold both the `Widget` object and the control block. 
+This optimization reduces the static size of the program, 
+because the code contains only one memory allocation call, 
+and it increases the speed of the executable code, 
+because memory is allocated only once. 
+Furthermore, using `std::make_shared` obviates the need for some of the bookkeeping information in the control block, 
+potentially reducing the total memory footprint for the program.
+
+
+The efficiency analysis for `std::make_shared` is equally applicable to `std::allocate_shared`, 
+so the performance advantages of std::make_shared extend to that function, as well.
+
+The arguments for preferring `make` functions over direct use of `new` are strong ones.
+Despite their software engineering, exception safety, and efficiency advantages, however,
+this Item’s guidance is to _prefer_ the `make` functions, **not** to ~~rely on them exclusively~~.
+That’s because there are circumstances where they can’t or shouldn’t be used.
+
+
+For example, none of the `make` functions permit the specification of custom deleters, 
+but both `std::unique_ptr` and `std::shared_ptr` have constructors that do. 
+Given a custom deleter for a `Widget`,
+```c++
+auto widgetDeleter = [](Widget * pw) 
+{ 
+    // ...
+};
+```
+creating a smart pointer using it is straightforward using `new`:
+```c++
+std::unique_ptr<Widget, decltype(widgetDeleter)> upw(new Widget, widgetDeleter); 
+std::shared_ptr<Widget> spw(new Widget, widgetDeleter);
+```
+There’s **no way** to do the same thing with a `make` function.
+
+
+A second limitation of `make` functions stems from a syntactic detail of their implementations.
+Item 7 explains that when creating an object 
+whose type overloads constructors both with and without `std::initializer_list` parameters, 
+creating the object using braces prefers the `std::initializer_list` constructor, 
+while creating the object using parentheses calls the non-`std::initializer_list` constructor.
+The `make` functions perfect-forward their parameters to an object’s constructor, 
+but do they do so using parentheses or using braces? 
+For some types, the answer to this question makes a big difference. 
+For example, in these calls,
+```c++
+auto upv = std::make_unique<std::vector<int>>(10, 20);
+auto spv = std::make_shared<std::vector<int>>(10, 20);
+```
+do the resulting smart pointers point to `std::vector`s with 10 elements, each of value 20, 
+or to `std::vector`s with two elements, one with value 10 and the other with value 20? 
+Or is the result indeterminate?
+
+
+The good news is that it’s **not** indeterminate: 
+both calls create `std::vector`s of size 10 with all values set to 20. 
+That means that within the `make` functions, the perfect forwarding code uses parentheses, **not** ~~braces~~. 
+The bad news is that if you want to construct your pointed-to object using a braced initializer, 
+you must use `new` directly.
+Using a `make` function would require the ability to perfect-forward a braced initializer,
+but, as Item 30 explains, braced initializers **can’t** be perfect-forwarded. 
+However, Item 30 also describes a workaround: 
+use `auto` type deduction to create a `std::initializer_list` object from a braced initializer, 
+then pass the `auto`-created object through the `make` function:
+```c++
+// create std::initializer_list
+auto initList = {10, 20};
+// create std::vector using std::initializer_list ctor
+auto spv = std::make_shared<std::vector<int>>(initList);
+```
+For `std::unique_ptr`, these two scenarios (custom deleters and braced initializers)
+are the only ones where its `make` functions are problematic. 
+For `std::shared_ptr` and its `make` functions, there are two more edge cases.
+
+
+Some classes define their own versions of `operator new` and `operator delete`. 
+The presence of these functions implies 
+that the global memory allocation and deallocation routines for objects of these types are inappropriate. 
+Often, class-specific routines are designed only to allocate and deallocate 
+chunks of memory of precisely the size of objects of the class, 
+e.g., `operator new` and `operator delete` for class `Widget` are often designed 
+only to handle allocation and deallocation of chunks of memory of exactly size `sizeof(Widget)`. 
+Such routines are a poor fit for `std::shared_ptr`’s support for 
+custom allocation (via `std::allocate_shared`) and deallocation (via custom deleters), 
+because the amount of memory that `std::allocate_shared` requests **isn’t** the size of the dynamically allocated object, 
+it’s the size of that object plus the size of a control block. 
+Consequently, using `make` functions to create objects of types 
+with class-specific versions of `operator new` and `operator delete` is typically a poor idea.
+
+
+The size and speed advantages of `std::make_shared` vis-à-vis direct use of `new` 
+stem from `std::shared_ptr`’s control block being placed in the same chunk of memory as the managed object. 
+When that object’s reference count goes to zero, the object is destroyed (i.e., its destructor is called). 
+However, the memory it occupies can’t be released until the control block has also been destroyed, 
+because the same chunk of dynamically allocated memory contains both.
+
+
+As I noted, the control block contains bookkeeping information beyond just the reference count itself. 
+The reference count tracks how many `std::shared_ptr`s refer to the control block, 
+but the control block contains a second reference count, 
+one that tallies how many `std::weak_ptr`s refer to the control block. 
+This second reference count is known as the *<u>weak count</u>*.
+
+
+In practice, the value of the weak count **isn’t** always equal to 
+the number of `std::weak_ptr`s referring to the control block, 
+because library implementers have found ways to 
+slip additional information into the weak count that facilitate better code generation. 
+For purposes of this Item, we’ll ignore this and assume that 
+the weak count’s value is the number of `std::weak_ptr`s referring to the control block.
+
+
+When a `std::weak_ptr` checks to see if it has expired, it does so by examining the reference count 
+(**not** the weak count) in the control block that it refers to. 
+If the reference count is zero 
+(i.e., if the pointed-to object has **no** `std::shared_ptr`s referring to it and has thus been destroyed), 
+the `std::weak_ptr` has expired. Otherwise, it hasn’t.
+
+
+As long as `std::weak_ptr`s refer to a control block 
+(i.e., the weak count is greater than zero), that control block must continue to exist. 
+And as long as a control block exists, the memory containing it must remain allocated. 
+The memory allocated by a `std::shared_ptr` `make` function, then, 
+can’t be deallocated until the last `std::shared_ptr` and the last `std::weak_ptr` referring to it have been destroyed.
+
+
+If the object type is quite large and the time between 
+destruction of the last `std::shared_ptr` and the last `std::weak_ptr` is significant, 
+a lag can occur between when an object is destroyed and when the memory it occupied is freed:
+```c++
+class ReallyBigType 
+{ 
+    // ... 
+};
+
+// create very largeobject via std::make_shared
+auto pBigObj = std::make_shared<ReallyBigType>();  
+
+// create std::shared_ptrs and std::weak_ptrs to large object, use them to work with it
+// final std::shared_ptr to object destroyed here, but std::weak_ptrs to it remain
+// during this period, memory formerly occupied by large object remains allocated
+// final std::weak_ptr to object destroyed here; memory for control block and object is released
+```
+With a direct use of `new`, the memory for the `ReallyBigType` object can be released
+as soon as the last `std::shared_ptr` to it is destroyed:
+```c++
+class ReallyBigType
+{
+    // ... 
+};
+
+// create very large object via new
+std::shared_ptr<ReallyBigType> pBigObj(new ReallyBigType);
+
+// as before, create std::shared_ptrs and std::weak_ptrs to object, use them with it
+// final std::shared_ptr to object destroyed here, but std::weak_ptrs to it remain; memory for object is deallocated
+// during this period, only memory for the control block remains allocated 
+// final std::weak_ptr to object destroyed here; memory for control block is released
+```
+Should you find yourself in a situation where use of `std::make_shared` is impossible or inappropriate, 
+you’ll want to guard yourself against the kind of exception-safety problems we saw earlier. 
+The best way to do that is to make sure that when you use `new` directly, 
+you immediately pass the result to a smart pointer constructor in a statement that does nothing else. 
+This prevents compilers from generating code that could emit an exception 
+between the use of `new` and invocation of the constructor for the smart pointer that will manage the `new`-ed object.
+
+
+As an example, consider a minor revision to the exception-unsafe call to the `processWidget` function we examined earlier. 
+This time, we’ll specify a custom deleter:
+```c++
+void processWidget(std::shared_ptr<Widget> spw, int priority);
+void cusDel(Widget * ptr); // custom deleter
+```
+Here’s the exception-unsafe call:
+```c++
+processWidget(std::shared_ptr<Widget>(new Widget, cusDel), computePriority());
+```
+Recall: if `computePriority` is called after `new Widget` but before the `std::shared_ptr` constructor, 
+and if `computePriority` yields an exception, the dynamically allocated `Widget` will be leaked.
+
+
+Here the use of a custom deleter precludes use of `std::make_shared`, 
+so the way to avoid the problem is to put the allocation of the `Widget` 
+and the construction of the `std::shared_ptr` into their own statement, 
+then call `processWidget` with the resulting `std::shared_ptr`.
+Here’s the essence of the technique, though, as we’ll see in a moment, we can tweak it to improve its performance:
+```c++
+std::shared_ptr<Widget> spw(new Widget, cusDel);
+processWidget(spw, computePriority());            // correct, but not optimal; see below
+```
+This works, because a `std::shared_ptr` assumes ownership of the raw pointer passed to its constructor, 
+even if that constructor yields an exception. 
+In this example, if `spw`’s constructor throws an exception 
+(e.g., due to an inability to dynamically allocate memory for a control block), 
+it’s still guaranteed that `cusDel` will be invoked on the pointer resulting from `new Widget`.
+
+
+The minor performance hitch is that in the exception-unsafe call, we’re passing an rvalue to `processWidget`,
+```c++
+processWidget(
+        std::shared_ptr<Widget>(new Widget, cusDel),  // arg is rvalue
+        computePriority()
+        );
+```
+but in the exception-safe call, we’re passing an lvalue:
+```c++
+processWidget(
+        spw,               // arg is lvalue
+        computePriority()
+        );
+```
+Because `processWidget`’s `std::shared_ptr` parameter is _<u>passed by value</u>_, 
+construction from an rvalue entails only a move, 
+while construction from an lvalue requires a copy. 
+For `std::shared_ptr`, the difference can be significant, 
+because copying a s`td::shared_ptr` requires _<u>an atomic increment of its reference count</u>_, 
+while moving a `std::shared_ptr` requires **no** reference count manipulation at all. 
+For the exception-safe code to achieve the level of performance of the exception-unsafe code,
+we need to apply `std::move` to spw to turn it into an rvalue:
+```c++
+processWidget(
+        std::move(spw),    // both efficient and exception safe
+        computePriority()
+        ); 
+```
+That’s interesting and worth knowing, but it’s also typically irrelevant, 
+because you’ll rarely have a reason not to use a make function. 
+And unless you have a compelling reason for doing otherwise, 
+using a make function is what you should do.
+
+
 
 
 
 
 ### 📌 Item 22: When using the Pimpl Idiom, define special member functions in the implementation file
 
-- The *Pimpl Idiom* decreases build times by reducing compilation dependencies between class clients and class implementations.
+- The _<u>Pimpl Idiom</u>_ decreases build times by reducing compilation dependencies between class clients and class implementations.
 - For `std::unique_ptr pImpl` pointers, 
   declare special member functions in the class header, 
   but implement them in the implementation file. 
@@ -5400,9 +5746,497 @@ reveals the first reason why using such functions is preferable. Consider:
 - The above advice applies to `std::unique_ptr`, but **not** to `std::shared_ptr`.
 
 
+If you’ve ever had to combat excessive build times, you’re familiar with the 
+_<u>Pimpl Idiom</u>_ (Pointer to Implementation Idiom). 
+That’s the technique whereby you replace the data members of a class 
+with a pointer to an implementation class (or struct), 
+put the data members that used to be in the primary class into the implementation class, 
+and access those data members indirectly through the pointer. 
+For example, suppose `Widget` looks like this:
+```c++
+// "Widget.h"
+
+class Widget 
+{ 
+public:
+    Widget();
+    
+    // ...
+    
+private:
+    std::string name;
+    std::vector<double> data;
+    Gadget g1, g2, g3;         // Gadget is some user-defined type
+};
+```
+Because `Widget`’s data members are of types `std::string`, `std::vector`, and`Gadget`, 
+_<u>headers for those types</u>_ must be present for `Widget` to compile, 
+and that means that `Widget` clients must `#include` `<string>`, `<vector>`, and `Gadget.h`.
+Those headers increase the compilation time for `Widget` clients, 
+plus they make those clients dependent on the contents of the headers. 
+If a header’s content changes,`Widget` clients must recompile. 
+The standard headers `<string>` and `<vector>` don’t change very often, 
+but it could be that `Gadget.h` is subject to frequent revision.
 
 
+Applying the Pimpl Idiom in C++98 could have `Widget` replace its data members 
+with a raw pointer to a struct that has been declared, but **not** defined:
+```c++
+// "Widget.h"
 
+class Widget
+{ 
+public:
+    Widget();
+    ~Widget();    // dtor is needed: see below
+
+    // ...
+    
+private:
+    struct Impl;  // declare implementation struct
+    Impl * pImpl; // and pointer to it
+};
+```
+Because `Widget` no longer mentions the types `std::string`, `std::vector`, and `Gadget`, 
+`Widget` clients no longer need to `#include` the headers for these types. 
+That speeds compilation, and it also means that if something in these headers changes,
+`Widget` clients are unaffected.
+A type that has been declared, but **not** defined, is known as an _<u>incomplete type</u>_.
+`Widget::Impl` is such a type. 
+There are very few things you can do with an incomplete type, 
+but declaring a pointer to it is one of them. 
+The Pimpl Idiom takes advantage of that.
+
+
+Part 1 of the Pimpl Idiom is the declaration of a data member that’s a pointer to an incomplete type. 
+Part 2 is the dynamic allocation and deallocation of the object that 
+holds the data members that used to be in the original class. 
+The allocation and deallocation code goes in the implementation file, e.g., for `Widget`, in `Widget.cpp`:
+```c++
+// "Widget.cpp"
+
+#include <string>
+#include <vector>
+
+#include "Gadget.h"
+#include "Widget.h"
+
+
+// definition of Widget::Impl with data members formerly in Widget
+struct Widget::Impl
+{ 
+    std::string name;          
+    std::vector<double> data;
+    Gadget g1, g2, g3;
+};
+
+
+// allocate data members for this Widget object
+Widget::Widget() : pImpl(new Impl)
+{
+    
+}
+
+
+// destroy data members for this object
+Widget::~Widget() 
+{ 
+    delete pImpl; 
+} 
+```
+Here I’m showing `#include` directives to make clear that the overall dependencies on
+the headers for `std::string`, `std::vector`, and `Gadget` continue to exist. 
+However, these dependencies have been moved from `Widget.h` (which is visible to and used by `Widget` clients) 
+to `Widget.cpp` (which is visible to and used only by the `Widget` implementer). 
+I’ve also highlighted the code that dynamically allocates and deallocates the `Impl` object.
+The need to deallocate this object when a `Widget` is destroyed is what necessitates the `Widget` destructor.
+
+
+But I’ve shown you C++98 code, and that reeks of a bygone millennium. 
+It uses raw pointers and raw `new` and raw `delete` and it’s all just so... raw. 
+This chapter is built on the idea that smart pointers are preferable to raw pointers, 
+and if what we want is to dynamically allocate a `Widget::Impl` object inside the `Widget` constructor 
+and have it destroyed at the same time the `Widget` is, `std::unique_ptr` is precisely the tool we need. 
+Replacing the raw `pImpl` pointer with a `std::unique_ptr` yields this code for the header file,
+```c++
+// "Widget.h"
+
+class Widget 
+{
+public:
+    Widget();
+
+    // ...
+    
+private:
+    struct Impl;
+    std::unique_ptr<Impl> pImpl;  // use smart pointer instead of raw pointer
+};
+```
+and this for the implementation file:
+```c++
+// "Widget.cpp"
+
+#include <string>
+#include <vector>
+
+#include "Gadget.h"
+#include "Widget.h"
+
+
+struct Widget::Impl
+{ 
+    std::string name;          
+    std::vector<double> data;
+    Gadget g1, g2, g3;
+};
+
+
+Widget::Widget() : pImpl(std::make_unique<Impl>())
+{
+    
+}
+```
+You’ll note that the `Widget` destructor is no longer present. 
+That’s because we have no code to put into it. 
+`std::unique_ptr` automatically deletes what it points to when it (the `std::unique_ptr`) is destroyed, 
+so we need not delete anything ourselves.
+That’s one of the attractions of smart pointers: 
+they eliminate the need for us to sully our hands with manual resource release.
+
+
+This code compiles, but, alas, the most trivial client use **doesn’t**:
+```c++
+#include "Widget.h"
+
+Widget w;  // error!
+```
+The error message you receive depends on the compiler you’re using, 
+but the text generally mentions something about applying `sizeof` or `delete` to an incomplete type. 
+Those operations **aren’t** among the things you can do with such types.
+
+
+This apparent failure of the Pimpl Idiom using `std::unique_ptr`s is alarming, because
+1. `std::unique_ptr` is advertised as supporting incomplete types, and 
+2. The Pimpl Idiom is one of `std::unique_ptr`s most common use cases.
+
+
+Fortunately, getting the code to work is easy. 
+All that’s required is a basic understanding of the cause of the problem.
+
+
+The issue arises due to the code that’s generated when `w` is destroyed (e.g., goes out of scope). 
+At that point, its destructor is called. 
+In the class definition using `std::unique_ptr`, we didn’t declare a destructor, 
+because we didn’t have any code to put into it. 
+In accord with the usual rules for compiler-generated special member functions, 
+the compiler generates a destructor for us. 
+Within that destructor, the compiler inserts code to call the destructor for `Widget`’s data member `pImpl`. 
+`pImpl` is a `std::unique_ptr<Widget::Impl>`, i.e., a `std::unique_ptr` using the default deleter. 
+The default deleter is a function that uses `delete` on the raw pointer inside the `std::unique_ptr`. 
+Prior to using `delete`, however, implementations typically have the default deleter employ C++11’s `static_assert` 
+to ensure that the raw pointer **doesn’t** point to an incomplete type. 
+When the compiler generates code for the destruction of the `Widget` `w`, then, 
+it generally encounters a `static_assert` that fails, and that’s usually what leads to the error message. 
+This message is associated with the point where `w` is destroyed, 
+because `Widget`’s destructor, like all compiler-generated special member functions, is implicitly inline. 
+The message itself often refers to the line where `w` is created, 
+because it’s the source code explicitly creating the object that leads to its later implicit destruction.
+
+
+To fix the problem, you just need to make sure that 
+at the point where the code to destroy the `std::unique_ptr<Widget::Impl>` is generated, 
+`Widget::Impl` is a complete type. 
+The type becomes complete when its definition has been seen, 
+and `Widget::Impl` is defined inside `Widget.cpp`. 
+The key to successful compilation, then, 
+is to have the compiler see the body of `Widget`’s destructor 
+(i.e., the place where the compiler will generate code to destroy the `std::unique_ptr` data member) 
+only inside `Widget.cpp` after `Widget::Impl` has been defined.
+
+
+Arranging for that is simple. Declare `Widget`’s destructor in `Widget.h`, but **don’t** define it there:
+```c++
+// "Widget.h"
+
+class Widget 
+{
+public:
+    Widget();
+    ~Widget();  // declaration only
+
+    // ...
+    
+private: 
+    struct Impl;
+    std::unique_ptr<Impl> pImpl;
+};
+```
+Define it in `Widget.cpp` after `Widget::Impl` has been defined:
+```c++
+// "Widget.cpp"
+
+#include <string>
+#include <vector>
+
+#include "Gadget.h"
+#include "Widget.h"
+
+
+struct Widget::Impl
+{ 
+    std::string name;          
+    std::vector<double> data;
+    Gadget g1, g2, g3;
+};
+
+
+Widget::Widget() : pImpl(std::make_unique<Impl>())
+{
+    
+}
+
+
+// ~Widget definition
+Widget::~Widget() = default;
+```
+Classes using the Pimpl Idiom are natural candidates for move support, 
+because compiler-generated move operations do exactly what’s desired: 
+perform a move on the underlying `std::unique_ptr`. 
+As Item 17 explains, the declaration of a destructor in `Widget` prevents compilers from generating the move operations, 
+so if you want move support, you must declare the functions yourself. 
+Given that the compiler-generated versions would behave correctly, 
+you’re likely to be tempted to implement them as follows:
+```c++
+// "Widget.h"
+
+class Widget 
+{
+public:
+    Widget();
+    ~Widget();
+
+    Widget(Widget && rhs) = default;               // right idea,
+    Widget & operator=(Widget && rhs) = default;   // wrong code!
+
+    // ...
+    
+private: 
+    struct Impl;
+    std::unique_ptr<Impl> pImpl;
+};
+```
+This approach leads to the same kind of problem as declaring the class without a destructor, 
+and for the same fundamental reason. 
+The compiler-generated move assignment operator needs to destroy the object pointed to by `pImpl` 
+before reassigning it, but in the `Widget` header file, `pImpl` points to an incomplete type. 
+The situation is different for the move constructor. 
+The problem there is that compilers typically generate code to destroy `pImpl` 
+in the event that an exception arises inside the move constructor, 
+and destroying `pImpl` requires that Impl be complete.
+
+
+Because the problem is the same as before, so is the fix: 
+move the definition of the move operations into the implementation file:
+```c++
+// "Widget.h"
+
+class Widget 
+{
+public:
+    Widget();
+    ~Widget();
+
+    // declaraions only
+    Widget(Widget && rhs);
+    Widget & operator=(Widget && rhs);
+
+    // ...
+    
+private: 
+    struct Impl;
+    std::unique_ptr<Impl> pImpl;
+};
+
+
+// "Widget.cpp"
+
+#include <string>
+#include <vector>
+
+#include "Gadget.h"
+#include "Widget.h"
+
+
+struct Widget::Impl
+{
+    std::string name;
+    std::vector<double> data;
+    Gadget g1, g2, g3;
+};
+
+
+Widget::Widget() : pImpl(std::make_unique<Impl>())
+{
+
+}
+
+
+Widget::~Widget() = default;
+
+
+Widget::Widget(Widget && rhs) = default;
+
+
+Widget & Widget::operator=(Widget && rhs) = default;
+```
+The Pimpl Idiom is a way to reduce compilation dependencies 
+between a class’s implementation and the class’s clients, 
+but, conceptually, use of the idiom doesn’t change what the class represents. 
+The original `Widge`t class contained `std::string`, `std::vector`, and `Gadget` data members, 
+and, assuming that `Gadget`s, like `std::string`s and `std::vector`s, can be copied, 
+it would make sense for `Widget` to support the copy operations. 
+We have to write these functions ourselves, because 
+1. Compilers won’t generate copy operations for classes with move-only types like `std::unique_ptr`
+2. Even if they did, the generated functions would copy only the `std::unique_ptr` (i.e., perform a _<u>shallow copy</u>_), 
+   and we want to copy what the pointer points to (i.e., perform a _<u>deep copy</u>_).
+
+
+In a ritual that is by now familiar, 
+we declare the functions in the header file and implement them in the implementation file:
+```c++
+// "Widget.h"
+
+class Widget 
+{
+public:
+    Widget();
+    Widget(const Widget & rhs);
+    Widget(Widget && rhs);
+    ~Widget();
+    
+    Widget & operator=(const Widget & rhs);
+    Widget & operator=(Widget && rhs);
+
+    // ...
+    
+private: 
+    struct Impl;
+    std::unique_ptr<Impl> pImpl;
+};
+
+
+// "Widget.cpp"
+
+#include <string>
+#include <vector>
+
+#include "Gadget.h"
+#include "Widget.h"
+
+
+struct Widget::Impl
+{
+    std::string name;
+    std::vector<double> data;
+    Gadget g1, g2, g3;
+};
+
+
+Widget::Widget() : pImpl(std::make_unique<Impl>())
+{
+
+}
+
+
+Widget::Widget(const Widget& rhs) : pImpl(std::make_unique<Impl>(*rhs.pImpl))
+{
+    
+}
+
+
+Widget::Widget(Widget && rhs) = default;
+
+
+Widget::~Widget() = default;
+
+
+Widget& Widget::operator=(const Widget & rhs)
+{
+    *pImpl = *rhs.pImpl;
+    return *this;
+}
+
+
+Widget & Widget::operator=(Widget && rhs) = default;
+```
+Both function implementations are conventional. 
+In each case, we simply copy the fields of the `Impl` struct 
+from the source object (`rhs`) to the destination object (`*this`). 
+Rather than copy the fields one by one, 
+we take advantage of the fact that compilers will create the copy operations for `Impl`, 
+and these operations will copy each field automatically. 
+We thus implement `Widget`’s copy operations by calling `Widget::Impl`’s compiler-generated copy operations. 
+In the copy constructor, note that we still follow the advice of Item 21 
+to prefer use of `std::make_unique` over direct use of `new`.
+
+
+For purposes of implementing the Pimpl Idiom, `std::unique_ptr` is the smart pointer to use, 
+because the `pImpl` pointer inside an object (e.g., inside a `Widget`) 
+has exclusive ownership of the corresponding implementation object (e.g., the `Widget::Impl` object). 
+Still, it’s interesting to note that if we were to use `std::shared_ptr` instead of `std::unique_ptr` for `pImpl`, 
+we’d find that the advice of this Item no longer applied. 
+There’d be no need to declare a destructor in `Widget`, and without a user-declared destructor, 
+compilers would happily generate the move operations, which would do exactly what we’d want them to. 
+That is, given this code in `Widget.h`,
+```c++
+// "Widget.h"
+
+class Widget
+{
+public:
+    // no declarations for copy control members
+    Widget();
+    
+    // ...
+
+private:
+    struct Impl;
+    std::shared_ptr<Impl> pImpl;
+};
+```
+and this client code that `#include`s `Widget.h`,
+```c++
+Widget w1;
+auto w2(std::move(w1));  // move-construct w2
+w1 = std::move(w2);      // move-assign w1
+```
+everything would compile and run as we’d hope: 
+`w1` would be default constructed, 
+its value would be moved into `w2`, 
+that value would be moved back into `w1`, 
+and then both `w1` and `w2` would be destroyed 
+(thus causing the pointed-to `Widget::Impl` object to be destroyed).
+
+
+The difference in behavior between `std::unique_ptr` and `std::shared_ptr` for `pImpl` pointers 
+stems from the differing ways these smart pointers support custom deleters. 
+For `std::unique_ptr`, the type of the deleter is part of the type of the smart pointer,
+and this makes it possible for compilers to generate smaller runtime data structures and faster runtime code. 
+A consequence of this greater efficiency is that pointed-to types must be complete 
+when compiler-generated special functions (e.g., destructors or move operations) are used. 
+For `std::shared_ptr`, the type of the deleter is **not** part of the type of the smart pointer. 
+This necessitates larger runtime data structures and somewhat slower code, 
+but pointed-to types need **not** be complete when compiler-generated special functions are employed.
+
+
+For the Pimpl Idiom, there’s **not** really a trade-off 
+between the characteristics of `std::unique_ptr` and `std::shared_ptr`, 
+because the relationship between classes like `Widget` and classes like `Widget::Impl` is _<u>exclusive ownership</u>_, 
+and that makes `std::unique_ptr` the proper tool for the job. 
+Nevertheless, it’s worth knowing that in other situations where shared ownership exists 
+(and `std::shared_ptr` is hence a fitting design choice), 
+there’s **no** need to jump through the function-definition hoops that use of `std::unique_ptr` entails.
 
 
 
@@ -5413,18 +6247,47 @@ reveals the first reason why using such functions is preferable. Consider:
 
 ### 📌 Item 23: Understand `std::move` and `std::forward`
 
+- `std::move` performs an unconditional cast to an rvalue. In and of itself, it **doesn’t** move anything.
+- `std::forward` casts its argument to an rvalue only if that argument is bound to an rvalue.
+- Neither `std::move` nor `std::forward` ~~do anything at runtime~~.
+
 
 
 ### 📌 Item 24: Distinguish universal references from rvalue references
+
+- If a function template parameter has type `T &&` for a deduced type `T`, 
+  or if an object is declared using `auto &&`, 
+  the parameter or object is a _<u>universal reference</u>_.
+- If the form of the type declaration isn’t precisely `T &&`, 
+  or if type deduction does not occur, `T &&` denotes an rvalue reference.
+- Universal references correspond to rvalue references if they’re initialized with rvalues. 
+  They correspond to lvalue references if they’re initialized with lvalues.
+
+
+
 
 
 
 ### 📌 Item 25: Use `std::move` on rvalue references, `std::forward` on universal references
 
+- Apply `std::move` to rvalue references and `std::forward` to universal references 
+  the last time each is used.
+- Do the same thing for rvalue references and universal references 
+  being returned from functions that return by value.
+- **Never** apply `std::move` or `std::forward` to local objects 
+  if they would otherwise be eligible for the _<u>return value optimization</u>_.
 
 
+  
 
 ### 📌 Item 26: Avoid overloading on universal references
+
+- Overloading on universal references almost always 
+  leads to the universal reference overload being called more frequently than expected.
+- Perfect-forwarding constructors are especially problematic, 
+  because they’re typically better matches than copy constructors for non-`const` lvalues, 
+  and they can hijack derived class calls to base class copy and move constructors. 
+
 
 
 
@@ -5432,23 +6295,57 @@ reveals the first reason why using such functions is preferable. Consider:
 
 ### 📌 Item 27: Familiarize yourself with alternatives to overloading on universal references
 
+- Alternatives to the combination of universal references and overloading 
+  include the use of distinct function names, 
+  passing parameters by lvalue-reference-to-`const`, 
+  passing parameters by value, 
+  and using tag dispatch.
+- Constraining templates via `std::enable_if` 
+  permits the use of universal references and overloading together, 
+  but it controls the conditions under which compilers may use the universal reference overloads.
+- Universal reference parameters often have efficiency advantages, 
+  but they typically have usability disadvantages.
+
+
+
 
 
 
 ### 📌 Item 28: Understand reference collapsing
 
-
+- Reference collapsing occurs in 4 contexts: 
+  1. Template instantiation
+  2. `auto` type generation
+  3. Creation and use of `typedef`s and alias declarations
+  4. `decltype`
+- When compilers generate a reference to a reference in a reference collapsing context, 
+  the result becomes a single reference. 
+  If either of the original references is an lvalue reference, the result is an lvalue reference. 
+  Otherwise it’s an rvalue reference.
+- Universal references are rvalue references in contexts
+  where type deduction distinguishes lvalues from rvalues and 
+  where reference collapsing occurs.
 
 
 
 ### 📌 Item 29: Assume that move operations are not present, not cheap, and not used
 
+- Assume that move operations are not present, not cheap, and not used.
+- In code with known types or support for move semantics, there is no need for assumptions.
+
+
+
+
 
 
 ### 📌 Item 30: Familiarize yourself with perfect forwarding failure cases
 
-
-
+- Perfect forwarding fails when template type deduction fails or when it deduces the wrong type.
+- The kinds of arguments that lead to perfect forwarding failure are braced initializers, 
+  null pointers expressed as `0` or `NULL`, 
+  declaration-only integral `const` `static` data members, 
+  template and overloaded function names, 
+  and bitfields. 
 
 
 
