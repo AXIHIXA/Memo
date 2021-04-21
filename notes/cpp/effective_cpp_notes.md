@@ -1,11 +1,10 @@
-# *Effective C++* Notes
+# _Effective C++_ Notes
 
-- Notes of reading: 
-    - *Effective C++ Digital Collection: 140 Ways to Improve Your Programming*
-        - *Effective C++: 55 Specific Ways to Improve Your Programs and Designs*
-        - *More Effective C++: 35 New Ways to Improve Your Programs and Designs*
-        - *Effective STL: 50 Specific Ways to Improve Your Use of the Standard Template Library*
-    - *Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 And C++14*
+- Notes of reading <u>Scott Meyers</u>'s _Effective C++_ series:
+    - _Effective C++_
+    - _More Effective C++_
+    - _Effective STL_
+    - _Effective Modern C++_
 
 
 
@@ -14,9 +13,18 @@
 
 ---
 
-## 🌱 Effective C++: 55 Specific Ways to Improve Your Programs and Designs
+## 🌱 _Effective C++_
 
-## 1. Accustoming Yourself to C++
+### 🎯 Chapter 1. Accustoming Yourself to C++
+
+### 📌 Item 1: View C++ as a federation of languages
+
+- Rules for effective C++ programming vary, depending on the part of C++ you are using.
+
+
+
+
+
 
 ### 📌 Item 2: Prefer `const`s, `enum`s, and `inline`s to `#define`s
     
@@ -127,6 +135,11 @@ Furthermore, because callWithMax is a real function, it obeys scope and access r
 For example, it makes perfect sense to talk about an inline function that is private to a class. 
 In general, there's just no way to do that with a macro.
 
+
+
+
+
+
 ### 📌 Item 3: Use `const` whenever possible
 
 - Declaring something `const` helps compilers detect usage errors. 
@@ -157,12 +170,12 @@ std::vector<int>::const_iterator cIter = vec.cbegin();  // cIter acts like a con
 ++cIter;                                                // fine, changescIter
 ```
 
-#### **`const`s in function return values
+#### `const`s in function return values
 
 Having a function return a constant value often makes it possible to 
 reduce the incidence of client errors without giving up safety or efficiency: 
 ```c++
-class Rational { ... };
+class Rational { /* ... */ };
 const Rational operator*(const Rational & lhs, const Rational & rhs);
 ```
 Many programmers squint when they first see this. 
@@ -192,99 +205,106 @@ Many people overlook the fact that *member functions differing only in their con
 Incidentally, const objects most often arise in real programs as a result of being passed by pointer-to-const or reference-to-const.
 What does it mean for a member function to be const? 
 There are two prevailing notions: 
-- *bitwise constness* (also known as *physical constness*) 
-    The bitwise `const` camp believes that a member function is `const`
-    iff. it doesn't modify any of the object's data members (excluding those that are `static`), 
-    i.e., iff. it *doesn't modify any of the bits inside the object*. 
-    The nice thing about bitwise constness is that it's easy to detect violations: 
-    compilers just look for assignments to data members. 
-    In fact, bitwise constness is C++'s definition of constness, 
-    and a `const` member function isn't allowed to modify 
-    any of the non-`static` data members of the object on which it is invoked. 
-    <br><br>
-    Unfortunately, many member functions that don't act very `const` pass the bitwise test. 
-    In particular, *a member function that modifies what a pointer points* to frequently doesn't act `const`. 
-    But if only the pointer is in the object, the function is bitwise `const`, and compilers won't complain. 
-    That can lead to counterintuitive behavior. 
-    For example, suppose we have a `TextBlock`-like class that stores its data as a `char *` instead of a `string`, 
-    because it needs to communicate through a C API that doesn't understand `string` objects. 
-    ```c++
-    class CTextBlock 
-    {
-    public:
-        // inappropriate (but bitwise const) declaration of operator[]
-        char & operator[](std::size_t position) const 
-        { 
-            return pText[position]; 
-        } 
-        
-    private:
-        char * pText;
-    };
-    ```
-    This class (inappropriately) declares `operator[]` as a `const` member function,
-    even though that function returns a reference to the object's internal data. 
-    Set that aside and note that `operator[]`'s implementation doesn't modify `pText` in any way. 
-    As a result, compilers will happily generate code for `operator[]`; 
-    it is, after all, bitwise `const`, and that's all compilers check for. 
-    But look what it allows to happen:
-    ```c++
-    const CTextBlock cctb("Hello");  // declare constant object
-    char *pc = &cctb[0];             // call the const operator[] to get a  pointer to cctb's data
-    *pc = 'J';                       // cctb now has the value "Jello"
-    ```
-- *logical constness* <br>
-    A `const` member function *might modify some of the bits in the object* on which it's invoked, 
-    but *only in ways that clients cannot detect*. 
-    For example, your `CTextBlock` class might want to cache the length of the textblock whenever it's requested:
-    ```c++
-    class CTextBlock 
-    {
-    public:
-        std::size_t length() const;
-        
-    private:
-        char * pText;
-        std::size_t textLength;               // last calculated length of textblock
-        bool lengthIsValid;                   // whether length is currently valid
-    };
+
+##### Bitwise constness (also known as _physical constness_) 
+
+The bitwise `const` camp believes that a member function is `const`
+iff. it doesn't modify any of the object's data members (excluding those that are `static`), 
+i.e., iff. it *doesn't modify any of the bits inside the object*. 
+The nice thing about bitwise constness is that it's easy to detect violations: 
+compilers just look for assignments to data members. 
+In fact, bitwise constness is C++'s definition of constness, 
+and a `const` member function isn't allowed to modify 
+any of the non-`static` data members of the object on which it is invoked. 
+
+
+Unfortunately, many member functions that don't act very `const` pass the bitwise test. 
+In particular, *a member function that modifies what a pointer points* to frequently doesn't act `const`. 
+But if only the pointer is in the object, the function is bitwise `const`, and compilers won't complain. 
+That can lead to counterintuitive behavior. 
+
+
+For example, suppose we have a `TextBlock`-like class that stores its data as a `char *` instead of a `string`, 
+because it needs to communicate through a C API that doesn't understand `string` objects. 
+```c++
+class CTextBlock 
+{
+public:
+    // inappropriate (but bitwise const) declaration of operator[]
+    char & operator[](std::size_t position) const 
+    { 
+        return pText[position]; 
+    } 
     
-    std::size_t CTextBlock::length() const
-    {
-        if (!lengthIsValid) 
-        {
-            textLength = std::strlen(pText);  // error! can't assign to textLength and lengthIsValid in a const member function
-            lengthIsValid = true;
-        } 
-        
-        return textLength;
-    }
-    ```
-    The solution is simple: take advantage of C++'s `const`-related wiggle room known as `mutable`. 
-    `mutable` frees non-`static` data members from the constraints of bitwise constness: 
-    ```c++
-    class CTextBlock 
-    {
-    public:
-        std::size_t length() const;
-        
-    private:
-        char * pText;
-        mutable std::size_t textLength;       // last calculated length of textblock
-        mutable bool lengthIsValid;           // whether length is currently valid
-    };
+private:
+    char * pText;
+};
+```
+This class (inappropriately) declares `operator[]` as a `const` member function,
+even though that function returns a reference to the object's internal data. 
+Set that aside and note that `operator[]`'s implementation doesn't modify `pText` in any way. 
+As a result, compilers will happily generate code for `operator[]`; 
+it is, after all, bitwise `const`, and that's all compilers check for. 
+But look what it allows to happen:
+```c++
+const CTextBlock cctb("Hello");  // declare constant object
+char *pc = &cctb[0];             // call the const operator[] to get a  pointer to cctb's data
+*pc = 'J';                       // cctb now has the value "Jello"
+```
+
+##### Logical constness
+
+A `const` member function *might modify some of the bits in the object* on which it's invoked, 
+but *only in ways that clients cannot detect*. 
+For example, your `CTextBlock` class might want to cache the length of the textblock whenever it's requested:
+```c++
+class CTextBlock 
+{
+public:
+    std::size_t length() const;
     
-    std::size_t CTextBlock::length() const
+private:
+    char * pText;
+    std::size_t textLength;               // last calculated length of textblock
+    bool lengthIsValid;                   // whether length is currently valid
+};
+
+std::size_t CTextBlock::length() const
+{
+    if (!lengthIsValid) 
     {
-        if (!lengthIsValid) 
-        {
-            textLength = std::strlen(pText);  // can modify mutables in a const member function
-            lengthIsValid = true;
-        } 
-        
-        return textLength;
-    }
-    ```
+        textLength = std::strlen(pText);  // error! can't assign to textLength and lengthIsValid in a const member function
+        lengthIsValid = true;
+    } 
+    
+    return textLength;
+}
+```
+The solution is simple: take advantage of C++'s `const`-related wiggle room known as `mutable`. 
+`mutable` frees non-`static` data members from the constraints of bitwise constness: 
+```c++
+class CTextBlock 
+{
+public:
+    std::size_t length() const;
+    
+private:
+    char * pText;
+    mutable std::size_t textLength;       // last calculated length of textblock
+    mutable bool lengthIsValid;           // whether length is currently valid
+};
+
+std::size_t CTextBlock::length() const
+{
+    if (!lengthIsValid) 
+    {
+        textLength = std::strlen(pText);  // can modify mutables in a const member function
+        lengthIsValid = true;
+    } 
+    
+    return textLength;
+}
+```
 
 #### Avoiding Duplication in `const` and Non-`const` Member Functions
 
@@ -336,132 +356,750 @@ the non-`const` member function can do whatever it wants with an object,
 so calling a `const` member function imposes no risk. <br>
 That's why a `static_cast` works on `*this` in that case: there's no `const`-related danger. 
 
+
+
+
+
+
 ### 📌 Item 4: Make sure that objects are initialized before they're used
 
-- **Always initialize your objects before you use them** <br>
-    For non-member objects of built-in types, you'll need to do this manually: 
-    ```c++
-    int x = 0;                               // manual initialization of an int
-    const char * text = "A C-style string";  // manual initialization of a pointer
-    double d;                                // "initialization" by reading from an input stream
-    std::cin >> d; 
-    ```
-    For almost everything else, the responsibility for initialization falls on constructors. 
-    The rule there is simple: make sure that *all constructors initialize everything in the object*. 
-    - ***Not** to confuse assignment with initialization**. <br>
-        Consider a constructor for a class representing entries in an address book:
-        ```c++
-        class PhoneNumber 
-        { 
-            // ... 
-        };
-        
-        class ABEntry  // Address Book Entry
-        {
-        public:
-            ABEntry(const std::string & name, 
-                    const std::string & address, 
-                    const std::list<PhoneNumber> & phones)
-            {
-                // these are all assignments, not initializations
-                theName = name; 
-                theAddress = address; 
-                thePhones = phones;
-                numTimesConsulted = 0;
-            }
-        
-        private:
-            std::string theName;
-            std::string theAddress;
-            std::list<PhoneNumber> thePhones;
-            int num TimesConsulted;
-        };
-        ```
-        This will yield `ABEntry` objects with the values you expect, but it's still not the best approach. 
-        The rules of C++ stipulate that data members of an object are initialized *before* the body of a constructor is entered. 
-        Inside the `ABEntry` constructor, `theName`, `theAddress`, and `thePhones` **aren't** being initialized, they're being *assigned*. 
-        Initialization took place earlier: when their default constructors were automatically called prior to entering the body of the `ABEntry` constructor. 
-        This isn't true for `numTimesConsulted`, because it's a built-in type. 
-        For it, there's **no** guarantee it was initialized at all prior to its assignment.
-    - *Member initialization list* <br>
-        ```c++
-        ABEntry::ABEntry(const std::string & name, 
-                         const std::string & address, 
-                         const std::list<PhoneNumber> & phones)
-                : theName(name), 
-                  theAddress(address), 
-                  thePhones(phones), 
-                  numTimesConsulted(0)
-        {
-            // the ctor body is now empty
-        }
-        ```
-        This constructor yields the same end result as the one above, but it will often be more efficient. 
-        There's no need to do default initialization for class-type objects 
-        like `theName`, `theAddress`, and `thePhones` before entering the constructor body. 
-        For objects of built-in type like `numTimesConsulted`, 
-        there is no difference in cost between initialization and assignment, 
-        but for consistency, it's often best to initialize everything via member initialization.
-        <br><br>
-        Similarly, you can use the member initialization list even when you want to default-construct a data member; 
-        just specify nothing as an initialization argument. 
-        For example, if `ABEntry` had a constructor taking no parameters, it could be implemented like this:
-        ```c++
-        ABEntry::ABEntry()
-                : theName(),            // call theName's default ctor;
-                  theAddress(),         // do the same for theAddress;
-                  thePhones(),          // and for thePhones;
-                  numTimesConsulted(0)  // but explicitly initialize numTimesConsulted to zero
-        {
-        
-        } 
-        ```
-        
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
+- Manually initialize objects of built-in type, because C++ only
+  sometimes initializes them itself.
+- In a constructor, prefer use of the member initialization list to
+  assignment inside the body of the constructor. List data
+  members in the initialization list in the same order they're
+  declared in the class.
+- Avoid initialization order problems across translation units by
+  replacing non-local static objects with local static objects.
+
+#### Always initialize your objects before you use them
+
+For non-member objects of built-in types, you'll need to do this manually: 
+```c++
+int x = 0;                               // manual initialization of an int
+const char * text = "A C-style string";  // manual initialization of a pointer
+double d;                                // "initialization" by reading from an input stream
+std::cin >> d; 
+```
+For almost everything else, the responsibility for initialization falls on constructors. 
+The rule there is simple: make sure that *all constructors initialize everything in the object*. 
+
+#### **Not** to confuse assignment with initialization
+
+Consider a constructor for a class representing entries in an address book:
+```c++
+class PhoneNumber 
+{ 
+    // ... 
+};
+
+class ABEntry  // Address Book Entry
+{
+public:
+    ABEntry(const std::string & name, 
+            const std::string & address, 
+            const std::list<PhoneNumber> & phones)
+    {
+        // these are all assignments, not initializations
+        theName = name; 
+        theAddress = address; 
+        thePhones = phones;
+        numTimesConsulted = 0;
+    }
+
+private:
+    std::string theName;
+    std::string theAddress;
+    std::list<PhoneNumber> thePhones;
+    int num TimesConsulted;
+};
+```
+This will yield `ABEntry` objects with the values you expect, but it's still not the best approach. 
+The rules of C++ stipulate that data members of an object are initialized _before_ the body of a constructor is entered. 
+Inside the `ABEntry` constructor, 
+`theName`, `theAddress`, and `thePhones` **aren't** ~~being initialized~~, they're being _assigned_. 
+Initialization took place earlier: 
+when their default constructors were automatically called prior to entering the body of the `ABEntry` constructor. 
+This isn't true for `numTimesConsulted`, because it's a built-in type. 
+For it, there's **no** guarantee it was initialized at all prior to its assignment.
+
+#### Member initialization list
+
+```c++
+ABEntry::ABEntry(const std::string & name, 
+                 const std::string & address, 
+                 const std::list<PhoneNumber> & phones)
+        : theName(name), 
+          theAddress(address), 
+          thePhones(phones), 
+          numTimesConsulted(0)
+{
+    // the ctor body is now empty
+}
+```
+This constructor yields the same end result as the one above, but it will often be more efficient. 
+There's no need to do default initialization for class-type objects 
+like `theName`, `theAddress`, and `thePhones` before entering the constructor body. 
+For objects of built-in type like `numTimesConsulted`, 
+there is no difference in cost between initialization and assignment, 
+but for consistency, it's often best to initialize everything via member initialization.
+
+
+Similarly, you can use the member initialization list even when you want to default-construct a data member; 
+just specify nothing as an initialization argument. 
+For example, if `ABEntry` had a constructor taking no parameters, it could be implemented like this:
+```c++
+ABEntry::ABEntry()
+        : theName(),            // call theName's default ctor;
+          theAddress(),         // do the same for theAddress;
+          thePhones(),          // and for thePhones;
+          numTimesConsulted(0)  // but explicitly initialize numTimesConsulted to zero
+{
+
+} 
+```
 
 
 
 
 
 
+### 🎯 Chapter 2. Constructors, Destructors, and Assignment Operators
+
+### 📌 Item 5: Know what functions C++ silently writes and calls
+
+- Compilers may implicitly generate a class's 
+  default constructor, copy constructor, copy assignment operator, and destructor.
+
+
+
+### 📌 Item 6: Explicitly disallow the use of compiler-generated functions you do not want
+
+- To disallow functionality automatically provided by compilers,
+  declare the corresponding member functions private and give no implementations. 
+  Using a base class like `Uncopyable` is one way to do this. 
+
+
+
+
+### 📌 Item 7: Declare destructors virtual in polymorphic base classes
+
+- Polymorphic base classes should declare virtual destructors. 
+  If a class has any virtual functions, it should have a virtual destructor.
+- Classes not designed to be base classes or not designed to be used polymorphically 
+  should **not** declare virtual destructors.
 
 
 
 
 
 
+### 📌 Item 8: Prevent exceptions from leaving destructors
+
+- Destructors should never emit exceptions. 
+  If functions called in a destructor may throw, 
+  the destructor should catch any exceptions, 
+  then swallow them or terminate the program.
+- If class clients need to be able to react to exceptions thrown during an operation, 
+  the class should provide a regular (i.e., non-destructor) function that performs the operation.
 
 
 
 
 
 
+### 📌 Item 9: Never call virtual functions during construction or destruction
+
+- Don't call virtual functions during construction or destruction,
+  because such calls will never go to a more derived class 
+  than that of the currently executing constructor or destructor.
 
 
 
 
 
 
+### 📌 Item 10: Have assignment operators return a reference to `*this`
+
+- Have assignment operators return a reference to `*this`.
+
+
+
+
+
+
+### 📌 Item 11: Handle assignment to self in `operator=`
+
+- Make sure `operator=` is well-behaved when an object is assigned to itself. 
+  Techniques include comparing addresses of source and target objects, 
+  careful statement ordering, 
+  and copy-and-`swap`.
+- Make sure that any function operating on more than one object behaves correctly 
+  if two or more of the objects are the same.
+
+
+
+
+
+
+### 📌 Item 12: Copy all parts of an object
+
+- Copying functions should be sure to copy all of an object's data members and all of its base class parts.
+- Don't try to implement one of the copying functions in terms of the other. 
+  Instead, put common functionality in a third function that both call.
+
+
+
+
+
+
+### 🎯 Chapter 3. Resource Management
+
+### 📌 Item 13: Use objects to manage resources
+
+- To prevent resource leaks, use RAII objects 
+  that acquire resources in their constructors and release them in their destructors.
+- ~~Two commonly useful RAII classes are `tr1::shared_ptr` and `std::auto_ptr`. 
+  `tr1::shared_ptr` is usually the better choice, because its behavior when copied is intuitive. 
+  Copying an `std::auto_ptr` sets it to null.~~ Refer to _Effective Modern C++_ Chapter 4 for details. 
+
+
+
+
+
+
+### 📌 Item 14: Think carefully about copying behavior in resource-managing classes
+
+- Copying an RAII object entails copying the resource it manages, 
+  so the copying behavior of the resource determines the copying behavior of the RAII object.
+- Common RAII class copying behaviors are disallowing copying and performing reference counting, 
+  but other behaviors are possible.
+
+
+
+
+
+
+### 📌 Item 15: Provide access to raw resources in resource-managing classes
+
+- APIs often require access to raw resources, 
+  so each RAII class should offer a way to get at the resource it manages.
+- Access may be via explicit conversion or implicit conversion.
+  In general, explicit conversion is safer, 
+  but implicit conversion is more convenient for clients.
+
+
+
+
+
+
+### 📌 Item 16: Use the same form in corresponding uses of `new` and `delete`
+
+- If you use `[]` in a `new` expression, you must use `[]` in the corresponding `delete` expression. 
+  If you don't use `[]` in a `new` expression, you mustn't use `[]` in the corresponding `delete` expression.
+
+
+
+
+
+
+### 📌 Item 17: Store `new`ed objects in smart pointers in standalone statements
+
+- Store `new`ed objects in smart pointers in standalone statements.
+  Failure to do this can lead to subtle resource leaks when exceptions are thrown.
+- Refer to _Effective Modern C++_ Item 21 for details. 
+
+
+
+
+
+
+### 🎯 Chapter 4. Designs and Declarations
+
+### 📌 Item 18: Make interfaces easy to use correctly and hard to use incorrectly
+
+- Good interfaces are easy to use correctly and hard to use incorrectly. 
+  You should strive for these characteristics in all your interfaces.
+- Ways to facilitate correct use include 
+  consistency in interfaces 
+  and behavioral compatibility with built-in types.
+- Ways to prevent errors include creating new types, 
+  restricting operations on types, 
+  constraining object values, 
+  and eliminating client resource management responsibilities.
+- `tr1::shared_ptr` supports custom deleters. 
+  This prevents the cross-DLL problem, 
+  can be used to automatically unlock mutexes (see Item 14), etc.
+
+
+
+
+
+
+### 📌 Item 19: Treat class design as type design
+
+- Class design is type design. 
+  Before defining a new type, be sure to consider all the issues discussed in this Item.
+
+
+
+
+
+
+### 📌 Item 20: Prefer pass-by-reference-to-`const` to pass-by-value
+
+- Prefer pass-by-reference-to-const over pass-by-value. 
+  It's typically more efficient and it avoids the slicing problem.
+- The rule doesn't apply to built-in types and STL iterator and function object types. 
+  For them, pass-by-value is usually appropriate.
+
+
+
+
+
+
+### 📌 Item 21: Don't try to return a reference when you must return an object
+
+- **Never** return a pointer or reference to a local stack object, 
+  a reference to a heap-allocated object, 
+  or a pointer or reference to a local static object 
+  if there is a chance that more than one such object will be needed. 
+  (Item 4 provides an example of a design where returning a reference to a local static is reasonable, 
+  at least in single-threaded environments.)
+
+
+
+
+
+
+### 📌 Item 22: Declare data members `private`
+
+- Declare data members `private`. 
+  It gives clients syntactically uniform access to data, 
+  affords fine-grained access control,
+  allows invariants to be enforced, 
+  and offers class authors implementation flexibility.
+- `protected` is **no** more encapsulated than `public`.
+
+
+
+
+
+
+### 📌 Item 23: Prefer non-member non-friend functions to member functions
+
+- Prefer non-member non-friend functions to member functions.
+  Doing so increases encapsulation, packaging flexibility, and functional extensibility.
+
+
+
+
+
+
+### 📌 Item 24: Declare non-member functions when type conversions should apply to all parameters
+
+- If you need type conversions on all parameters to a function
+  (including the one that would otherwise be pointed to by the `this` pointer), 
+  the function must be a non-member.
+
+
+
+
+
+
+### 📌 Item 25: Consider support for a non-throwing `swap`
+
+- Provide a swap member function when `std::swap` would be inefficient for your type. 
+  Make sure your swap **doesn't** throw exceptions.
+- If you offer a member `swap`, also offer a non-member `swap` that calls the member. 
+  For classes (not templates), specialize `std::swap`, too.
+- When calling `swap`, employ a using declaration `using std::swap;`,
+  then call `swap` **without** namespace qualification.
+- It's fine to totally specialize `std` templates for user-defined types, 
+  but **never** try to add something completely new to `std`.
+
+
+
+
+
+
+### 🎯 Chapter 5. Implementations
+
+### 📌 Item 26: Postpone variable definitions as long as possible
+
+- Postpone variable definitions as long as possible. 
+  It increases program clarity and improves program efficiency. 
+
+
+
+
+
+
+### 📌 Item 27: Minimize casting
+
+- Avoid casts whenever practical, especially `dynamic_cast`s in performance-sensitive code. 
+  If a design requires casting, try to develop a cast-free alternative.
+- When casting is necessary, try to hide it inside a function.
+  Clients can then call the function instead of putting casts in their own code.
+- Prefer C++-style casts to old-style casts. 
+  They are easier to see, and they are more specific about what they do.
+
+
+
+
+
+
+### 📌 Item 28: Avoid returning handles to object internals
+
+- Avoid returning handles (references, pointers, or iterators) to object internals. 
+  Not returning handles increases encapsulation,
+  helps const member functions act `const`, 
+  and minimizes the creation of dangling handles.
+
+
+
+
+
+
+### 📌 Item 29: Strive for exception-safe code
+
+- Exception-safe functions leak no resources 
+  and allow no data structures to become corrupted, 
+  even when exceptions are thrown. 
+  Such functions offer the basic, strong, or `nothrow` guarantees.
+- The strong guarantee can often be implemented via copy-andswap,
+but the strong guarantee is not practical for all functions.
+- A function can usually offer a guarantee **no** stronger 
+  than the weakest guarantee of the functions it calls.
+
+
+
+
+
+
+### 📌 Item 30: Understand the ins and outs of inlining
+
+- Limit most inlining to small, frequently called functions. 
+  This facilitates debugging and binary upgradability, 
+  minimizes potential code bloat, 
+  and maximizes the chances of greater program speed.
+- **Don't** declare function templates `inline` 
+  just because they appear in header files.
+
+
+
+
+
+
+### 📌 Item 31: Minimize compilation dependencies between files
+
+- The general idea behind minimizing compilation dependencies 
+  is to depend on declarations instead of definitions. 
+  Two approaches based on this idea are Handle classes and Interface classes.
+- Library header files should exist in full and declaration-only forms. 
+  This applies regardless of whether templates are involved.
+
+
+
+
+
+
+### 🎯 Chapter 6. Inheritance and Object-Oriented Design
+
+### 📌 Item 32: Make sure public inheritance models “is-a”
+
+- Public inheritance means “is-a”. 
+  Everything that applies to base classes must also apply to derived classes, 
+  because every derived class object is a base class object.
+
+
+
+
+
+
+### 📌 Item 33: Avoid hiding inherited names
+
+- Names in derived classes hide names in base classes. 
+  Under public inheritance, this is **never** desirable.
+- To make hidden names visible again, 
+  employ using declarations or forwarding functions.
+
+
+
+
+
+
+### 📌 Item 34: Differentiate between inheritance of interface and inheritance of implementation
+
+- Inheritance of interface is different from inheritance of implementation. 
+  Under public inheritance, derived classes always inherit base class interfaces.
+- Pure virtual functions specify inheritance of interface only.
+- Simple (impure) virtual functions specify inheritance of interface plus inheritance of a default implementation.
+- Non-virtual functions specify inheritance of interface plus inheritance of a mandatory implementation.
+
+
+
+
+
+
+### 📌 Item 35: Consider alternatives to virtual functions
+
+- Alternatives to virtual functions include the NVI idiom and various forms of the Strategy design pattern. 
+  The NVI idiom is itself an example of the Template Method design pattern.
+- A disadvantage of moving functionality from a member function to a function outside the class 
+  is that the non-member function lacks access to the class's non-public members.
+- `tr1::function` objects act like generalized function pointers.
+  Such objects support all callable entities compatible with a given target signature.
+
+
+
+
+
+
+### 📌 Item 36: Never redefine an inherited non-virtual function
+
+- Never redefine an inherited non-virtual function.
+
+
+
+
+
+
+### 📌 Item 37: Never redefine a function's inherited default parameter value
+
+- **Never** redefine an inherited default parameter value, 
+  because default parameter values are statically bound, 
+  while virtual functions (the only functions you should be overriding) are dynamically bound.
+
+
+
+
+
+
+### 📌 Item 38: Model “has-a” or “is-implemented-in-terms-of” through composition
+
+- Composition has meanings completely different from that of public inheritance.
+- In the application domain, composition means has-a. In the implementation domain, 
+  it means is-implemented-in-terms-of.
+
+
+
+
+
+
+### 📌 Item 39: Use private inheritance judiciously
+
+- Private inheritance means is-implemented-in-terms of. 
+  It's usually inferior to composition, 
+  but it makes sense when a derived class needs access to protected base class members 
+  or needs to redefine inherited virtual functions.
+- Unlike composition, private inheritance can enable the empty base optimization. 
+  This can be important for library developers who strive to minimize object sizes.
+
+
+
+
+
+
+### 📌 Item 40: Use multiple inheritance judiciously
+
+- Multiple inheritance is more complex than single inheritance. 
+  It can lead to new ambiguity issues and to the need for virtual inheritance.
+- Virtual inheritance imposes costs in size, speed, and complexity of initialization and assignment. 
+  It's most practical when virtual base classes have no data.
+- Multiple inheritance does have legitimate uses. 
+  One scenario involves combining public inheritance from an Interface class
+  with private inheritance from a class that helps with implementation.
+
+
+
+
+
+
+### 🎯 Chapter 7. Templates and Generic Programming
+
+### 📌 Item 41: Understand implicit interfaces and compiletime polymorphism
+
+- Both classes and templates support interfaces and polymorphism.
+- For classes, interfaces are explicit and centered on function signatures. 
+  Polymorphism occurs at runtime through virtual functions.
+- For template parameters, interfaces are implicit and based on valid expressions. 
+  Polymorphism occurs during compilation through template instantiation and function overloading resolution.
+
+
+
+
+
+
+### 📌 Item 42: Understand the two meanings of `typename`
+
+- When declaring template parameters, `class` and `typename` are interchangeable.
+- Use `typename` to identify nested dependent type names, 
+  **except** in base class lists or as a base class identifier in a member initialization list.
+
+
+
+
+
+
+### 📌 Item 43: Know how to access names in templatized base classes
+
+- In derived class templates, refer to names in base class templates 
+  via a `this->` prefix, 
+  via using declarations, 
+  or via an explicit base class qualification.
+
+
+
+
+
+### 📌 Item 44: Factor parameter-independent code out of templates
+
+- Templates generate multiple classes and multiple functions, 
+  so any template code not dependent on a template parameter causes bloat.
+- Bloat due to non-type template parameters can often be eliminated 
+  by replacing template parameters with function parameters or class data members.
+- Bloat due to type parameters can be reduced 
+  by sharing implementations for instantiation types with identical binary representations.
+
+
+
+
+
+
+### 📌 Item 45: Use member function templates to accept “all compatible types”
+
+- Use member function templates to generate functions that accept all compatible types.
+- If you declare member templates for generalized copy construction or generalized assignment, 
+  you'll still need to declare the normal copy constructor and copy assignment operator, too.
+
+
+
+
+
+
+### 📌 Item 46: Define non-member functions inside templates when type conversions are desired
+
+- When writing a class template that offers functions related to 
+  the template that support implicit type conversions on all parameters, 
+  define those functions as friends inside the class template.
+
+
+
+
+
+
+### 📌 Item 47: Use traits classes for information about types
+
+- Traits classes make information about types available during compilation. 
+  They're implemented using templates and template specializations.
+- In conjunction with overloading, traits classes make it possible to perform compile-time `if`-`else` tests on types.
+
+
+
+
+
+
+### 📌 Item 48: Be aware of template metaprogramming
+
+- Template metaprogramming can shift work from runtime to compile-time, 
+  thus enabling earlier error detection and higher runtime performance.
+- TMP can be used to generate custom code based on combinations of policy choices, 
+  and it can also be used to avoid generating code inappropriate for particular types.
+
+
+
+
+
+
+### 🎯 Chapter 8. Customizing `new` and `delete`
+
+### 📌 Item 49: Understand the behavior of the `new`-handler
+
+- `set_new_handler` allows you to specify a function to be called 
+  when memory allocation requests cannot be satisfied.
+- Nothrow `new` is of limited utility, 
+  because it applies only to memory allocation; 
+  associated constructor calls may still throw exceptions.
+
+
+
+
+
+
+### 📌 Item 50: Understand when it makes sense to replace `new` and `delete`
+
+- There are many valid reasons for writing custom versions of `new` and `delete`, 
+  including improving performance, debugging heap usage errors, and collecting heap usage information.
+
+
+
+
+
+
+### 📌 Item 51: Adhere to convention when writing `new` and `delete`
+
+- `operator new` should contain an infinite loop trying to allocate memory, 
+  should call the `new`-handler if it can't satisfy a memory request, 
+  and should handle requests for zero bytes.
+  Class-specific versions should handle requests for larger blocks than expected.
+- `operator delete` should do nothing if passed a pointer that is null. 
+  Class-specific versions should handle blocks that are larger than expected.
+
+
+
+
+
+
+### 📌 Item 52: Write placement `delete` if you write placement `new`
+
+- When you write a placement version of operator `new`, 
+  be sure to write the corresponding placement version of operator `delete`. 
+  If you don't, your program may experience subtle, intermittent memory leaks.
+- When you declare placement versions of `new` and `delete`, 
+  be sure **not** to ~~unintentionally hide the normal versions of those functions~~.
+
+
+
+
+
+
+### 🎯 Chapter 9. Miscellany
+
+### 📌 Item 53: Pay attention to compiler warnings
+
+- Take compiler warnings seriously, 
+  and strive to compile warning-free at the maximum warning level supported by your compilers.
+- **Don't** become dependent on compiler warnings, because different compilers warn about different things. 
+  Porting to a new compiler may eliminate warning messages you've come to rely on.
+
+
+
+
+
+
+### 📌 Item 54: Familiarize yourself with the standard library, including TR1
+
+- The primary standard C++ library functionality consists of the STL, iostreams, and locales. 
+  The C89 standard library is also included.
+- ~~TR1 adds support for smart pointers (e.g., `tr1::shared_ptr`), 
+  generalized function pointers (`tr1::function`), 
+  hash-based containers, regular expressions, and 10 other components.~~
+- ~~TR1 itself is only a specification. 
+  To take advantage of TR1, you need an implementation.
+  One source for implementations of TR1 components is Boost.~~ 
+
+
+
+
+
+
+### 📌 Item 55: Familiarize yourself with Boost
+
+- Boost is a community and web site for the development of free, open source, peer-reviewed C++ libraries. 
+  Boost plays an influential role in C++ standardization.
+- Boost offers implementations of many TR1 components, 
+  but it also offers many other libraries, too.
 
 
 
@@ -470,55 +1108,262 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 ---
 
-## 🌱 More Effective C++: 35 New Ways to Improve Your Programs and Designs
+## 🌱 _More Effective C++_
 
-### 📌 Item 1
+### 🎯 Chapter 1. Basics
 
-
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
+### 📌 Item 1: Distinguish between pointers and references
 
 
 
 
 
 
+### 📌 Item 2: Prefer C++-style casts
 
 
 
 
 
 
+### 📌 Item 3: Never treat arrays polymorphically
 
 
 
+
+
+
+### 📌 Item 4: Avoid gratuitous default constructors
+
+
+
+
+
+
+### 🎯 Chapter 2. Operators
+
+### 📌 Item 5: Be wary of user-defined conversion functions
+
+
+
+
+
+
+### 📌 Item 6: Distinguish between prefix and postfix forms of increment and decrement operators
+
+
+
+
+
+
+### 📌 Item 7: Never overload `&&`, `||`, or `,`
+
+
+
+
+
+
+### 📌 Item 8: Understand the different meanings of `new` and `delete`
+
+
+
+
+
+
+### 🎯 Chapter 3. Exceptions
+
+### 📌 Item 9: Use destructors to prevent resource leaks
+
+
+
+
+
+
+### 📌 Item 10: Prevent resource leaks in constructors
+
+
+
+
+
+
+### 📌 Item 11: Prevent exceptions from leaving destructors
+
+
+
+
+
+
+### 📌 Item 12: Understand how throwing an exception differs from passing a parameter or calling a virtual function
+
+
+
+
+
+
+### 📌 Item 13: Catch exceptions by reference
+
+
+
+
+
+
+### 📌 Item 14: Use exception specifications judiciously
+
+
+
+
+
+
+### 📌 Item 15: Understand the costs of exception handling
+
+
+
+
+
+
+### 🎯 Chapter 4. Efficiency
+
+### 📌 Item 16: Remember the 80-20 rule
+
+
+
+
+
+
+### 📌 Item 17: Consider using lazy evaluation
+
+
+
+
+
+
+### 📌 Item 18: Amortize the cost of expected computations
+
+
+
+
+
+
+### 📌 Item 19: Understand the origin of temporary objects
+
+
+
+
+
+
+### 📌 Item 20: Facilitate the return value optimization
+
+
+
+
+
+
+### 📌 Item 21: Overload to avoid implicit type conversions
+
+
+
+
+
+
+### 📌 Item 22: Consider using `op=` instead of stand-alone `op`
+
+
+
+
+
+
+### 📌 Item 23: Consider alternative libraries
+
+
+
+
+
+
+### 📌 Item 24: Understand the costs of virtual functions, multiple inheritance, virtual base classes, and RTTI
+
+
+
+
+
+
+### 🎯 Chapter 5. Techniques
+
+### 📌 Item 25: Virtualizing constructors and non-member functions
+
+
+
+
+
+
+### 📌 Item 26: Limiting the number of objects of a class
+
+
+
+
+
+
+### 📌 Item 27: Requiring or prohibiting heap-based objects
+
+
+
+
+
+
+### 📌 Item 28: Smart pointers
+
+- The originals in this Item is for C++98 and is already outdated. 
+  Refer to Effective Modern C++ Chapter 4 Smarter Pointers for details. 
+
+
+
+
+
+
+### 📌 Item 29: Reference counting
+
+
+
+
+
+
+### 📌 Item 30: Proxy classes
+
+
+
+
+
+
+### 📌 Item 31: Making functions virtual with respect to more than one object
+
+
+
+
+
+
+### 🎯 Chapter 6. Miscellany
+
+### 📌 Item 32: Program in the future tense
+
+
+
+
+
+
+### 📌 Item 33: Make non-leaf classes abstract
+
+
+
+
+
+
+### 📌 Item 34: Understand how to combine C++ and C in the same program
+
+
+
+
+
+
+### 📌 Item 35: Familiarize yourself with the language standard
 
 
 
@@ -527,50 +1372,370 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 ---
 
-## 🌱 Effective STL: 50 Specific Ways to Improve Your Use of the Standard Template Library
+## 🌱 _Effective STL_
 
-### 📌 Item 1
+### 🎯 Chapter 1. Containers
 
-
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
-### 📌 
+### 📌 Item 1: Choose your containers with care
 
 
 
 
 
 
+### 📌 Item 2: Beware the illusion of container-independent code
 
 
 
 
+
+
+### 📌 Item 3: Make copying cheap and correct for objects in containers
+
+
+
+
+
+
+### 📌 Item 4: Call `empty()` instead of checking `size()` against zero
+
+
+
+
+
+
+### 📌 Item 5: Prefer range member functions to their single-element counterparts
+
+
+
+
+
+
+### 📌 Item 6: Be alert for C++’s most vexing parse
+
+
+
+
+
+
+### 📌 Item 7: When using containers of newed pointers, remember to delete the pointers before the container is destroyed
+
+
+
+
+
+
+### 📌 Item 8: Never create containers of `std::auto_ptr`s
+
+- `std::auto_ptr` itself is already deprecated since C++11, so this item is also outdated. 
+
+
+
+
+
+
+### 📌 Item 9: Choose carefully among erasing options
+
+
+
+
+
+
+### 📌 Item 10: Be aware of allocator conventions and restrictions
+
+
+
+
+
+
+### 📌 Item 11: Understand the legitimate uses of custom allocators
+
+
+
+
+
+
+### 📌 Item 12: Have realistic expectations about the thread safety of STL containers
+
+
+
+
+
+
+### 🎯 Chapter 2. `std::vector` and `std::string`
+
+### 📌 Item 13: Prefer `std::vector` and `std::string` to dynamically allocated arrays
+
+
+
+
+
+
+### 📌 Item 14: Use `reserve()` to avoid unnecessary reallocations
+
+
+
+
+
+
+### 📌 Item 15: Be aware of variations in `std::string` implementations
+
+
+
+
+
+
+### 📌 Item 16: Know how to pass `std::vector` and `std::string` data to legacy APIs
+
+
+
+
+
+
+### 📌 Item 17: Use “the `swap` trick” to trim excess capacity
+
+
+
+
+
+
+### 📌 Item 18: Avoid using `std::vector<bool>`
+
+
+
+
+
+
+### 🎯 Chapter 3. Associative Containers
+
+### 📌 Item 19: Understand the difference between equality and equivalence
+
+
+
+
+
+
+### 📌 Item 20: Specify comparison types for associative containers of pointers
+
+
+
+
+
+
+### 📌 Item 21: Always have comparison functions return `false` for equal values
+
+
+
+
+
+
+### 📌 Item 22: Avoid in-place key modification in `std::set` and `std::multiset`
+
+
+
+
+
+
+### 📌 Item 23: Consider replacing associative containers with sorted `std::vector`s
+
+
+
+
+
+
+### 📌 Item 24: Choose carefully between `std::map::operator[]` and `std::map::insert` when efficiency is important
+
+
+
+
+
+
+### 📌 Item 25: Familiarize yourself with the nonstandard hashed containers
+
+
+
+
+
+
+### 🎯 Chapter 4. Iterators
+
+### 📌 Item 26: Prefer `iterator` to `const_iterator`, `reverse_iterator`, and `const_reverse_iterator`
+
+- Deprecated. Refer to _Effective Modern C++_ Item 13 for details. 
+
+
+
+
+
+
+### 📌 Item 27: Use `distance()` and `advance()` to convert a container’s `const_iterator`s to `iterator`s
+
+
+
+
+
+
+### 📌 Item 28: Understand how to use a `reverse_iterator`’s base `iterator`
+
+
+
+
+
+
+### 📌 Item 29: Consider `std::istreambuf_iterator`s for character-by-character input
+
+
+
+
+
+
+### 🎯 Chapter 5. Algorithms
+
+### 📌 Item 30: Make sure destination ranges are big enough
+
+
+
+
+
+
+### 📌 Item 31: Know your sorting options
+
+
+
+
+
+
+### 📌 Item 32: Follow `remove`-like algorithms by erase if you really want to remove something
+
+
+
+
+
+
+### 📌 Item 33: Be wary of `remove`-like algorithms on containers of pointers
+
+
+
+
+
+
+### 📌 Item 34: Note which algorithms expect sorted ranges
+
+
+
+
+
+
+### 📌 Item 35: Implement simple case-insensitive string comparisons via `mismatch` or `lexicographical_compare`
+
+
+
+
+
+
+### 📌 Item 36: Understand the proper implementation of `std::copy_if`
+
+
+
+
+
+
+### 📌 Item 37: Use `std::accumulate` or `std::for_each` to summarize ranges
+
+
+
+
+
+
+### 🎯 Chapter 6. Functors, Functor Classes, Functions, etc. 
+
+### 📌 Item 38: Design functor classes for pass-by-value
+
+
+
+
+
+
+### 📌 Item 39: Make predicates pure functions
+
+
+
+
+
+
+### 📌 Item 40: Make functor classes adaptable
+
+
+
+
+
+
+### 📌 Item 41: Understand the reasons for `std::ptr_fun`, `std::mem_fun`, and `std::mem_fun_ref`
+
+
+
+
+
+
+### 📌 Item 42: Make sure `std::less<T>` means `operator<`
+
+
+
+
+
+
+### 🎯 Chapter 7. Programming with the STL 
+
+### 📌 Item 43: Prefer algorithm calls to hand-written loops
+
+
+
+
+
+
+### 📌 Item 44: Prefer member functions to algorithms with the same names
+
+
+
+
+
+
+### 📌 Item 45: Distinguish among `std::count`, `std::find`, `std::binary_search`, `std::lower_bound`, `std::upper_bound`, and `std::equal_range`
+
+
+
+
+
+
+### 📌 Item 46: Consider function objects instead of functions as algorithm parameters
+
+
+
+
+
+
+### 📌 Item 47: Avoid producing write-only code
+
+
+
+
+
+
+### 📌 Item 48: Always `#include` the proper headers
+
+
+
+
+
+
+### 📌 Item 49: Learn to decipher STL-related compiler diagnostics
+
+
+
+
+
+
+### 📌 Item 50: Familiarize yourself with STL-related web sites
 
 
 
@@ -579,9 +1744,9 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 --- 
 
-## 🌱 Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 And C++14
+## 🌱 _Effective Modern C++_
 
-## [CHAPTER 1] Deducing Types
+### 🎯 Chapter 1. Deducing Types
 
 ### 📌 Item 1: Understand template type deduction
 
@@ -1285,7 +2450,7 @@ void f(const T & param)
 
 
 
-## [CHAPTER 2] `auto`
+### 🎯 Chapter 2. `auto`
 
 ### 📌 Item 5: Prefer `auto` to explicit type declarations
 
@@ -1616,7 +2781,7 @@ auto ep2 = static_cast<float>(calcEpsilon());
 
 
 
-## [CHAPTER 3] Moving to Modern C++
+### 🎯 Chapter 3. Moving to Modern C++
 
 ### 📌 Item 7: Distinguish between `()` and `{}` when creating objects
 
@@ -3193,7 +4358,7 @@ In C++11, it’s eminently practical, and C++14 tidies up the few bits of unfini
 
 - `noexcept` is part of a function’s interface, and that means that callers may depend on it.
 - `noexcept` functions are more optimizable than non-noexcept functions.
-- `noexcept` is particularly valuable for the move operations, swap, memory deallocation functions, and destructors.
+- `noexcept` is particularly valuable for the move operations, `swap`, memory deallocation functions, and destructors.
 - Most functions are exception-neutral rather than `noexcept`.
   Use `noexcept` only for *exception-free* functions. 
 - Not all library functions that do not emit exceptions are marked `nonexcept`. 
@@ -4327,7 +5492,7 @@ Item 26 demonstrates that it can have important consequences.
 
 
 
-## [CHAPTER 4] Smart Pointers
+### 🎯 Chapter 4. Smart Pointers
 
 Six reasons why a raw pointer is hard to love:
 1. Its declaration **doesn’t** indicate whether it points to a single object or to an array. 
@@ -4688,7 +5853,7 @@ but they don’t hinder callers from replacing it with its more flexible sibling
 - Avoid creating `std::shared_ptr`s from variables of raw pointer type.
 - Classes derived from `std::enable_shared_from_this` may and must be managed by `std::shared_ptr`s. 
   These classes ususally declare their constructors private and offer factory functions returning `std::shared_ptr`s. 
-  Calling `shared_from_this(this)` without a control block is <u><i>undefined behavior</i></u>. 
+  Calling `shared_from_this(this)` without a control block is _<u>undefined behavior</u>_. 
 
 
 `std::shared_ptr` is the C++11 way of binding best of multiple worlds together:
@@ -4823,24 +5988,23 @@ We can envision the memory associated with a `std::shared_ptr<T>` object as look
 ```
      std::shared_ptr<T>
 ┌──────────────────────────┐           ┌──────────┐
-│       Pointer to T       │ --------→ │ T Object │
-├──────────────────────────┤           └──────────┘            Control Block
-│ Pointer to Control Block │                             ┌────────────────────────┐
-└──────────────────────────┘ --------------------------→ │    Reference Count     │
-                                                         ├────────────────────────┤
+│       Pointer to T       │ --------→ │ T Object │            Control Block
+├──────────────────────────┤           └──────────┘      ┌────────────────────────┐      
+│ Pointer to Control Block │ --------------------------→ │    Reference Count     │
+└──────────────────────────┘                             ├────────────────────────┤
                                                          │       Weak Count       │
                                                          ├────────────────────────┤
                                                          │       Other Data       │
                                                          │ (E.g., Custom Deleter, │
                                                          │  Allocator, etc.)      │
-                                                         └────────────────────────┘
+                                                         └────────────────────────┘                          
 ```
 An object’s control block is set up by the function creating the <u><i>first</i></u> `std::shared_ptr` to the object. 
 At least that’s what’s supposed to happen. 
 In general, it’s impossible for a function creating a `std::shared_ptr` to an object 
 to know whether some other `std::shared_ptr` already points to that object, 
 so the following rules for control block creation are used:
-- **<u><i>`std::make_shared`</i></u> (see Item 21) always creates a control block**. 
+- **`std::make_shared` (see Item 21) always creates a control block**. 
   It manufactures a new object to point to, 
   so there is certainly no control block for that object at the time `std::make_shared` is called.
 - **A control block is created when a `std::shared_ptr` is constructed from a <u><i>unique-ownership pointer</i></u> 
@@ -6243,7 +7407,7 @@ there’s **no** need to jump through the function-definition hoops that use of 
 
 
 
-## [CHAPTER 5] Rvalue References, Move Semantics, and Perfect Forwarding
+### 🎯 Chapter 5. Rvalue References, Move Semantics, and Perfect Forwarding
 
 ### 📌 Item 23: Understand `std::move` and `std::forward`
 
@@ -6362,14 +7526,24 @@ there’s **no** need to jump through the function-definition hoops that use of 
 
 
 
-## [CHAPTER 6] Lambda Expressions
+### 🎯 Chapter 6. Lambda Expressions
 
 ### 📌 Item 31: Avoid default capture modes
+
+- Default by-reference capture can lead to dangling references.
+- Default by-value capture is susceptible to dangling pointers (especially `this`),
+  and it misleadingly suggests that lambdas are self-contained.
+
+
 
 
 
 
 ### 📌 Item 32: Use init capture to move objects into closures
+
+- Use C++14’s init capture to move objects into closures.
+- In C++11, emulate init capture via hand-written classes or `std::bind`.
+
 
 
 
@@ -6377,37 +7551,58 @@ there’s **no** need to jump through the function-definition hoops that use of 
 
 ### 📌 Item 33: Use `decltype` on `auto &&` parameters to `std::forward` them
 
+- Use `decltype` on `auto &&` parameters to `std::forward` them
+
+
+
 
 
 
 ### 📌 Item 34: Prefer lambdas to `std::bind`
 
+- Lambdas are more readable, more expressive, and may be more efficient than using `std::bind`.
+- In C++11 only, `std::bind` may be useful for implementing move capture 
+  or for binding objects with templatized function call operators.
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-## [CHAPTER 7] The Concurrency API
+### 🎯 Chapter 7. The Concurrency API
 
 ### 📌 Item 35: Prefer task-based programming to thread-based
+
+- The `std::thread` API offers no direct way to get return values from asynchronously run functions, 
+  and if those functions throw, the program is terminated.
+- Thread-based programming calls for manual management of 
+  thread exhaustion, oversubscription, load balancing, and adaptation to new platforms.
+- Task-based programming via `std::async` with the default launch policy handles most of these issues for you.
+
+
+
 
 
 
 ### 📌 Item 36: Specify `std::launch::async` if asynchronicity is essential
 
+- The default launch policy for std::async permits both asynchronous and synchronous task execution.
+- This flexibility leads to uncertainty when accessing `thread_local`s, 
+  implies that the task may never execute, 
+  and affects program logic for timeout-based `wait` calls.
+- Specify `std::launch::async` if asynchronous task execution is essential.
+
+
+
 
 
 
 ### 📌 Item 37: Make `std::thread`s unjoinable on all paths
+
+- Make `std::thread`s unjoinable on all paths.
+- `join`-on-destruction can lead to difficult-to-debug performance anomalies.
+- `detach`-on-destruction can lead to difficult-to-debug undefined behavior.
+- Declare `std::thread` objects last in lists of data members.
 
 
 
@@ -6416,41 +7611,73 @@ there’s **no** need to jump through the function-definition hoops that use of 
 
 ### 📌 Item 38: Be aware of varying thread handle destructor behavior
 
+- Future destructors normally just destroy the future’s data members.
+- The final future referring to a shared state 
+  for a non-deferred task launched via `std::async `
+  blocks until the task completes.
+
+
 
 
 
 
 ### 📌 Item 39: Consider `void` futures for one-shot event communication
 
+- For simple event communication, 
+  conditional-variable-based designs require a superfluous mutex, 
+  impose constraints on the relative progress of detecting and reacting tasks, 
+  and require reacting tasks to verify that the event has taken place.
+- Designs employing a flag avoid those problems, but are based on polling, **not** blocking.
+- A conditional variable and flag can be used together, 
+  but the resulting communications mechanism is somewhat stilted.
+- Using `std::promise`s and futures dodges these issues, 
+  but the approach uses heap memory for shared states, 
+  and it’s limited to one-shot communication.
+
+
+
 
 
 
 ### 📌 Item 40: Use `std::atomic` for concurrency, `volatile` for special memory
 
+- `std::atomic` is for data accessed from multiple threads without using mutexes. 
+  It’s a tool for writing concurrent software. 
+- `volatile` is for memory where reads and writes should not be optimized away. 
+  It’s a tool for working with special memory. 
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-## [CHAPTER 8] Tweaks
+### 🎯 Chapter 8. Tweaks
 
 ### 📌 Item 41: Consider pass by value for copyable parameters that are cheap to move and always copied
+
+- For copyable, cheap-to-move parameters that are always copied, 
+  pass by value may be nearly as efficient as pass by reference, 
+  it’s easier to implement, and it can generate less object code.
+- Copying parameters via construction may be significantly 
+  more expensive than copying them via assignment.
+- Pass by value is subject to the slicing problem, 
+  so it’s typically inappropriate for base class parameter types.
+
 
 
 
 
 
 ### 📌 Item 42: Consider emplacement instead of insertion
+
+- In principle, emplacement functions should sometimes be more efficient than their insertion counterparts, 
+  and they should never be less efficient.
+- In practice, they’re most likely to be faster when:
+    1. the value being added is constructed into the container, not assigned; 
+    2. the argument type(s) passed differ from the type held by the container; 
+    3. the container won’t reject the value being added due to it being a duplicate.
+- Emplacement functions may perform type conversions that would be rejected by insertion functions.
+
 
 
 
