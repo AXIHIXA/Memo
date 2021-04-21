@@ -8044,7 +8044,97 @@ The notion of universal references normally preferable to working through the de
 - Do the same thing for rvalue references and universal references 
   being returned from functions that return by value.
 - **Never** apply `std::move` or `std::forward` to local objects 
-  if they would otherwise be eligible for the _<u>return value optimization</u>_.
+  if they would otherwise be eligible for the <u>_return value optimization_</u>.
+
+
+Rvalue references bind only to objects that are candidates for moving. 
+If you have an rvalue reference parameter, you know that the object it’s bound to may be moved:
+```c++
+class Widget 
+{
+public:
+    // rhs definitely refers to an object eligible for moving
+    Widget(Widget && rhs);
+    
+    // ...
+}
+```
+That being the case, you’ll want to pass such objects to other functions in a way 
+that permits those functions to take advantage of the object’s rvalueness. 
+The way to do that is to cast parameters bound to such objects to rvalues. 
+As Item 23 explains, that’s not only what `std::move` does, it’s what it was created for:
+```c++
+class Widget
+{
+public:
+    // rhs is rvalue reference
+    Widget(Widget && rhs) : name(std::move(rhs.name)), p(std::move(rhs.p))
+    {
+        // ...
+    }
+
+    // ...
+
+private:
+    std::string name;
+    std::shared_ptr<SomeDataStructure> p;
+};
+```
+A universal reference, on the other hand (see Item 24), might be bound to an object that’s eligible for moving. 
+Universal references should be cast to rvalues only if they were initialized with rvalues. 
+Item 23 explains that this is precisely what `std::forward` does:
+```c++
+class Widget
+{
+public:
+    // newName is universal reference
+    template <typename T>
+    void setName(T && newName)
+    {
+        name = std::forward<T>(newName);
+    }
+
+    // ...
+};
+```
+In short, rvalue references should be unconditionally cast to rvalues (via `std::move`)
+when forwarding them to other functions, because they’re always bound to rvalues,
+and universal references should be conditionally cast to rvalues (via `std::forward`)
+when forwarding them, because they’re only sometimes bound to rvalues.
+
+
+Item 23 explains that using `std::forward` on rvalue references can be made to exhibit the proper behavior, 
+but the source code is wordy, error-prone, and unidiomatic, 
+so you should avoid using `std::forward` with rvalue references. 
+Even worse is the idea of using `std::move` with universal references, 
+because that can have the effect of unexpectedly modifying lvalues (e.g., local variables):
+```c++
+class Widget
+{
+public:
+    // universal reference compiles, but is bad, bad, bad!
+    template <typename T>
+    void setName(T && newName) 
+    {
+        name = std::move(newName);
+    } 
+    
+    // ...
+    
+private:
+    std::string name;
+    std::shared_ptr<SomeDataStructure> p;
+};
+
+std::string getWidgetName();  // factory function
+Widget w;
+auto n = getWidgetName();     // n is local variable
+w.setName(n);                 // moves n into w! n's value now unknown
+```
+
+
+
+
 
 
   
