@@ -7409,11 +7409,420 @@ there’s **no** need to jump through the function-definition hoops that use of 
 
 ### 🎯 Chapter 5. Rvalue References, Move Semantics, and Perfect Forwarding
 
+When you first learn about them, move semantics and perfect forwarding seem pretty straightforward:
+
+- **Move semantics** makes it possible for compilers to replace expensive copying operations with less expensive moves. 
+  In the same way that copy constructors and copy assignment operators give you control over what it means to copy objects, 
+  move constructors and move assignment operators offer control over the semantics of moving. 
+  Move semantics also enables the creation of move-only types, such as `std::unique_ptr`, `std::future`, and `std::thread`.
+- **Perfect forwarding** makes it possible to write function templates 
+  that take arbitrary arguments and forward them to other functions 
+  such that the target functions receive exactly the same arguments 
+  as were passed to the forwarding functions.
+
+Rvalue references are the glue that ties these two rather disparate features together.
+They’re the underlying language mechanism that makes both move semantics and perfect forwarding possible.
+
+
+Move semantics, perfect forwarding, and rvalue references is more nuanced than they appear. 
+`std::move` **doesn’t** move anything, for example, and perfect forwarding is imperfect. 
+Move operations **aren’t** always cheaper than copying; 
+when they are, they’re **not** always as cheap as you’d expect; 
+and they’re **not** always called in a context where moving is valid. 
+The construct `Type &&` **doesn’t** always represent an rvalue reference.
+
+
+No matter how far you dig into these features, it can seem that there’s always more to uncover. 
+Fortunately, there is a limit to their depths. 
+This chapter will take you to the bedrock. 
+Once you arrive, this part of C++11 will make a lot more sense. 
+You’ll know the usage conventions for `std::move` and `std::forward`, for example. 
+You’ll be comfortable with the ambiguous nature of `Type &&`. 
+You’ll understand the reasons for the surprisingly varied behavioral profiles of move operations. 
+All those pieces will fall into place. 
+At that point, you’ll be back where you started, 
+because move semantics, perfect forwarding, and rvalue references will once again seem pretty straightforward. 
+But this time, they’ll stay that way.
+
+
+In the Items in this chapter, it’s especially important to bear in mind that _<u>a parameter is always an lvalue</u>_, 
+even if its type is an rvalue reference. That is, given
+```c++
+void f(Widget && w);
+```
+the parameter w is an lvalue, even though its type is rvalue-reference-to-`Widget`. 
+
+
+
+
+
+
 ### 📌 Item 23: Understand `std::move` and `std::forward`
 
 - `std::move` performs an unconditional cast to an rvalue. In and of itself, it **doesn’t** move anything.
 - `std::forward` casts its argument to an rvalue only if that argument is bound to an rvalue.
 - Neither `std::move` nor `std::forward` ~~do anything at runtime~~.
+
+
+It’s useful to approach `std::move` and `std::forward` in terms of what they _<u>don’t</u>_ do.
+`std::move` **doesn’t** ~~move anything~~. `std::forward` **doesn’t** ~~forward anything~~. 
+At runtime, **neither** does anything at all. They generate **no** ~~executable code~~. Not a single byte.
+
+
+`std::move` and `std::forward` are merely function templates that perform casts. 
+`std::move` unconditionally casts its argument to an rvalue, 
+while `std::forward` performs this cast only if a particular condition is fulfilled. That’s it.
+The explanation leads to a new set of questions, but, fundamentally, that’s the complete story.
+
+#### `std::move`
+
+To make the story more concrete, here’s a sample implementation of `std::move` in C++11.
+```c++
+// <type_traits>
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/// remove_reference
+template <typename _Tp>
+struct remove_reference
+{
+    typedef _Tp type;
+};
+
+template <typename _Tp>
+struct remove_reference<_Tp &>
+{
+    typedef _Tp type;
+};
+
+template <typename _Tp>
+struct remove_reference<_Tp &&>
+{
+    typedef _Tp type;
+};
+
+
+// <bits/move.h>
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/**
+ *  @brief  Convert a value to an rvalue.
+ *  @param  __t  A thing of arbitrary type.
+ *  @return The parameter cast to an rvalue-reference to allow moving it.
+ */
+template <typename _Tp>
+constexpr typename std::remove_reference<_Tp>::type &&
+move(_Tp && __t) noexcept
+{
+    return static_cast<typename std::remove_reference<_Tp>::type &&>(__t);
+}
+```
+I’ve highlighted two parts of the code for you. 
+One is the name of the function, 
+because the return type specification is rather noisy, 
+and I don’t want you to lose your bearings in the din. 
+The other is the cast that comprises the essence of the function.
+As you can see, `std::move` takes a universal reference to an object 
+and it returns a reference to the same object.
+
+
+The `&&` part of the function’s return type implies that `std::move` returns an rvalue reference, 
+but, as Item 28 explains, if the type `T` happens to be an lvalue reference, `T &&`would become an lvalue reference. 
+To prevent this from happening, the type trait (see Item 9) `std::remove_reference` is applied to `T`, 
+thus ensuring that `&&` is applied to a type that **isn’t** a reference. 
+That guarantees that `std::move` truly returns an rvalue reference, and that’s important, 
+because rvalue references returned from functions are rvalues. 
+Thus, `std::move` casts its argument to an rvalue, and that’s all it does.
+
+
+To be strict, all C++ expressions are of 1 of the 3 basic value categories, namely lvalue, prvalue and xvalue. 
+There are also 2 so-called compound value categories for historical reasons, 
+namely glvalue (including lvalue and xvalue, because they may appear on the lhs of an assignment operator) 
+and rvalue (including prvalue and xvalue, because they may appear on the rhs of an assignment operator).
+A function call or an overloaded operator expression, whose return type is rvalue reference to object, is a xvalue expression. 
+
+
+With the introduction of move semantics in C++11, 
+value categories were redefined to characterize two independent properties of expressions:
+
+- **has identity**: 
+  it's possible to determine whether the expression refers to the same entity as another expression, 
+  such as by comparing addresses of the objects or the functions they identify (obtained directly or indirectly);
+- **can be moved from**: 
+  move constructor, move assignment operator, or another function overload 
+  that implements move semantics can bind to the expression. 
+
+In C++11, expressions that:
+
+- have identity and cannot be moved from are called lvalue expressions;
+- have identity and can be moved from are called xvalue expressions;
+- do not have identity and can be moved from are called prvalue expressions;
+- do not have identity and cannot be moved from are not used. 
+
+The expressions that have identity are called glvalue expressions. 
+Both lvalues and xvalues are glvalue expressions.
+
+
+The expressions that can be moved from are called rvalue expressions. 
+Both prvalues and xvalues are rvalue expressions.
+
+
+As an aside, `std::move` can be implemented with less fuss in C++14. 
+Thanks to function return type deduction (see Item 3) 
+and to the Standard Library’s alias template `std::remove_reference_t` (see Item 9), 
+`std::move` can be written this way:
+```c++
+template <typename T>
+constexpr decltype(auto) move(T && param) noexcept
+{
+    return static_cast<std::remove_reference_t<T> &&>(param);
+}
+```
+Because `std::move` does nothing but _<u>cast its argument to an rvalue</u>_, 
+there have been suggestions that a better name for it might have been something like `rvalue_cast`.
+Be that as it may, the name we have is `std::move`, 
+so it’s important to remember what `std::move` does and doesn’t do. 
+It does _<u>cast</u>_. It **doesn’t** ~~move~~.
+
+
+By definition, rvalues are candidates for moving (have or don't have identities), 
+so applying `std::move` to an object tells the compiler that the object is eligible to be moved from. 
+That’s why `std::move` has the name it does: to make it easy to designate objects that may be moved from.
+
+
+In truth, rvalues are only usually candidates for moving. 
+Suppose you’re writing a class representing annotations. 
+The class’s constructor takes a `std::string` parameter comprising the annotation, 
+and it copies the parameter to a data member. 
+Flush with the information in Item 41 (which is also clang-tidy suggestion), you declare a by-value parameter: 
+```c++
+class Annotation 
+{
+public:
+    // param to be copied, so per Item 41, pass by value
+    explicit Annotation(std::string text);
+    
+    // ...
+}; 
+```
+But `Annotation`’s constructor needs only to read text’s value. It **doesn’t** need to modify it. 
+In accord with the time-honored tradition of using `const` whenever possible,
+you revise your declaration such that text is `const`:
+```c++
+class Annotation 
+{
+public:
+    explicit Annotation(const std::string text);
+    
+    // ...
+}; 
+```
+To avoid paying for a copy operation when copying text into a data member, 
+you remain true to the advice of Item 41 and apply `std::move` to text, thus producing an rvalue:
+```c++
+class Annotation 
+{
+public:
+    // "move" text into value; this code doesn't do what it seems to!
+    explicit Annotation(const std::string text) : value(std::move(text)) 
+    {
+        // ...
+    }
+    
+    // ...
+    
+private:
+    std::string value;
+}; 
+```
+This code compiles. This code links. This code runs. 
+This code sets `Annotation::value` to the content of `text`. 
+The only thing separating this code from a perfect realization of your vision 
+is that `text` is **not** ~~moved into~~ `value`, it’s copied. 
+Sure, `text` is cast to an rvalue by `std::move`, but text is declared to be a `const std::string`, 
+so before the cast, `text` is an lvalue `const std::string`, 
+and the result of the cast is an rvalue `const std::string`, but throughout it all, the `const`ness remains.
+
+
+Consider the effect that has when compilers have to determine which `std::string` constructor to call. 
+There are two possibilities:
+```c++
+// std::string is actually a typedef for std::basic_string<char>
+class string 
+{
+public: 
+    // ...
+    string(const string & rhs);  // copy constructor
+    string(string && rhs);       // move constructor
+    // ...
+};
+```
+In the `Annotation` constructor’s member initialization list, 
+the result of `std::move(text)` is an rvalue of type `const std::string`. 
+That rvalue **can’t** be passed to `std::string`’s move constructor, 
+because the move constructor takes an rvalue reference to a non-`const` `std::string`.
+The rvalue can, however, be passed to the copy constructor, 
+because an lvalue-reference-to-`const` is permitted to bind to a `const` rvalue. 
+The member initialization therefore invokes the copy constructor in `std::string`, 
+even though text has been cast to an rvalue! 
+Such behavior is essential to maintaining `const`-correctness. 
+Moving a value out of an object generally modifies the object, 
+so the language should not permit const objects to be passed to functions
+(such as move constructors) that could modify them.
+
+
+There are two lessons to be drawn from this example. 
+
+1. **Don’t** declare objects `const` if you want to be able to move from them. 
+   Move requests on `const` objects are silently transformed into copy operations. 
+2. `std::move` not only **doesn’t** actually ~~move anything~~, 
+   it **doesn’t** even ~~guarantee that the object it’s casting will be eligible to be moved~~. 
+   The only thing you know for sure about the result of applying `std::move` to an object is that it’s an rvalue. 
+
+#### `std::forward`
+
+The story for `std::forward` is similar to that for `std::move`, 
+but whereas `std::move` unconditionally casts its argument to an rvalue, 
+`std::forward` does it only under certain conditions. 
+`std::forward` is a _<u>conditional cast</u>_. 
+To understand when it casts and when it doesn’t, recall how `std::forward` is typically used. 
+The most common scenario is a function template taking a universal reference parameter
+that is to be passed to another function:
+```c++
+void process(const Widget & lvalArg);  // process lvalues
+void process(Widget && rvalArg);       // process rvalues
+
+// template that passes param to process
+template<typename T> 
+void logAndProcess(T && param) 
+{
+    // get current time
+    auto now = std::chrono::system_clock::now();
+    makeLogEntry("Calling 'process'", now);
+    process(std::forward<T>(param));
+}
+```
+Consider two calls to `logAndProcess`, one with an lvalue, the other with an rvalue:
+```c++
+Widget w;
+logAndProcess(w);             // call with lvalue
+logAndProcess(std::move(w));  // call with rvalue
+```
+Inside `logAndProcess`, the parameter `param` is passed to the function `process`. 
+`process` is overloaded for lvalues and rvalues. 
+When we call `logAndProcess` with an lvalue, we naturally expect that lvalue to be forwarded to `process` as an lvalue, 
+and when we call logAndProcess with an rvalue, we expect the rvalue overload of `process` to be invoked.
+
+
+But `param` is a function parameter, while all function parameters are lvalue expressions. 
+Every call to `process` inside `logAndProcess` will thus want to invoke the lvalue overload for `process`. 
+To prevent this, we need a mechanism for `param` to be cast to an rvalue 
+if and only if the argument with which `param` was initialized (the argument passed to `logAndProcess`) was an rvalue. 
+This is precisely what `std::forward` does. 
+That’s why `std::forward`is a conditional cast: 
+it casts to an rvalue only if its argument was initialized with an rvalue.
+
+
+You may wonder how `std::forward` can know whether its argument was initialized with an rvalue. 
+In the code above, for example, how can `std::forward` tell whether `param` was initialized with an lvalue or an rvalue? 
+The brief answer is that that information is encoded in `logAndProcess`’s template parameter `T`. 
+That template parameter is passed to `std::forward`, which recovers the encoded information. 
+For details on exactly how that works, consult Item 28. 
+```c++
+// <bits/move.h>
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/**
+ *  @brief  Forward an lvalue.
+ *  @return The parameter cast to the specified type.
+ *
+ *  This function is used to implement "perfect forwarding".
+ */
+template <typename _Tp>
+constexpr _Tp &&
+forward(typename std::remove_reference<_Tp>::type & __t) noexcept
+{
+    return static_cast<_Tp &&>(__t);
+}
+
+/**
+ *  @brief  Forward an rvalue.
+ *  @return The parameter cast to the specified type.
+ *
+ *  This function is used to implement "perfect forwarding".
+ */
+template <typename _Tp>
+constexpr _Tp &&
+forward(typename std::remove_reference<_Tp>::type && __t) noexcept
+{
+    static_assert(!std::is_lvalue_reference<_Tp>::value, 
+                  "template argument substituting _Tp is an lvalue reference type");
+    return static_cast<_Tp &&>(__t);
+}
+```
+Given that both `std::move` and `std::forward` boil down to casts, 
+the only difference being that `std::move` always casts, while `std::forward` only sometimes does,
+you might ask whether we can dispense with `std::move` and just use `std::forward` everywhere. 
+From a purely technical perspective, the answer is yes: `std::forward` can do it all. 
+`std::move` isn’t necessary. 
+Of course, neither function is really _<u>necessary</u>_,
+because we could write casts everywhere, but I hope we agree that that would be, well, yucky.
+
+
+`std::move`’s attractions are convenience, reduced likelihood of error, and greater clarity. 
+Consider a class where we want to track how many times the move constructor is called. 
+A static counter that’s incremented during move construction is all we need. 
+Assuming the only non-static data in the class is a `std::string`, 
+here’s the conventional way (i.e., using `std::move`) to implement the move constructor:
+```c++
+class Widget 
+{
+public:
+    Widget(Widget && rhs) : s(std::move(rhs.s))
+    { 
+        ++moveCtorCalls; 
+    }
+    
+    // ...
+
+private:
+    static std::size_t moveCtorCalls;
+    std::string s;
+};
+```
+To implement the same behavior with `std::forward`, the code would look like this:
+```c++
+class Widget 
+{
+public:
+    // unconventional, undesirable implementation
+    Widget(Widget && rhs) : s(std::forward<std::string>(rhs.s)) 
+    { 
+        ++moveCtorCalls; 
+    } 
+  
+    // ...
+};
+```
+Note first that `std::move` requires only a function argument (`rhs.s`), 
+while `std::forward` requires both a function argument (`rhs.s`) and a template type argument (`std::string`). 
+Then note that the type we pass to `std::forward` should be a non-reference, 
+because that’s the convention for encoding that the argument being passed is an rvalue (see Item 28). 
+Together, this means that `std::move` requires less typing than `std::forward`, 
+and it spares us the trouble of passing a type argument that encodes that the argument we’re passing is an rvalue. 
+It also eliminates the possibility of our passing an incorrect type 
+(e.g., `std::string &`, which would result in the data member s being copy constructed instead of move constructed).
+
+
+More importantly, the use of `std::move` conveys an unconditional cast to an rvalue,
+while the use of `std::forward` indicates a cast to an rvalue only for references to which rvalues have been bound. 
+Those are two very different actions. 
+The first one typically sets up a move, while the second one just passes (_<u>forwards</u>_) 
+an object to another function in a way that retains its original lvalueness or rvalueness. 
+Because these actions are so different, it’s good that we have two different functions 
+(and function names) to distinguish them.
+
+
+
 
 
 

@@ -2047,6 +2047,32 @@ sizeof expr   // 返回表达式 结果类型 大小
 
 ### 🌱 [值类别](https://en.cppreference.com/w/cpp/language/value_category)（Value Category）
 
+#### History
+
+With the introduction of move semantics in C++11,
+value categories were redefined to characterize two independent properties of expressions:
+
+- **has identity**:
+  it's possible to determine whether the expression refers to the same entity as another expression,
+  such as by comparing addresses of the objects or the functions they identify (obtained directly or indirectly);
+- **can be moved from**:
+  move constructor, move assignment operator, or another function overload
+  that implements move semantics can bind to the expression.
+
+In C++11, expressions that:
+
+- have identity and cannot be moved from are called lvalue expressions;
+- have identity and can be moved from are called xvalue expressions;
+- do not have identity and can be moved from are called prvalue expressions;
+- do not have identity and cannot be moved from are not used.
+
+The expressions that have identity are called glvalue expressions.
+Both lvalues and xvalues are glvalue expressions.
+
+
+The expressions that can be moved from are called rvalue expressions.
+Both prvalues and xvalues are rvalue expressions.
+
 #### 基本值类别
 
 每个表达式 *只属于* 三种 *基本值类别* 中的一种： 
@@ -2121,7 +2147,7 @@ sizeof expr   // 返回表达式 结果类型 大小
         4. **不能**具有 *不完整类型* （除了类型`void`（见下文），或在`decltype`说明符中使用之外）
         5. **不能**具有 *抽象类类型或其数组类型* 
 
-#### 生活中常见的两类复合值类别
+#### 复合值类别
 
 - *泛左值* `glvalue`（generalized lvalue）
     - 哪些值类别是 *泛左值* 
