@@ -62,7 +62,7 @@ sudo gedit /etc/fstab
 # Use shared folders between VMWare guest and host
 # Keep same as real ubuntu system mount 
 # refer to https://kb.vmware.com/s/article/60262 for details
-.host:/    /media/ax/DATAIN    fuse.vmhgfs-fuse    defaults,allow_other,uid=1000     0    0
+vmhgfs-fuse    /media/ax/DATAIN    fuse    defaults,allow_other    0    0
 ```
 
 ## 🌱 Disable `apt-daily-update`
