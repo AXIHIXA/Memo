@@ -3114,14 +3114,14 @@ Practically speaking, the same is true of `NULL`:
 // g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
 
 #ifdef __GNUG__
-#define NULL __null
-#else                      /* G++ */
-#ifndef __cplusplus
-#define NULL ((void *) 0)
-#else                      /* C++ */
-#define NULL 0
-#endif                     /* C++ */
-#endif                     /* G++ */
+    #define NULL __null
+#else                              /* G++ */
+    #ifndef __cplusplus
+        #define NULL ((void *) 0)
+    #else                          /* C++ */
+        #define NULL 0
+    #endif                         /* C++ */
+#endif                             /* G++ */
 ```
 There is some uncertainty in the details in `NULL`’s case, 
 because implementations are allowed to give `NULL` an integral type other than `int` (e.g., `long`). 
@@ -7758,6 +7758,13 @@ forward(typename std::remove_reference<_Tp>::type && __t) noexcept
                   "template argument substituting _Tp is an lvalue reference type");
     return static_cast<_Tp &&>(__t);
 }
+
+// typical usage of std::forward: inside universal reference template functions:
+template <typename T>
+void foo(T && p)
+{
+    bar(std::forward<T>(p));
+}
 ```
 
 #### Distinguish usage of `std::move` from `std::forward`
@@ -8040,12 +8047,14 @@ The notion of universal references normally preferable to working through the de
 ### 📌 Item 25: Use `std::move` on rvalue references, `std::forward` on universal references
 
 - Apply `std::move` to rvalue references and `std::forward` to universal references 
-  the last time each is used.
-- Do the same thing for rvalue references and universal references 
-  being returned from functions that return by value.
+  the last time each is used, as well as when returned from functions that return by value.
+- Do **not** apply `std::forward` on rvalues, **nor** apply `std::move` on universal references. 
 - **Never** apply `std::move` or `std::forward` to local objects 
-  if they would otherwise be eligible for the <u>_return value optimization_</u>.
+  if they would otherwise be eligible for the <u>_Return Value Optimization_</u> (RVO).
+- **Never** apply `std::move` on a return statement 
+  that would otherwise qualify for the RVO, or returns a by-value parameter. 
 
+#### Using `std::move` on universal references may dangle
 
 Rvalue references bind only to objects that are candidates for moving. 
 If you have an rvalue reference parameter, you know that the object it’s bound to may be moved:
@@ -8106,6 +8115,8 @@ when forwarding them, because they’re only sometimes bound to rvalues.
 Item 23 explains that using `std::forward` on rvalue references can be made to exhibit the proper behavior, 
 but the source code is wordy, error-prone, and unidiomatic, 
 so you should avoid using `std::forward` with rvalue references. 
+
+
 Even worse is the idea of using `std::move` with universal references, 
 because that can have the effect of unexpectedly modifying lvalues (e.g., local variables):
 ```c++
@@ -8131,13 +8142,348 @@ Widget w;
 auto n = getWidgetName();     // n is local variable
 w.setName(n);                 // moves n into w! n's value now unknown
 ```
+Here, the local variable `n` is passed to `w`. 
+`setName`, which the caller can be forgiven for assuming is a read-only operation on `n`. 
+But because `setName` internally uses `std::move` to unconditionally cast its reference parameter to an rvalue, 
+`n`’s value will be moved into `w.name`, 
+and `n` will come back from the call to `setName` with an unspecified value.
+That’s the kind of behavior that can drive callers to despair, possibly to violence.
+
+#### Drawbacks of overloading on lvalue-reference-to-`const` and rvalue-reference
+
+You might argue that `setName` shouldn’t have declared its parameter to be a universal reference. 
+Such references can’t be `const` (see Item 24), yet `setName` surely shouldn’t modify its parameter. 
+You might point out that if `setName` had simply been overloaded for `const` lvalues and for rvalues, 
+the whole problem could have been avoided. 
+Like this:
+```c++
+class Widget
+{
+public:
+    // set from const lvalue
+    void setName(const std::string & newName) 
+    {
+        name = newName;
+    }
+
+    // set from rvalue
+    void setName(std::string && newName) 
+    {
+        name = std::move(newName);
+    }
+    
+    // ...
+};
+```
+That would certainly work in this case, but there are drawbacks. 
+First, it’s more source code to write and maintain (two functions instead of a single template). 
+Second, it can be less efficient. For example, consider this use of `setName`:
+```c++
+w.setName("Adela Novak");
+```
+With the version of `setName` taking a universal reference, 
+the string literal `"Adela Novak"` would be passed to `setName`, 
+where it would be conveyed to the assignment operator for the `std::string` inside `w`. 
+`w`’s name data member would thus be assigned directly from the string literal; 
+no temporary `std::string` objects would arise. 
 
 
+With the overloaded versions of `setName`, however, 
+a temporary `std::string` object would be created for `setName`’s parameter to bind to, 
+and this temporary `std::string` would then be moved into `w`’s data member. 
+A call to `setName` would thus entail execution of 
 
-
-
-
+- one `std::string` constructor (to create the temporary); 
+- one `std::string` move assignment operator (to move `newName` into `w.name`); 
+- one `std::string` destructor (to destroy the temporary). 
   
+That’s almost certainly a more expensive execution sequence 
+than invoking only the `std::string` assignment operator taking a `const char *` pointer. 
+The additional cost is likely to vary from implementation to implementation, 
+and whether that cost is worth worrying about will vary from application to application and library to library, 
+but the fact is that replacing a template taking a universal reference 
+with a pair of functions overloaded on lvalue references and rvalue references 
+is likely to incur a runtime cost in some cases. 
+If we generalize the example such that `Widget`’s data member may be of an arbitrary type 
+(rather than knowing that it’s `std::string`), the performance gap can widen considerably, 
+because not all types are as cheap to move as `std::string` (see Item 29). 
+
+
+The most serious problem with overloading on lvalues and rvalues, however, 
+isn’t the volume or idiomaticity of the source code, nor is it the code’s runtime performance.
+It’s the <u>_poor scalability of the design_</u>. 
+`Widget::setName` takes only one parameter, so only two overloads are necessary; 
+but for functions taking more parameters, each of which could be an lvalue or an rvalue, 
+the number of overloads grows geometrically: `n` parameters necessitates `2^n` overloads. 
+And that’s not the worst of it. 
+Some functions (actually function templates) take an unlimited number of parameters, 
+each of which could be an lvalue or rvalue. 
+The poster children for such functions are `std::make_shared`, and, as of C++14, `std::make_unique` (see Item 21). 
+Check out the declarations of their most commonly used overloads:
+```c++
+template <class T, class ... Args>
+shared_ptr<T> make_shared(Args && ... args); 
+
+template <class T, class ... Args>
+unique_ptr<T> make_unique(Args && ... args);
+```
+For functions like these, overloading on lvalues and rvalues is **not** an option: 
+universal references are the only way to go. 
+
+#### Apply `std::move` and `std::forward` only to the last occurrence
+
+And inside such functions, I assure you, 
+`std::forward` is applied to the universal reference parameters when they’re passed to other functions. 
+Which is exactly what you should do. Well, usually. Eventually. But not necessarily initially. 
+In some cases, 
+you’ll want to use the object bound to an rvalue reference or a universal reference 
+more than once in a single function, 
+and you’ll want to make sure that it’s not moved from until you’re otherwise done with it. 
+In that case, you’ll want to apply `std::move` (for rvalue references) or `std::forward` (for universal references) 
+to only the final use of the reference. For example:
+```c++
+template <typename T>
+void setSignText(T && text)                       // text is univ. reference
+{
+    sign.setText(text);                           // use text, but don't modify it
+    auto now = std::chrono::system_clock::now();  // get current time
+    signHistory.add(now, std::forward<T>(text));  // conditionally cast text to rvalue
+}
+```
+Here, we want to make sure that `text`’s value doesn’t get changed by `sign.setText`,
+because we want to use that value when we call `signHistory.add`. 
+Ergo the use of `std::forward` on only the final use of the universal reference.
+For `std::move`, the same thinking applies 
+(i.e., apply `std::move` to an rvalue reference the last time it’s used), 
+but it’s important to note that in rare cases, 
+you’ll want to call `std::move_if_noexcept` instead of `std::move`. 
+To learn when and why, consult Item 14.
+
+
+If you’re in a function that returns by value, 
+and you’re returning an object bound to an rvalue reference or a universal reference, 
+you’ll want to apply `std::move` or `std::forward` when you return the reference. 
+To see why, consider an `operator+` function to add two matrices together, 
+where the `lhs` is known to be an rvalue (and can hence have its storage reused to hold the sum of the matrices):
+```c++
+// by-value return
+Matrix operator+(Matrix && lhs, const Matrix & rhs)
+{
+    lhs += rhs;
+    return std::move(lhs);  // move lhs into return value
+}
+```
+By casting `lhs` to an rvalue in the return statement (via `std::move`), 
+`lhs` will be moved into the function’s return value location. 
+If the call to `std::move` were omitted,
+```c++
+Matrix operator+(Matrix && lhs, const Matrix & rhs)
+{
+    lhs += rhs;
+    return lhs;             // copy lhs into return value
+}
+```
+the fact that `lhs` is an lvalue would force compilers to instead copy it into the return value location.
+Assuming that the `Matrix` type supports move construction, 
+which is more efficient than copy construction, 
+using `std::move` in the return statement yields more efficient code.
+
+
+If `Matrix` does not support moving, casting it to an rvalue won’t hurt, 
+because the rvalue will simply be copied by `Matrix`’s copy constructor (see Item 23). 
+If `Matrix` is later revised to support moving, 
+`operator+` will automatically benefit the next time it is compiled. 
+That being the case, there’s nothing to be lost (and possibly much to be gained) 
+by applying `std::move` to rvalue references being returned from functions that return by value.
+
+
+The situation is similar for universal references and `std::forward`. 
+Consider a function template `reduceAndCopy` that takes a possibly unreduced `Fraction` object,
+reduces it, and then returns a copy of the reduced value. 
+If the original object is an rvalue, its value should be moved into the return value 
+(thus avoiding the expense of making a copy), 
+but if the original is an lvalue, an actual copy must be created.
+Hence:
+```c++
+// by-value return
+template <typename T>
+Fraction reduceAndCopy(T && frac)  // universal reference param
+{
+    frac.reduce();
+    return std::forward<T>(frac);  // move rvalue into return value, copy lvalue
+}
+```
+If the call to `std::forward` were omitted, `frac` would be unconditionally copied into `reduceAndCopy`’s return value.
+
+#### Copy Elision and Return Value Optimization (RVO)
+
+Some programmers take the information above and try to extend it to situations where it doesn’t apply. 
+“If using `std::move` on an rvalue reference parameter being copied into a return value 
+turns a copy construction into a move construction,” 
+they reason, “I can perform the same optimization on local variables that I’m returning.”
+In other words, they figure that given a function returning a local variable by value, such as this,
+```c++
+// "Copying" version of makeWidget
+Widget makeWidget()
+{
+    Widget w;  // local variable
+    // ...     // configure w
+    return w;  // "copy" w into return value
+}
+```
+they can “optimize” it by turning the “copy” into a move: 
+```c++
+// Moving version of makeWidget
+Widget makeWidget()
+{
+    Widget w;
+    // ...
+    return std::move(w);  // move w into return value
+}
+```
+My liberal use of quotation marks should tip you off that this line of reasoning is flawed. 
+It is because the Standardization Committee is way ahead of such programmers when it comes to this kind of optimization. 
+It was recognized long ago that the “copying” version of `makeWidget` 
+can avoid the need to copy the local variable `w` 
+by constructing it in the memory alloted for the function’s return value. 
+This is known as the <u>_Return Value Optimization_</u> (RVO), 
+and it’s been expressly blessed by the C++ Standard for as long as there’s been one.
+
+
+Wording such a blessing is finicky business,
+because you want to permit such copy elision only in places 
+where it won’t affect the observable behavior of the software.
+Paraphrasing the legalistic (arguably toxic) prose of the Standard, 
+this particular blessing says that compilers may elide the copying (or moving) of a local object
+in a function that returns by value if 
+
+1. the type of the local object is the same as that returned by the function, **AND**
+2. the local object is what’s being returned. 
+
+Eligible local objects include <u>_most local variables_</u> (such as `w` inside `makeWidget`) 
+as well as <u>_temporary objects created as part of a return statement_</u>. 
+~~Function parameters~~ **don’t** qualify. 
+Some people draw a distinction between application of the RVO to named and unnamed (i.e., temporary) local objects, 
+limiting the term RVO to unnamed objects and calling its application to named objects the 
+<u>_Named Return Value Optimization_</u> (NRVO). 
+
+With that in mind, look again at the “copying” version of `makeWidget`:
+```c++
+// "Copying" version of makeWidget
+Widget makeWidget()
+{
+    Widget w;  // local variable
+    // ...     // configure w
+    return w;  // "copy" w into return value
+}
+```
+Both conditions are fulfilled here, and you can trust me when I tell you that for this code, 
+every decent C++ compiler will employ the RVO to avoid copying `w`. 
+That means that the “copying” version of `makeWidget` **doesn’t**, in fact, ~~copy anything~~.
+
+
+The moving version of `makeWidget` does just what its name says it does 
+(assuming `Widget` offers a move constructor): 
+it moves the contents of `w` into `makeWidget`’s return value location. 
+But why don’t compilers use the RVO to eliminate the move,
+again constructing `w` in the memory alloted for the function’s return value? 
+The answer is simple: they can’t. 
+Condition (2) stipulates that the RVO may be performed only if what’s being returned is a local object, 
+but that’s **not** what the moving version of makeWidget is doing. Look again at its return statement:
+```c++
+// Moving version of makeWidget
+Widget makeWidget()
+{
+    Widget w;
+    // ...
+    return std::move(w);  // move w into return value
+}
+```
+What’s being returned here **isn’t** the local object `w`, it’s a reference to `w` (the result of `std::move(w)`). 
+Returning a reference to a local object **doesn’t** satisfy the conditions required for the RVO, 
+so compilers must move `w` into the function’s return value location. 
+Developers trying to help their compilers optimize by applying `std::move` to a local variable that’s being returned 
+are actually limiting the optimization options available to their compilers!
+
+
+But the RVO is an optimization. 
+Compilers **aren’t** required to elide copy and move operations, even when they’re permitted to. 
+Maybe you’re paranoid, 
+and you worry that your compilers will punish you with copy operations, just because they can. 
+Or perhaps you’re insightful enough to recognize that there are cases 
+where the RVO is difficult for compilers to implement, 
+e.g., when different control paths in a function return different local variables. 
+(Compilers would have to generate code to construct the appropriate local variable 
+in the memory allotted for the function’s return value,
+but how could compilers determine which local variable would be appropriate?) 
+If so, you might be willing to pay the price of a move as insurance against the cost of a copy. 
+That is, you might still think it’s reasonable to apply `std::move` to a local object you’re returning, 
+simply because you’d rest easy knowing you’d never pay for a copy.
+
+
+In that case, applying `std::move` to a local object would still be a bad idea. 
+The part of the Standard blessing the RVO goes on to say that if the conditions for the RVO are met, 
+but compilers choose not to perform copy elision, the object being returned <u>_must be treated as an rvalue_</u>. 
+In effect, the Standard requires that when the RVO is permitted, 
+either copy elision takes place or `std::move` is <u>_implicitly applied_</u> to local objects being returned. 
+So in the “copying” version of `makeWidget`,
+```c++
+// "Copying" version of makeWidget
+Widget makeWidget()
+{
+    Widget w;  // local variable
+    // ...     // configure w
+    return w;  // "copy" w into return value
+}
+```
+compilers must either elide the copying of `w`, 
+or they must treat the function as if it were written like this:
+```c++
+// Moving version of makeWidget
+Widget makeWidget()
+{
+    Widget w;
+    // ...
+    return std::move(w);  // move w into return value
+}
+```
+The situation is similar for <u>_by-value function parameters_</u>. 
+They’re **not** eligible for copy elision with respect to their function’s return value, 
+but compilers must treat them as rvalues if they’re returned. 
+As a result, if your source code looks like this,
+```c++
+// by-value parameter of same
+// type as function's return
+Widget makeWidget(Widget w) 
+{
+    return w;
+}
+```
+compilers must treat it as if it had been written this way:
+```c++
+Widget makeWidget(Widget w) 
+{
+    return std::move(w);  // treat w as rvalue
+}
+```
+This means that if you use `std::move` on a local object being returned from a function that’s returning by value, 
+you can’t help your compilers (they have to treat the local object as an rvalue if they don’t perform copy elision), 
+but you can certainly hinder them (by precluding the RVO). 
+
+
+There are situations where applying `std::move` to a local variable can be a reasonable thing to do 
+(i.e., when you’re passing it to a function and you know you won’t be using the variable any longer), 
+but as part of a return statement that:
+
+- would otherwise qualify for the RVO, **OR**
+- returns a by-value parameter 
+
+**isn’t** among them.
+
+
+
+
+
 
 ### 📌 Item 26: Avoid overloading on universal references
 
@@ -8146,6 +8492,288 @@ w.setName(n);                 // moves n into w! n's value now unknown
 - Perfect-forwarding constructors are especially problematic, 
   because they’re typically better matches than copy constructors for non-`const` lvalues, 
   and they can hijack derived class calls to base class copy and move constructors. 
+
+
+#### Universial references may shadow other overloads
+
+Suppose you need to write a function that takes a `name` as a parameter, 
+logs the current date and time, then adds the `name` to a global data structure. 
+You might come up with a function that looks something like this:
+```c++
+std::multiset<std::string> names;                // global data structure
+
+void logAndAdd(const std::string & name)
+{
+    auto now = std::chrono::system_clock::now();  // get current time
+    log(now, "logAndAdd");                        // make log entry
+    names.emplace(name);                          // add name to global data structure
+}
+```
+This isn’t unreasonable code, but it’s not as efficient as it could be. 
+Consider three potential calls:
+```c++
+std::string petName("Darla");
+logAndAdd(petName);                    // pass lvalue std::string
+logAndAdd(std::string("Persephone"));  // pass rvalue std::string
+logAndAdd("Patty Dog");                // pass string literal
+```
+In the first call, `logAndAdd`’s parameter `name` is bound to the variable `petName`.
+Within `logAndAdd`, `name` is ultimately passed to `names.emplace`. 
+Because `name` is an lvalue, it is copied into `names`. 
+There’s **no** way to avoid that copy, because an lvalue (`petName`) was passed into `logAndAdd`. 
+
+
+In the second call, the parameter `name` is bound to an rvalue 
+(the temporary `std::string` explicitly created from `"Persephone"`). 
+`name` itself is an lvalue, so it’s copied into `names`, but we recognize that, in principle, 
+its value could be moved into `names`. 
+In this call, we pay for a copy, but we should be able to get by with only a move. 
+
+
+In the third call, the parameter `name` is again bound to an rvalue, 
+but this time it’s to a temporary `std::string` that’s implicitly created from `"Patty Dog"`. 
+As in the second call, `name` is copied into `names`, 
+but in this case, the argument originally passed to `logAndAdd` was a string literal. 
+Had that string literal been passed directly to `emplace`, 
+there would have been **no** need to create a temporary `std::string` at all.
+Instead, `emplace` would have used the string literal 
+to create the `std::string` object directly inside the `std::multiset`. 
+In this third call, then, we’re paying to copy a `std::string`, 
+yet there’s really **no** reason to pay even for a move, much less a copy. 
+
+
+We can eliminate the inefficiencies in the second and third calls 
+by rewriting`logAndAdd` to take a universal reference (see Item 24) and, 
+in accord with Item 25, `std::forward`ing this reference to `emplace`. 
+The results speak for themselves:
+```c++
+template <typename T>
+void logAndAdd(T && name)
+{
+    auto now = std::chrono::system_clock::now();
+    log(now, "logAndAdd");
+    names.emplace(std::forward<T>(name));
+}
+
+std::string petName("Darla");          // as before
+logAndAdd(petName);                    // as before, copy lvalue into multiset
+logAndAdd(std::string("Persephone"));  // move rvalue instead of copying it
+logAndAdd("Patty Dog");                // create std::string in multiset instead of copying a temporary std::string
+```
+Clients don’t always have direct access to the `name`s that `logAndAdd`requires. 
+Some clients have only an index that `logAndAdd` uses to look up the corresponding `name` in a table. 
+To support such clients, `logAndAdd` is overloaded:
+```c++
+std::string nameFromIdx(int idx);      // return name corresponding to idx
+
+void logAndAdd(int idx)                // new overload
+{
+    auto now = std::chrono::system_clock::now();
+    log(now, "logAndAdd");
+    names.emplace(nameFromIdx(idx));
+}
+```
+Resolution of calls to the two overloads works as expected:
+```c++
+std::string petName("Darla");          // as before
+logAndAdd(petName);                    // as before, these
+logAndAdd(std::string("Persephone"));  // calls all invoke
+logAndAdd("Patty Dog");                // the T && overload
+
+logAndAdd(22);                         // calls int overload
+```
+Actually, resolution works as expected only if you don’t expect too much. 
+Suppose a client has a `short` holding an index and passes that to `logAndAdd`:
+```c++
+short nameIdx = 233;  // give nameIdx a value
+logAndAdd(nameIdx);   // error!
+```
+There are two `logAndAdd` overloads. 
+The one taking a universal reference can deduce `T` to be short, thus yielding an <u>_exact match_</u>. 
+The overload with an `int` parameter can match the `short` argument <u>_only with a promotion_</u>.
+Per the normal overload resolution rules, an exact match beats a match with a promotion, 
+so the universal reference overload is invoked. 
+
+
+Within that overload, the parameter `name` is bound to the `short` that’s passed in.
+`name` is then `std::forward`ed to the `emplace` member function on `names` (a `std::multiset<std::string>`), 
+which, in turn, dutifully forwards it to the `std::string` constructor. 
+There is **no** constructor for `std::string` that takes a `short`, 
+so the `std::string` constructor call inside the call to `multiset::emplace` inside the call to `logAndAdd` fails. 
+All because the universal reference overload was a better match for a `short` argument than an `int`.
+
+
+Functions taking universal references are the greediest functions in C++. 
+They instantiate to create exact matches for almost any type of argument. 
+(The few kinds of arguments where this **isn’t** the case are described in Item 30.) 
+This is why combining overloading and universal references is almost always a bad idea: 
+the universal reference overload vacuums up far more argument types 
+than the developer doing the overloading generally expects.
+
+#### Perfect-forwarding constructors are especially problematic
+
+An easy way to topple into this pit is to ~~write a perfect forwarding constructor~~. 
+A small modification to the `logAndAdd` example demonstrates the problem. 
+Instead of writing a free function that can take 
+either a `std::string` or an index that can be used to look up a `std::string`, 
+imagine a class `Person` with constructors that do the same thing:
+```c++
+class Person
+{
+public:
+    template <typename T>
+    explicit Person(T && n) : name(std::forward<T>(n))  // perfect forwarding constructor
+    {
+        // ...
+    } 
+    
+    explicit Person(int idx) : name(nameFromIdx(idx))   // int constructor
+    {
+        // ...
+    }
+
+    // ...
+    
+private:
+    std::string name;
+};
+```
+As was the case with `logAndAdd`, 
+passing an integral type other than `int` (e.g., `std::size_t`, `short`, `long`, etc.) 
+will call the universal reference constructor overload instead of the `int` overload, 
+and that will lead to compilation failures. 
+The problem here is much worse, however, 
+because there’s more overloading present in `Person` than meets the eye. 
+Item 17 explains that under the appropriate conditions, 
+C++ will generate both copy and move constructors, 
+and this is true even if the class contains a templatized constructor 
+that could be instantiated to produce the signature of the copy or move constructor.
+If the copy and move constructors for `Person`are thus generated, 
+`Person` will effectively look like this:
+```c++
+class Person
+{
+public:
+    template <typename T>
+    explicit Person(T && n) : name(std::forward<T>(n))  // perfect forwarding constructor
+    {
+        // ...
+    }
+    
+    explicit Person(int idx) : name(nameFromIdx(idx))   // int constructor
+    {
+        // ...
+    }
+    
+    Person(const Person & rhs) = default;               // copy constructor (compiler-generated)
+    
+    Person(Person && rhs) = default;                    // move constructor (compiler-generated)
+    
+    // ...
+
+private:
+    std::string name;
+};
+
+```
+This leads to counter-intuitive behaviors: 
+```c++
+Person p1("Nancy");
+auto p2(p1);         // create new Person from p1; this won't compile!
+```
+Here we’re trying to create a `Person` from another `Person`,
+which seems like about as obvious a case for copy construction as one can get. 
+(`p1` is an lvalue, so we can banish any thoughts we might have 
+about the “copying” being accomplished through a move operation.) 
+But this code **won’t** call the copy constructor. 
+It will call the perfect forwarding constructor. 
+That function will then try to initialize `Person`’s `std::string` data member with a `Person` object (`p1`). 
+`std::string` having **no** constructor taking a `Person`, 
+your compilers will throw up their hands in exasperation,
+possibly punishing you with long and incomprehensible error messages as an expression of their displeasure.
+
+
+`p2` is being initialized with a non-`const` lvalue (`p1`), 
+and that means that the templatized constructor can be instantiated to take a non-`const` lvalue of type `Person`. 
+After such instantiation, the `Person` class  will have a constructor that looks like this:
+```c++
+// instantiated from perfect-forwarding template
+explicit Person(Person & n) : name(std::forward<Person &>(n)) 
+{
+    // ...
+}
+```
+In the statement,
+```c++
+auto p2(p1);
+```
+`p1` could be passed to either the copy constructor or the instantiated template. 
+Calling the copy constructor would require adding `const` to `p1` to match the copy constructor’s parameter’s type, 
+but calling the instantiated template requires no such addition.
+The overload generated from the template is thus a better match, 
+so compilers do what they’re designed to do: 
+generate a call to the better-matching function. 
+“Copying” non-`const` lvalues of type `Person` is thus handled by the perfect-forwarding constructor, 
+`not` the copy constructor.
+
+
+If we change the example slightly so that the object to be copied is `const`, we hear an entirely different tune:
+```c++
+const Person cp1("Nancy");  // object is now const
+auto p2(cp1);               // calls copy constructor!
+```
+Because the object to be copied is now `const`, it’s an exact match for the parameter taken by the copy constructor. 
+The templatized constructor can be instantiated to have the same signature,
+```c++
+explicit Person(const Person & n);  // instantiated from template
+
+Person(const Person & rhs);         // copy ctor (compiler-generated)
+```
+but this doesn’t matter, because one of the overload-resolution rules in C++ is that in situations 
+where a template instantiation and a non-template function (i.e., a “normal” function) 
+are equally good matches for a function call, the normal function is preferred. 
+The copy constructor (a normal function) thereby trumps an instantiated template with the same signature.
+
+
+(If you’re wondering why compilers generate a copy constructor 
+when they could instantiate a templatized constructor to get the signature that the copy constructor would have, 
+review Item 17.)
+
+
+The interaction among perfect-forwarding constructors and compiler-generated copy and move operations 
+develops even more wrinkles when inheritance enters the picture. 
+In particular, the conventional implementations of derived class copy and move operations behave quite surprisingly. 
+Here, take a look:
+```c++
+class VIP : public Person
+{
+public:
+    VIP(const VIP & rhs) : Person(rhs)        // copy ctor; calls base class forwarding ctor!
+    {
+        // ...
+    }
+    
+    VIP(VIP && rhs) : Person(std::move(rhs))  // move ctor; calls base class forwarding ctor!
+    {
+        // ...
+    }
+};
+```
+As the comments indicate, the derived class copy and move constructors 
+**don’t** call their base class’s copy and move constructors, 
+they call the base class’s perfect-forwarding constructor! 
+To understand why, note that the derived class functions are using arguments of type `VIP` to pass to their base class, 
+then work through the template instantiation and overload-resolution consequences for the constructors in class `Person`. 
+Ultimately, the code won’t compile, because there’s no `std::string` constructor taking a `VIP`.
+
+
+Overloading on universal reference parameters is something you should avoid if at all possible. 
+But if overloading on universal references is a bad idea, 
+what do you do if you need a function that forwards most argument types, 
+yet needs to treat some argument types in a special fashion?
+That egg can be unscrambled in a number of ways. 
+So many, in fact, that I’ve devoted an entire Item to them. 
+It’s Item 27. The next Item. Keep reading, you’ll bump right into it.
 
 
 
@@ -8164,6 +8792,114 @@ w.setName(n);                 // moves n into w! n's value now unknown
   but it controls the conditions under which compilers may use the universal reference overloads.
 - Universal reference parameters often have efficiency advantages, 
   but they typically have usability disadvantages.
+
+
+Item 26 explains that overloading on universal references can lead to a variety of problems, 
+both for freestanding and for member functions (especially constructors).
+Yet it also gives examples where such overloading could be useful. 
+If only it would behave the way we’d like! 
+This Item explores ways to achieve the desired behavior,
+either through designs that avoid overloading on universal references 
+or by employing them in ways that constrain the types of arguments they can match.
+
+#### Abandon overloading
+
+The first example in Item 26, `logAndAdd`, is representative of the many functions 
+that can avoid the drawbacks of overloading on universal references 
+by simply using different names for the would-be overloads. 
+The two `logAndAdd` overloads, for example,
+could be broken into `logAndAddName` and `logAndAddNameIdx`. 
+Alas, this approach won’t work for the second example we considered, the `Person` constructor, 
+because constructor names are fixed by the language. 
+Besides, who wants to give up overloading?
+
+#### Abandon perfect-forwarding and pass by `const T &`
+
+An alternative is to revert to C++98 and replace pass-by-universal-reference with pass-by-lvalue-reference-to-const. 
+In fact, that’s the first approach Item 26 considers (shown on page 175). 
+The drawback is that the design isn’t as efficient as we’d prefer.
+Knowing what we now know about the interaction of universal references and overloading,
+giving up some efficiency to keep things simple might be a more attractive trade-off than it initially appeared.
+
+#### Pass by value
+
+An approach that often allows you to dial up performance without any increase in complexity 
+is to replace pass-by-reference parameters with, counterintuitively, pass by value. 
+The design adheres to the advice in Item 41 to consider passing objects by value when you know you’ll copy them, 
+so I’ll defer to that Item for a detailed discussion of how things work and how efficient they are. 
+Here, I’ll just show how the technique could be used in the `Person` example:
+```c++
+class Person
+{
+public:
+    explicit Person(std::string n) : name(std::move(n))  // replaces T && ctor; see Item 41 for use of std::move
+    {
+        
+    }
+    
+    explicit Person(int idx) : name(nameFromIdx(idx))    // as before     
+    {
+        
+    }
+
+    // ...
+    
+private:
+    std::string name;
+};
+```
+Because there’s no `std::string` constructor taking only an integer, 
+all `int` and numeric `arguments` to a Person constructor (e.g., `std::size_t`, `short`, `long`) 
+get funneled to the `int` overload. 
+Similarly, all arguments of type `std::string` 
+(and things from which `std::string`s can be created, e.g., literals such as "Ruth") 
+get passed to the constructor taking a `std::string`. 
+There are thus no surprises for callers. 
+You could argue, I suppose, that some people might be surprised that using `0` or `NULL` to
+indicate a null pointer would invoke the `int` overload, 
+but such people should be referred to Item 8 and required to read it repeatedly 
+until the thought of using `0` or `NULL` as a null pointer makes them recoil.
+
+#### Use Tag dispatch
+
+Neither pass by lvalue-reference-to-const nor pass by value offers support for perfect forwarding. 
+If the motivation for the use of a universal reference is perfect forwarding,
+we have to use a universal reference; there’s no other choice. 
+Yet we don’t want to abandon overloading. 
+So if we don’t give up overloading and we don’t give up universal references, 
+how can we avoid overloading on universal references?
+
+
+It’s actually not that hard. 
+Calls to overloaded functions are resolved 
+by looking at all the parameters of all the overloads as well as all the arguments at the call site, 
+then choosing the function with the best overall match—taking into account all parameter / argument combinations. 
+A universal reference parameter generally provides an
+exact match for whatever’s passed in, but if the universal reference is part of a parameter
+list containing other parameters that are not universal references, sufficiently
+poor matches on the non-universal reference parameters can knock an overload with
+a universal reference out of the running. That’s the basis behind the tag dispatch
+approach, and an example will make the foregoing description easier to understand.
+
+
+We’ll apply tag dispatch to the logAndAdd example on page 177. Here’s the code for
+that example, lest you get sidetracked looking it up:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
