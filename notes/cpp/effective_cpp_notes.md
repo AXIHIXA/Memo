@@ -6453,12 +6453,12 @@ For details, continue on to Item 21.
   for `std::make_shared` and `std::allocate_shared`, generate code that’s smaller and faster.
 - Situations where use of `make` functions is inappropriate 
   include the need to specify custom deleters 
-  and a desire to pass braced initializers.
-- For `std::shared_ptr`s, additional situations where `make` functions may be ill-advised include
+  and a desire to pass in braced initializers.
+- For `std::shared_ptr`s, additional situations where `make` functions may be ill-advised include memory occupation issues: 
     1. Classes with custom memory management
     2. Systems with memory concerns, 
-       very large objects, 
-       and `std::weak_ptr`s that outlive the corresponding `std::shared_ptr`s.
+       very large objects (releasing not blocked by control blocks), 
+       and `std::weak_ptr`s that outlive the corresponding `std::shared_ptr`s (occupying control blocks).
 - When you use `new` directly, 
   you should immediately pass the result to a smart pointer constructor 
   in _<u>a statement that does nothing else</u>_, 
@@ -8745,26 +8745,28 @@ develops even more wrinkles when inheritance enters the picture.
 In particular, the conventional implementations of derived class copy and move operations behave quite surprisingly. 
 Here, take a look:
 ```c++
-class VIP : public Person
+class SpecialPerson : public Person
 {
 public:
-    VIP(const VIP & rhs) : Person(rhs)        // copy ctor; calls base class forwarding ctor!
+    SpecialPerson(const SpecialPerson & rhs) : Person(rhs)
     {
-        // ...
+    // ...
     }
     
-    VIP(VIP && rhs) : Person(std::move(rhs))  // move ctor; calls base class forwarding ctor!
+    SpecialPerson(SpecialPerson && rhs) : Person(std::move(rhs))
     {
-        // ...
+    // ...
     }
+    
+    // ...
 };
 ```
 As the comments indicate, the derived class copy and move constructors 
 **don’t** call their base class’s copy and move constructors, 
 they call the base class’s perfect-forwarding constructor! 
-To understand why, note that the derived class functions are using arguments of type `VIP` to pass to their base class, 
+To understand why, note that the derived class functions are using arguments of type `SpecialPerson` to pass to their base class, 
 then work through the template instantiation and overload-resolution consequences for the constructors in class `Person`. 
-Ultimately, the code won’t compile, because there’s no `std::string` constructor taking a `VIP`.
+Ultimately, the code won’t compile, because there’s no `std::string` constructor taking a `SpecialPerson`.
 
 
 Overloading on universal reference parameters is something you should avoid if at all possible. 
@@ -8873,33 +8875,510 @@ how can we avoid overloading on universal references?
 It’s actually not that hard. 
 Calls to overloaded functions are resolved 
 by looking at all the parameters of all the overloads as well as all the arguments at the call site, 
-then choosing the function with the best overall match—taking into account all parameter / argument combinations. 
-A universal reference parameter generally provides an
-exact match for whatever’s passed in, but if the universal reference is part of a parameter
-list containing other parameters that are not universal references, sufficiently
-poor matches on the non-universal reference parameters can knock an overload with
-a universal reference out of the running. That’s the basis behind the tag dispatch
-approach, and an example will make the foregoing description easier to understand.
+then choosing the function with the best overall match taking into account all parameter / argument combinations. 
+A universal reference parameter generally provides an exact match for whatever’s passed in, 
+but if the universal reference is part of a parameter list containing other parameters that are not universal references, 
+sufficiently poor matches on the non-universal reference parameters can knock an overload with
+a universal reference out of the running. 
+That’s the basis behind the tag dispatch approach, 
+and an example will make the foregoing description easier to understand.
 
 
-We’ll apply tag dispatch to the logAndAdd example on page 177. Here’s the code for
-that example, lest you get sidetracked looking it up:
+We’ll apply tag dispatch to the `logAndAdd` example:
+```c++
+std::multiset<std::string> names;  // global data structure
+
+template <typename T>              // make log entry and add name to data structure
+void logAndAdd(T && name)
+{
+    auto now = std::chrono::system_clock::now();
+    log(now, "logAndAdd");
+    names.emplace(std::forward<T>(name));
+}
+```
+By itself, this function works fine, but were we to introduce the overload 
+taking an`int` that’s used to look up objects by index, 
+we’d be back in the troubled land of Item 26. 
+The goal of this Item is to avoid that. 
+Rather than adding the overload, we’ll reimplement `logAndAdd` to delegate to two other functions, 
+one for integral values and one for everything else. 
+`logAndAdd` itself will accept all argument types, both integral and non-integral.
 
 
+The two functions doing the real work will be named `logAndAddImpl`, i.e., we’ll use overloading. 
+One of the functions will take a universal reference. 
+So we’ll have both overloading and universal references. 
+But each function will also take a <u>_second parameter_</u>, 
+one that indicates whether the argument being passed is integral. 
+This second parameter is what will prevent us from tumbling into the morass described in Item 26, 
+because we’ll arrange it so that the second parameter will be the factor that determines which overload is selected.
+```c++
+template <typename T>
+void logAndAdd(T && name)
+{
+    logAndAddImpl(std::forward<T>(name), std::is_integral<T>());  // not quite correct
+}
+```
+This function forwards its parameter to `logAndAddImpl`, 
+but it also passes an argument indicating whether that parameter’s type (`T`) is integral. 
+At least, that’s what it’s supposed to do. 
+For integral arguments that are rvalues, it’s also what it does. 
+But, as Item 28 explains, if an lvalue argument is passed to the universal reference `name`, 
+the type deduced for `T` will be an lvalue reference. 
+So if an lvalue of type `int` is passed to `logAndAdd`, `T` will be deduced to be `int &`. 
+That’s **not** an integral type, because references aren’t integral types. 
+That means that `std::is_integral<T>` will be `false` for any lvalue argument,
+even if the argument really does represent an integral value.
 
 
+Recognizing the problem is tantamount to solving it, 
+because the ever-handy Standard C++ Library has a type trait (see Item 9), `std::remove_reference_t`, 
+that does both what its name suggests and what we need: remove any reference qualifiers from a type. 
+The proper way to write `logAndAdd` is therefore:
+```c++
+template <typename T>
+void logAndAdd(T && name)
+{
+    logAndAddImpl(std::forward<T>(name), std::is_integral<std::remove_reference_t<T>>());
+}
+```
+With that taken care of, we can shift our attention to the function being called, `logAndAddImpl`. 
+There are two overloads, and the first is applicable only to non-integral types 
+(i.e., to types where `std::is_integral<std::remove_reference_t<T>>` is `false`):
+```c++
+template <typename T>
+void logAndAddImpl(T && name, std::false_type)
+{
+    auto now = std::chrono::system_clock::now();
+    log(now, "logAndAdd");
+    names.emplace(std::forward<T>(name));
+}
+```
+This is straightforward code, once you understand the mechanics behind `std::false_type`. 
+Conceptually, `logAndAdd` passes a boolean to `logAndAddImpl` indicating whether an integral type was passed to `logAndAdd`, 
+but `true` and `false` are <u>_runtime values_</u>, 
+and we need to use overload resolution, a compile-time phenomenon, 
+to choose the correct `logAndAddImpl` overload. 
+That means we need a type that corresponds to `true` and a different type that corresponds to `false`. 
+This need is common enough that the Standard Library provides what is required 
+under the names `std::true_type` and `std::false_type`. 
+The argument passed to `logAndAddImpl` by `logAndAdd` is an object of a type 
+that inherits from `std::true_type` if `T` is integral and from `std::false_type` if `T` is not integral. 
+The net result is that this `logAndAddImpl` overload is a viable candidate for the call in `logAndAdd` 
+only if `T` is not an integral type.
 
 
+The second overload covers the opposite case:when `T` is an integral type. 
+In that event, `logAndAddImpl` simply finds the name corresponding to the passed-in index 
+and passes that name back to `logAndAdd`:
+```c++
+std::string nameFromIdx(int idx);  // as in Item 26
+
+void logAndAddImpl(int idx, std::true_type)
+{
+    logAndAdd(nameFromIdx(idx));
+}
+```
+By having `logAndAddImpl` for an index look up the corresponding name and pass it to `logAndAdd` 
+(from where it will be `std::forward`ed to the other `logAndAddImpl` overload), 
+we avoid the need to put the logging code in both `logAndAddImpl` overloads.
 
 
+In this design, the types `std::true_type` and `std::false_type` are “tags” 
+whose only purpose is to force overload resolution to go the way we want. 
+Notice that we don’t even name those parameters. 
+They serve no purpose at runtime, and in fact we hope that compilers will recognize that 
+the tag parameters are unused and will optimize them out of the program’s execution image. 
+(Some compilers do, at least some of the time.) 
+The call to the overloaded implementation functions inside `logAndAdd` 
+“dispatches” the work to the correct overload by causing the proper tag object to be created. 
+Hence the name for this design: <u>_tag dispatch_</u>. 
+It’s a standard building block of template metaprogramming,
+and the more you look at code inside contemporary C++ libraries, the more often you’ll encounter it.
 
 
+For our purposes, what’s important about tag dispatch is less how it works 
+and more how it permits us to combine universal references and overloading 
+without the problems described in Item 26. 
+The dispatching function `logAndAdd` takes an unconstrained universal reference parameter, 
+but this function is not overloaded. 
+The implementation functions `logAndAddImpl` are overloaded, 
+and one takes a universal reference parameter, 
+but resolution of calls to these functions depends not just on the universal reference parameter, 
+but also on the tag parameter, 
+and the tag values are designed so that no more than one overload will be a viable match. 
+As a result, it’s the tag that determines which overload gets called. 
+The fact that the universal reference parameter will always generate an exact match for its argument is immaterial.
+
+#### Constrain templates that take universal references
+
+A keystone of tag dispatch is the existence of a single (unoverloaded) function as the client API. 
+This single function dispatches the work to be done to the implementation functions. 
+Creating an unoverloaded dispatch function is usually easy, 
+but the second problem case Item 26 considers, 
+that of a perfect-forwarding constructor for the `Person` class (shown on page 178), is an exception. 
+Compilers may generate copy and move constructors themselves, 
+so even if you write only one constructor and use tag dispatch within it, 
+some constructor calls may be handled by compiler-generated functions that bypass the tag dispatch system.
 
 
+In truth, the real problem is not that the compiler-generated functions sometimes bypass the tag dispatch design, 
+it’s that they don’t always pass it by. 
+You virtually always want the copy constructor for a class to handle requests to copy lvalues of that type, 
+but, as Item 26 demonstrates, providing a constructor taking a universal reference 
+causes the universal reference constructor (rather than the copy constructor) 
+to be called when copying non-const lvalues. 
+That Item also explains that when a base class declares a perfect-forwarding constructor, 
+that constructor will typically be called 
+when derived classes implement their copy and move constructors in the conventional fashion, 
+even though the correct behavior is for the base class’s copy and move constructors to be invoked.
 
 
+For situations like these, where an overloaded function taking a universal reference is greedier than you want, 
+yet not greedy enough to act as a single dispatch function, tag dispatch is not the droid you’re looking for. 
+You need a different technique, one that lets you rachet down the conditions 
+under which the function template that the universal reference is part of is permitted to be employed. 
+What you need is `std::enable_if`.
 
 
+`std::enable_if` gives you a way to force compilers to behave as if a particular template didn’t exist. 
+Such templates are said to be <u>_disabled_</u>. 
+By default, all templates are enabled, but a template using `std::enable_if` is enabled 
+only if the condition specified by `std::enable_if` is satisfied. 
+In our case, we’d like to enable the Person
+perfect-forwarding constructor only if the type being passed isn’t Person. If the type
+being passed is Person, we want to disable the perfect-forwarding constructor (i.e.,
+cause compilers to ignore it), because that will cause the class’s copy or move constructor
+to handle the call, which is what we want when a Person object is initialized
+with another Person.
+
+
+The way to express that idea isn’t particularly difficult, 
+but the syntax is off-putting, especially if you’ve never seen it before, 
+so I’ll ease you into it. 
+There’s some boilerplate that goes around the condition part of `std::enable_if`, so we’ll start with that.
+
+
+Here’s the declaration for the perfect-forwarding constructor in `Person`, 
+showing only as much of the `std::enable_if` as is required simply to use it. 
+I’m showing only the declaration for this constructor, 
+because the use of `std::enable_if` has no effect on the function’s implementation. 
+The implementation remains the same as in Item 26.
+```c++
+class Person
+{
+public:
+    template <typename T, typename = typename std::enable_if<condition>::type>
+    explicit Person(T && n);
+    // ...
+}
+```
+To understand exactly what’s going on in the highlighted text, 
+I must regretfully suggest that you consult other sources, 
+because the details take a while to explain, and there’s just not enough space for it in this book.
+(During your research, look into 
+["Substitution Failure Is Not An Error" (SFINAE)](https://en.cppreference.com/w/cpp/language/sfinae), 
+as well as [`std::enable_if`](https://en.cppreference.com/w/cpp/types/enable_if), 
+because SFINAE is the technology that makes `std::enable_if` work.) 
+Here, I want to focus on expression of the condition that will control whether this constructor is enabled.
+```c++
+// <type_traits>
+// g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
+
+/// Define a member typedef @c type only if a boolean constant is true.
+template <bool, typename _Tp = void>
+struct enable_if
+{
+};
+
+// Partial specialization for true.
+template <typename _Tp>
+struct enable_if<true, _Tp>
+{
+    typedef _Tp type;
+};
+
+/// Alias template for enable_if
+template <bool _Cond, typename _Tp = void>
+using enable_if_t = typename enable_if<_Cond, _Tp>::type;
+```
+
+The condition we want to specify is that `T` isn’t `Person`, 
+i.e., that the templatized constructor should be enabled only if `T` is a type other than `Person`. 
+Thanks to a type trait that determines whether two types are the same (`std::is_same`), 
+it would seem that the condition we want is `!std::is_same<Person, T>::value`.
+(Notice the `!` at the beginning of the expression. 
+We want for `Person` and `T` to not be the same.)
+This is close to what we need, but it’s **not** quite correct, because, as Item 28 explains,
+the type deduced for a universal reference initialized with an lvalue is always an lvalue reference. 
+That means that for code like this,
+```c++
+Person p1("Nancy");
+auto p2(p1);  // initialize from lvalue
+```
+the type `T` in the universal constructor will be deduced to be `Person &`. 
+The types `Person` and `Person &` are not the same, 
+and the result of `std::is_same` will reflect that: `std::is_same<Person, Person &>::value` is `false`. 
+If we think more precisely about what we mean 
+when we say that the templatized constructor in `Person` should be enabled only if `T` isn’t `Person`, 
+we’ll realize that when we’re looking at `T`, we want to ignore
+
+- Whether it’s a reference. 
+  For the purpose of determining whether the universal reference constructor should be enabled, 
+  the types `Person`, `Person &`, and `Person &&` are all the same as `Person`.
+- Whether it’s `const` or `volatile`. 
+  As far as we’re concerned, 
+  a `const Person` and a `volatile Person` and a `const volatile Person` 
+  are all the same as a `Person`.
+
+This means we need a way to strip any references, `const`s, and `volatile`s from `T`
+before checking to see if that type is the same as `Person`. 
+Once again, the Standard Library gives us what we need in the form of a type trait. 
+That trait is `std::decay`.
+`std::decay<T>::type` is the same as `T`, except that references and cv-qualifiers 
+(i.e., `const` or `volatile` qualifiers) are removed. 
+(I’m fudging the truth here, because `std::decay`, as its name suggests, 
+also turns array and function types into pointers (see Item 1), 
+but for purposes of this discussion, `std::decay` behaves as I’ve described.) 
+The condition we want to control whether our constructor is enabled, then, is
+```c++
+// C++ 11
+!std::is_same<Person, typename std::decay<T>::type>::value
+
+// C++ 14
+!std::is_same<Person, std::decay_t<T>>::value
+```
+i.e., `Person` is not the same type as `T`, ignoring any references or cv-qualifiers. 
+(As Item 9 explains, the “typename” in front of `std::decay` is required,
+because the type `std::decay<T>::type` depends on the template parameter `T`.)
+```c++
+class Person
+{
+public:
+    template <typename T,
+              typename = std::enable_if_t<!std::is_same_v<Person, 
+                                                          std::decay_t<T>
+                                                         >
+                                         >
+             >
+    explicit Person(T && n)
+    {
+        // ...
+    }
+
+    // ...
+};
+```
+When you can use one of the other mechanisms 
+to avoid mixing universal references and overloading (and you almost always can), 
+you should. 
+Still, once you get used to the functional syntax and the proliferation of angle brackets, it’s not that bad. 
+Furthermore, this gives you the behavior you’ve been striving for. 
+Given the declaration above, constructing a `Person` from another `Person`, 
+lvalue or rvalue, `const` or non-`const`, `volatile` or non-`volatile`, 
+will never invoke the constructor taking a universal reference.
+
+
+There’s still one loose end from Item 26 that continues to flap about. 
+We need to tie it down.
+Suppose a class derived from `Person` implements the copy and move operations in the conventional manner:
+```c++
+class SpecialPerson : public Person
+{
+public:
+    SpecialPerson(const SpecialPerson & rhs) : Person(rhs)
+    {
+        // ...
+    }
+    
+    SpecialPerson(SpecialPerson && rhs) : Person(std::move(rhs))
+    {
+        // ...
+    }
+    
+    // ...
+};
+```
+This is the same code I showed in Item 26. 
+When we copy or move a `SpecialPerson` object, 
+we expect to copy or move its base class parts using the base class’s copy and move constructors,
+but in these functions, we’re passing `SpecialPerson` objects to the base class’s constructors, 
+and because `SpecialPerson` isn’t the same as `Person` (not even after application of `std::decay`), 
+the universal reference constructor in the base class is enabled, 
+and it happily instantiates to perform an exact match for a `SpecialPerson` argument. 
+This exact match is better than the derived-to-base conversions 
+that would be necessary to bind the `SpecialPerson` objects to the `Person` parameters 
+in `Person`’s copy and move constructors, 
+so with the code we have now, copying and moving `SpecialPerson` objects 
+would use the `Person` perfect-forwarding constructor
+to copy or move their base class parts!
+
+
+The derived class is just following the normal rules for implementing derived class copy and move constructors, 
+so the fix for this problem is in the base class and, in particular, 
+in the condition that controls whether `Person`’s universal reference constructor is enabled. 
+We now realize that we don’t want to enable the templatized constructor 
+for any argument type other than `Person`, 
+we want to enable it for any argument type other than `Person` or a type derived from `Person`. Pesky inheritance!
+
+
+You should not be surprised to hear that among the standard type traits is one that
+determines whether one type is derived from another. It’s called `std::is_base_of`.
+`std::is_base_of<T1, T2>::value` is true if `T2` is derived from `T1`. 
+Types are considered to be derived from themselves, so `std::is_base_of<T, T>::value` is `true`.
+This is handy, because we want to revise our condition controlling `Person`’s perfect-forwarding
+constructor such that the constructor is enabled only if the type `T`,
+after stripping it of references and cv-qualifiers, is neither `Person` nor a class derived from `Person`. 
+Using `std::is_base_of` instead of `std::is_same` gives us what we need:
+```c++
+class Person
+{
+public:
+    template <typename T,
+              typename = std::enable_if_t<!std::is_base_of_v<Person,
+                                                             std::decay_t<T>
+                                                            >
+                                         >
+             >
+    explicit Person(T && n);
+
+    // ...
+};
+```
+We’ve seen how to use `std::enable_if` to selectively disable `Person`’s universal reference constructor 
+for argument types we want to have handled by the class’s copy and move constructors, 
+but we haven’t yet seen how to apply it to distinguish integral and non-integral arguments. 
+That was, after all, our original goal; 
+the constructor ambiguity problem was just something we got dragged into along the way.
+
+
+All we need to do, and I really do mean that this is everything, is 
+
+1. add a `Person` constructor overload to handle integral arguments;
+2. further constrain the templatized constructor so that it’s disabled for such arguments. 
+
+```c++
+class Person
+{
+public:
+    template <typename T,
+              typename = std::enable_if_t<!std::is_base_of_v<Person, 
+                                                             std::decay_t<T>
+                                                            >
+                                          &&
+                                          !std::is_integral_v<std::remove_reference_t<T>>
+                                         >
+             > 
+    explicit Person(T && n) : name(std::forward<T>(n))  // for std::strings and args convertible to std::strings
+    {
+        // ...
+    }
+    
+    explicit Person(int idx) : name(nameFromIdx(idx))   // for integral args
+            
+    {
+        // ...
+    }
+
+    // copy and move constructors, etc.
+    
+private:
+    std::string name;
+};
+```
+
+#### Trade-offs
+
+The first three techniques considered in this Item: 
+abandoning overloading, passing by `const T &`, and passing by value, 
+specify a type for each parameter in the functions to be called. 
+The last two techniques: tag dispatch and constraining te or not, has consequences.
+
+
+As a rule, perfect forwarding is more efficient, 
+because it avoids the creation of temporary objects 
+solely for the purpose of conforming to the type of a parameter declaration.
+In the case of the `Person` constructor, 
+perfect forwarding permits a string literal such as `Nancy` 
+to be forwarded to the constructor for the `std::string` inside `Person`, 
+whereas techniques not using perfect forwarding 
+must create a temporary`std::string` object from the string literal 
+to satisfy the parameter specification for the `Person` constructor.
+
+
+But perfect forwarding has drawbacks. 
+One is that some kinds of arguments can’t be perfect-forwarded, 
+even though they can be passed to functions taking specific types.
+Item 30 explores these perfect forwarding failure cases.
+A second issue is the comprehensibility of error messages when clients pass invalid arguments. 
+Suppose, for example, a client creating a `Person` object passes a string literal made up of `char16_t`s 
+(a type introduced in C++11 to represent 16-bit characters)
+instead of `char`s (which is what a `std::string` consists of):
+```c++
+Person p(u"Konrad Zuse"); // "Konrad Zuse" consists of characters of type const char16_t
+```
+With the first three approaches examined in this Item, 
+compilers will see that the available constructors take either `int` or `std::string`, 
+and they’ll produce a more or less straightforward error message explaining that 
+there’s no conversion from `const char16_t[12]` to `int` or `std::string`.
+
+
+With an approach based on perfect forwarding, however, the array of `const char16_t`s 
+gets bound to the constructor’s parameter without complaint. 
+From there it’s forwarded to the constructor of `Person`’s `std::string` data member, 
+and it’s only at that point that the mismatch between what the caller passed in (a `const char16_t` array) 
+and what’s required (any type acceptable to the `std::string` constructor) is discovered. 
+The resulting error message is likely to be impressively long.
+
+
+In this example, the universal reference is forwarded only once 
+(from the `Person` constructor to the `std::string` constructor), 
+but the more complex the system, the more likely that a universal reference is forwarded 
+through several layers of function calls before finally arriving at a site 
+that determines whether the argument type(s) are acceptable. 
+The more times the universal reference is forwarded, 
+the more baffling the error message may be when something goes wrong. 
+Many developers find that this issue alone is grounds to reserve universal reference parameters 
+for interfaces where performance is a foremost concern.
+
+
+In the case of `Person`, we know that the forwarding function’s universal reference parameter 
+is supposed to be an initializer for a `std::string`, 
+so we can use a `static_assert` to verify that it can play that role. 
+The `std::is_constructible` type trait performs a compile-time test to determine 
+whether an object of one type can be constructed from an object (or set of objects) 
+of a different type (or set of types), so the assertion is easy to write:
+```c++
+class Person
+{
+public:
+    template <
+            typename T,
+            typename = std::enable_if_t<
+                    !std::is_base_of<Person, std::decay_t<T>>::value
+                    &&
+                    !std::is_integral<std::remove_reference_t<T>>::value
+            >
+    >
+    explicit Person(T && n) : name(std::forward<T>(n))
+    {
+        // assert that a std::string can be created from a T object
+        static_assert(std::is_constructible<std::string, T>::value,
+                      "parameter n can't be used to construct a std::string");
+        // the usual ctor work goes here
+    }
+
+    // remainder of Person class (as before)
+};
+```
+This causes the specified error message to be produced 
+if client code tries to create a `Person` from a type that can’t be used to construct a `std::string`. 
+Unfortunately, in this example the `static_assert` is in the body of the constructor, 
+but the forwarding code, being part of the member initialization list, precedes it. 
+With the compilers I use, the result is that 
+the nice, readable message arising from the `static_assert`
+appears only after the usual error messages (up to 160-plus lines of them) 
+have been emitted.
 
 
 
@@ -8922,11 +9401,414 @@ that example, lest you get sidetracked looking it up:
   where reference collapsing occurs.
 
 
+Item 23 remarks that when an argument is passed to a template function, 
+the type deduced for the template parameter encodes whether the argument is an lvalue or an rvalue. 
+The Item fails to mention that this happens 
+only when the argument is used to initialize a parameter that’s a universal reference, 
+but there’s a good reason for the omission: 
+universal references aren’t introduced until Item 24. 
+Together, these observations about universal references and lvalue/rvalue encoding mean that for this template,
+```c++
+template <typename T>
+void func(T && param);
+```
+the deduced template parameter `T` will encode whether the argument passed to param was an lvalue or an rvalue.
+
+
+The encoding mechanism is simple. 
+When an lvalue is passed as an argument, `T` is deduced to be an lvalue reference. 
+When an rvalue is passed, `T` is deduced to be a non-reference. 
+(Note the asymmetry: lvalues are encoded as lvalue references, but rvalues are encoded as non-references.) 
+Hence:
+```c++
+Widget widgetFactory();  // function returning rvalue
+Widget w;                // a variable (an lvalue)
+func(w);                 // call func with lvalue; T deduced to be Widget &
+func(widgetFactory());   // call func with rvalue; T deduced to be Widget
+```
+In both calls to `func`, a `Widget` is passed, 
+yet because one `Widget` is an lvalue and one is an rvalue, 
+different types are deduced for the template parameter `T`. 
+This, as we shall soon see, is what determines whether universal references 
+become rvalue references or lvalue references, 
+and it’s also the underlying mechanism through which `std::forward` does its work.
+
+
+Before we can look more closely at `std::forward` and universal references, 
+we must note that references to references are illegal in C++. 
+Should you try to declare one, your compilers will reprimand you:
+```c++
+int x;
+auto & & rx = x;  // error! can't declare reference to reference
+```
+But consider what happens when an lvalue is passed to a function template taking a universal reference:
+```c++
+template <typename T>
+void func(T && param); 
+
+func(w);                // invoke func with lvalue; T deduced as Widget &
+```
+If we take the type deduced for `T` (i.e., `Widget &`) and use it to instantiate the template, we get this:
+```c++
+void func(Widget & && param);
+```
+A reference to a reference! And yet compilers issue no protest. 
+We know from Item 24 that because the universal reference `param` is being initialized with an lvalue,
+param’s type is supposed to be an lvalue reference, 
+but how does the compiler get from the result of taking the deduced type for `T` 
+and substituting it into the template to the following, 
+which is the ultimate function signature?
+```c++
+void func(Widget & param);
+```
+The answer is <u>_reference collapsing_</u>. 
+Yes, you are forbidden from declaring references to references, 
+but compilers may produce them in particular contexts,
+template instantiation being among them. 
+When compilers generate references to references,
+reference collapsing dictates what happens next.
+There are two kinds of references (lvalue and rvalue), 
+so there are four possible reference-reference combinations 
+(lvalue to lvalue, lvalue to rvalue, rvalue to lvalue, and rvalue to rvalue). 
+If a reference to a reference arises in a context where this is permitted
+(e.g., during template instantiation), 
+the references collapse to a single reference according to this rule:
+
+- If either reference is an lvalue reference, the result is an lvalue reference.
+- Otherwise (i.e., if both are rvalue references) the result is an rvalue reference.
+
+
+In our example above, substitution of the deduced type `Widget &` into the template `func` 
+yields an rvalue reference to an lvalue reference, 
+and the reference-collapsing rule tells us that the result is an lvalue reference.
+
+
+Reference collapsing is a key part of what makes `std::forward` work. 
+As explained in Item 25, `std::forward` is applied to universal reference parameters, 
+so a common use case looks like this:
+```c++
+template <typename T>
+void f(T && fParam)
+{
+    // do some work
+    someFunc(std::forward<T>(fParam));  // forward fParam to someFunc
+}
+```
+Because `fParam` is a universal reference, 
+we know that the type parameter `T` will encode whether the argument passed to `f`
+(i.e., the expression used to initialize `fParam`) was an lvalue or an rvalue. 
+`std::forward`’s job is to cast `fParam` (an lvalue) to an rvalue 
+if and only if `T` encodes that the argument passed to `f` was an rvalue, 
+i.e., if `T` is a non-reference type.
+
+
+Here’s how `std::forward` can be implemented to do that:
+```c++
+// <bits/move.h>
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/**
+ *  @brief  Forward an lvalue.
+ *  @return The parameter cast to the specified type.
+ *
+ *  This function is used to implement "perfect forwarding".
+ */
+template <typename _Tp>
+constexpr _Tp &&
+forward(typename std::remove_reference<_Tp>::type & __t) noexcept
+{
+    return static_cast<_Tp &&>(__t);
+}
+
+/**
+ *  @brief  Forward an rvalue.
+ *  @return The parameter cast to the specified type.
+ *
+ *  This function is used to implement "perfect forwarding".
+ */
+template <typename _Tp>
+constexpr _Tp &&
+forward(typename std::remove_reference<_Tp>::type && __t) noexcept
+{
+    static_assert(!std::is_lvalue_reference<_Tp>::value, 
+                  "template argument substituting _Tp is an lvalue reference type");
+    return static_cast<_Tp &&>(__t);
+}
+
+// typical usage of std::forward: inside universal reference template functions:
+template <typename T>
+void foo(T && p)
+{
+    bar(std::forward<T>(p));
+}
+```
+Suppose that the argument passed to `f` is an lvalue of type `Widget`. 
+`T` will be deduced as `Widget &`, 
+and the call to `std::forward` will instantiate as `std::forward<Widget &>`. 
+Plugging `Widget &` into the `std::forward` implementation yields this:
+```c++
+constexpr Widget & && forward(typename remove_reference<Widget &>::type & param)
+{ 
+    return static_cast<Widget & &&>(param); 
+}
+```
+The type trait `std::remove_reference<Widget &>::type` yields `Widget` (see Item 9), so `std::forward` becomes:
+```c++
+constexpr Widget & && forward(Widget & param)
+{ 
+    return static_cast<Widget & &&>(param); 
+}
+```
+Reference collapsing is also applied to the return type and the cast,
+and the result is the final version of `std::forward` for the call:
+```c++
+constexpr Widget & forward(Widget & param)
+{ 
+    return static_cast<Widget &>(param); 
+}
+```
+As you can see, when an lvalue argument is passed to the function template `f`,
+`std::forward` is instantiated to take and return an lvalue reference. 
+The cast inside `std::forward` does nothing, because param’s type is already `Widget &`, 
+so casting it to `Widget &` has no effect. 
+An lvalue argument passed to `std::forward` will thus return an lvalue reference. 
+By definition, lvalue references are lvalues, so passing an lvalue to `std::forward` causes an lvalue to be returned, 
+just like it’s supposed to.
+
+
+Now suppose that the argument passed to `f` is an rvalue of type `Widget`. 
+In this case, the deduced type for `f`’s type parameter `T` will simply be `Widget`. 
+The call inside `f` to `std::forward` will thus be to `std::forward<Widget>`. 
+Substituting `Widget` for `T` in the `std::forward` implementation gives this:
+```c++
+constexpr Widget && forward(typename remove_reference<Widget>::type && param)
+{ 
+    return static_cast<Widget &&>(param); 
+}
+```
+Applying `std::remove_reference` to the non-reference type `Widget` yields the same type it started with (`Widget`), 
+so `std::forward` becomes this:
+```c++
+constexpr Widget && forward(Widget && param)
+{ 
+    return static_cast<Widget &&>(param); 
+}
+```
+There are no references to references here, so there’s no reference collapsing, 
+and this is the final instantiated version of `std::forward` for the call.
+
+
+Rvalue references returned from functions are defined to be rvalues, so in this case,
+`std::forward` will turn `f`’s parameter `fParam` (an lvalue) into an rvalue. 
+The end result is that an rvalue argument passed to `f` will be forwarded to `someFunc` as an rvalue, 
+which is precisely what is supposed to happen.
+
+
+Reference collapsing occurs in four contexts. 
+The first and most common is template instantiation. 
+The second is type generation for `auto` variables. 
+The details are essentially the same as for templates, 
+because type deduction for `auto` variables is essentially the same as type deduction for templates (see Item 2). 
+Consider again this example from earlier in the Item mimicked in `auto` form:
+```c++
+Widget widgetFactory();        // function returning rvalue
+Widget w;                      // a variable (an lvalue)
+auto && w1 = w;                // call func with lvalue; auto deduced to be Widget &, collapse into Widget &
+auto && w2 = widgetFactory();  // call func with rvalue; auto deduced to be Widget, no collapsing happens
+```
+We’re now in a position to truly understand the universal references introduced in Item 24. 
+A universal reference isn’t a new kind of reference, 
+it’s actually an rvalue reference in a context where two conditions are satisfied:
+
+- **Type deduction distinguishes lvalues from rvalues**. 
+  Lvalues of type `T` are deduced to have type `T &`, 
+  while rvalues of type `T` yield `T` as their deduced type.
+- **Reference collapsing occurs**.
+
+The concept of universal references is useful, 
+because it frees you from having to recognize the existence of reference collapsing contexts, 
+to mentally deduce different types for lvalues and rvalues, 
+and to apply the reference collapsing rule 
+after mentally substituting the deduced types into the contexts in which they occur.
+
+
+I said there were four such contexts, but we’ve discussed only two: 
+template instantiation and `auto` type generation. 
+The third is the generation and use of `typedef`s and alias declarations (see Item 9). 
+If, during creation or evaluation of a `typedef`, references to references arise, 
+reference collapsing intervenes to eliminate them. 
+For example, suppose we have a `Widget` class template with an embedded `typedef` for an rvalue reference type,
+```c++
+template <typename T>
+class Widget 
+{
+public:
+    typedef T && RvalueRefToT;
+    // ...
+};
+
+Widget<int &> w;
+```
+Substituting `int &` for `T` in the `Widget` template gives us the following `typedef`:
+```c++
+typedef int & && RvalueRefToT;
+```
+Reference collapsing reduces it to this,
+```c++
+typedef int & RvalueRefToT;
+```
+which makes clear that the name we chose for the `typedef` is perhaps not as descriptive as we’d hoped: 
+`RvalueRefToT` is a `typedef` for an lvalue reference when `Widget` is instantiated with an lvalue reference type.
+
+
+The final context in which reference collapsing takes place is uses of `decltype`. 
+If, during analysis of a type involving `decltype`, a reference to a reference arises, 
+reference collapsing will kick in to eliminate it. 
+(For information about `decltype`, see Item 3.)
+
+
+
+
+
 
 ### 📌 Item 29: Assume that move operations are not present, not cheap, and not used
 
 - Assume that move operations are not present, not cheap, and not used.
 - In code with known types or support for move semantics, there is no need for assumptions.
+
+
+Move semantics can really pull that off, 
+and that grants the feature an aura worthy of legend. 
+Legends, however, are generally the result of exaggeration. 
+The purpose of this Item is to keep your expectations grounded.
+
+
+Let’s begin with the observation that many types **fail** to ~~support move semantics~~. 
+The entire C++98 Standard Library was overhauled for C++11 
+to add move operations for types where moving could be implemented faster than copying, 
+and the implementation of the library components was revised to take advantage of these operations,
+but chances are that you’re working with a code base that has not been completely revised to take advantage of C++11. 
+For types in your applications (or in the libraries you use) where no modifications for C++11 have been made, 
+the existence of move support in your compilers is likely to do you little good. 
+True, C++11 is willing to generate move operations for classes that lack them, 
+but that happens only for classes declaring no copy operations, move operations, or destructors (see Item 17). 
+Data members or base classes of types that have disabled moving (e.g., by deleting the move operations, see Item 11) 
+will also suppress compiler-generated move operations. 
+For types without explicit support for moving and that don’t qualify for compiler-generated move operations, 
+there is no reason to expect C++11 to deliver any kind of performance improvement over C++98.
+
+
+Even types with explicit move support may not benefit as much as you’d hope. 
+All containers in the standard C++11 library support moving, for example, 
+but it would be a mistake to assume that moving all containers is cheap. 
+For some containers, this is because there’s no truly cheap way to move their contents. 
+For others, it’s because the truly cheap move operations the containers offer 
+come with caveats the container elements can’t satisfy.
+
+
+Consider `std::array`, a new container in C++11. 
+`std::array` is essentially a builtin array with an STL interface. 
+This is fundamentally different from the other standard
+containers, each of which stores its contents on the heap. 
+Objects of such container types hold (as data members), 
+conceptually, only a pointer to the heap memory storing the contents of the container. 
+(The reality is more complex, but for purposes of this analysis, the differences are not important.) 
+The existence of this pointer makes it possible to move the contents of an entire container in constant time: 
+just copy the pointer to the container’s contents from the source container to the target, 
+and set the source’s pointer to null:
+```c++
+std::vector<Widget> vw1;
+// put data into vw1
+
+// ...
+
+// move vw1 into vw2. Runs in constant time. Only ptrs in vw1 and vw2 are modified
+auto vw2 = std::move(vw1);
+```
+`std::array` objects **lack** such a pointer, 
+because the data for a `std::array`’s contents are stored directly in the `std::array` object:
+```c++
+std::array<Widget, 10000> aw1;
+// put data into aw1
+
+// ...
+
+// move aw1 into aw2. Runs in linear time. All elements in aw1 are moved into aw2
+auto aw2 = std::move(aw1);
+```
+Note that the elements in `aw1` are moved into `aw2`. 
+Assuming that `Widget` is a type where moving is faster than copying, 
+moving a `std::array` of `Widget` will be faster than copying the same `std::array`. 
+So `std::array` certainly offers move support.
+Yet both moving and copying a `std::array` have linear-time computational complexity,
+because each element in the container must be copied or moved. 
+This is far from the “moving a container is now as cheap as assigning a couple of pointers”
+claim that one sometimes hears.
+
+
+On the other hand, `std::string` offers constant-time moves and linear-time copies.
+That makes it sound like moving is faster than copying, but that may not be the case.
+Many string implementations employ the Small String Optimization (SSO). 
+With the SSO, “small” strings (e.g., those with a capacity of no more than 15 characters) 
+are stored in a buffer within the `std::string` object; 
+no heap-allocated storage is used.
+Moving small strings using an SSO-based implementation is **no** faster than copying them, 
+because the copy-only-a-pointer trick 
+that generally underlies the performance advantage of moves over copies isn’t applicable.
+
+
+The motivation for the SSO is extensive evidence that short strings are the norm for many applications. 
+Using an internal buffer to store the contents of such strings eliminates the need to dynamically allocate memory for them, 
+and that’s typically an efficiency win. 
+An implication of the win, however, is that moves are no faster than copies, 
+though one could just as well take a glass-half-full approach and say that for such strings, 
+copying is no slower than moving.
+
+
+Even for types supporting speedy move operations, 
+some seemingly sure-fire move situations can end up making copies. 
+Item 14 explains that some container operations in the Standard Library 
+offer the strong exception safety guarantee 
+and that to ensure that legacy C++98 code dependent on that guarantee isn’t broken when upgrading to C++11, 
+the underlying copy operations may be replaced with move operations only if the move operations are known to not `throw`. 
+A consequence is that even if a type offers move operations that are more efficient than the corresponding copy operations, 
+and even if, at a particular point in the code, a move operation would generally be appropriate 
+(e.g., if the source object is an rvalue), 
+compilers might still be forced to invoke a copy operation because the corresponding move operation isn’t declared `noexcept`.
+
+
+There are thus several scenarios in which C++11’s move semantics do you no good:
+
+- **No move operations**: 
+  The object to be moved from fails to offer move operations.
+  The move request therefore becomes a copy request.
+- **Move not faster**: 
+  The object to be moved from has move operations that are no faster than its copy operations.
+- **Move not usable**: 
+  The context in which the moving would take place requires a move operation that emits no exceptions, 
+  but that operation isn’t declared `noexcept`.
+
+It’s worth mentioning, too, another scenario where move semantics offers no efficiency gain:
+
+- **Source object is lvalue**: 
+  With very few exceptions (see e.g., Item 25) only rvalues may be used as the source of a move operation.
+
+But the title of this Item is to assume that move operations are not present, not cheap, and not used. 
+This is typically the case in generic code, e.g., when writing templates, 
+because you don’t know all the types you’re working with. 
+In such circumstances, you must be as conservative about copying objects as you were in C++98, 
+before move semantics existed. 
+This is also the case for “unstable” code, 
+i.e., code where the characteristics of the types being used are subject to relatively frequent modification.
+Often, however, you know the types your code uses, and you can rely on their characteristics not changing 
+(e.g., whether they support inexpensive move operations).
+
+
+When that’s the case, you don’t need to make assumptions. 
+You can simply look up the move support details for the types you’re using. 
+If those types offer cheap move operations, 
+and if you’re using objects in contexts where those move operations will be invoked, 
+you can safely rely on move semantics to replace copy operations with their less expensive move counterparts.
 
 
 
@@ -8936,11 +9818,140 @@ that example, lest you get sidetracked looking it up:
 ### 📌 Item 30: Familiarize yourself with perfect forwarding failure cases
 
 - Perfect forwarding fails when template type deduction fails or when it deduces the wrong type.
-- The kinds of arguments that lead to perfect forwarding failure are braced initializers, 
-  null pointers expressed as `0` or `NULL`, 
-  declaration-only integral `const` `static` data members, 
-  template and overloaded function names, 
-  and bitfields. 
+- The kinds of arguments that lead to perfect forwarding failure are: 
+    - braced initializers; 
+    - null pointers expressed as `0` or `NULL`; 
+    - declaration-only integral `const static` data members; 
+    - template and overloaded function names; 
+    - bitfields.
+
+
+<u>_Perfect forwarding_</u> means we don’t just forward objects,
+we also forward their salient characteristics: 
+their types, their value categories (whether they’re lvalues or rvalues), 
+and their cv-constraints (whether they’re `const` or `volatile`). 
+In conjunction with the observation that we’ll be dealing with reference parameters, 
+this implies that we’ll be using universal references (see Item 24), 
+because only universal reference parameters encode information 
+about the lvalueness and rvalueness of the arguments that are passed to them.
+
+
+Let’s assume we have some function `f`, and we’d like to write a function template that forwards to it: 
+```c++
+template <typename T>
+void fwd(T && param)             // accept any argument
+{
+    f(std::forward<T>(param));   // forward it to f
+}
+```
+Forwarding functions are, by their nature, generic. 
+The `fwd` template, for example, accepts any type of argument, and it forwards whatever it gets. 
+A logical extension of this genericity is for forwarding functions to be not just templates, 
+but <u>_variadic templates_</u>, thus accepting any number of arguments. 
+The variadic form for fwd looks like this:
+```c++
+template <typename ... Ts>
+void fwd(Ts && ... params)           // accept any arguments
+{
+    f(std::forward<Ts>(params)...);  // forward them to f
+}
+```
+This is the form you’ll see in, among other places, 
+the standard containers’ emplacement functions (see Item 42) and the smart pointer factory functions,
+`std::make_shared` and `std::make_unique` (see Item 21).
+
+
+Given our target function `f` and our forwarding function `fwd`, 
+perfect forwarding fails if calling `f` with a particular argument does one thing, 
+but calling `fwd` with the same argument does something different:
+```c++
+f(expression);    // if this does one thing,
+fwd(expression);  // but this does something else, 
+                  // fwd fails to perfectly forward expression to f
+```
+Several kinds of arguments lead to this kind of failure. 
+Knowing what they are and how to work around them is important, 
+so let’s tour the kinds of arguments that can’t be perfect-forwarded.
+
+#### Braced initializers
+
+Suppose `f` is declared like this:
+```c++
+void f(const std::vector<int> & v);
+```
+In that case, calling `f` with a braced initializer compiles,
+```c++
+f({1, 2, 3});    // fine, "{1, 2, 3}" implicitly converted to std::vector<int>
+```
+but passing the same braced initializer to `fwd` **doesn’t** compile:
+```c++
+fwd({1, 2, 3});  // error! doesn't compile
+```
+That’s because the use of a braced initializer is a perfect forwarding failure case.
+
+
+All such failure cases have the same cause. 
+In a direct call to `f` (such as `f({1, 2, 3})`), 
+compilers see the arguments passed at the call site, 
+and they see the types of the parameters declared by `f`. 
+They compare the arguments at the call site to the parameter declarations to see if they’re compatible, 
+and, if necessary, they perform implicit conversions to make the call succeed. 
+In the example above, they generate a temporary `std::vector<int>` object from `{1, 2, 3}` 
+so that `f`’s parameter `v` has a `std::vector<int>` object to bind to.
+
+
+When calling `f` indirectly through the forwarding function template `fwd`, 
+compilers no longer compare the arguments passed at `fwd`’s call site to the parameter declarations in `f`. 
+Instead, they deduce the types of the arguments being passed to `fwd`, 
+and they compare the deduced types to `f`’s parameter declarations. 
+Perfect forwarding fails when either of the following occurs:
+
+- **Compilers are unable to deduce a type for one or more of fwd’s parameters**. 
+  In this case, the code fails to compile.
+- **Compilers deduce the “wrong” type for one or more of fwd’s parameters**. 
+  Here, “wrong” could mean that `fwd`’s instantiation won’t compile with the types that were deduced, 
+  but it could also mean that the call to `f` using `fwd`’s deduced types behaves differently 
+  from a direct call to `f` with the arguments that were passed to `fwd`. 
+  One source of such divergent behavior would be if `f` were an overloaded function name,
+  and, due to “incorrect” type deduction, the overload of `f` called inside `fwd` were different 
+  from the overload that would be invoked if `f` were called directly.
+
+In the `fwd({1, 2, 3})` call above, the problem is that passing a braced initializer
+to a function template parameter that’s not declared to be a `std::initializer_list` is decreed to be, 
+as the Standard puts it, a “non-deduced context.” 
+In plain English, that means that compilers are **forbidden** from deducing a type 
+for the expression `{1, 2, 3}` in the call to `fwd`, 
+because `fwd`’s parameter isn’t declared to be a `std::initializer_list`. 
+Being prevented from deducing a type for `fwd`’s parameter,
+compilers must understandably reject the call.
+
+
+Interestingly, Item 2 explains that type deduction succeeds for `auto` variables initialized with a braced initializer. 
+Such variables are deemed to be `std::initializer_list` objects,
+and this affords a simple workaround for cases where the type the forwarding function should deduce is a `std::initializer_list`: 
+declare a local variable using `auto`, then pass the local variable to the forwarding function:
+```c++
+auto il = {1, 2, 3};  // il's type deduced to be std::initializer_list<int>
+fwd(il);              // fine, perfect-forwards il to f
+```
+
+#### `0` or `NULL` as null pointers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
