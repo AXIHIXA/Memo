@@ -2173,11 +2173,16 @@ resetV({1, 2, 3});     // error! can't deduce type for {1, 2, 3}
 
 
 
-### 📌 Item 3: Understand `decltype`
+### 📌 Item 3: Understand [`decltype`](https://en.cppreference.com/w/cpp/language/decltype)
 
 - `decltype` almost always yields the type of a variable or expression without any modifications.
+    - `decltype` always yields of an entity without any modification; 
+    - `decltype` yields of an xvalue expression as `T &&`;
+    - `decltype` yields of an lvalue expression as `T &`;
+    - `decltype` yields of an prvalue expression as `T`;
 - For lvalue expressions of type `T` other than names, `decltype` always reports a type of `T &`.
-- C++14 supports `decltype(auto)`, which, like `auto`, deduces a type from its initializer, but it performs the type deduction using the `decltype` rules.
+- C++14 supports `decltype(auto)`, which, like `auto`, deduces a type from its initializer, 
+  but it performs the type deduction using the `decltype` rules.
 
 
 In contrast to what happens during type deduction for templates and `auto` (see Items 1 and 2),
@@ -2398,7 +2403,7 @@ To see the types for `x` and `y`, just try to instantiate `TD` with their types:
 TD<decltype(x)> xType;  // elicit errors containing
 TD<decltype(y)> yType;  // x's and y's types
 ```
-Error message (`g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0`):
+Error message (`g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0`):
 ```c++
 error: aggregate 'TD<int> xType' has incomplete type and cannot be defined
 error: aggregate 'TD<const int *> yType' has incomplete type and cannot be defined
@@ -2598,7 +2603,7 @@ The official return type of `v.size()` is `std::vector<int>::size_type`, but few
 `std::vector<int>::size_type` is specified to be an unsigned integral type, 
 so a lot of programmers figure that `unsigned` is good enough and write code such as the above. 
 This can have some interesting consequences. 
-E.g., `g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0` implements `std::vector<int>::size_type` as `size_t` (aka. `unsigned long`). 
+E.g., `g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0` implements `std::vector<int>::size_type` as `size_t` (aka. `unsigned long`). 
 On 32-bit ubuntu, for example, both `unsigned` and `size_t` are the same size, 32 bits; 
 but on 64-bit ubuntu, `unsigned` is 32 bits, while `size_t` is 64 bits. 
 This means that code that works under 32-bit ubuntu may behave incorrectly under 64-bit ubuntu, 
@@ -3113,7 +3118,7 @@ C++’s primary policy is that `0` is an `int`, not a pointer.
 Practically speaking, the same is true of `NULL`: 
 ```c++
 // <stddef.h>
-// g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
 
 #ifdef __GNUG__
     #define NULL __null
@@ -6472,7 +6477,7 @@ If you’re using C++11, never fear, because a basic version of `std::make_uniqu
 Here, look:
 ```c++
 /// <type_traits.h>
-/// g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
 
 template <typename _Tp>
 struct remove_extent
@@ -6498,7 +6503,7 @@ using remove_extent_t = typename remove_extent<_Tp>::type;
 
 
 /// <unique_ptr.h>
-/// g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
 
 template <typename _Tp>
 struct _MakeUniq
@@ -9085,7 +9090,7 @@ because SFINAE is the technology that makes `std::enable_if` work.)
 Here, I want to focus on expression of the condition that will control whether this constructor is enabled.
 ```c++
 // <type_traits>
-// g++ Ubuntu 9.3.0-17ubuntu1~20.04 9.3.0
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
 
 /// Define a member typedef @c type only if a boolean constant is true.
 template <bool, typename _Tp = void>
@@ -10781,10 +10786,156 @@ However, that Item explains that there are some cases in C++11 where `std::bind`
 - Use `decltype` on `auto &&` parameters to `std::forward` them
 
 
-One of the most exciting features of C++14 is generic lambdas—lambdas that use
-auto in their parameter specifications. The implementation of this feature is straightforward:
-operator() in the lambda’s closure class is a template. Given this lambda,
-for example,
+#### Generic lambdas
+
+One of the most exciting features of C++14 is <u>_generic lambdas_</u>: 
+lambdas that use `auto` in their parameter specifications. 
+The implementation of this feature is straightforward:
+`operator()` in the lambda’s closure class is a template. 
+Given this lambda, for example,
+```c++
+auto f = [](auto x){ return func(normalize(x)); };
+```
+the closure class’s function call operator looks like this:
+```c++
+class SomeCompilerGeneratedClassName
+{
+public:
+    template <typename T>
+    auto operator()(T x) const
+    {
+        return func(normalize(x));
+    }
+
+    // other closure class functionality
+};
+```
+In this example, the only thing the lambda does with its parameter `x` is forward it to `normalize`. 
+If `normalize` treats lvalues differently from rvalues, this lambda isn’t written properly, 
+because it always passes an lvalue (the parameter `x`) to `normalize`,
+even if the argument that was passed to the lambda was an rvalue.
+
+
+The correct way to write the lambda is to have it perfect-forward `x` to `normalize`.
+Doing that requires two changes to the code. 
+First, `x` has to become a universal reference (see Item 24), 
+and second, it has to be passed to `normalize` via `std::forward` (see Item 25). 
+In concept, these are trivial modifications:
+```c++
+auto f = [](auto && x){ return func(normalize(std::forward<???>(x))); };
+```
+Between concept and realization, however, is the question of what type to pass to `std::forward`. 
+
+Normally, when you employ perfect forwarding, you’re in a template function taking a type parameter `T`, 
+so you just write `std::forward<T>`. 
+In the generic lambda, though, there’s no type parameter `T` available to you. 
+There is a `T` in the templatized `operator()` inside the closure class generated by the lambda, 
+but it’s not possible to refer to it from the lambda, so it does you no good. 
+
+
+Item 28 explains that if an lvalue argument is passed to a universal reference parameter,
+the type of that parameter becomes an lvalue reference. 
+If an rvalue is passed, the parameter becomes an rvalue reference. 
+This means that in our lambda, we can determine whether the argument passed was an lvalue or an rvalue 
+by inspecting the type of the parameter `x`. 
+`decltype` gives us a way to do that (see Item 3). 
+If an lvalue was passed in, `decltype(x)` will produce a type that’s an lvalue reference. 
+If an rvalue was passed, `decltype(x)` will produce an rvalue reference type. 
+
+
+Item 28 also explains that when calling `std::forward`, 
+convention dictates that the type argument be an lvalue reference to indicate an lvalue 
+and a non-reference to indicate an rvalue. 
+In our lambda, if `x` is bound to an lvalue, `decltype(x)` will yield an lvalue reference. 
+That conforms to convention. 
+However, if `x` is bound to an rvalue, 
+`decltype(x)` will yield an rvalue reference instead of the customary non-reference.
+
+
+But look at the sample C++14 implementation for `std::forward`:
+```c++
+// <bits/move.h>
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/**
+ *  @brief  Forward an lvalue.
+ *  @return The parameter cast to the specified type.
+ *
+ *  This function is used to implement "perfect forwarding".
+ */
+template <typename _Tp>
+constexpr _Tp &&
+forward(typename std::remove_reference<_Tp>::type & __t) noexcept
+{
+    return static_cast<_Tp &&>(__t);
+}
+
+/**
+ *  @brief  Forward an rvalue.
+ *  @return The parameter cast to the specified type.
+ *
+ *  This function is used to implement "perfect forwarding".
+ */
+template <typename _Tp>
+constexpr _Tp &&
+forward(typename std::remove_reference<_Tp>::type && __t) noexcept
+{
+    static_assert(!std::is_lvalue_reference<_Tp>::value, 
+                  "template argument substituting _Tp is an lvalue reference type");
+    return static_cast<_Tp &&>(__t);
+}
+
+// typical usage of std::forward: inside universal reference template functions:
+template <typename T>
+void foo(T && p)
+{
+    bar(std::forward<T>(p));
+}
+```
+If client code wants to perfect-forward an rvalue of type `Widget`, 
+it normally instantiates `std::forward` with the type `Widget` (i.e, a non-reference type), 
+and the `std::forward` template yields this function:
+```c++
+constexpr Widget && forward(Widget && param) 
+{
+    return static_cast<Widget &&>(param);
+}
+```
+But consider what would happen if the client code wanted to perfect-forward the same rvalue of type `Widget`, 
+but instead of following the convention of specifying `T` to be a non-reference type, 
+it specified it to be an rvalue reference. 
+That is, consider what would happen if `T` were specified to be `Widget &&`. 
+After initial instantiation of `std::forward`, application of `std::remove_reference_t`, 
+and reference collapsing (once again, see Item 28), `std::forward` would look like this:
+```c++
+constexpr Widget && forward(Widget && param) 
+{
+    return static_cast<Widget &&>(param);
+}
+```
+If you compare this instantiation with the one that results when `std::forward` is called with `T` set to `Widget`, 
+you’ll see that they’re identical. 
+That means that instantiating `std::forward` with an rvalue reference type yields the same result 
+as instantiating it with a non-reference type.
+
+
+That’s wonderful news, because `decltype(x)` yields an rvalue reference type 
+when an rvalue is passed as an argument to our lambda’s parameter `x`. 
+We established above that when an lvalue is passed to our lambda, 
+`decltype(x)` yields the customary type to pass to `std::forward`, 
+and now we realize that for rvalues, `decltype(x)`
+yields a type to pass to `std::forward` that’s not conventional, 
+but that nevertheless yields the same outcome as the conventional type. 
+So for both lvalues and rvalues, passing `decltype(x)` to `std::forward` gives us the result we want. 
+Our perfect-forwarding lambda can therefore be written like this:
+```c++
+auto f = [](auto && x){ return func(normalize(std::forward<decltype(x)>(x))); };
+```
+From there, it’s just a hop, skip, and six dots to a perfect-forwarding lambda that accepts not just a single parameter, 
+but any number of parameters, because C++14 lambdas can also be variadic:
+```c++
+auto f = [](auto && ... params){ return func(normalize(std::forward<decltype(params)>(params)...)); };
+```
 
 
 
@@ -10796,6 +10947,291 @@ for example,
 - Lambdas are more readable, more expressive, and may be more efficient than using `std::bind`.
 - In C++11 only, `std::bind` may be useful for implementing move capture 
   or for binding objects with templatized function call operators.
+  
+  
+The most important reason to prefer lambdas over `std::bind` is that lambdas are more readable. 
+Suppose, for example, we have a function to set up an audible alarm:
+```c++
+using Time = std::chrono::steady_clock::time_point;
+enum class Sound { Beep, Siren, Whistle };
+using Duration = std::chrono::steady_clock::duration;
+
+// at time t, make sound s for duration d
+void setAlarm(Time t, Sound s, Duration d);
+```
+Further suppose that at some point in the program, 
+we’ve determined we’ll want an alarm that will go off an hour after it’s set and that will stay on for 30 seconds. 
+The alarm sound, however, remains undecided. 
+We can write a lambda that revises `setAlarm`’s interface so that only a sound needs to be specified.
+We can streamline this code in C++14 by availing ourselves of the standard suffixes
+for seconds (`s`), milliseconds (`ms`), hours (`h`), etc.,
+that build on C++11’s support for user-defined literals.
+These suffixes are implemented in the `std::literals` namespace, so the above code can be rewritten as follows:
+```c++
+// setSoundL ("L" for "lambda") is a function object 
+// allowing a sound to be specified for a 30s alarm to go off an hour after it's set
+auto setSoundL = [](Sound s)
+{
+    using namespace std::chrono;
+    using namespace std::literals;
+
+    // alarm to go off in an hour for 30 seconds
+    setAlarm(steady_clock::now() + 1h, s, 30s); 
+};
+```
+Our first attempt to write the corresponding `std::bind` call is below. 
+It has an error that we’ll fix in a moment, but the correct code is more complicated, 
+and even this simplified version brings out some important issues:
+```c++
+using namespace std::chrono;
+using namespace std::literals;
+using namespace std::placeholders;
+
+// "B" for "bind"
+// incorrect! see below
+auto setSoundB = std::bind(setAlarm, steady_clock::now() + 1h, _1, 30s);
+```
+Readers of this code simply have to know that calling `setSoundB` invokes `setAlarm` 
+with the time and duration specified in the call to `std::bind`. 
+To the uninitiated, the placeholder “`_1`” is essentially magic, 
+but even readers in the know have to mentally map from the number in that placeholder to its position 
+in the `std::bind` parameter list in order to understand that the first argument in a call to `setSoundB` 
+is passed as the second argument to `setAlarm`. 
+The type of this argument is not identified in the call to `std::bind`, 
+so readers have to consult the `setAlarm` declaration to determine what kind of argument to pass to `setSoundB`.
+
+
+But, the code isn’t quite right. 
+In the lambda, it’s clear that the expression `steady_clock::now() + 1h` is an argument to `setAlarm`. 
+It will be evaluated when `setAlarm` is called. 
+That makes sense: we want the alarm to go off an hour after invoking `setAlarm`. 
+In the `std::bind` call, however, `steady_clock::now() + 1h` is passed as an argument to `std::bind`, not to `setAlarm`. 
+That means that the expression will be evaluated when `std::bind` is called, 
+and the time resulting from that expression will be stored inside the resulting bind object. 
+As a consequence, the alarm will be set to go off an hour after the call to `std::bind`, 
+not an hour after the call to `setAlarm`!
+
+
+Fixing the problem requires telling `std::bind` to defer evaluation of the expression until `setAlarm` is called, 
+and the way to do that is to nest a second call to `std::bind` inside the first one:
+```c++
+auto setSoundB = std::bind(setAlarm, std::bind(std::plus<>(), steady_clock::now(), 1h), _1, 30s);
+```
+If you’re familiar with the `std::plus` template from C++98, 
+you may be surprised to see that in this code, no type is specified between the angle brackets, 
+i.e., the code contains `std::plus<>`, not `std::plus<type>`. 
+In C++14, the template type argument for the standard operator templates can generally be omitted, 
+so there’s no need to provide it here. 
+C++11 offers no such feature, so the `C++11` std::bind equivalent to the lambda is:
+```
+using namespace std::chrono;
+using namespace std::placeholders;
+
+auto setSoundB = std::bind(setAlarm, 
+                           std::bind(std::plus<steady_clock::time_point>(), steady_clock::now(), hours(1)), 
+                           _1, 
+                           seconds(30));
+```
+When `setAlarm` is overloaded, a new issue arises. 
+Suppose there’s an overload taking a fourth parameter specifying the alarm volume:
+```c++
+enum class Volume { Normal, Loud, LoudPlusPlus };
+
+void setAlarm(Time t, Sound s, Duration d, Volume v);
+```
+The lambda continues to work as before, because overload resolution chooses the three-argument version of `setAlarm`:
+```c++
+auto setSoundL = [](Sound s)
+{
+    using namespace std::chrono;
+    using namespace std::literals;
+    
+    // alarm to go off in an hour for 30 seconds
+    setAlarm(steady_clock::now() + 1h, s, 30s);
+};
+```
+The `std::bind` call, on the other hand, now fails to compile:
+```c++
+// error! which setAlarm? 
+auto setSoundB = std::bind(setAlarm, std::bind(std::plus<>(), steady_clock::now(), 1h), _1, 30s);
+```
+The problem is that compilers have no way to determine 
+which of the two `setAlarm` functions they should pass to `std::bind`. 
+All they have is a function name, and the name alone is ambiguous.
+
+
+To get the `std::bind` call to compile, `setAlarm` must be cast to the proper function pointer type:
+```c++
+using SetAlarm3ParamType = void (*)(Time t, Sound s, Duration d);
+
+auto setSoundB = std::bind(static_cast<SetAlarm3ParamType>(setAlarm), 
+                           std::bind(std::plus<>(), steady_clock::now(), 1h), 
+                           _1, 
+                           30s);
+```
+But this brings up another difference between lambdas and `std::bind`. 
+Inside the function call operator for `setSoundL` (i.e., the function call operator of the lambda’s closure class), 
+the call to `setAlarm` is a normal function invocation that can be inlined by compilers in the usual fashion:
+```c++
+setSoundL(Sound::Siren);  // body of setAlarm may well be inlined here
+```
+The call to `std::bind`, however, passes a function pointer to `setAlarm`, 
+and that means that inside the function call operator for `setSoundB` 
+(i.e., the function call operator for the bind object), 
+the call to `setAlarm` takes place through a function pointer. 
+Compilers are less likely to inline function calls through function pointers,
+and that means that calls to setAlarm through `setSoundB` are less likely to be fully
+inlined than those through `setSoundL`:
+```c++
+setSoundB(Sound::Siren);  // body of setAlarm may well be inlined here
+```
+It’s thus possible that using lambdas generates faster code than using `std::bind`.
+
+
+The `setAlarm` example involves only a simple function call. 
+If you want to do anything more complicated, the scales tip even further in favor of lambdas. 
+For example, consider this C++14 lambda, which returns whether its argument is 
+between a minimum value (`lowVal`) and a maximum value (`highVal`),
+where `lowVal` and `highVal` are local variables:
+```c++
+auto betweenL = [lowVal, highVal](const auto & val)
+{ 
+    return lowVal <= val && val <= highVal; 
+};
+```
+`std::bind` can express the same thing, but the construct is an example of job security through code obscurity:
+```c++
+using namespace std::placeholders;
+
+auto betweenB = std::bind(std::logical_and<>(), 
+                         std::bind(std::less_equal<>(), lowVal, _1), 
+                         std::bind(std::less_equal<>(), _1, highVal));
+```
+In C++11, we’d have to specify the types we wanted to compare, and the `std::bind` call would then look like this:
+```c++
+auto betweenB = std::bind(std::logical_and<bool>(), 
+                          std::bind(std::less_equal<int>(), lowVal, _1), 
+                          std::bind(std::less_equal<int>(), _1, highVal));
+```
+Of course, in C++11, the lambda couldn’t take an auto parameter, so it’d have to commit to a type, too:
+```c++
+auto betweenL = [lowVal, highVal](int val)
+{ 
+    return lowVal <= val && val <= highVal; 
+};
+```
+Either way, I hope we can agree that the lambda version is not just shorter, 
+but also more comprehensible and maintainable.
+
+
+Earlier, I remarked that for those with little `std::bind` experience, 
+its placeholders(e.g., `_1`, `_2`, etc.) are essentially magic. 
+But it’s not just the behavior of the placeholders that’s opaque. 
+Suppose we have a function to create compressed copies of `Widget`s,
+```c++
+enum class CompLevel { Low, Normal, High };        // compression level
+
+Widget compress(const Widget & w, CompLevel lev);  // make compressed copy of w
+```
+and we want to create a function object that allows us to specify how much a particular `Widget w` should be compressed. 
+This use of `std::bind` will create such an object:
+```c++
+Widget w;
+using namespace std::placeholders;
+auto compressRateB = std::bind(compress, w, _1);
+```
+Now, when we pass `w` to `std::bind`, it has to be stored for the later call to compress.
+It’s stored inside the object `compressRateB`, but how is it stored, by value or by reference?
+It makes a difference, because if `w` is modified between the call to `std::bind` and a call to `compressRateB`, 
+storing `w` by reference will reflect the changes, while storing it by value won’t.
+
+
+The answer is that it’s stored by value, but the only way to know that is to memorize how `std::bind` works; 
+there’s no sign of it in the call to `std::bind`. 
+
+
+`std::bind` always copies its arguments, 
+but callers can achieve the effect of having an argument stored by reference by applying `std::ref` to it. 
+The result of
+```c++
+auto compressRateB = std::bind(compress, std::ref(w), _1);
+```
+is that `compressRateB` acts as if it holds a reference to `w`, rather than a copy.
+
+
+Contrast that with a lambda approach, where whether w is captured by value or by reference is explicit:
+```c++
+// w is captured by value; lev is passed by value
+auto compressRateL = [w](CompLevel lev)
+{ 
+    return compress(w, lev); 
+};
+```
+Equally explicit is how parameters are passed to the lambda. 
+Here, it’s clear that the parameter lev is passed by value. Hence:
+```c++
+compressRateL(CompLevel::High);  // arg is passed by value
+```
+But in the call to the object resulting from `std::bind`, how is the argument passed?
+```c++
+compressRateB(CompLevel::High);  // how is arg passed?
+```
+Again, the only way to know is to memorize how `std::bind` works.
+(The answer is that all arguments passed to bind objects are passed by reference, 
+because the function call operator for such objects uses perfect forwarding.)
+
+
+Compared to lambdas, then, code using std::bind is less readable, less expressive, and possibly less efficient. 
+In C++14, there are no reasonable use cases for `std::bind`. 
+In C++11, however, `std::bind` can be justified in two constrained situations:
+
+- **Move capture**. 
+  C++11 lambdas don’t offer move capture, 
+  but it can be emulated through a combination of a lambda and `std::bind`. 
+  For details, consult Item 32, which also explains that in C++14, 
+  lambdas’ support for init capture eliminates the need for the emulation.
+- **Polymorphic function objects**. 
+  Because the function call operator on a bind object uses perfect forwarding, 
+  it can accept arguments of any type (modulo the restrictions on perfect forwarding described in Item 30). 
+  This can be useful when you want to bind an object with a templatized function call operator. 
+  For example, given this class,
+  ```c++
+  class PolyWidget 
+  {
+  public:
+      template <typename T>
+      void operator()(const T & param);
+  
+      // ...
+  };
+  ```
+  `std::bind` can bind a `PolyWidget` as follows:
+  ```c++
+  PolyWidget pw;
+  auto boundPW = std::bind(pw, _1);
+  ```
+  `boundPW` can then be called with different types of arguments:
+  ```c++
+  boundPW(1930);       // pass int to PolyWidget::operator()
+  boundPW(nullptr);    // pass nullptr to PolyWidget::operator()
+  boundPW("Rosebud");  // pass string literal to PolyWidget::operator()
+  ```
+  There is no way to do this with a C++11 lambda. 
+  In C++14, however, it’s easily achieved via a lambda with an `auto` parameter:
+  ```c++
+  auto boundPW = [pw](const auto & param)
+  { 
+      pw(param); 
+  };
+  ```
+
+These are edge cases, of course, and they’re transient edge cases at that, 
+because compilers supporting C++14 lambdas are increasingly common.
+
+
+When `bind` was unofficially added to C++ in 2005, it was a big improvement over its 1998 predecessors. 
+The addition of lambda support to C++11 rendered `std::bind` all but obsolete, 
+however, and as of C++14, there are just no good use cases for it.
 
 
 
@@ -10803,6 +11239,27 @@ for example,
 
 
 ### 🎯 Chapter 7. The Concurrency API
+
+One of C++11’s great triumphs is the incorporation of concurrency into the language and library. 
+Programmers familiar with other threading APIs (e.g., pthreads or Windows threads) 
+are sometimes surprised at the comparatively Spartan feature set that C++ offers, 
+but that’s because a great deal of C++’s support for concurrency is in the form of constraints on compiler-writers. 
+The resulting language assurances mean that for the first time in C++’s history, 
+programmers can write multithreaded programs with standard behavior across all platforms. 
+This establishes a solid foundation on which expressive libraries can be built, 
+and the concurrency elements of the Standard Library 
+(tasks, futures, threads, mutexes, condition variables, atomic objects, and more) 
+are merely the beginning of what is sure to become an increasingly rich set of tools 
+for the development of concurrent C++ software.
+In the Items that follow, bear in mind that the Standard Library has two templates for futures: 
+`std::future` and `std::shared_future`. 
+In many cases, the distinction is not important, 
+so I often simply talk about <u>_futures_</u>, by which I mean both kinds.
+
+
+
+
+
 
 ### 📌 Item 35: Prefer task-based programming to thread-based
 
