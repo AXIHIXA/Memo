@@ -1827,9 +1827,11 @@ There are three cases:
     
     int x = 27;               // as before
     const int * px = &x;      // px is a ptr to x as a const int
+    int * const px2 = &x;     // px2 is a const ptr to x as a int
     
     f(&x);                    // T is       int, param's type is int *
     f(px);                    // T is const int, param's type is const int *
+    f(px2);                   // T is       int, param's type is int *
     ```
     By now, you may find yourself yawning and nodding off, 
     because C++’s type deduction rules work so naturally for reference and pointer parameters, 
@@ -2187,15 +2189,15 @@ bool f(const Widget & w);  // decltype(w) is const Widget &
 
 struct Point 
 {
-int x; 
-int y;                     // decltype(Point::x) is int
-};                         // decltype(Point::y) is int
+    int x;                 // decltype(Point::x) is int
+    int y;                 // decltype(Point::y) is int  
+};
 
 Widget w;                  // decltype(w) is Widget
 
 if (f(w)) {}               // decltype(f(w)) is bool
 
-template <typename T>       // simplified version of std::vector
+template <typename T>      // simplified version of std::vector
 class vector
 {
 public:
@@ -2661,7 +2663,7 @@ between the type of variable you’re declaring and the type of the expression u
 ### 📌 Item 6: Use the explicitly typed initializer idiom when `auto` deduces undesired types
 
 - “Invisible” proxy types can cause `auto` to deduce the “wrong” type for an initializing expression. 
-- The *explicitly typed initializer idiom* forces auto to deduce the type you want it to have. 
+- The *explicitly typed initializer idiom* forces `auto` to deduce the type you want it to have. 
 
 #### `auto` and proxy classes
 
@@ -9819,11 +9821,11 @@ you can safely rely on move semantics to replace copy operations with their less
 
 - Perfect forwarding fails when template type deduction fails or when it deduces the wrong type.
 - The kinds of arguments that lead to perfect forwarding failure are: 
-    - braced initializers; 
-    - null pointers expressed as `0` or `NULL`; 
-    - declaration-only integral `const static` data members; 
-    - template and overloaded function names; 
-    - bitfields.
+    - braced initializers (decreed failure, create a temp var via `auto`); 
+    - null pointers expressed as `0` or `NULL` (wrong type `int`, use `nullptr`); 
+    - declaration-only integral `const static` data members (no address, not referencable, provide definition); 
+    - template and overloaded function names (fails, explicitly cast to desired function pointer type); 
+    - bitfields (address not aligned, not non-`const` referencable, create a temp copy).
 
 
 <u>_Perfect forwarding_</u> means we don’t just forward objects,
@@ -9937,31 +9939,232 @@ fwd(il);              // fine, perfect-forwards il to f
 
 #### `0` or `NULL` as null pointers
 
+Item 8 explains that when you try to pass `0` or `NULL` as a null pointer to a template,
+type deduction goes awry, 
+deducing an integral type (typically `int`) instead of a pointer type for the argument you pass. 
+The result is that neither `0` nor `NULL` can be perfect-forwarded as a null pointer. 
+The fix is easy, however: pass `nullptr` instead of `0` or `NULL`. 
+For details, consult Item 8.
+
+#### Declaration-only integral `static const` data members
+
+As a general rule, 
+there’s **no** need to define integral `static const` data members in classes; 
+declarations alone suffice. 
+That’s because compilers perform `const` propagation on such members’ values, 
+thus eliminating the need to set aside memory for them. 
+For example, consider this code:
+```c++
+class Widget
+{
+public:
+    static const std::size_t MinVals = 28;  // MinVals' declaration
+    // ...
+};
+
+// no defninition for MinVals
+std::vector<int> widgetData;
+widgetData.reserve(Widget::MinVals);        // use of MinVals
+```
+Here, we’re using `Widget::MinVals `(henceforth simply `MinVals`) to specify `widgetData`’s initial capacity, 
+even though `MinVals` lacks a definition. 
+Compilers work around the missing definition (as they are required to do) 
+by plopping the value `28`into all places where `MinVals` is mentioned. 
+The fact that no storage has been set aside for `MinVals`’ value is unproblematic. 
+If `MinVals`’ address were to be taken (e.g., if somebody created a pointer to `MinVals`), 
+then `MinVals` would require storage (so that the pointer had something to point to), 
+and the code above, though it would compile, would fail at link-time until a definition for `MinVals` was provided.
+With that in mind, imagine that `f` (the function `fwd` forwards its argument to) is declared like this:
+```c++
+void f(std::size_t val);
+```
+Calling `f` with `MinVals` is fine, because compilers will just replace `MinVals` with its value:
+```c++
+f(Widget::MinVals);                  // fine, treated as "f(28)"
+```
+Alas, things may not go so smoothly if we try to call `f` through `fwd`:
+```c++
+template <typename ... Ts>
+void fwd(Ts && ... params)           // accept any arguments
+{
+    f(std::forward<Ts>(params)...);  // forward them to f
+}
+
+fwd(Widget::MinVals);                // error! shouldn't link
+```
+This code will compile, but it shouldn’t link.
+If that reminds you of what happens if we write code that takes `MinVals`’ address, that’s good, 
+because the underlying problem is the same.
 
 
+Although nothing in the source code takes `MinVals`’ address, `fwd`’s parameter is a universal reference, 
+and references, in the code generated by compilers, are usually treated like pointers. 
+**In the program’s underlying binary code (and on the hardware), 
+pointers and references are essentially the same thing.** 
+At this level, there’s truth to the adage that references are simply pointers that are automatically dereferenced.
+That being the case, passing `MinVals` by reference is effectively the same as passing it by pointer, 
+and as such, there has to be some memory for the pointer to point to.
+Passing integral `static const` data members by reference, then, generally requires that they be defined, 
+and that requirement can cause code using perfect forwarding to fail 
+where the equivalent code without perfect forwarding succeeds.
 
 
+P.S. According to the Standard, passing `MinVals` by reference requires that it be defined. 
+But not all implementations enforce this requirement. 
+So, depending on your compilers and linkers, you may find that you can perfect-forward 
+integral `static const` data members that haven’t been defined. 
+If you do, congratulations, but there is no reason to expect such code to port. 
+To make it portable, simply provide a definition for the integral `static const` data member in question. 
+For `MinVals`, that’d look like this:
+```c++
+const std::size_t Widget::MinVals;  // in "Widget.cpp"
+```
+Note that the definition **doesn’t** repeat the initializer (`28`, in the case of `MinVals`).
+Don’t stress over this detail, however. 
+If you forget and provide the initializer in both places, your compilers will complain, 
+thus reminding you to specify it only once.
+
+#### Overloaded function names and template names
+
+Suppose our function `f` (the one we keep wanting to forward arguments to via `fwd`)
+can have its behavior customized by passing it a function that does some of its work.
+Assuming this function takes and returns `int`s, `f` could be declared like this:
+```c++
+void f(int (* pf)(int));  // pf = "processing function"
+```
+It’s worth noting that `f` could also be declared using a simpler non-pointer syntax.
+Such a declaration would look like this, though it’d have the same meaning as the declaration above:
+```c++
+void f(int pf(int));      // declares same f as above
+```
+Either way, now suppose we have an overloaded function, `processVal`:
+```c++
+int processVal(int value);
+int processVal(int value, int priority);
+```
+We can pass `processVal` to `f`,
+```c++
+f(processVal);            // fine
+```
+but it’s something of a surprise that we can. 
+`f` demands a pointer to a function as its argument, 
+but `processVal` isn’t a function pointer or even a function, 
+it’s the name of two different functions. 
+However, compilers know which `processVal` they need: 
+the one matching `f`’s parameter type. 
+They thus choose the `processVal` taking one `int`, 
+and they pass that function’s address to `f`.
 
 
+What makes this work is that `f`’s declaration lets compilers figure out which version of `processVal` is required. 
+`fwd`, however, being a function template, **doesn’t** have any information about what type it needs, 
+and that makes it impossible for compilers to determine which overload should be passed:
+```c++
+template <typename ... Ts>
+void fwd(Ts && ... params)           // accept any arguments
+{
+    f(std::forward<Ts>(params)...);  // forward them to f
+}
+
+fwd(processVal);                     // error! which processVal?
+```
+`processVal` alone has no type. 
+Without a type, there can be no type deduction, 
+and without type deduction, we’re left with another perfect forwarding failure case.
 
 
+The same problem arises if we try to use a function template instead of 
+(or in addition to) an overloaded function name. 
+A function template doesn’t represent one function, it represents many functions:
+```c++
+template <typename T>
+T workOnVal(T param)   // template for processing values
+{
+    // ...
+}
+
+fwd(workOnVal);        // error! which workOnVal instantiation?
+```
+The way to get a perfect-forwarding function like `fwd` to accept an overloaded function name or a template name 
+is to <u>_manually specify the overload or instantiation_</u> you want to have forwarded. 
+For example, you can create a function pointer of the same type as `f`’s parameter, 
+initialize that pointer with `processVal` or `workOnVal` 
+(thus causing the proper version of `processVal` to be selected or the proper instantiation of `workOnVal` to be generated), 
+and pass the pointer to `fwd`:
+```c++
+using ProcessFuncType = int (*)(int);          // make typedef; see Item 9
+ProcessFuncType processValPtr = processVal;    // specify needed  signature for processVal
+fwd(processValPtr);                            // fine
+fwd(static_cast<ProcessFuncType>(workOnVal));  // also fine
+```
+Of course, this requires that you know the type of function pointer that fwd is forwarding to. 
+It’s not unreasonable to assume that a perfect-forwarding function will document that. 
+After all, perfect-forwarding functions are designed to accept anything,
+so if there’s no documentation telling you what to pass, how would you know?
+
+#### Bitfields
+
+The final failure case for perfect forwarding is when a bitfield is used as a function argument. 
+To see what this means in practice, observe that an IPv4 header can be modeled as follows:
+```c++
+struct IPv4Header
+{
+    std::uint32_t version : 4,
+                  IHL : 4,
+                  DSCP : 6,
+                  ECN : 2,
+                  totalLength : 16;
+};
+```
+This assumes that bitfields are laid out lsb (least significant bit) to msb (most significant bit).
+C++ doesn’t guarantee that, but compilers often provide a mechanism that allows programmers to control bitfield layout.
 
 
+If our long-suffering function `f` (the perennial target of our forwarding function `fwd`) 
+is declared to take a `std::size_t` parameter, calling it with, say, 
+the `totalLength` field of an `IPv4Header` object compiles without fuss:
+```c++
+void f(std::size_t sz);  // function to call
+IPv4Header h;
+f(h.totalLength);        // fine
+```
+Trying to forward `h.totalLength` to `f` via `fwd`, however, is a different story:
+```c++
+fwd(h.totalLength);      // error!
+```
+The problem is that `fwd`’s parameter is a reference, and `h.totalLength` is a non-`const` bitfield. 
+That may not sound so bad, but the C++ Standard condemns the combination in unusually clear prose: 
+“A non-`const` reference shall not be bound to a bit-field.” 
+There’s an excellent reason for the prohibition. 
+Bitfields may consist of arbitrary parts of machine words (e.g., bits 3-5 of a 32-bit int), 
+but there’s no way to directly address such things. 
+I mentioned earlier that references and pointers are the same thing at the hardware level, 
+and just as there’s no way to create a pointer to arbitrary bits 
+(C++ dictates that the smallest thing you can point to is a `char`), 
+there’s no way to bind a reference to arbitrary bits, either.
 
 
+Working around the impossibility of perfect-forwarding a bitfield is easy, 
+once you realize that any function that accepts a bitfield as an argument will receive a copy of the bitfield’s value. 
+After all, no function can bind a reference to a bitfield, nor can any function accept pointers to bitfields, 
+because pointers to bitfields don’t exist. 
+The only kinds of parameters to which a bitfield can be passed are by-value parameters and, references-to-`const`. 
+In the case of by-value parameters, the called function obviously receives a copy of the value in the bitfield, 
+and it turns out that in the case of a reference-to-`const` parameter, 
+the Standard requires that the reference actually bind to a copy of the bitfield’s value 
+that’s stored in an object of some standard integral type (e.g., `int`). 
+References-to-`const` don’t bind to bitfields, they bind to “normal” objects 
+into which the values of the bitfields have been copied.
 
 
-
-
-
-
-
-
-
-
-
-
-
+The key to passing a bitfield into a perfect-forwarding function, then, 
+is to take advantage of the fact that the forwarded-to function will always receive a copy of the bitfield’s value. 
+You can thus make a copy yourself and call the forwarding function with the copy. 
+In the case of our example with `IPv4Header`, this code would do the trick:
+```c++
+auto length = static_cast<std::uint16_t>(h.totalLength);
+fwd(length); 
+```
 
 
 
@@ -9970,11 +10173,361 @@ fwd(il);              // fine, perfect-forwards il to f
 
 ### 🎯 Chapter 6. Lambda Expressions
 
+Lambda expressions (<u>_lambdas_</u>) are a game changer in C++ programming. 
+That’s somewhat surprising, because they bring **no** new expressive power to the language.
+Everything a lambda can do is something you can do by hand with a bit more typing.
+But lambdas are such a convenient way to create function objects, 
+the impact on day-to-day C++ software development is enormous.
+Without lambdas, the STL “`_if`” algorithms (e.g., `std::find_if`, `std::remove_if`, `std::count_if`, etc.) 
+tend to be employed with only the most trivial predicates, 
+but when lambdas are available, use of these algorithms with nontrivial conditions blossoms. 
+The same is true of algorithms that can be customized with comparison functions 
+(e.g., `std::sort`, `std::nth_element`, `std::lower_bound`, etc.). 
+Outside the STL, lambdas make it possible to quickly create custom deleters for `std::unique_ptr` and `std::shared_ptr` (see Items 18 and 19), 
+and they make the specification of predicates for condition variables in the threading API equally straightforward (see Item 39). 
+Beyond the Standard Library, lambdas facilitate the on-the-fly specification of callback functions, 
+interface adaption functions, and context-specific functions for one-off calls. 
+Lambdas really make C++ a more pleasant programming language.
+
+
+The vocabulary associated with lambdas can be confusing. Here’s a brief refresher:
+- A <u>_lambda expression_</u> is just that: an expression. 
+  It’s part of the source code. 
+```c++
+std::find_if(container.cbegin(), container.cend(), [](const auto val)
+{
+    return 0 < val && val < 10;
+});
+```
+- A <u>_closure_</u> is the runtime object created by a lambda. 
+  Depending on the capture mode, closures hold copies of or references to the captured data. 
+  In the call to `std::find_if` above, 
+  the closure is the object that’s passed at runtime as the third argument to `std::find_if`.
+- A <u>_closure class_</u> is a class from which a closure is instantiated. 
+  Each lambda causes compilers to generate a unique closure class. 
+  The statements inside a lambda become executable instructions in the member functions of its closure class.
+
+A lambda is often used to create a closure that’s used only as an argument to a function.
+That’s the case in the call to `std::find_if` above. 
+However, closures may generally be copied, 
+so it’s usually possible to have multiple closures of a closure type corresponding to a single lambda. 
+For example, in the following code,
+```c++
+{
+    int x;                  // x is local variable
+    
+    auto c1 = [x](int y)    // c1 is copy of the closure produced by the lambda
+    {
+        return x * y > 55;
+    };
+
+    auto c2 = c1;           // c2 is copy of c1
+    auto c3 = c2;           // c3 is copy of c2
+}
+```
+`c1`, `c2`, and `c3` are all copies of the closure produced by the lambda.
+
+
+Informally, it’s perfectly acceptable to blur the lines between lambdas, closures, and closure classes. 
+But in the Items that follow, 
+it’s often important to distinguish what exists during compilation (lambdas and closure classes), 
+what exists at runtime (closures),
+and how they relate to one another.
+
+
+
+
+
+
 ### 📌 Item 31: Avoid default capture modes
 
-- Default by-reference capture can lead to dangling references.
-- Default by-value capture is susceptible to dangling pointers (especially `this`),
-  and it misleadingly suggests that lambdas are self-contained.
+- Default by-reference capture can lead to dangling references. 
+- Default by-value capture is susceptible to dangling pointers (especially `this`), 
+  and it misleadingly suggests that lambdas are self-contained. 
+
+
+There are two default capture modes in C++11: by-reference and by-value. 
+Default by-reference capture can lead to dangling references. 
+Default by-value capture lures you into thinking you’re immune to that problem (you’re not), 
+and it lulls you into thinking your closures are self-contained (they may not be). 
+That’s the executive summary for this Item. 
+If you’re more engineer than executive, you’ll want some meat on those bones, 
+so let’s start with the danger of default by-reference capture.
+
+
+A by-reference capture causes a closure to contain a reference to a local variable 
+or to a parameter that’s available in the scope where the lambda is defined. 
+If the lifetime of a closure created from that lambda exceeds the lifetime of the local variable or parameter, 
+the reference in the closure will dangle. 
+For example, suppose we have a container of filtering functions, 
+each of which takes an `int` and returns a `bool` indicating whether a passed-in value satisfies the filter:
+```c++
+using FilterContainer = std::vector<std::function<bool(int)>>;
+FilterContainer filters; 
+```
+We could add a filter for multiples of 5 like this:
+```c++
+filters.emplace_back([](int value) 
+{ 
+    return value % 5 == 0; 
+});
+```
+However, it may be that we need to compute the divisor at runtime, i.e., 
+we can’t just hard-code 5 into the lambda. 
+So adding the filter might look more like this:
+```c++
+void addDivisorFilter()
+{
+    auto calc1 = computeSomeValue1();
+    auto calc2 = computeSomeValue2();
+    auto divisor = computeDivisor(calc1, calc2);
+
+    // danger! ref to divisor will dangle!
+    filters.emplace_back([&](int value)
+    {
+        return value % divisor == 0;
+    });
+}
+```
+This code is a problem waiting to happen. 
+The lambda refers to the local variable `divisor`, 
+but that variable ceases to exist when `addDivisorFilter` returns. 
+That’s immediately after `filters.emplace_back` returns, 
+so the function that’s added to filters is essentially dead on arrival. 
+Using that filter yields undefined behavior from virtually the moment it’s created.
+
+
+Now, the same problem would exist if divisor’s by-reference capture were explicit,
+```c++
+// danger! ref to divisor will still dangle!
+filters.emplace_back([&divisor](int value)
+{
+    return value % divisor == 0;
+});
+```
+but with an explicit capture, 
+it’s easier to see that the viability of the lambda is dependent on divisor’s lifetime. 
+Also, writing out the name `divisor` reminds us to ensure that `divisor` lives at least as long as the lambda’s closures. 
+That’s a more specific memory jog than the general “make sure nothing dangles” admonition that `[&]` conveys.
+
+
+If you know that a closure will be used immediately (e.g., by being passed to an STL algorithm) and won’t be copied, 
+there is no risk that references it holds will outlive 
+the local variables and parameters in the environment where its lambda is created. 
+In that case, you might argue, there’s no risk of dangling references, 
+hence no reason to avoid a default by-reference capture mode. 
+For example, our filtering lambda might be used only as an argument to C++11’s `std::all_of`, 
+which returns whether all elements in a range satisfy a condition: 
+```c++
+template <typename C>
+void workWithContainer(const C & container)
+{
+    auto calc1 = computeSomeValue1(); // as above
+    auto calc2 = computeSomeValue2(); // as above
+    auto divisor = computeDivisor(calc1, calc2); // as above
+
+    // for genericity; see Item 13
+    using std::cbegin; 
+    using std::cend;
+    
+    // if all values in container are multiples of divisor...
+    if (std::all_of(cbegin(container), 
+                    cend(container), 
+                    [&](const auto & value) { return value % divisor == 0; }))
+    {
+        // they are...
+    }
+    else
+    {
+        // at least one isn't...
+    }
+}
+```
+It’s true, this is safe, but its safety is somewhat precarious. 
+If the lambda were found to be useful in other contexts 
+(e.g., as a function to be added to the filters container)
+and was copy-and-pasted into a context where its closure could outlive `divisor`, 
+you’d be back in dangle-city, 
+and there’d be nothing in the capture clause to specifically remind you to perform lifetime analysis on `divisor`.
+
+
+Long-term, it’s simply better software engineering to explicitly list 
+the local variables and parameters that a lambda depends on.
+
+
+One way to solve our problem with `divisor` would be a default by-value capture mode. 
+That is, we could add the lambda to filters as follows:
+```c++
+filters.emplace_back([=](int value) { return value % divisor == 0; });
+```
+This suffices for this example, but, in general, 
+default by-value capture isn’t the antidangling elixir you might imagine. 
+The problem is that if you capture a pointer by value, you copy the pointer into the closures arising from the lambda, 
+but you don’t prevent code outside the lambda from `delete`ing the pointer and causing your copies to dangle.
+
+
+“That could never happen!” you protest. 
+“Having read Chapter 4, I worship at the house of smart pointers. 
+Only loser C++98 programmers use raw pointers and `delete`.” 
+That may be true, but it’s irrelevant because you do, in fact, use raw pointers, 
+and they can, in fact, be `delete`d out from under you. 
+It’s just that in your modern C++ programming style, 
+there’s often little sign of it in the source code.
+
+
+Suppose one of the things `Widget`s can do is add entries to the container of filters:
+```c++
+class Widget
+{
+public:
+    // ...
+    
+    void addFilter() const  // add an entry to filters
+    {
+        filters.emplace_back([=](int value) { return value % divisor == 0; });
+    }
+
+private:
+    int divisor;            // used in Widget's filter
+};
+``` 
+The lambda is dependent on `divisor`,
+but `divisor` is **not** ~~copied into any closures arising from the lambda~~.
+
+
+**Captures apply only to non-`static` local variables (including parameters)** 
+visible in the scope where the lambda is created. 
+In the body of `Widget::addFilter`, divisor is not a local variable, it’s a data member of the `Widget` class. 
+It can’t be captured. Yet if the default capture mode is eliminated, the code won’t compile:
+```c++
+void Widget::addFilter() const  // error
+{
+    filters.emplace_back([](int value) { return value % divisor == 0; });
+}
+```
+Furthermore, if an attempt is made to explicitly capture `divisor` (either by value or by reference), 
+the capture won’t compile, because `divisor` isn’t a local variable or a parameter:
+```c++
+void Widget::addFilter() const  // error
+{
+    filters.emplace_back([divisor](int value) { return value % divisor == 0; });
+}
+```
+So if the default by-value capture clause isn’t capturing `divisor`, 
+yet without the default by-value capture clause, the code won’t compile, what’s going on?
+
+
+The explanation hinges on the implicit use of a raw pointer: `this`.
+Every non-`static` member function has a `this` pointer, 
+and you use that pointer every time you mention a data member of the class. 
+Inside any `Widget` member function, for example, compilers internally replace uses of `divisor` with `this->divisor`. 
+In the version of `Widget::addFilter` with a default by-value capture,
+```c++
+void Widget::addFilter() const
+{
+    filters.emplace_back([=](int value) { return value % divisor == 0; });
+}
+```
+what’s being captured is the `Widget`’s `this` pointer, not `divisor`. 
+Compilers treat the code as if it had been written as follows:
+```c++
+void Widget::addFilter() const
+{
+    auto thisPtr = this;
+    filters.emplace_back([thisPtr](int value) { return value % thisPtr->divisor == 0; });
+}
+```
+The viability of the closures arising from this lambda is tied to the lifetime of 
+the `Widget` whose `this` pointer they contain a copy of. 
+In particular, consider this code, which, in accord with Chapter 4, uses pointers of only the smart variety:
+```c++
+using FilterContainer = std::vector<std::function<bool(int)>>;
+FilterContainer filters;
+
+void doSomeWork()
+{
+    auto pw = std::make_unique<Widget>();
+    pw->addFilter();  // add filter that uses Widget::divisor
+    // ...
+}  // destroy Widget; filters now holds dangling pointer!
+```
+When a call is made to `doSomeWork`, 
+a filter is created that depends on the `Widget` object produced by `std::make_unique`, 
+i.e., a filter that contains a copy of a pointer to that Widget’s `this` pointer. 
+This filter is added to filters, but when `doSomeWork` finishes, 
+the `Widget` is destroyed by the `std::unique_ptr` managing its lifetime (see Item 18). 
+From that point on, filters contains an entry with a dangling pointer.
+
+
+This particular problem can be solved 
+by making a local copy of the data member you want to capture and then capturing the copy:
+```c++
+void Widget::addFilter() const
+{
+    auto divisorCopy = divisor;
+    filters.emplace_back([divisorCopy](int value) { return value % divisorCopy == 0; });
+}
+```
+To be honest, if you take this approach, default by-value capture will work, too,
+```c++
+void Widget::addFilter() const
+{
+    auto divisorCopy = divisor;
+    filters.emplace_back([=](int value) { return value % divisorCopy == 0; });
+}
+```
+but why tempt fate? 
+A default capture mode is what made it possible to accidentally capture `this` 
+when you thought you were capturing `divisor` in the first place.
+
+
+In C++14, a better way to capture a data member is to use <u>_generalized lambda capture_</u> (see Item 32):
+```c++
+void Widget::addFilter() const
+{
+    filters.emplace_back([divisor = divisor](int value) { return value % divisor == 0; });
+}
+```
+There’s no such thing as a default capture mode for a generalized lambda capture,
+however, so even in C++14, the advice of this Item, to avoid default capture modes, stands.
+
+
+An additional drawback to default by-value captures is that they can suggest that 
+the corresponding closures are self-contained and insulated from changes to data outside the closures. 
+In general, that’s not true, because lambdas may be dependent not just on local variables and parameters (which may be captured), 
+but also on objects with <u>_static storage duration_</u>. 
+Such objects are defined at global or namespace scope or are declared `static` inside classes, functions, or files. 
+These objects can be used inside lambdas, but they can’t be captured. 
+Yet specification of a default by-value capture mode can lend the impression that they are. 
+Consider this revised version of the `addDivisorFilter` function we saw earlier:
+```c++
+void addDivisorFilter()
+{
+    static auto calc1 = computeSomeValue1();
+    static auto calc2 = computeSomeValue2();
+    static auto divisor = computeDivisor(calc1, calc2);
+
+    // captures nothing! refers to above static
+    filters.emplace_back([=](int value)
+    {
+        return value % divisor == 0;
+    });
+    
+    ++divisor;  // modify divisor
+}
+```
+A casual reader of this code could be forgiven for seeing “`[=]`” and thinking, 
+“Okay, the lambda makes a copy of all the objects it uses and is therefore self-contained.” 
+But it’s **not** self-contained. 
+This lambda doesn’t use any non-`static` local variables, so nothing is captured. 
+Rather, the code for the lambda refers to the `static` variable `divisor`. 
+When, at the end of each invocation of `addDivisorFilter`, `divisor` is incremented, 
+any lambdas that have been added to filters via this function will exhibit new behavior 
+(corresponding to the new value of `divisor`). 
+Practically speaking, this lambda captures `divisor` by reference, 
+a direct contradiction to what the default by-value capture clause seems to imply. 
+If you stay away from default by-value capture clauses, 
+you eliminate the risk of your code being misread in this way.
 
 
 
@@ -9987,6 +10540,12 @@ fwd(il);              // fine, perfect-forwards il to f
 - In C++11, emulate init capture via hand-written classes or `std::bind`.
 
 
+Sometimes neither by-value capture nor by-reference capture is what you want. If
+you have a move-only object (e.g., a std::unique_ptr or a std::future) that you
+want to get into a closure, C++11 offers no way to do it. If you have an object that’s
+expensive to copy but cheap to move (e.g., most containers in the Standard Library),
+and you’d like to get that object into a closure, you’d much rather move it than copy
+it. Again, however, C++11 gives you no way to accomplish that.
 
 
 
