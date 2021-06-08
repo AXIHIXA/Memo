@@ -13,9 +13,10 @@ chmod 644 ~/.bashrc ~/.bash_history
 ## 🌱 dependencies
 
 ```
-sudo apt install vim tmux git gcc g++ gdb cmake mlocate
-# do NOT install mlocate in WSL! 
-# no need to install vim tmux git in WSL! 
+# do NOT install vim tmux mlocate in WSL! 
+sudo apt install vim tmux mlocate xfce4-terminal
+
+sudo apt install git gcc g++ gdb cmake
 
 touch ~/.tmux.conf
 gedit ~/.tmux.conf
@@ -25,10 +26,11 @@ set -g status-interval 60
 set -g display-time 3000
 set -g history-limit 65535
 
-sudo gedit /etc/profile
-
 # default editor
-export EDITOR=/usr/bin/vim
+sudo update-alternatives --config editor
+
+# default terminal 
+sudo update-alternatives --config x-terminal-emulator
 ```
 
 
