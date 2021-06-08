@@ -11817,7 +11817,9 @@ but avoids their disadvantages.
     1. the value being added is constructed into the container, not assigned; 
     2. the argument type(s) passed differ from the type held by the container; 
     3. the container won’t reject the value being added due to it being a duplicate.
-- Emplacement functions may perform type conversions that would be rejected by insertion functions.
+- Never pass `new`ed raw pointers as arguments to emplacement functions (may leak when exception)
+- Emplacement functions may perform type conversions (via explicit constructors) 
+  that would be rejected by insertion functions.
 
 
 If you have a container holding, say, `std::string`s, 
