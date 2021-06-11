@@ -23,10 +23,10 @@ chmod 644 ~/.bashrc ~/.bash_history
 ## 🌱 dependencies
 
 ```
-# do NOT install these in WSL! 
-sudo apt install vim tmux mlocate xfce4-terminal nautilus-actions
+# do NOT install tmux mlocate in WSL! 
+sudo apt install tmux mlocate xfce4-terminal
 
-sudo apt install git gcc g++ gdb cmake
+sudo apt install git gcc g++ gdb cmake vim
 
 touch ~/.tmux.conf
 gedit ~/.tmux.conf
@@ -72,6 +72,7 @@ git config --global user.email "ahanxi@126.com"
 cp -r /media/ax/DATAIN/Downloads/Coding/.ssh ~
 chmod 600 ~/.ssh/id_rsa
 chmod 644 ~/.ssh/id_rsa.pub
+eval `ssh-agent -s`
 ssh-add
 ```
 
