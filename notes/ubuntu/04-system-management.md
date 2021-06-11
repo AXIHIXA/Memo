@@ -37,10 +37,11 @@ sudo vi /etc/ssh/sshd_config
 # 1. remove the comment on `port 22` (line 15)
 # 2. PermitRootLogin no => PermitRootLogin yes (line 58)
 
+sudo ssh-keygen -A
 sudo service ssh --full-restart
 
 # e.g. in Windows Powershell
-ssh ax@127.0.0.1 -p 22
+ssh ax@127.0.0.1 -p ...
 ```
 
 ### 🌱 配置`fail2ban`
