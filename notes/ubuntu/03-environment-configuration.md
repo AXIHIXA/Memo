@@ -146,10 +146,10 @@ jupyter notebook password
 edit `jupyter_notebook_config.py`:    
 
 ```
-c.NotebookApp.ip = '0.0.0.0'           # 286
-c.NotebookApp.open_browser = False     # 382
-c.NotebookApp.password = 'argon2:...'  # 392
-c.NotebookApp.port = 9000              # 405
+c.NotebookApp.ip = '0.0.0.0'           # 290
+c.NotebookApp.open_browser = False     # 392
+c.NotebookApp.password = 'argon2:...'  # 402
+c.NotebookApp.port = 9000              # 415
 ```
     
 #### view installed kernels
