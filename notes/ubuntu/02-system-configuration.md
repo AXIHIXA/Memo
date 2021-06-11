@@ -47,6 +47,7 @@ git config --global user.email "ahanxi@126.com"
 cp -r /media/ax/DATAIN/Downloads/Coding/.ssh ~
 chmod 600 ~/.ssh/id_rsa
 chmod 644 ~/.ssh/id_rsa.pub
+eval `ssh-agent -s`
 ssh-add
 ```
 
