@@ -13,10 +13,10 @@ chmod 644 ~/.bashrc ~/.bash_history
 ## 🌱 dependencies
 
 ```
-# do NOT install vim tmux mlocate in WSL! 
-sudo apt install vim tmux mlocate xfce4-terminal
+# do NOT install tmux mlocate in WSL! 
+sudo apt install tmux mlocate xfce4-terminal
 
-sudo apt install git gcc g++ gdb cmake
+sudo apt install git gcc g++ gdb cmake vim
 
 touch ~/.tmux.conf
 gedit ~/.tmux.conf
