@@ -94,7 +94,7 @@ https://www.anaconda.com/pycharm
 ```
 - New virtual environment (do NOT use `opencv` package from `conda`. It's bullsh*t):
 ```
-conda create -n py3 python=3.7 numpy scipy sympy matplotlib cython ipykernel h5py
+conda create -n py3 python=3.7 numpy scipy sympy matplotlib cython ipykernel
 conda activate py3
 pip install opencv-python
 python -m ipykernel install --name py3 --user
