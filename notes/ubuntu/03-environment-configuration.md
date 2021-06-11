@@ -134,23 +134,24 @@ alias cls="reset"
 #### generate config
 
 ```
-jupyter notebook --generate-config
-jupyter notebook password
+jupyter server --generate-config
+jupyter lab password
 ```
 
 edit `jupyter_notebook_config.py`:    
 
 ```
-c.NotebookApp.ip = '0.0.0.0'           # 290
-c.NotebookApp.open_browser = False     # 392
-c.NotebookApp.password = 'argon2:...'  # 402
-c.NotebookApp.port = 9000              # 415
+c.NotebookApp.ip = '0.0.0.0'         # 272
+c.NotebookApp.open_browser = False   # 359
+c.NotebookApp.password = 'sha1:...'  # 369
+c.NotebookApp.port = 9000            # 382
 ```
     
-#### view installed kernels
+#### kernel management
 
 ```
 jupyter kernelspec list
+jupyter kernelspec uninstall unwanted-kernel
 ```
 
 ## 🌱 java
