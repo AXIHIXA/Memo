@@ -1,5 +1,10 @@
 # Ubuntu System Configuration
 
+
+
+
+
+
 ## 🌱 `.bashrc` 
 
 ```
@@ -10,11 +15,16 @@
 chmod 644 ~/.bashrc ~/.bash_history
 ```
 
+
+
+
+
+
 ## 🌱 dependencies
 
 ```
-# do NOT install vim tmux mlocate in WSL! 
-sudo apt install vim tmux mlocate xfce4-terminal
+# do NOT install these in WSL! 
+sudo apt install vim tmux mlocate xfce4-terminal nautilus-actions
 
 sudo apt install git gcc g++ gdb cmake
 
@@ -33,6 +43,21 @@ sudo update-alternatives --config editor
 sudo update-alternatives --config x-terminal-emulator
 ```
 
+Adopted from [this](https://askubuntu.com/questions/76712/setting-nautilus-open-terminal-to-launch-terminator-rather-than-gnome-terminal):
+The default File Browser in GNOME (ubuntu 20.04) is nautilus. 
+The "Open in Terminal" action in nautilus right click context menu is a plugin by GNOME Terminal so it's hard-coded. 
+We may add out own action "Open in xfce4 Terminal" via nautilus-actions. 
+
+1. FileManager-Actions Configuration Tool -> Runtime Preferences -> Nautilus menu layout -> disable "Create a root 'FileManager_Actions' menu"; 
+2. Define a new action, command: 
+    - Path: `/bin/xfce4-terminal`
+    - Parameters: `--working-directory=%d/%b`
+    - Working directory: `%d`
+
+
+
+
+
 
 ## 🌱 `ssh`
 
@@ -50,12 +75,22 @@ chmod 644 ~/.ssh/id_rsa.pub
 ssh-add
 ```
 
+
+
+
+
+
 ## 🌱 time fix
 
 ```
 sudo timedatectl set-local-rtc 1 --adjust-system-clock
 ```
-    
+
+
+
+
+
+
 ## 🌱 VMWare Shared Folder
 
 ```
@@ -66,6 +101,11 @@ sudo gedit /etc/fstab
 # refer to https://kb.vmware.com/s/article/60262 for details
 vmhgfs-fuse    /media/ax/DATAIN    fuse    defaults,allow_other    0    0
 ```
+
+
+
+
+
 
 ## 🌱 Disable `apt-daily-update`
 
@@ -84,6 +124,11 @@ APT::Periodic::Download-Upgradeable-Packages "0";
 APT::Periodic::AutocleanInterval "0";
 APT::Periodic::Unattended-Upgrade "0";
 ```
+
+
+
+
+
 
 ## 🌱 Application Entry
 
@@ -117,19 +162,39 @@ Terminal=false
 StartupWMClass=jetbrains-pycharm
 ```
 
+
+
+
+
+
 ## 🌱 ex****** passport
 
 For people getting the white screen error, go to Library > History > Show All History, right click on ex******, and Forget About This Site
+
+
+
+
+
 
 ## 🌱 Some Alienware Stuff
 
 1. `Fn + F6`: disables / enables WIN key
 2. When the touchpad fails to respond: reinstall BIOS `Alienware_15_R3_17_R4_1.9.0.EXE`
 
+
+
+
+
+
 ## 🌱 Some Surface Pro 4 Stuff
 
 1. 提高`Surface Pro 4`  /`Surface Book`屏幕亮度的键盘快捷键：`Fn + Del`
 2. 降低`Surface Pro 4` / `Surface Book`屏幕亮度的键盘快捷键：`Fn + Backspace`
+
+
+
+
+
 
 ## 🌱 Some Windows 10 Stuff
 
