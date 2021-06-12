@@ -26,7 +26,7 @@ chmod 644 ~/.bashrc ~/.bash_history
 # do NOT install tmux mlocate xfce4-terminal in WSL! 
 sudo apt install tmux mlocate xfce4-terminal
 
-sudo apt install build-essential git gcc g++ gdb make cmake vim
+sudo apt install build-essential git gcc g++ gdb make cmake clang vim
 
 touch ~/.tmux.conf
 gedit ~/.tmux.conf
@@ -65,9 +65,9 @@ We may add out own action "Open in xfce4 Terminal" via nautilus-actions.
 ```
 ssh-keygen
 git config --global user.name "Xi Han"
-git config --global user.email "ahanxi@126.com"
+git config --global user.email "..."
 ```
-- Copy existing `ssh`: your OS username and device name should be the same
+- **NEVER DO THIS**: Copy existing `ssh`: your OS username and device name should be the same
 ```
 cp -r /media/ax/DATAIN/Downloads/Coding/.ssh ~
 chmod 600 ~/.ssh/id_rsa

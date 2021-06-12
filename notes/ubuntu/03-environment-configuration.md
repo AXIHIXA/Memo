@@ -230,10 +230,11 @@ sudo apt install gcc-9 g++-9
 
 ```
 # Eigen, OpenCV, TBB, Boost
+sudo apt update
 sudo apt install libeigen3-dev libopencv-dev libtbb-dev libboost-all-dev 
 
 # CGAL
-libcgal-dev libcgal-qt5-dev
+sudo apt install libcgal-dev libcgal-qt5-dev
 ```
 
 ### `OpenGL`
