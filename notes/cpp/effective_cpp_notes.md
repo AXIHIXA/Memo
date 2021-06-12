@@ -2176,10 +2176,10 @@ resetV({1, 2, 3});     // error! can't deduce type for {1, 2, 3}
 ### 📌 Item 3: Understand [`decltype`](https://en.cppreference.com/w/cpp/language/decltype)
 
 - `decltype` almost always yields the type of a variable or expression without any modifications.
-    - `decltype` always yields of an entity without any modification; 
-    - `decltype` yields of an xvalue expression as `T &&`;
-    - `decltype` yields of an lvalue expression as `T &`;
-    - `decltype` yields of an prvalue expression as `T`;
+    - `decltype` always yields the type of an entity without any modification; 
+    - `decltype` yields of the type an xvalue expression as `T &&`;
+    - `decltype` yields of the type an lvalue expression as `T &`;
+    - `decltype` yields of the type an prvalue expression as `T`;
 - For lvalue expressions of type `T` other than names, `decltype` always reports a type of `T &`.
 - C++14 supports `decltype(auto)`, which, like `auto`, deduces a type from its initializer, 
   but it performs the type deduction using the `decltype` rules.
@@ -10605,7 +10605,7 @@ auto func = [pw = std::move(pw)]                   // init data mbr
 ```
 To the left of the “`=`” is the name of the data member in the closure class you’re specifying, 
 and to the right is the initializing expression. 
-The scope on the left of the “=” is different from the scope on the right. 
+The scope on the left of the “`=`” is different from the scope on the right. 
 The scope on the left is that of the closure class. 
 The scope on the right is the same as where the lambda is being defined. 
 In the example above, the name `pw` on the left of the `“=”` refers to a data member in the closure class, 
