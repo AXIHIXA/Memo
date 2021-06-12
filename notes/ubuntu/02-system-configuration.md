@@ -26,7 +26,7 @@ chmod 644 ~/.bashrc ~/.bash_history
 # do NOT install tmux mlocate xfce4-terminal in WSL! 
 sudo apt install tmux mlocate xfce4-terminal
 
-sudo apt install git gcc g++ gdb cmake vim
+sudo apt install build-essential git gcc g++ gdb make cmake vim
 
 touch ~/.tmux.conf
 gedit ~/.tmux.conf

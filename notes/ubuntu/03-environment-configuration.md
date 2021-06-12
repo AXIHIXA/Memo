@@ -229,17 +229,8 @@ sudo apt install gcc-9 g++-9
 ### Libraries
 
 ```
-# Eigen
-sudo apt install libeigen3-dev
-
-# OpenCV
-sudo apt install libopencv-dev
-
-# tbb
-sudo apt install libtbb-dev
-
-# Boost
-sudo apt install libboost-all-dev 
+# Eigen, OpenCV, TBB, Boost
+sudo apt install libeigen3-dev libopencv-dev libtbb-dev libboost-all-dev 
 
 # CGAL
 libcgal-dev libcgal-qt5-dev
