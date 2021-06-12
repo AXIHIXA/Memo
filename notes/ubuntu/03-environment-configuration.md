@@ -141,13 +141,13 @@ jupyter server password
 edit `jupyter_server_config.py`:    
 
 ```
-c.ServerApp.ip = '0.0.0.0'          # 272
-c.ServerApp.open_browser = False    # 359
-c.ServerAppp.password = 'sha1:...'  # 369
-c.ServerApp.port = 9000             # 382
+c.ServerApp.ip = '0.0.0.0'         # 272
+c.ServerApp.open_browser = False   # 359
+c.ServerApp.password = 'sha1:...'  # 369
+c.ServerApp.port = 9000            # 382
 ```
     
-#### view installed kernels
+#### kernel management
 
 ```
 jupyter kernelspec list
