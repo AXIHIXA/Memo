@@ -36,7 +36,7 @@ sudo vi /etc/ssh/sshd_config
 
 # change following things:
 # 1. remove the comment on `port 22` (line 15)
-# 2. PermitRootLogin no => PermitRootLogin yes (line 34)
+# 2. PasswordAuthentication no => PasswordAuthentication yes (line 58)
 
 # sudo ssh-keygen -A
 sudo service ssh --full-restart
