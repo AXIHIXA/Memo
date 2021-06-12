@@ -64,6 +64,7 @@ We may add out own action "Open in xfce4 Terminal" via nautilus-actions.
 - New `ssh`
 ```
 ssh-keygen
+sudo ssh-keygen -A
 git config --global user.name "Xi Han"
 git config --global user.email "..."
 ```

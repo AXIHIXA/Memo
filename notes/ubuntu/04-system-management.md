@@ -3,7 +3,7 @@
 ### 🌱 配置`ssh`
 
 ```
-ssh-keygen -A
+sudo ssh-keygen -A
 sudo apt install openssh-server
 dpkg -l | grep ssh  # 应该看到 openssh-server
 ps -e | grep ssh  # 应该看到 sshd
@@ -30,7 +30,7 @@ sudo service ssh --full-restart
 #### `WSL`
 
 ```
-ssh-keygen -A
+sudo ssh-keygen -A
 sudo apt install openssh-server
 sudo vi /etc/ssh/sshd_config
 
