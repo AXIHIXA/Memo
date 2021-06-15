@@ -136,7 +136,7 @@ There are three cases:
     ```
     That means that `param` will be a *copy* of whatever is passed in: a completely new object. 
     The fact that `param` will be a new object motivates the rules that govern how `T` is deduced from `expr`:
-    - Remove reference-ness and top-level cv-constraints (top-level const-ness and/or volatile-ness)
+    - Remove reference-ness and top-level `cv`-constraints (top-level `const`-ness and/or `volatile`-ness)
         - `volatile` objects are uncommon. They’re generally used only for implementing device drivers. For details, see Item 40.
         - This is because reference-ness and top-level cv-constraints are **ignored** during parameter type deduction.
     - For example: 
@@ -1063,7 +1063,7 @@ auto ep2 = static_cast<float>(calcEpsilon());
 
 - Braced initialization is the most widely usable initialization syntax, 
   it prevents narrowing conversions, 
-  and it’s immune to C++’s most vexing parse. 
+  and it’s immune to C++’s [most vexing parse](https://en.wikipedia.org/wiki/Most_vexing_parse). 
 - During constructor overload resolution, 
   braced initializers are matched to `std::initializer_list` parameters if at all possible, 
   even if other constructors offer seemingly better matches. 
@@ -9521,27 +9521,88 @@ and the word <u>_futures_</u> in the following text usually mean both kinds.
 
 ### 📌 Item 35: Prefer task-based programming to thread-based
 
-- The `std::thread` API offers no direct way to get return values from asynchronously run functions, 
-  and if those functions throw, the program is terminated.
+- The `std::thread` API offers **no** ~~direct way to get return values from asynchronously run functions~~, 
+  and if those functions `throw`, the program is terminated.
 - Thread-based programming calls for manual management of 
   thread exhaustion, oversubscription, load balancing, and adaptation to new platforms.
 - Task-based programming via `std::async` with the default launch policy handles most of these issues for you.
 
 
+Two choices for asynchronous programming. 
+1. Create a `std::thread` and run `doAsyncWork` on it (<u>_thread-based_</u>):
+```c++
+int doAsyncWork();
+std::thread t(doAsyncWork);
+```
+2. Pass `doAsyncWork` to `std::async` (<u>_task-based_</u>):
+```c++
+auto future = std::async(doAsyncWork);
+```
+In such calls, the function object passed to `std::async` (e.g., `doAsyncWork`) is considered a <u>_task_</u>. 
 
 
+The task-based approach is typically superior to its thread-based counterpart. 
+With the thread-based invocation, there’s **no** ~~straightforward way to get access to `doAsyncWork`'s return value~~. 
+With the task-based approach, it’s easy, because the `future` returned from `std::async` offers the `get` function. 
+The `get` function is even more important if `doAsyncWork` emits an exception, 
+because `get` provides access to that, too. 
+With the thread-based approach, if `doAsyncWork` throws, the program dies (via a call to `std::terminate`).
 
 
+A more fundamental difference between thread-based and task-based programming 
+is the higher level of abstraction that task-based embodies. 
+It frees you from the details of thread management, 
+an observation that reminds me that I need to summarize the three meanings of “thread” in concurrent C++ software:
+
+- **Hardware threads** 
+  are the threads that actually perform computation. 
+  Contemporary machine architectures offer one or more hardware threads per CPU core.
+- **Software threads** 
+  (also known as OS threads or system threads) 
+  are the threads that the operating system manages across all processes 
+  and schedules for execution on hardware threads. 
+  It’s typically possible to create more software threads than hardware threads, 
+  because when a software thread is blocked (e.g., on I/O or waiting for a mutex or condition variable), 
+  throughput can be improved by executing other, unblocked, threads.
+- **`std::thread`s** 
+  are objects in a C++ process that act as handles to underlying software threads. 
+  Some `std::thread` objects represent “null” handles, i.e., correspond to no software thread, 
+  because they’re in a default-constructed state (hence have no function to execute), 
+  have been moved from (the moved-to `std::thread` then acts as the handle to the underlying software thread), 
+  have been joined (the function they were to run has finished), 
+  or have been detached(the connection between them and their underlying software thread has been severed).
+
+Software threads are a limited resource. 
+If you try to create more than the system can provide, a `std::system_error` exception is thrown. 
+This is true even if the function you want to run can’t throw. 
+For example, even if `doAsyncWork` is `noexcept`,
+```c++
+int doAsyncWork() noexcept;
+```
+this statement could result in an exception:
+```c++
+std::thread t(doAsyncWork);  // throws if no more threads are available
+```
+Well-written software must somehow deal with this possibility, but how? 
+One approach is to run `doAsyncWork` on the current thread, 
+but that could lead to unbalanced loads and responsiveness issues (if the current thread is a GUI thread). 
+Another option is to wait for some existing software threads to complete and then try to create a new `std::thread` again, 
+but it’s possible that the existing threads are waiting for an action that `doAsyncWork` is supposed to perform 
+(e.g., produce a result or notify a condition variable) and thus lead to a deadlock.
 
 
-
-
-
-
-
-
-
-
+Even if you don’t run out of threads, you can have trouble with <u>_oversubscription_</u>.
+That’s when there are more ready-to-run (i.e., unblocked) software threads than
+hardware threads. When that happens, the thread scheduler (typically part of the OS)
+time-slices the software threads on the hardware. When one thread’s time-slice is finished
+and another’s begins, a context switch is performed. Such context switches
+increase the overall thread management overhead of the system, and they can be particularly
+costly when the hardware thread on which a software thread is scheduled is
+on a different core than was the case for the software thread during its last time-slice.
+In that case, (1) the CPU caches are typically cold for that software thread (i.e., they
+contain little data and few instructions useful to it) and (2) the running of the “new”
+software thread on that core “pollutes” the CPU caches for “old” threads that had
+been running on that core and are likely to be scheduled to run there again.
 
 
 
