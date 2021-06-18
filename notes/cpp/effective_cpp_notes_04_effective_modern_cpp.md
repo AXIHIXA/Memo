@@ -9592,26 +9592,100 @@ but it’s possible that the existing threads are waiting for an action that `do
 
 
 Even if you don’t run out of threads, you can have trouble with <u>_oversubscription_</u>.
-That’s when there are more ready-to-run (i.e., unblocked) software threads than
-hardware threads. When that happens, the thread scheduler (typically part of the OS)
-time-slices the software threads on the hardware. When one thread’s time-slice is finished
-and another’s begins, a context switch is performed. Such context switches
-increase the overall thread management overhead of the system, and they can be particularly
-costly when the hardware thread on which a software thread is scheduled is
-on a different core than was the case for the software thread during its last time-slice.
-In that case, (1) the CPU caches are typically cold for that software thread (i.e., they
-contain little data and few instructions useful to it) and (2) the running of the “new”
-software thread on that core “pollutes” the CPU caches for “old” threads that had
-been running on that core and are likely to be scheduled to run there again.
+That’s when there are more ready-to-run (i.e., unblocked) software threads than hardware threads. 
+When that happens, the thread scheduler (typically part of the OS) time-slices the software threads on the hardware. 
+When one thread’s time-slice is finished and another’s begins, a context switch is performed. 
+Context switches increase the overall thread management overhead of the system, 
+and can be particularly costly (for cross-core context swtiches). 
+In that case, 
+(1) the CPU caches are typically cold for that software thread 
+(i.e., they contain little data and few instructions useful to it) and 
+(2) the running of the “new” software thread on that core “pollutes” the CPU caches 
+for “old” threads that had been running on that core 
+and are likely to be scheduled to run there again.
 
 
+Avoiding oversubscription is difficult, 
+because the optimal ratio of software to hardware threads 
+depends on how often the software threads are runnable, 
+and that can change dynamically,
+e.g., when a program goes from an I/O-heavy region to a computation-heavy region. 
+The best ratio of software to hardware threads is also dependent on the cost of context switches 
+and how effectively the software threads use the CPU caches. 
+Furthermore, the number of hardware threads and the details of the CPU caches 
+(e.g., how large they are and their relative speeds) 
+depend on the machine architecture, so even if you tune your application to avoid oversubscription
+(while still keeping the hardware busy) on one platform, 
+there’s no guarantee that your solution will work well on other kinds of machines.
 
 
+Your life will be easier if you dump these problems on somebody else, and using `std::async` does exactly that:
+```c++
+auto future = std::async(doAsyncWork);
+```
+This call shifts the thread management responsibility to the implementer of the C++ Standard Library. 
+For example, the likelihood of receiving an out-of-threads exception is significantly reduced, 
+because this call will probably never yield one. 
+`std::async`, when called in this form (i.e., with the default launch policy; see Item 36), 
+**doesn’t** ~~guarantee that it will create a new software thread~~. 
+Rather, it permits the scheduler to arrange for the specified function (in this example, `doAsyncWork`) 
+to be run on the thread requesting `doAsyncWork`’s result (i.e., on the thread calling `get` or `wait` on `future`), 
+and reasonable schedulers take advantage of that freedom if the system is oversubscribed or is out of threads.
 
 
+If you pulled this “run it on the thread needing the result” trick yourself, 
+it could lead to load-balancing issues, 
+and those issues don’t go away simply because it’s `std::async` 
+and the runtime scheduler that confront them instead of you. 
+When it comes to load balancing, 
+the runtime scheduler is likely to have a more comprehensive picture 
+of what’s happening on the machine than you do, 
+because it manages the threads from all processes, 
+not just the one your code is running in.
 
 
+With `std::async`, responsiveness on a GUI thread can still be problematic, 
+because the scheduler has no way of knowing which of your threads has tight responsiveness requirements. 
+In that case, you’ll want to pass the `std::launch::async` launch policy to `std::async`. 
+That will ensure that the function you want to run really executes on a different thread (see Item 36).
 
+
+State-of-the-art thread schedulers employ system-wide thread pools to avoid oversubscription,
+and they improve load balancing across hardware cores through workstealing algorithms. 
+The C++ Standard does not require the use of thread pools or work-stealing, 
+and there are some technical aspects of the C++11 concurrency specification 
+that make it more difficult to employ them than we’d like.
+Nevertheless, some vendors take advantage of this technology in their Standard Library implementations, 
+and it’s reasonable to expect that progress will continue in this area. 
+If you take a task-based approach to your concurrent programming, 
+you automatically reap the benefits of such technology as it becomes more widespread. 
+If, on the other hand, you program directly with `std::thread`s, 
+you assume the burden of dealing with thread exhaustion, oversubscription, and load balancing yourself, 
+not to mention how your solutions to these problems mesh with 
+the solutions implemented in programs running in other processes on the same machine.
+
+
+Compared to thread-based programming, a task-based design spares you the travails of manual thread management, 
+and it provides a natural way to examine the results of asynchronously executed functions (i.e., return values or exceptions). 
+Nevertheless, there are some situations where using threads directly may be appropriate. 
+They include:
+
+- **You need access to the API of the underlying threading implementation**. 
+  The C++ concurrency API is typically implemented using a lower-level platform-specific API, 
+  usually pthreads or Windows’ Threads. 
+  Those APIs are currently richer than what C++ offers. 
+  (For example, C++ has no notion of thread priorities or affinities.) 
+  To provide access to the API of the underlying threading implementation, 
+  `std::thread` objects typically offer the `native_handle` member function. 
+  There is no counterpart to this functionality for `std::future`s (i.e., for what `std::async` returns).
+- **You need to and are able to optimize thread usage for your application**. 
+  This could be the case, for example, if you’re developing server software with a known execution profile 
+  that will be deployed as the only significant process on a machine with fixed hardware characteristics. 
+- **You need to implement threading technology beyond the C++ concurrency API**, 
+  e.g., thread pools on platforms where your C++ implementations don’t offer them.
+
+These are uncommon cases, however. 
+Most of the time, you should choose task-based designs instead of programming with threads.
 
 
 
@@ -9620,11 +9694,191 @@ been running on that core and are likely to be scheduled to run there again.
 
 ### 📌 Item 36: Specify `std::launch::async` if asynchronicity is essential
 
-- The default launch policy for std::async permits both asynchronous and synchronous task execution.
+- The default launch policy for `std::async` permits both asynchronous and synchronous task execution.
 - This flexibility leads to uncertainty when accessing `thread_local`s, 
   implies that the task may never execute, 
   and affects program logic for timeout-based `wait` calls.
 - Specify `std::launch::async` if asynchronous task execution is essential.
+
+
+When you call `std::async` to execute a function (or other callable object), 
+you’re generally intending to run the function asynchronously. 
+But that’s not necessarily what you’re asking `std::async` to do. 
+You’re really requesting that the function be run in accord with a `std::async` launch policy. 
+There are two standard policies, each represented by an enumerator in the `std::launch` scoped `enum`.
+```c++
+// <future>
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/// Launch code for futures
+enum class launch
+{
+    async = 1,
+    deferred = 2
+};
+```
+Assuming a function `f` is passed to `std::async` for execution,
+
+- **The `std::launch::async` launch policy** 
+  means that `f` must be run asynchronously, i.e., on a different thread.
+- **The `std::launch::deferred` launch policy** 
+  means that `f` may run only when `get` or `wait` is called on the future returned by `std::async`. 
+  This is a simplification. 
+  What matters isn’t the future on which `get` or `wait` is invoked, 
+  it’s the shared state to which the future refers. 
+  (Item 38 discusses the relationship between futures and shared states.) 
+  Because `std::future`s support moving and can also be used to construct `std::shared_future`s, 
+  and because `std::shared_future`s can be copied, 
+  the future object referring to the shared state arising from the call to `std::async` to which `f` was passed 
+  is likely to be different from the one returned by `std::async`. 
+  That’s a mouthful, however, so it’s common to fudge the truth and simply talk about 
+  invoking `get` or `wait` on the future returned from `std::async`.
+  That is, `f`’s execution is <u>_deferred_</u> until such a call is made. 
+  When `get` or `wait` is invoked, `f` will execute synchronously, 
+  i.e., the caller will block until `f` finishes running. 
+  If neither `get` nor `wait` is called, `f` will never run.
+
+`std::async`’s default launch policy (the one it uses if you don’t expressly specify one) is neither of these. 
+Rather, it’s these or-ed together. The following two calls have exactly the same meaning:
+```c++
+auto fut1 = std::async(f);                                              // run f using default launch policy
+auto fut2 = std::async(std::launch::async | std::launch::deferred, f);  // run f either async or deferred
+```
+The default policy thus permits `f` to be run either asynchronously or synchronously.
+As Item 35 points out, this flexibility permits `std::async` and the thread management components of the Standard Library 
+to assume responsibility for thread creation and destruction, avoidance of oversubscription, and load balancing. 
+That’s among the things that make concurrent programming with `std::async` so convenient.
+
+
+But using `std::async` with the default launch policy has some interesting implications.
+Given a thread `t` executing this statement,
+```c++
+auto fut = std::async(f);  // run f using default launch policy
+```
+
+- **It’s not possible to predict whether `f` will run concurrently with `t`**, 
+  because `f` might be scheduled to run deferred.
+- **It’s not possible to predict whether `f` runs on a thread different from the thread invoking `get` or `wait` on `fut`**. 
+  If that thread is `t`, the implication is that it’s not possible to predict whether `f` runs on a thread different from `t`.
+- **It may not be possible to predict whether `f` runs at all**, 
+  because it may not be possible to guarantee that `get` or `wait` will be called on `fut` along every path through the program.
+
+The default launch policy’s scheduling flexibility often mixes poorly with the use of `thread_local` variables, 
+because it means that if `f` reads or writes such <u>_thread-local storage_</u> (TLS), 
+it’s not possible to predict which thread’s variables will be accessed: 
+```c++
+// TLS for f possibly for independent thread, but possibly for thread invoking get or wait on fut
+auto fut = std::async(f);
+```
+It also affects `wait`-based loops using timeouts, 
+because calling `wait_for` or `wait_until` on a task that’s deferred yields the value `std::future_status::deferred`. 
+This means that the following loop, which looks like it should eventually terminate, may run forever:
+```c++
+using namespace std::literals;
+
+void f()
+{
+    std::this_thread::sleep_for(1s);
+}
+
+// run f asynchronously (conceptually)
+auto fut = std::async(f); 
+
+// loop until f has finished running...
+while (fut.wait_for(100ms) != std::future_status::ready) 
+{ 
+    // which may never happen!
+}
+```
+If `f` runs concurrently with the thread calling `std::async` 
+(i.e., if the launch policy chosen for `f` is `std::launch::async`), 
+there’s no problem here (assuming `f` eventually finishes); 
+but if `f` is deferred, `fut.wait_for` will always return `std::future_status::deferred`. 
+That will never be equal to `std::future_status::ready`, so the loop will never terminate.
+
+
+This kind of bug is easy to overlook during development and unit testing, 
+because it may manifest itself only under heavy loads. 
+Those are the conditions that push the machine towards oversubscription or thread exhaustion,
+and that’s when a task may be most likely to be deferred. 
+After all, if the hardware isn’t threatened by oversubscription or thread exhaustion, 
+there’s no reason for the runtime system not to schedule the task for concurrent execution.
+
+
+The fix is simple: just check the future corresponding to the `std::async` call to see whether the task is deferred, 
+and, if so, avoid entering the timeout-based loop.
+Unfortunately, there’s no direct way to ask a future whether its task is deferred.
+Instead, you have to call a timeout-based function: a function such as `wait_for`. 
+In this case, you don’t really want to wait for anything, 
+you just want to see if the return value is `std::future_status::deferred`,
+so stifle your mild disbelief at the necessary circumlocution and call `wait_for` with a zero timeout:
+```c++
+auto fut = std::async(f);
+
+if (fut.wait_for(0s) == std::future_status::deferred)
+{
+    // task is deferred
+    // use wait or get on fut to call f synchronously
+} 
+else 
+{ 
+    // task isn't deferred
+    // infinite loop not possible (assuming f finishes)
+    while (fut.wait_for(100ms) != std::future_status::ready) 
+    { 
+        // task is neither deferred nor ready,
+        // so do concurrent work until it's ready
+    }
+    
+    // fut is ready
+}
+```
+The upshot of these various considerations is that 
+using `std::async` with the default launch policy for a task 
+is fine as long as the following conditions are fulfilled:
+
+- The task need not run concurrently with the thread calling `get` or `wait`. 
+- It doesn’t matter which thread’s `thread_local` variables are read or written. 
+- Either there’s a guarantee that `get` or `wait` will be called on the future returned by `std::async` 
+  or it’s acceptable that the task may never execute.
+- Code using `wait_for` or `wait_until` takes the possibility of deferred status into account.
+
+If any of these conditions fails to hold, you probably want to guarantee that 
+`std::async` will schedule the task for truly asynchronous execution. 
+The way to do that is to pass `std::launch::async` as the first argument when you make the call:
+```c++
+auto fut = std::async(std::launch::async, f);  // launch f asynchronously
+```
+In fact, having a function that acts like `std::async`, 
+but that automatically uses `std::launch::async` as the launch policy, 
+is a convenient tool to have around, so it’s nice that it’s easy to write. 
+```c++
+// C++11
+template <typename F, typename ... Ts>
+inline std::future<typename std::result_of<F(Ts...)>::type> reallyAsync(F && f, Ts && ... params)
+{
+    return std::async(std::launch::async, std::forward<F>(f), std::forward<Ts>(params)...);
+}
+
+// C++14
+template <typename F, typename ... Ts>
+inline auto reallyAsync(F && f, Ts && ... params)
+{
+    return std::async(std::launch::async, std::forward<F>(f), std::forward<Ts>(params)...);
+}
+```
+This function receives a callable object f and zero or more parameters params and
+perfect-forwards them (see Item 25) to std::async, passing std::launch::async
+as the launch policy. Like std::async, it returns a std::future for the result of
+invoking f on params. Determining the type of that result is easy, because the type
+trait std::result_of gives it to you. (See Item 9 for general information on type
+traits.)
+
+
+`reallyAsync` is used just like `std::async`:
+```c++
+auto fut = reallyAsync(f);  // run f asynchronously; throw if std::async would throw
+```
 
 
 
