@@ -9860,6 +9860,7 @@ inline std::future<typename std::result_of<F(Ts...)>::type> reallyAsync(F && f, 
     return std::async(std::launch::async, std::forward<F>(f), std::forward<Ts>(params)...);
 }
 
+
 // C++14
 template <typename F, typename ... Ts>
 inline auto reallyAsync(F && f, Ts && ... params)
@@ -9891,6 +9892,305 @@ auto fut = reallyAsync(f);  // run f asynchronously; throw if std::async would t
 - `join`-on-destruction can lead to difficult-to-debug performance anomalies.
 - `detach`-on-destruction can lead to difficult-to-debug undefined behavior.
 - Declare `std::thread` objects last in lists of data members.
+
+
+Every `std::thread` object is in one of two states: <u>_joinable_</u> or <u>_unjoinable_</u>. 
+A joinable `std::thread` corresponds to an underlying asynchronous thread of execution that is or could be running, 
+e.g, a `std::thread` corresponding to an underlying thread that’s blocked or waiting to be scheduled,  
+and `std::thread` objects corresponding to underlying threads that have run to completion.
+
+
+Unjoinable `std::thread` objects include:
+
+- **Default-constructed `std::thread`s**. 
+  Such `std::thread`s have no function to execute, 
+  hence don’t correspond to an underlying thread of execution.
+- **`std::thread` objects that have been moved from**. 
+  The result of a move is that the underlying thread of execution a `std::thread` used to correspond to (if any)
+  now corresponds to a different `std::thread`.
+- **`std::thread`s that have been joined**. 
+  After a `join`, the std::thread object no longer corresponds to 
+  the underlying thread of execution that has finished running.
+- **`std::thread`s that have been detached**. 
+  A `detach` severs the connection between a `std::thread` object 
+  and the underlying thread of execution it corresponds to.
+
+One reason a `std::thread`’s joinability is important is that 
+if the destructor for a joinable thread is invoked, 
+execution of the program is terminated. 
+For example, suppose we have a function `doWork` that takes a filtering function, `filter`, 
+and a maximum value, `maxVal`, as parameters. 
+`doWork` checks to make sure that all conditions necessary for its computation are satisfied, 
+then performs the computation with all the values between `0` and `maxVal` that pass the filter. 
+If it’s time-consuming to do the filtering 
+and it’s also time-consuming to determine whether `doWork`’s conditions are satisfied, 
+it would be reasonable to do those two things concurrently.
+
+
+Our preference would be to employ a task-based design for this (see Item 35), 
+but let’s assume we’d like to set the priority of the thread doing the filtering. 
+Item 35 explains that that requires use of the thread’s native handle, 
+and that’s accessible only through the `std::thread` API; 
+the task-based API (i.e., futures) doesn’t provide it.
+Our approach will therefore be based on threads, not tasks.
+
+
+We could come up with code like this:
+```c++
+// C++14: use an apostrophe as a digit separator
+constexpr auto tenMillion = 10'000'000;  
+
+// returns whether computation was performed
+bool doWork(std::function<bool (int)> filter, int maxVal = tenMillion)
+{
+    // values that satisfy filter
+    std::vector<int> goodVals;
+
+    // populate goodVals
+    std::thread t([&filter, maxVal, &goodVals]
+    { 
+        for (auto i = 0; i <= maxVal; ++i)
+        {
+            if (filter(i))
+            {
+                goodVals.push_back(i);
+            }
+        }
+    });
+
+    // use t's native handle to set t's priority
+    auto nh = t.native_handle(); 
+    setPriority(nh);
+    
+    if (conditionsAreSatisfied())
+    {
+        t.join();     // let t finish
+        performComputation(goodVals);
+        return true;  // computation was performed
+    }
+    
+    return false;     // computation was not performed
+}
+```
+A better design would be to start `t` in a suspended state 
+(thus making it possible to adjust its priority before it does any computation), 
+but I don’t want to distract you with that code. 
+If you’re more distracted by the code’s absence, turn to Item 39, 
+because it shows how to start threads suspended.
+
+
+But back to `doWork`. 
+If `conditionsAreSatisfied()` returns `true`, all is well, 
+but if it returns `false` or throws an exception, 
+the `std::thread` object `t` will be joinable when its destructor is called at the end of `doWork`. 
+That would cause program execution to be terminated.
+
+
+You might wonder why the `std::thread` destructor behaves this way. 
+It’s because the two other obvious options are arguably worse:
+
+- **An implicit `join`**. 
+  In this case, a `std::thread`’s destructor would wait for its underlying asynchronous thread of execution to complete. 
+  That sounds reasonable, but it could lead to performance anomalies that would be difficult to track down. 
+  For example, it would be counterintuitive that `doWork` would wait for its filter to be applied to all values 
+  if `conditionsAreSatisfied()` had already returned `false`. 
+- **An implicit `detach`**. 
+  In this case, a `std::thread`’s destructor would sever the connection 
+  between the `std::thread` object and its underlying thread of execution.
+  The underlying thread would continue to run. 
+  This sounds no less reasonable than the join approach, 
+  but the debugging problems it can lead to are worse. 
+  In `doWork`, for example, `goodVals` is a local variable that is captured by reference. 
+  It’s also modified inside the lambda (via the call to `push_back`). 
+  Suppose, then, that while the lambda is running asynchronously, `conditionsAreSatisfied()` returns false. 
+  In that case, `doWork` would return, and its local variables (including `goodVals`) would be destroyed. 
+  Its stack frame would be popped, and execution of its thread would continue at `doWork`’s call site.
+  Statements following that call site would, at some point, make additional function calls, 
+  and at least one such call would probably end up using some or all of the memory 
+  that had once been occupied by the `doWork` stack frame. 
+  Let’s call such a function `f`. 
+  While `f` was running, the lambda that `doWork` initiated would still be running asynchronously. 
+  That lambda could call `push_back` on the stack memory 
+  that used to be `goodVals` but that is now somewhere inside `f`’s stack frame. 
+  Such a call would modify the memory that used to be `goodVals`, 
+  and that means that from f’s perspective, 
+  the content of memory in its stack frame could spontaneously change! 
+  Imagine the fun you’d have debugging that. 
+
+
+The Standardization Committee decided that the consequences of destroying a joinable thread were sufficiently dire 
+that they essentially banned it (by specifying that destruction of a joinable thread causes program termination).
+
+
+This puts the onus on you to ensure that if you use a `std::thread` object, 
+it’s made unjoinable on every path out of the scope in which it’s defined. 
+But covering every path can be complicated. 
+It includes flowing off the end of the scope as well as 
+jumping out via a `return`, `continue`, `break`, `goto` or exception. 
+That can be a lot of paths.
+
+
+Any time you want to perform some action along every path out of a block, 
+the normal approach is to put that action in the destructor of a local object. 
+Such objects are known as RAII objects, and the classes they come from are known as RAII classes.
+(RAII itself stands for “Resource Acquisition Is Initialization,” 
+although the crux of the technique is destruction, not initialization). 
+RAII classes are common in the Standard Library. 
+Examples include the STL containers 
+(each container’s destructor destroys the container’s contents and releases its memory), 
+the standard smart pointers
+(`std::unique_ptr`’s destructor invokes its deleter on the object it points to, 
+and the destructors in `std::shared_ptr` and `std::weak_ptr` decrement reference counts), 
+`std::fstream` objects (their destructors close the files they correspond to), and many more. 
+And yet there is no standard RAII class for `std::thread` objects, 
+perhaps because the Standardization Committee, having rejected both join and detach as default options, 
+simply didn’t know what such a class should do.
+
+
+Fortunately, it’s not difficult to write one yourself. 
+For example, the following class allows callers to specify whether join or detach should be called 
+when a `JoiningThread` object is destroyed:
+```c++
+class JoiningThread
+{
+public:
+    enum class JoiningPolicy
+    {
+        join,
+        detach
+    };
+
+    JoiningThread(std::thread && t, JoiningPolicy a) : joiningPolicy(a), t(std::move(t))
+    {
+
+    }
+
+    ~JoiningThread()
+    {
+        if (t.joinable())
+        {
+            if (joiningPolicy == JoiningPolicy::join)
+            {
+                t.join();
+            }
+            else
+            {
+                t.detach();
+            }
+        }
+    }
+
+    std::thread & get()
+    {
+        return t;
+    }
+
+private:
+    JoiningPolicy joiningPolicy;
+    std::thread t;
+};
+```
+
+- The constructor accepts only `std::thread` rvalues, 
+  because we want to move the passed-in std::thread into the `JoiningThread` object. 
+  (Recall that `std::thread` objects aren’t copyable.)
+- The parameter order in the constructor is designed to be intuitive to callers 
+  (specifying the `std::thread` first and the destructor action second makes more sense than vice versa), 
+  but the member initialization list is designed to match the order of the data members’ declarations. 
+  That order puts the `std::thread` object last. 
+  In this class, the order makes no difference, but in general, 
+  it’s possible for the initialization of one data member to depend on another, 
+  and because `std::thread` objects may start running a function immediately after they are initialized, 
+  it’s a good habit to declare them last in a class. 
+  That guarantees that at the time they are constructed, 
+  all the data members that precede them have already been initialized 
+  and can therefore be safely accessed by the asynchronously running thread 
+  that corresponds to the `std::thread` data member. 
+- `JoiningThread` offers a `get` function to provide access to the underlying `std::thread` object. 
+  This is analogous to the get functions offered by the standard smart pointer classes 
+  that give access to their underlying raw pointers. 
+  Providing `get` avoids the need for `JoiningThread` to replicate the full `std::thread` interface, 
+  and it also means that `JoiningThread` objects can be used in contexts where `std::thread` objects are required. 
+- Before the `JoiningThread` destructor invokes a member function on the `std::thread` object `t`, 
+  it checks to make sure that `t` is joinable. 
+  This is necessary, because invoking join or detach on an unjoinable thread yields undefined behavior. 
+  It’s possible that a client constructed a `std::thread`, created a `JoiningThread` object from it, 
+  used get to acquire access to `t`, and then did a move from `t` or called `join` or `detach` on it. 
+  Each of those actions would render `t` unjoinable.
+  If you’re worried that in this code
+  ```c++
+  if (t.joinable())
+  {
+      if (joiningPolicy == JoiningPolicy::join)
+      {
+          t.join();
+      }
+      else
+      {
+          t.detach();
+      }
+  }
+  ```
+  a race exists, because between execution of `t.joinable()` and invocation of `join` or `detach`, 
+  another thread could render `t` unjoinable, your intuition is commendable, but your fears are unfounded. 
+  A `std::thread` object can change state from joinable to unjoinable only through a member function call, 
+  e.g., `join`, `detach`, or a move operation. 
+  At the time a `JoiningThread` object’s destructor is invoked, 
+  no other thread should be making member function calls on that object.
+  If there are simultaneous calls, there is certainly a race, 
+  but it isn’t inside the destructor, it’s in the client code that is trying to invoke two member functions
+  (the destructor and something else) on one object at the same time. 
+  In general, simultaneous member function calls on a single object are safe 
+  only if all are to multithread-safe `const` member functions  (see Item 16).
+
+Employing `JoiningThread` in our doWork example would look like this:
+```c++
+bool doWork(std::function<bool(int)> filter, int maxVal = tenMillion)
+{
+    std::vector<int> goodVals;
+    
+    JoiningThread t(
+            std::thread([&filter, maxVal, &goodVals]
+                        {
+                            for (auto i = 0; i <= maxVal; ++i)
+                            {
+                                if (filter(i))
+                                {
+                                    goodVals.push_back(i);
+                                }
+                            }
+                        }),
+            JoiningThread::DtorAction::join
+    );
+    
+    auto nh = t.get().native_handle();
+    
+    if (conditionsAreSatisfied())
+    {
+        t.get().join();
+        performComputation(goodVals);
+        return true;
+    }
+    
+    return false;
+}
+```
+In this case, we’ve chosen to do a `join` on the asynchronously running thread in the `JoiningThread` destructor, 
+because, as we saw earlier, doing a `detach` could lead to some truly nightmarish debugging. 
+We also saw earlier that doing a `join` could lead to performance anomalies 
+(that, to be frank, could also be unpleasant to debug), 
+but given a choice between undefined behavior (which `detach` would get us), 
+program termination (which use of a raw `std::thread` would yield), 
+or performance anomalies, performance anomalies seems like the best of a bad lot.
+
+
+Alas, Item 39 demonstrates that using `JoiningThread` to perform a `join` on `std::thread` destruction 
+can sometimes lead not just to a performance anomaly, but to a hung program. 
+The “proper” solution to these kinds of problems would be to communicate to the asynchronously running lambda 
+that we no longer need its work and that it should return early, 
+but there’s no support in C++11 for <u>_interruptible threads_</u>. 
+They can be implemented by hand, but that’s a topic beyond the scope of this book.
+You’ll find a nice treatment in Anthony Williams’ <u>_C++ Concurrency in Action_</u> Section 9.2.
 
 
 
