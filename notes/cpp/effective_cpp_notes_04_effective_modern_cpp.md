@@ -10021,6 +10021,7 @@ It’s because the two other obvious options are arguably worse:
 The Standardization Committee decided that the consequences of destroying a joinable thread were sufficiently dire 
 that they essentially banned it (by specifying that destruction of a joinable thread causes program termination).
 
+#### `JoiningThread`
 
 This puts the onus on you to ensure that if you use a `std::thread` object, 
 it’s made unjoinable on every path out of the scope in which it’s defined. 
@@ -10201,8 +10202,200 @@ You’ll find a nice treatment in Anthony Williams’ <u>_C++ Concurrency in Act
 
 - Future destructors normally just destroy the future’s data members.
 - The final future referring to a shared state 
-  for a non-deferred task launched via `std::async `
-  blocks until the task completes.
+  for a non-deferred task launched via `std::async`
+  blocks until the task completes (i.e. implicitly `join`s in its destructor).
+
+
+A joinable `std::thread` corresponds to an underlying system thread of execution. 
+A future for a non-deferred task has a similar relationship to a system thread. 
+As such, both `std::thread` objects and future objects can be thought of as <u>_handles_</u> to system threads.
+
+
+`std::thread`s and futures have such different behaviors in their destructors. 
+Destruction of a joinable `std::thread` terminates the program, 
+because the two obvious alternatives (an implicit `join` and an implicit `detach`) were considered worse choices. 
+Yet the destructor for a future sometimes behaves as if it did an implicit `join`, 
+sometimes as if it did an implicit `detach`, and sometimes neither. 
+It never causes program termination.
+
+
+We’ll begin with the observation that a future is one end of a communications channel 
+through which a callee transmits a result to a caller.
+Item 39 explains that the kind of communications channel associated with a future 
+can be employed for other purposes. 
+For this Item, however, we’ll consider only its use as a mechanism
+for a callee to convey its result to a caller.
+
+
+The callee (usually running asynchronously) writes the result of its computation into the communications channel
+(typically via a `std::promise` object), and the caller reads that result using a future.
+```
+┌────────┐ future             std::promise ┌────────┐
+│ Caller │←--------------------------------│ Callee │
+└────────┘                                 └────────┘
+```
+But where is the callee’s result stored? 
+The callee could finish before the caller invokes `get` on a corresponding future, 
+so the result can’t be stored in the callee’s `std::promise`. 
+That object, being local to the callee, would be destroyed when the callee finished. 
+
+
+The result can’t be stored in the caller’s future, either, 
+because (among other reasons) a `std::future` may be used to create a `std::shared_future`
+(thus transferring ownership of the callee’s result from the `std::future` to the `std::shared_future`),
+which may then be copied many times after the original `std::future` is destroyed.
+Given that not all result types can be copied (i.e., move-only types) and that the result
+must live at least as long as the last future referring to it, 
+which of the potentially many futures corresponding to the callee should be the one to contain its result?
+
+
+Because neither objects associated with the callee nor objects associated with the caller 
+are suitable places to store the callee’s result, it’s stored in a location outside both. 
+This location is known as the <u>_shared state_</u>. 
+The shared state is typically represented by a heap-based object, 
+but its type, interface, and implementation are not specified by the Standard. 
+Standard Library authors are free to implement shared states in any way they like.
+
+
+We can envision the relationship among the callee, the caller, and the shared state as follows:
+```
+                           Shared State
+┌────────┐ future      ┌─────────────────┐       std::promise ┌────────┐
+│ Caller │←------------│ Callee's Result │--------------------│ Callee │
+└────────┘             └─────────────────┘                    └────────┘
+```
+The existence of the shared state is important, 
+because the behavior of a future’s destructor is determined by the shared state associated with the future. 
+In particular,
+
+- **The destructor for the last future 
+  referring to a shared state for a non-deferred task launched via `std::async` 
+  blocks** until the task completes. 
+  In essence, the destructor for such a future does an implicit `join` 
+  on the thread on which the asynchronously executing task is running.
+- **The destructor for all other futures simply destroys the future object**. 
+  For asynchronously running tasks, this is same as an implicit `detach` on the underlying thread. 
+  For deferred tasks for which this is the final future, 
+  it means that the deferred task will never run.
+  
+These rules are just a simple “normal” behavior and one lone exception to it. 
+The normal behavior is that a future’s destructor destroys the future object. 
+That’s it. It doesn’t `join` with anything, it doesn’t `detach` from anything, it doesn’t run anything. 
+It just destroys the future’s data members and decrements the reference count inside the shared state 
+that’s manipulated by both the futures referring to it and the callee’s `std::promise`. 
+This reference count makes it possible for the library to know when the shared state can be destroyed. 
+
+
+The exception to this normal behavior arises only for a future for which all of the following apply:
+
+- It refers to a shared state that was created due to a call to `std::async`.
+- The task’s launch policy is `std::launch::async`, 
+  either because that was chosen by the runtime system 
+  or because it was specified in the call to `std::async`.
+- The future is the last future referring to the shared state. 
+  For `std::future`s, this will always be the case. 
+  For `std::shared_future`s, if other `std::shared_future`s refer to the same shared state as the future being destroyed, 
+  the future being destroyed follows the normal behavior (i.e., it simply destroys its data members).
+
+Only when all of these conditions are fulfilled does a future’s destructor exhibit special behavior, 
+and that behavior is to block until the asynchronously running task completes. 
+Practically speaking, this amounts to an implicit `join` with the thread running the `std::async`-created task.
+
+
+It’s common to hear this exception to normal future destructor behavior summarized as 
+“Futures from `std::async` block in their destructors.” 
+To a first approximation, that’s correct, but sometimes you need more than a first approximation: 
+“(The last) future from (non-deferred) `std::async` block in their destructors.”
+
+
+The Standardization Committee wanted to avoid the problems associated with an implicit `detach` (see Item 37),
+but they didn’t want to adopt as radical a policy as mandatory program termination
+(as they did for joinable `std::thread`s), so they compromised on an implicit `join`. 
+The decision was not without controversy, and there was serious talk about abandoning this behavior for C++14. 
+In the end, no change was made, so the behavior of destructors for futures is consistent in C++11 and C++14. 
+
+
+The API for futures offers no way to determine 
+whether a future refers to a shared state arising from a call to `std::async`, 
+so given an arbitrary future object, 
+it’s **not** possible to ~~know whether it will block in its destructor waiting for an asynchronously running task to finish~~. 
+This has some interesting implications:
+```c++
+// This container might block in its destructor, 
+// because one or more contained futures could refer to a shared state
+// for a non-deferred task launched via std::async. 
+// See Item 39 for info on std::future<void>
+std::vector<std::future<void>> futVec; 
+
+
+class Widget
+{ 
+public:
+    // Widget objects might block in their destructors
+    // ...
+    
+private:
+    std::shared_future<double> fut;
+};
+```
+Of course, if you have a way of knowing that a given future does not satisfy the conditions
+that trigger the special destructor behavior (e.g., due to program logic), 
+you’re assured that that future won’t block in its destructor. 
+For example, only shared states arising from calls to `std::async` qualify for the special behavior, 
+but there are other ways that shared states get created. 
+One is the use of `std::packaged_task`. 
+A `std::packaged_task` object prepares a function (or other callable object) for asynchronous execution 
+by wrapping it such that its result is put into a shared state. 
+A future referring to that shared state can then be obtained via `std::packaged_task::get_future` function:
+```c++
+int calcValue();                           // func to run
+std::packaged_task<int ()> pt(calcValue);  // wrap calcValue so it can run asynchronously
+auto fut = pt.get_future();                // get future for pt
+std::thread t(std::move(pt));              // run pt on t
+```
+At this point, we know that the future `fut` doesn’t refer to a shared state created by a call to `std::async`, 
+so its destructor will behave normally.
+
+
+Once created, the `std::packaged_task pt` can be run on a thread. 
+(It could also be run via a call to `std::async`, 
+but there’s little reason to create a `std::packaged_task` if you want to run a task using `std::async`, 
+because `std::async` does everything `std::packaged_task` does before it schedules the task for execution.)
+`std::packaged_task`s aren’t copyable, so when `pt` is passed to the `std::thread` constructor,
+it must be cast to an rvalue (via `std::move`). 
+
+
+This example lends some insight into the normal behavior for future destructors, 
+but it’s easier to see if the statements are put together inside a block:
+```c++
+// begin block
+{ 
+    std::packaged_task<int ()> pt(calcValue);
+    auto fut = pt.get_future();
+    std::thread t(std::move(pt));
+    // ...
+}
+// end block
+```
+The most interesting code here is the `// ...` 
+that follows creation of the `std::thread` object `t` and precedes the end of the block. 
+What makes it interesting is what can happen to `t` inside the `// ...`  region. 
+There are three basic possibilities:
+
+- **Nothing happens to `t`**. 
+  In this case, `t` will be joinable at the end of the scope. 
+  That will cause the program to be terminated (see Item 37).
+- **A `join` is done on `t`**. 
+  In this case, there would be no need for `fut` to block in its destructor, 
+  because the join is already present in the calling code.
+- **A `detach` is done on `t`**. 
+  In this case, there would be no need for `fut` to `detach` in its destructor, 
+  because the calling code already does that.
+  
+In other words, when you have a future corresponding to a shared state that arose due to a `std::packaged_task`, 
+there’s usually no need to adopt a special destruction policy, 
+because the decision among termination, joining, or detaching will be made in the code 
+that manipulates the `std::thread` on which the `std::packaged_task` is typically run.
 
 
 
@@ -10221,6 +10414,350 @@ You’ll find a nice treatment in Anthony Williams’ <u>_C++ Concurrency in Act
 - Using `std::promise`s and futures dodges these issues, 
   but the approach uses heap memory for shared states, 
   and it’s limited to one-shot communication.
+
+
+Sometimes it’s useful for a task to tell a second, asynchronously running task that a particular event has occurred, 
+because the second task can’t proceed until the event has taken place.
+When that’s the case, what’s the best way for this kind of inter-thread communication to take place?
+
+#### Condition variable
+
+An obvious approach is to use a <u>_condition variable_</u>. 
+Denote the task that detects the condition as <u>_detecting task_</u>, 
+and the task reacting to the condition as <u>_reacting task_</u> , 
+the strategy is simple: 
+the reacting task waits on a condition variable, 
+and the detecting thread notifies that condvar when the event occurs. 
+```c++
+std::condition_variable condVar;  // condvar for event
+std::mutex condVarMutex;          // mutex for use with condVar
+// ...                            // detect event
+condVar.notify_one();             // tell reacting task
+```
+If there were multiple reacting tasks to be notified, 
+it would be appropriate to replace `notify_one` with `notify_all`, 
+but for now, we’ll assume there’s only one reacting task.
+
+[Why pthread_cond_wait needs a mutex argument?](https://www.zhihu.com/question/24116967)
+
+The code for the reacting task is a bit more complicated, 
+because before calling wait on the condvar, it must lock a mutex through a `std::unique_lock` object. 
+(Locking a mutex before waiting on a condition variable is typical for threading libraries. 
+The need to lock the mutex through a `std::unique_lock` object is simply part of the C++11 API.) 
+Here’s the conceptual approach:
+```c++
+// ...  // prepare to react
+
+// open critical section
+{
+    // lock mutex and wait for notify: this is WRONG!
+    std::unique_lock<std::mutex> lock(condVarMutex);
+    condVar.wait(lock);
+    
+    // ...  // react to event
+    // (condVarMutex is locked)
+} 
+// close critical section
+
+// unlock condVarMutex via lock's destructor
+// ...  // continue reacting
+// (condVarMutex now unlocked)
+```
+Mutexes are used to control access to shared data, 
+but it’s entirely possible that the detecting and reacting tasks have no need for such mediation.
+For example, the detecting task might be responsible for initializing a global data structure, 
+then turning it over to the reacting task for use. 
+If the detecting task never accesses the data structure after initializing it, 
+and if the reacting task never accesses it before the detecting task indicates that it’s ready, 
+the two tasks will stay out of each other’s way through program logic. 
+There will be no need for a mutex. 
+The fact that the condvar approach requires one leaves behind the unsettling aroma of suspect design.
+Even if you look past that, there are two other problems you should definitely pay attention to:
+
+- **If the detecting task notifies the condvar before the reacting task `wait`s, the reacting task will hang**. 
+  In order for notification of a condvar to wake another task, the other task must be waiting on that condvar. 
+  If the detecting task happens to execute the notification before the reacting task executes the wait, 
+  the reacting task will miss the notification, and it will wait forever.
+- **The `wait` statement fails to account for spurious wakeups**. 
+  A fact of life in threading APIs is that 
+  code waiting on a condition variable may be awakened even if the condvar wasn’t notified. 
+  Such awakenings are known as <u>_spurious wakeups_</u>. 
+  (Spurious wakeups actually refer to two settings. 
+  One is the afore-mentioned case. 
+  This is simply because absolutely ensuring a true predicate is too expensive. 
+  The other is the case that the predicate is changed by another thread 
+  after the condvar is signaled and before the reacting task gets its first time slice. 
+  This case is caused by thread racing. )
+  Proper code deals with them by confirming that the condition being waited for has truly occurred, 
+  and it does this as its first action after waking. 
+  The C++ condvar API makes this exceptionally easy, because it permits 
+  a lambda (or other function object) that tests for the waited-for condition to be passed to wait. 
+  That is, the wait call in the reacting task could be written like this:
+  ```c++
+  condVar.wait(lk, []{ return whether the event has occurred; });
+  ```
+  Taking advantage of this capability requires that 
+  the reacting task be able to determine whether the condition it’s waiting for is true. 
+  But in the scenario we’ve been considering, the condition it’s waiting for is the occurrence of an event
+  that the detecting thread is responsible for recognizing. 
+  The reacting thread may have no way of determining whether the event it’s waiting for has taken place. 
+  That’s why it’s waiting on a condition variable!
+
+#### Shared boolean flag
+
+The second communication method is shared boolean flag. 
+The flag is initially `false`. 
+When the detecting thread recognizes the event it’s looking for, it sets the flag:
+```c++
+std::atomic<bool> flag(false);  // shared flag; see Item 40 for std::atomic
+// ...                          // detect event
+flag = true;                    // tell reacting task
+```
+For its part, the reacting thread simply polls the flag.
+When it sees that the flag is set, it knows that the event it’s been waiting for has occurred:
+```c++
+// prepare to react
+// ...          
+
+// wait for event
+while (!flag)  
+{
+    std::this_thread::yield();
+}
+
+// react to event
+// ...          
+```
+This approach suffers from none of the drawbacks of the condvar-based design.
+There’s no need for a mutex, 
+no problem if the detecting task sets the flag before the reacting task starts polling, 
+and nothing akin to a spurious wakeup. 
+
+
+However, the cost of busy wait (if not calling `std::this_thread::yield()` and just using an infinite loop) is expensive. 
+During the time the task is waiting for the flag to be set, the task is essentially blocked, yet it’s still running. 
+As such, it occupies a hardware thread that another task might be able to make use of, 
+it incurs the cost of a context switch each time it starts or completes its time-slice, 
+and it could keep a core running that might otherwise be shut down to save power. 
+A truly blocked task would do none of these things. 
+That’s an advantage of the condvar-based approach, because a task in a wait call is truly blocked. 
+
+#### Condition variable together with shared boolean flag
+
+It’s common to combine the condvar and flag-based designs. 
+A flag indicates whether the event of interest has occurred, but access to the flag is synchronized by a mutex.
+Because the mutex prevents concurrent access to the flag, there is no need for the flag to be `std::atomic`. 
+The detecting task would then look like this:
+```c++
+// ...  // detect event
+{
+    // lock condVarMutex via guard's constructor
+    std::lock_guard<std::mutex> guard(condVarMutex);
+    // tell reacting task (part 1)
+    flag = true;
+} 
+// unlock condVarMutex via guard's destructor
+
+// tell reacting task (part 2)
+condVar.notify_one();
+```
+And here’s the reacting task:
+```c++
+// ...  // prepare to react
+{
+    std::unique_lock<std::mutex> lock(condVarMutex);
+    condVar.wait(lock, [] { return flag; });  // use lambda to avoid spurious wakeups
+    // ...  // react to event
+    // (condVarMutex is locked)
+}
+// ...  // react to event
+// continue reacting
+// (condVarMutex now unlocked)
+```
+This approach avoids the problems we’ve discussed. 
+It works regardless of whether the reacting task waits before the detecting task notifies, 
+it works in the presence of spurious wakeups, and it doesn’t require polling.
+Yet an odor remains, because the detecting task communicates with the reacting task in a very curious fashion. 
+Notifying the condition variable tells the reacting task that the event it’s been waiting for has probably occurred, 
+but the reacting task must check the flag to be sure. 
+Setting the flag tells the reacting task that the event has definitely occurred, 
+but the detecting task still has to notify the condition variable 
+so that the reacting task will awaken and check the flag. 
+The approach works, but it doesn’t seem terribly clean. 
+
+#### `std::promise` and void futures
+
+An alternative is to avoid condition variables, mutexes, and flags 
+by having the reacting task wait on a future that’s set by the detecting task. 
+
+
+The design is simple. 
+The detecting task has a `std::promise` object (i.e., the writing end of the communications channel), 
+and the reacting task has a corresponding future. 
+When the detecting task sees that the event it’s looking for has occurred, 
+it sets the `std::promise` (i.e., writes into the communications channel). 
+Meanwhile, the reacting task waits on its future. 
+That wait blocks the reacting task until the `std::promise` has been set.
+
+
+Now, both `std::promise` and futures (i.e., `std::future` and `std::shared_future`)
+are templates that require a type parameter. 
+That parameter indicates the type of data to be transmitted through the communications channel. 
+In our case, however, there’s no data to be conveyed. 
+The only thing of interest to the reacting task is that its future has been set. 
+What we need for the `std::promise` and future templates is a type (i.e. `void`)
+that indicates that no data is to be conveyed across the communications channel. 
+The detecting task will thus use a `std::promise<void>`, 
+and the reacting task a `std::future<void>` or `std::shared_future<void>`. 
+The detecting task will set its `std::promise<void>` when the event of interest occurs, 
+and the reacting task will wait on its future. 
+Even though the reacting task won’t receive any data from the detecting task, 
+the communications channel will permit the reacting task to know 
+when the detecting task has “written” its `void` data by calling `set_value` on its `std::promise`.
+
+
+So given
+```c++
+std::promise<void> p;  // promise for communications channel
+```
+the detecting task’s code is trivial,
+```c++
+// ...          // detect event
+p.set_value();  // tell reacting task
+```
+and the reacting task’s code is equally simple:
+```c++
+// ...                  // prepare to react
+p.get_future().wait();  // wait on future corresponding to p
+// ...                  // react to event
+```
+Like the approach using a flag, this design requires no mutex, 
+works regardless of whether the detecting task sets its `std::promise` before the reacting task waits, 
+and is immune to spurious wakeups. 
+(Only condition variables are susceptible to that problem.) 
+Like the condvar-based approach, the reacting task is truly blocked after making the wait call, 
+so it consumes no system resources while waiting. 
+
+A future-based approach skirts those shoals, but there are other hazards to worry about. 
+For example, Item 38 explains that between a `std::promise` and a future is a shared state, 
+and shared states are typically dynamically allocated.
+You should therefore assume that this design incurs the cost of heap-based allocation and deallocation.
+
+
+Perhaps more importantly, a `std::promise` may be set only once. 
+The communications channel between a `std::promise` and a future is a one-shot mechanism: 
+it can’t be used repeatedly. 
+This is a notable difference from the condvar-based and flag-based designs, 
+both of which can be used to communicate multiple times. 
+(A condvar can be repeatedly notified, and a flag can always be cleared and set again. )
+
+
+The one-shot restriction isn’t as limiting as you might think. 
+Suppose you’d like to create a system thread in a suspended state. 
+That is, you’d like to get all the overhead associated with thread creation out of the way 
+so that when you’re ready to execute something on the thread, 
+the normal thread-creation latency will be avoided. 
+Or you might want to create a suspended thread so that you could configure it before letting it run. 
+Such configuration might include things like setting its priority or core affinity.
+The C++ concurrency API offers no way to do those things, 
+but `std::thread` objects offer the `native_handle` member function, 
+the result of which is intended to give you access to the platform’s underlying threading API 
+(usually POSIX threads or Windows threads). 
+The lower-level API often makes it possible to configure thread characteristics such as priority and affinity.
+
+
+Assuming you want to suspend a thread only once (after creation, but before it’s running its thread function), 
+a design using a `void` future is a reasonable choice. 
+Here’s the essence of the technique:
+```c++
+std::promise<void> p;
+
+void react();                                 // func for reacting task
+
+void detect()                                 // func for detecting task
+{
+    std::thread t([]                          // create thread
+                  {
+                      p.get_future().wait();  // suspend t until future is set
+                      react();
+                  });
+    
+    // ...                                    // here, t is suspended prior to call to react
+    p.set_value();                            // unsuspend t (and thus call react)
+    // ...                                    // do additional work
+    t.join();                                 // make t unjoinable
+}
+```
+Because it’s important that `t` become unjoinable on all paths out of detect, 
+use of an RAII class like Item 37’s `JoiningThread` seems like it would be advisable.
+Code like this comes to mind:
+```c++
+void detect()
+{
+    JoiningThread tr(
+            std::thread([]
+                        {
+                            p.get_future().wait();
+                            react();
+                        }),
+            JoiningThread::JoiningPolicy::join  // risky!
+    );
+
+    // ...                                      // thread inside tr is suspended here
+    p.set_value();                              // unsuspend thread inside tr
+    // ...                                      // do additional work
+}
+```
+The problem in the above code is that if in the first `// ...` region 
+(the one with the “thread inside tr is suspended here” comment), an exception is emitted,
+`set_value` will never be called on `p`. 
+That means that the call to wait inside the lambda will never return. 
+That, in turn, means that the thread running the lambda will never finish, and that’s a problem, 
+because the RAII object `tr` has been configured to perform a `join` on that thread in `tr`’s destructor. 
+In other words, if an exception is emitted from the first `// ...` region of code, 
+this function will hang, because `tr`’s destructor will never complete.
+
+
+Here, I’d like to show how the original code (i.e., not using `JoiningThread`) 
+can be extended to suspend and then unsuspend **multiple** reacting tasks. 
+It’s a simple generalization, 
+because the key is to use `std::shared_future`s instead of a `std::future` in the react code. 
+Once you know that the `std::future`’s share member function transfers ownership of its shared state
+to the `std::shared_future` object produced by share, 
+the code nearly writes itself. 
+The only subtlety is that each reacting thread needs 
+its own copy of the `std::shared_future` that refers to the shared state, 
+so the `std::shared_future` obtained from share is captured by value by the lambdas running on the reacting threads:
+```c++
+std::promise<void> p;
+
+// now for multiple reacting tasks
+void detect()
+{
+    auto sf = p.get_future().share();   // sf's type is std::shared_future<void>
+    std::vector<std::thread> vt;        // container for reacting threads
+
+    for (int i = 0; i < threadsToRun; ++i)
+    {
+        vt.emplace_back([sf]
+                        {
+                            sf.wait();  // wait on local copy of sf
+                            react();
+                        });
+    }
+
+    // ...                              // detect hangs if this code throws!
+    p.set_value();                      // unsuspend all threads
+    // ...
+    
+    for (auto & t : vt)
+    { 
+        t.join();                       // make all threads unjoinable
+    }
+}
+```
+The fact that a design using futures can achieve this effect is noteworthy, 
+and that’s why you should consider it for one-shot event communication.
 
 
 
