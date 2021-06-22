@@ -444,12 +444,11 @@ resetV({1, 2, 3});     // error! can't deduce type for {1, 2, 3}
 
 ### 📌 Item 3: Understand [`decltype`](https://en.cppreference.com/w/cpp/language/decltype)
 
-- `decltype` almost always yields the type of a variable or expression without any modifications.
-    - `decltype` always yields the type of an entity without any modification; 
-    - `decltype` yields of the type an xvalue expression as `T &&`;
-    - `decltype` yields of the type an lvalue expression as `T &`;
-    - `decltype` yields of the type an prvalue expression as `T`;
-- For lvalue expressions of type `T` other than names, `decltype` always reports a type of `T &`.
+- `decltype` almost always yields the type of an entity or expression without any modifications.
+    - `decltype` yields the type of an <u>_entity_</u> without any modification; 
+    - `decltype` yields of the type an <u>_xvalue expression_</u> as `T &&`;
+    - `decltype` yields of the type an <u>_lvalue expression_</u> as `T &`;
+    - `decltype` yields of the type an <u>_prvalue expression_</u> as `T`;
 - C++14 supports `decltype(auto)`, which, like `auto`, deduces a type from its initializer, 
   but it performs the type deduction using the `decltype` rules.
 

@@ -28,47 +28,106 @@
 
 ### 📌 Item 2: Prefer `const`s, `enum`s, and `inline`s to `#define`s
     
-- For simple constants, prefer `const` objects or `enum`s to `#define`s.
+- For simple constants, prefer `const`, `constexpr` objects or `enum`s to `#define`s.
 - For function-like macros, prefer `inline` functions to `#define`s.
 
-#### The `enum` hack
 
-For class-specific constants, use `enum`s instead of `static const` data members 
+This Item might better be called “prefer the compiler to the preprocessor,”
+because `#define` may be treated as if it’s not part of the language. 
+That’s one of its problems. When you do something like this,
+```c++
+#define ASPECT_RATIO 1.653
+```
+the symbolic name `ASPECT_RATIO`may be removed by the preprocessor before the source code gets to a compiler. 
+As a result, the name `ASPECT_RATIO` may not get entered into the <u>_symbol table_</u>. 
+This can be confusing if you get an error during compilation involving the use of the constant, 
+because the error message may refer to 1.653, not `ASPECT_RATIO`. 
+
+
+The solution is to replace the macro with a constant:
+```c++
+const double ASPECT_RATIO = 1.653;
+```
+As a language constant, `ASPECT_RATIO` is definitely seen by compilers and is certainly entered into their symbol tables. 
+In addition, in the case of a floating point constant (such as in this example), 
+use of the constant may yield smaller code than using a `#define`. 
+That’s because the preprocessor’s blind substitution of the macro name `ASPECT_RATIO` with 1.653 
+could result in multiple copies of 1.653 in your object code,
+while the use of the constant `ASPECT_RATIO` should never result in more than one copy.
+
+
+When replacing `#define`s with constants, two special cases are worth mentioning. 
+The first is defining <u>_constant pointers_</u>. 
+Because constant definitions are typically put in header files (where many different source files will include them), 
+it’s important that the pointer be declared `const`, usually in addition to what the pointer points to. 
+To define a constant `char *`-based string in a header file, for example, you have to write const twice:
+```c++
+const char * const authorName = "Scott Meyers";
+```
+For a complete discussion of the meanings and uses of `const`, especially in conjunction with pointers, see Item 3. 
+However, it’s worth reminding you here that string objects are generally preferable to their `char *`-based progenitors, 
+so `authorName` is often better defined this way:
+```c++
+const std::string authorName("Scott Meyers");
+```
+The second special case concerns <u>_class-specific constants_</u>. 
+To limit the scope of a constant to a class, you must make it a member, 
+and to ensure there’s at most one copy of the constant, you must make it a `static` member:
+```c++
+class GamePlayer
+{
+private:
+    static const int NUM_TURNS = 5;   // constant declaration & in-class initialization
+    int scores[NUM_TURNS];            // use of constant
+    // ...
+};
+```
+What you see above is a <u>_declaration_</u> for `NUM_TURNS`, **not** a definition.
+Usually, C++ requires that you provide a definition for anything you use, 
+but class-specific constants that are `static` and of integral type (e.g., integers, `char`s, `bool`s) are an exception.
+As long as you don’t take their address, you can declare them and use them without providing a definition. 
+If you do take the address of a class constant, 
+or if your compiler incorrectly insists on a definition even if you don’t take the address, 
+you provide a separate definition like this:
 ```c++
 // GamePlayer.h
 class GamePlayer 
 {
 private: 
-    static const int NumTurns = 5;   // constant declaration & in-class initialization
-    int scores[NumTurns];            // use of constant
+    static const int NUM_TURNS = 5;   // constant declaration & in-class initialization
+    int scores[NUM_TURNS];            // use of constant
 };
 
 // GamePlayer.cpp
-const int GamePlayer::NumTurns;      // definition of NumTurns; see below for why no value is given
+const int GamePlayer::NUM_TURNS;      // definition of NumTurns; see below for why no value is given
 ```
-Usually, C++ requires that you provide a definition for anything you use, 
-but class-specific constants that are `static` and of integral type 
-(e.g., `int`s, `char`s, `bool`s) are an *exception*. 
-As long as you don't *take their address*, 
-you can declare them and use them without ~~providing a definition~~. 
-If you do take the address of a class constant, 
-or if your compiler incorrectly insists on a definition even if you don't take the address, 
-you provide a separate definition in implementation file. 
-<br><br>
+You put the definition in an implementation file, not a header file. 
+Because the initial value of class constants is provided where the constant is declared 
+(e.g., `NUM_TURNS` is initialized to 5 when it is declared), no initial value is permitted at the point of definition.
+Note, by the way, that there’s no way to create a class-specific constant using a `#define`, 
+because `#define`s don’t respect scope. 
+Once a macro is defined, it’s in force for the rest of the compilation (unless it’s `#undef`ed somewhere along the line). 
+Which means that not only can’t `#define`s be used for class-specific constants, 
+they also can’t be used to provide any kind of encapsulation, 
+i.e., there is no such thing as a “private” `#define`.
+Of course, `const` data members can be encapsulated; `NUM_TURNS` is.
+
+
 Older compilers may not accept the syntax above, 
-because it used to be ~~illegal to provide an initial value for a static class member at its point of declaration~~. 
-Furthermore, in-class initialization is allowed only for *integral types* and only for *constants*. 
-In cases where the above syntax can't be used, you put the initial value at the point of definition: 
+because it used to be illegal to provide an initial value for a static class member at its point of declaration. 
+Furthermore, in-class initialization is allowed only for integral types and only for constants. 
+In cases where the above syntax can’t be used, you put the initial value at the point of definition:
 ```c++
-// CostEstimate.h
-class CostEstimate 
+// "CostEstimate.h"
+class CostEstimate
 {
 private:
-    static const double FudgeFactor;            // declaration of static class constant
+    static const double FUDGE_FACTOR;            // declaration of static class constant
+    // ...                  
 };
 
-// CostEstimate.cpp
-const double CostEstimate::FudgeFactor = 1.35;  // definition of static classconstant
+// "CostEstimate.cpp"
+const double CostEstimate::FUDGE_FACTOR = 1.35;  // definition of static class constant
 ```
 The above block of code is all you need almost all the time. 
 The only exception is when you *need the value of a class constant during compilation* of the class, 
@@ -77,18 +136,25 @@ such as in the declaration of the array `GamePlayer::scores` above
 Then the accepted way to compensate for compilers that (incorrectly) forbid 
 the in-class specification of initial values for static integral class constants 
 is to use what is affectionately (and non-pejoratively) known as the `enum` hack. 
+
+
+(P.S. This book, _Effective C++_, is written for C++98. 
+Since C++11, `constexpr` is definitely a better choice than the `enum` hack. 
+Refer to _Effective Modern C++_ for details. )
+
+
 This technique takes advantage of the fact that the values of an enumerated type can be used where ints are expected, 
 so `GamePlayer` could just as well be defined like this:
 ```c++
 class GamePlayer 
 {
 private:
-    enum {NumTurns = 5};   // "the enum hack" makes NumTurns a symbolic name for 5
-    int scores[NumTurns];  // fine
+    enum {NUM_TURNS = 5};   // "the enum hack" makes NUM_TURNS a symbolic name for 5
+    int scores[NUM_TURNS];  // fine
 };
 ```
 The `enum` hack is worth knowing about for several reasons. 
-- *Access Constraints*. <br>
+- **Access Constraints**. 
   The `enum` hack behaves in some ways more like a `#define` than a `const` does, 
   and sometimes that's what you want. 
   For example, it's legal to take the address of a `const`, 
@@ -96,44 +162,61 @@ The `enum` hack is worth knowing about for several reasons.
   and it's typically **not legal** to take the address of a `#define`, either. 
   If you don't want to let people get a pointer or reference to one of your integral constants, 
   an enum is a good way to enforce that constraint. 
-- *Memory Allocation*. <br>
+- **Memory Allocation**. 
   Though good compilers won't set aside storage for const objects of integral types 
   (unless you create a pointer or reference to the object), 
   sloppy compilers may, and you may not be willing to set aside memory for such objects. 
   Like `#define`s, `enum`s never result in that kind of unnecessary memory allocation.
-- *Pragmatic*. <br>
+- **Pragmatic**. 
   Lots of code employs it, so you need to recognize it when you see it. 
   In fact, the `enum` hack is a fundamental technique of template metaprogramming. 
 
-#### Common (mis)use of `#define` directives
 
-Using it to implement macros that look like functions but that don't incur the overhead of a function call
+Another common misuse of the `#define` directive is that without proper parenthesis: 
+```c++
+// WRONG! should be 
+// #define MAX(a, b) ((a) > (b) ? (a) : (b)) 
+// to make it work!
+#define MAX(a, b) (a) > (b) ? (a) : (b)  
+
+int a = 10;
+int b = 15;
+std::cout << 10 * MAX(a, b) << '\n';  // 10
+```
+The even more terrible case is macros that look like functions but that don’t incur the overhead of a function call: 
 ```c++
 // call f with the maximum of a and b
 // even if everything is properly parenthesised, there can still be problems! 
 #define CALL_WITH_MAX(a, b) f((a) > (b) ? (a) : (b))
 
-int a = 5, b = 0;
-CALL_WITH_MAX(++a, b);       // a is incremented twice
+int a = 5;
+int b = 0;
+CALL_WITH_MAX(++a, b);       // a is incremented TWICE!
 CALL_WITH_MAX(++a, b + 10);  // a is incremented once
 ```
 You can get all the efficiency of a macro plus all the predictable behavior and type safety 
 of a regular function by using a `template` for an `inline` function: 
 ```c++
-// because we don't know what T is, we pass by reference-to-const
-template <typename T> 
-inline void callWithMax(const T & a, const T & b) 
-{ 
-    f(a > b ? a : b);
+template <typename T1, typename T2>
+inline void callWithMax(T1 && a, T2 && b)
+{
+    f(a > b ? std::forward<T1>(a) : std::forward<T2>(b));
 }
 ```
 This template generates a whole family of functions, 
 each of which takes two objects of the same type and calls `f` with the greater of the two objects. 
 There's no need to parenthesize parameters inside the function body, 
 no need to worry about evaluating parameters multiple times, etc. 
-Furthermore, because callWithMax is a real function, it obeys scope and access rules. 
+Furthermore, because `callWithMax` is a real function, it obeys scope and access rules. 
 For example, it makes perfect sense to talk about an inline function that is private to a class. 
 In general, there's just no way to do that with a macro.
+
+
+Given the availability of `const`s, `enum`s (`constexpr`s), and `inline`s, 
+your need for the preprocessor (especially `#define`) is reduced, but it’s not eliminated.
+`#include` remains essential, 
+and `#ifdef` / `#ifndef` continue to play important roles in controlling compilation. 
+It’s not yet time to retire the preprocessor, but you should definitely give it long and frequent vacations.
 
 
 
@@ -176,6 +259,7 @@ Having a function return a constant value often makes it possible to
 reduce the incidence of client errors without giving up safety or efficiency: 
 ```c++
 class Rational { /* ... */ };
+
 const Rational operator*(const Rational & lhs, const Rational & rhs);
 ```
 Many programmers squint when they first see this. 
@@ -201,9 +285,11 @@ Declaring `operator*`'s return value `const` prevents it, and that's why it's Th
 
 #### `const` member functions
 
-Many people overlook the fact that *member functions differing only in their constness can be overloaded*, but this is an important feature of C++. 
-Incidentally, const objects most often arise in real programs as a result of being passed by pointer-to-const or reference-to-const.
-What does it mean for a member function to be const? 
+Many people overlook the fact that *member functions differing only in their `const`ness can be overloaded*, 
+but this is an important feature of C++. 
+Incidentally, `const` objects most often arise in real programs 
+as a result of being passed by pointer-to-const or reference-to-const.
+What does it mean for a member function to be `const`? 
 There are two prevailing notions: 
 
 ##### Bitwise constness (also known as _physical constness_) 
@@ -363,18 +449,20 @@ That's why a `static_cast` works on `*this` in that case: there's no `const`-rel
 
 ### 📌 Item 4: Make sure that objects are initialized before they're used
 
-- Manually initialize objects of built-in type, because C++ only
-  sometimes initializes them itself.
-- In a constructor, prefer use of the member initialization list to
-  assignment inside the body of the constructor. List data
-  members in the initialization list in the same order they're
-  declared in the class.
-- Avoid initialization order problems across translation units by
-  replacing non-local static objects with local static objects.
+- Manually initialize objects of built-in type, because C++ only sometimes initializes them itself.
+- Base classes are initialized before derived classes,
+  and within a class, data members are initialized in the order in which they are declared. 
+- In a constructor, prefer use of the member initialization list to assignment inside the body of the constructor. 
+  List data members in the initialization list in the same order they're declared in the class.
+- Avoid initialization order problems across translation units 
+  by replacing non-local `static` objects with local `static` objects (via Meyers-singleton-like getter functions).
 
-#### Always initialize your objects before you use them
 
-For non-member objects of built-in types, you'll need to do this manually: 
+there are rules that describe when object initialization is guaranteed to take place and when it isn’t.
+Unfortunately, the rules are too complicated to be worth memorizing. 
+The best way to deal with this seemingly indeterminate state of affairs 
+is to always initialize your objects before you use them.
+For non-member objects of built-in types, you’ll need to do this manually: 
 ```c++
 int x = 0;                               // manual initialization of an int
 const char * text = "A C-style string";  // manual initialization of a pointer
@@ -382,10 +470,10 @@ double d;                                // "initialization" by reading from an 
 std::cin >> d; 
 ```
 For almost everything else, the responsibility for initialization falls on constructors. 
-The rule there is simple: make sure that *all constructors initialize everything in the object*. 
+The rule is simple: make sure that *all constructors initialize everything in the object*. 
 
-#### **Not** to confuse assignment with initialization
 
+It’s important not to confuse <u>_assignment_</u> with <u>_initialization_</u>. 
 Consider a constructor for a class representing entries in an address book:
 ```c++
 class PhoneNumber 
@@ -421,10 +509,10 @@ Inside the `ABEntry` constructor,
 Initialization took place earlier: 
 when their default constructors were automatically called prior to entering the body of the `ABEntry` constructor. 
 This isn't true for `numTimesConsulted`, because it's a built-in type. 
-For it, there's **no** guarantee it was initialized at all prior to its assignment.
+For it, there's **no** guarantee it was initialized at all prior to its assignment. 
 
-#### Member initialization list
 
+A better way to write the `ABEntry` constructor is to use the <u>_member initialization list_</u> instead of assignments:
 ```c++
 ABEntry::ABEntry(const std::string & name, 
                  const std::string & address, 
@@ -434,12 +522,25 @@ ABEntry::ABEntry(const std::string & name,
           thePhones(phones), 
           numTimesConsulted(0)
 {
-    // the ctor body is now empty
+    // the constructor body is now empty
 }
 ```
-This constructor yields the same end result as the one above, but it will often be more efficient. 
-There's no need to do default initialization for class-type objects 
-like `theName`, `theAddress`, and `thePhones` before entering the constructor body. 
+This constructor yields the same end result as the one above, but it will often be more efficient.
+
+
+The assignment-based version first called <u>_default constructor_</u>s to initialize `theName`, `theAddress`, and `thePhones`,
+then promptly assigned new values on top of the default-constructed ones. 
+All the work performed in those default constructions was therefore **wasted**. 
+
+
+The member initialization list approach avoids that problem, 
+because the arguments in the initialization list are used as constructor arguments for the various data members. 
+In this case, `theName` is copy-constructed from `name`, `theaddress` is copy-constructed from `address`, 
+and `thePhones` is copy-constructed from `phones`.
+For most types, a single call to a copy constructor is more efficient (sometimes much more efficient)
+than a call to the default constructor followed by a call to the copy assignment operator. 
+
+
 For objects of built-in type like `numTimesConsulted`, 
 there is no difference in cost between initialization and assignment, 
 but for consistency, it's often best to initialize everything via member initialization.
@@ -450,7 +551,7 @@ just specify nothing as an initialization argument.
 For example, if `ABEntry` had a constructor taking no parameters, it could be implemented like this:
 ```c++
 ABEntry::ABEntry()
-        : theName(),            // call theName's default ctor;
+        : theName(),            // call theName's default constructor;
           theAddress(),         // do the same for theAddress;
           thePhones(),          // and for thePhones;
           numTimesConsulted(0)  // but explicitly initialize numTimesConsulted to zero
@@ -458,6 +559,205 @@ ABEntry::ABEntry()
 
 } 
 ```
+Because compilers will automatically call default constructors for data members of user-defined types 
+when those data members have no initializers on the member initialization list, 
+some programmers consider the above approach overkill. 
+That’s understandable, but having a policy of always listing every data member on the initialization list 
+avoids having to remember which data members may go uninitialized if they are omitted. 
+Because `numTimesConsulted` is of a built-in type, for example, 
+leaving it off a member initialization list could open the door to undefined behavior.
+
+
+Sometimes the initialization list must be used, even for built-in types.
+For example, data members that are `const` or are references **can’t** be assigned and thus must be initialized. 
+To avoid having to memorize when data members must be initialized in the member initialization list and when it’s optional, 
+the easiest choice is to always use the initialization list. 
+It’s sometimes required, and it’s often more efficient than assignments.
+
+
+Many classes have multiple constructors, and each constructor has its own member initialization list. 
+If there are many data members and/or base classes, 
+the existence of multiple initialization lists introduces 
+undesirable repetition (in the lists) and boredom (in the programmers).
+In such cases, it’s not unreasonable to omit entries in the lists 
+for data members where assignment works as well as true initialization,
+moving the assignments to a single (typically private) function that all the constructors call.
+This approach can be especially helpful if the true initial values for the data members
+are to be read from a file or looked up in a database. 
+In general, however, true member initialization (via an initialization list) 
+is preferable to pseudo-initialization via assignment.
+
+
+One aspect of C++ that isn’t fickle is the order in which an object’s data is initialized. 
+This order is always the same: 
+**base classes are initialized before derived classes, 
+and within a class, data members are initialized in the order in which they are declared.**
+In `ABEntry`, for example, `theName` will always be initialized first, 
+`theAddress` second, `thePhones` third, and `numTimesConsulted` last. 
+This is true even if they are listed in a different order on the member initialization list. 
+To avoid reader confusion, as well as the possibility of some truly obscure behavioral bugs,
+always list members in the initialization list in the same order as they’re declared in the class.
+
+
+Once you’ve taken care of explicitly initializing non-member objects of built-in types 
+and you’ve ensured that your constructors initialize their base classes and data members using the member initialization list, 
+there’s only one more thing to worry about. 
+That thing is the order of initialization of non-local `static` objects defined in different translation units.
+
+
+A <u>_static object_</u> is one that has 
+[static storage duration](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_primer_notes.md#-%E5%AD%98%E5%82%A8%E6%9C%9F%E5%92%8C%E9%93%BE%E6%8E%A5storage-duration-and-linkage) 
+(i.e. exists from the time it’s constructed until the end of the program). 
+Stack-based objects (auto storage duration) and heap-based objects (dynamic storage duration) are thus excluded.
+Included are global objects, objects defined at namespace scope, objects declared static inside classes, 
+objects declared static inside functions, and objects declared static at file scope. 
+Static objects inside functions are known as <u>_local static objects_</u> (because they’re local to a function), 
+and the other kinds of static objects are known as <u>_non-local static objects_</u>. 
+Static objects are destroyed when the program exits, i.e., their destructors are called when main finishes executing.
+
+
+A <u>_translation unit_</u> is the source code giving rise to a single object file, say, `foo.o`. 
+It’s basically a single source file, plus all of its `#include` files.
+
+
+The problem we’re concerned with, then, involves at least two separately compiled source files, 
+each of which contains at least one non-local static object 
+(i.e., an object that’s global, at namespace scope, or static in a class or at file scope). 
+And the actual problem is this: 
+if initialization of a non-local static object `a` in one translation unit 
+uses another non-local static object `b` in a different translation unit, 
+`b` could be uninitialized when `a` refers to it, 
+because the relative order of initialization of non-local static objects defined in different translation units is undefined.
+
+
+An example will help. 
+Suppose you have a `FileSystem` class that makes files on the Internet look like they’re local.
+```c++
+// "FileSystem.h"
+class FileSystem
+{
+public:
+    // ...
+    std::size_t numDisks() const;  // one of many member functions
+    // ...
+};
+
+
+// "FileSystem.cpp"
+// declare object for clients to use (“tfs” = “the file system” );
+extern FileSystem tfs; 
+```
+A `FileSystem` object is decidedly non-trivial, so use of the `tfs` object before its construction would be disastrous.
+Now suppose some client creates a class for directories in a file system.
+Naturally, their class uses the `tfs` object:
+```c++
+class Directory
+{ 
+public:
+    Directory(params);
+    // ...
+};
+
+
+Directory::Directory(params)
+{
+    // ...
+    std::size_t disks = tfs.numDisks();  // use the tfs object
+    // ...
+}
+```
+Further suppose this client decides to create a single `Directory` object for temporary files:
+```c++
+Directory tempDir(params); // directory for temporary files
+```
+Now the importance of initialization order becomes apparent: 
+unless `tfs` is initialized before `tempDir`, 
+`tempDir`’s constructor will attempt to use `tfs` before it’s been initialized. 
+But `tfs` and `tempDir` are non-local static objects defined in different translation units.
+The relative order of initialization of non-local static objects defined in different translation units is undefined, 
+because determining the “proper” order in which to initialize non-local static objects very hard. 
+In its most general form with multiple translation units and non-local static objects
+generated through implicit template instantiations (which may themselves arise via implicit template instantiations), 
+it’s not only impossible to determine the right order of initialization,
+it’s typically not even worth looking for special cases where it is possible to determine the right order.
+
+
+Fortunately, a small design change eliminates the problem entirely.
+All that has to be done is to move each non-local static object into its own function, where it’s declared static. 
+These functions return references to the objects they contain. 
+Clients then call the functions instead of referring to the objects.
+(i.e. writing get functions as of the Singleton pattern, except for the limit on number of instances.)
+In other words, non-local static objects are replaced with local static objects.
+
+
+This approach is founded on C++’s guarantee that local static objects are initialized 
+when the object’s definition is first encountered during a call to that function. 
+So if you replace direct accesses to non-local static objects 
+with calls to functions that return references to local static objects, 
+you’re guaranteed that the references you get back will refer to initialized objects. 
+As a bonus, if you never call a function emulating a non-local static object, 
+you never incur the cost of constructing and destructing the object, 
+something that can’t be said for true non-local static objects.
+
+
+Here’s the technique applied to both `tfs` and `tempDir`:
+```c++
+class FileSystem { /* ... */ };
+
+// this replaces the tfs object; 
+// it could be static in the FileSystem class
+FileSystem & tfs() 
+{
+    static FileSystem fs;  // define & initialize a local static object
+    return fs;             // return a reference to it
+}
+
+class Directory { /* ... */ };
+
+// as before, except references to tfs are now to tfs()
+Directory::Directory(params) 
+{ 
+    // ...
+    std::size_t disks = tfs().numDisks();
+    // ...
+}
+
+// this replaces the tempDir object; 
+// it could be static in the Directory class
+Directory & tempDir() 
+{ 
+    static Directory td(params);  // define & initialize local static object
+    return td;                    // return reference to it
+}
+```
+Clients of this modified system program exactly as they used to,
+except they now refer to `tfs()` and `tempDir()` instead of `tfs` and `tempDir`.
+That is, they use functions returning references to objects instead of using the objects themselves.
+
+
+The reference-returning functions dictated by this scheme are always simple: 
+**define and initialize a local static object, and return a reference to it**. 
+This simplicity makes them excellent candidates for inlining, especially if they’re called frequently. 
+On the other hand, the fact that these functions contain static objects makes them problematic in multithreaded systems. 
+Then again, any kind of non-`const` static object (local or non-local) 
+is trouble waiting to happen in the presence of multiple threads. 
+One way to deal with such trouble is to manually invoke all the reference-returning functions 
+during the single- threaded startup portion of the program. 
+This eliminates initialization-related race conditions.
+
+
+Of course, the idea of using reference-returning functions to prevent initialization order problems 
+is dependent on there being a reasonable initialization order for your objects in the first place. 
+If you have a system where object `A` must be initialized before object `B`, 
+i.e., there is no deadlock on initialization ordering.
+
+
+To avoid using objects before they’re initialized, then, you need to do only three things. 
+
+1. Manually initialize non-member objects of built-in types;
+2. Use member initialization lists to initialize all parts of an object;
+3. Design around the initialization order uncertainty that 
+   afflicts non-local static objects defined in separate translation units (via Meyers-singleton-like getter functions).
 
 
 
@@ -468,8 +768,12 @@ ABEntry::ABEntry()
 
 ### 📌 Item 5: Know what functions C++ silently writes and calls
 
-- Compilers may implicitly generate a class's 
-  default constructor, copy constructor, copy assignment operator, and destructor.
+- Compilers may implicitly generate a class's default constructor, copy constructor, copy assignment operator, and destructor.
+
+**OUTDATED**. Refer to _Effective Modern C++_ Item 17. 
+
+
+
 
 
 
@@ -479,6 +783,7 @@ ABEntry::ABEntry()
   declare the corresponding member functions private and give no implementations. 
   Using a base class like `Uncopyable` is one way to do this. 
 
+**OUTDATED**. Refer to _Effective Modern C++_ Item 11.
 
 
 
@@ -487,7 +792,172 @@ ABEntry::ABEntry()
 - Polymorphic base classes should declare virtual destructors. 
   If a class has any virtual functions, it should have a virtual destructor.
 - Classes not designed to be base classes or not designed to be used polymorphically 
-  should **not** declare virtual destructors.
+  should **not** declare virtual destructors (virtual function tables and pointers are not for free).
+
+Consider the following `TimeKeeper` base class along with derived classes for different approaches to timekeeping:
+```c++
+class TimeKeeper 
+{
+public:
+    TimeKeeper();
+    ~TimeKeeper();
+    // ...
+};
+
+class AtomicClock : public TimeKeeper { /* ... */ };
+class WaterClock : public TimeKeeper { /* ... */ };
+class WristWatch : public TimeKeeper { /* ... */ };
+```
+Many clients will want access to the time without worrying about the details of how it’s calculated, 
+so a factory function that returns a base class pointer to a newly-created derived class object
+can be used to return a pointer to a timekeeping object:
+```c++
+// returns a pointer to a dynamically allocated object of a class derived from TimeKeeper
+std::unique_ptr<TimeKeeper> getTimeKeeper();
+```
+The problem is that `getTimeKeeper` returns a pointer to a derived class object (e.g., `AtomicClock`), 
+that object is being deleted via a base class pointer (i.e., a `std::unique_ptr<TimeKeeper>`), 
+and the base class (`TimeKeeper`) has a <u>_non-virtual destructor_</u>. 
+This is a recipe for disaster, because C++ specifies that when a derived class object 
+is deleted through a pointer to a base class with a non-virtual destructor, results are undefined.
+What typically happens at runtime is that the derived part of the object is never destroyed, 
+thus leading to a curious “partially destroyed” object.
+
+
+Eliminating the problem is simple: 
+give the base class a virtual destructor.
+Then deleting a derived class object will do exactly what you want. 
+It will destroy the entire object, including all its derived class parts:
+```c++
+class TimeKeeper 
+{
+public:
+    TimeKeeper();
+    virtual ~TimeKeeper();
+    // ...
+};
+
+
+{
+    std::unique_ptr<TimeKeeper> getTimeKeeper();
+    // ...
+}
+```
+Base classes like `TimeKeeper` generally contain virtual functions other than the destructor, 
+because the purpose of virtual functions is to allow customization of derived class implementations (see Item 34).
+For example, `TimeKeeper` might have a virtual function, `getCurrentTime`, 
+which would be implemented differently in the various derived classes. 
+Any class with virtual functions should almost certainly have a virtual destructor.
+
+
+If a class does not contain virtual functions, that often indicates it is **not** meant to be used as a base class. 
+When a class is not intended to be a base class, making the destructor virtual is usually a bad idea.
+Consider a class for representing 2D points:
+```c++
+class Point2i
+{
+public:
+    Point2i(int xCoord, int yCoord);
+    ~Point2i();
+
+private:
+    int x, y;
+};
+```
+If an `int` occupies 32 bits, a `Point` object can typically fit into a 64-bit register. 
+Furthermore, such a `Point` object can be passed as a 64-bit quantity to functions written in other languages, such as C or FORTRAN.
+If `Point`’s destructor is made virtual, however, the situation changes.
+
+
+The implementation of virtual functions requires that objects carry information 
+that can be used at runtime to determine which virtual functions should be invoked on the object. 
+This information typically takes the form of a pointer called a `vptr` (“virtual table pointer”). 
+The `vptr` points to an array of function pointers called a `vtbl` (“virtual table”); 
+each class with virtual functions has an associated `vtbl`. 
+When a virtual function is invoked on an object, the actual function called is determined 
+by following the object’s `vptr` to a `vtbl` and then looking up the appropriate function pointer in the `vtbl`.
+
+
+The details of how virtual functions are implemented are unimportant.
+What is important is that if the `Point2i` class contains a virtual function, 
+objects of that type will increase in size. 
+On a 32-bit architecture, they’ll go from 64 bits (for the two ints) to 96 bits (for the ints plus the `vptr`); 
+on a 64-bit architecture, they may go from 64 to 128 bits, because pointers on such architectures are 64 bits in size. 
+Addition of a `vptr` to `Point2i` will thus increase its size by 50–100%! 
+No longer can Point objects fit in a 64-bit register. 
+Furthermore, `Point2i` objects in C++ can no longer look like the same structure declared in another language such as C, 
+because their foreign language counterparts will lack the `vptr`. 
+As a result, it is no longer possible to pass `Point2i`s to and from functions written in other languages 
+unless you explicitly compensate for the `vptr`, which is itself an implementation detail and hence unportable.
+
+
+The bottom line is that gratuitously declaring all destructors virtual is just as wrong as never declaring them virtual. 
+In fact, many people summarize the situation this way: 
+declare a virtual destructor in a class if and only if that class contains at least one virtual function.
+
+
+It is possible to get bitten by the non-virtual destructor problem even in the complete absence of virtual functions. 
+For example, the standard `std::string` type contains no virtual functions, 
+but misguided programmers sometimes use it as a base class anyway:
+```c++
+class SpecialString: public std::string 
+{ 
+    // bad idea! std::string has a non-virtual destructor
+    // ... 
+};
+```
+At first glance, this may look innocuous, but if anywhere in an application 
+you somehow convert a pointer-to-SpecialString into a pointer-to-string and you then use `delete` on the string pointer, 
+you are instantly transported to the realm of undefined behavior. 
+
+
+The same analysis applies to any class lacking a virtual destructor, including all the STL container types 
+(e.g., `std::vector`, `std::list`, `std::set`, `std::unordered_map`, etc.). 
+If you’re ever tempted to inherit from a standard container or any other class with a non-virtual destructor, 
+resist the temptation!
+
+
+Occasionally it can be convenient to give a class a <u>_pure virtual destructor_</u>. 
+Recall that pure virtual functions result in <u>_abstract classes_</u>, 
+i.e., classes that can’t be instantiated (i.e., you can’t create objects of that type). 
+Sometimes, however, you have a class that you’d like to be abstract, but you don’t have any pure virtual functions. 
+What to do?
+Well, because an abstract class is intended to be used as a base class,
+and because a base class should have a virtual destructor, 
+and because a pure virtual function yields an abstract class, 
+the solution is simple: declare a pure virtual destructor in the class you want to be abstract.
+This class has a pure virtual function, so it’s abstract, and it has a virtual destructor,
+so you won’t have to worry about the destructor problem.
+There is one twist, however: you must provide a definition for the pure virtual destructor:
+```c++
+// “Abstract w/o Virtuals”
+class AWOV
+{
+public:
+    virtual ~AWOV() = 0;  // declare pure virtual destructor
+};
+
+AWOV::~AWOV() = default;  // definition of pure virtual dtor
+```
+The way destructors work is that the most derived class’s destructor is called first,
+then the destructor of each base class is called. 
+Compilers will generate a call to `~AWOV` from its derived classes’ destructors,
+so you have to be sure to provide a body for the function. 
+If you don’t, the linker will complain.
+
+
+The rule for giving base classes virtual destructors applies only to polymorphic base classes: 
+to base classes designed to allow the manipulation of derived class types through base class interfaces.
+`TimeKeeper` is a polymorphic base class, because we expect to be able to manipulate `AtomicClock` and `WaterClock` objects, 
+even if we have only `TimeKeeper` pointers to them.
+
+
+Not all base classes are designed to be used polymorphically. 
+Neither the standard `std::string` type, for example, nor the STL container types are designed to be base classes at all, 
+much less polymorphic ones. 
+Some classes are designed to be used as base classes, yet are not designed to be used polymorphically. 
+Such classes are not designed to allow the manipulation of derived class objects via base class interfaces.
+As a result, they don’t need virtual destructors.
 
 
 

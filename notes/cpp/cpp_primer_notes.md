@@ -454,7 +454,10 @@
 
 #### [链接](https://en.cppreference.com/w/cpp/language/storage_duration#Linkage)（Linkage）
 
-所有变量都具有如下四种 *链接* 之一，用于调节变量在不同 *翻译单元* 之间的可见性
+所有变量都具有如下四种 *链接* 之一，用于调节变量在不同 *翻译单元* （translation unit）之间的可见性：
+
+A <u>_translation unit_</u> is the source code giving rise to a single object file, say, `foo.o`. 
+It’s basically a single source file, plus all of its `#include` files. 
 
 1. *无链接* （No linkage）
     - 名字只能从 *其所在的作用域* 使用
