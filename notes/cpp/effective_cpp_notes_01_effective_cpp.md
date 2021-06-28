@@ -966,12 +966,201 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 8: Prevent exceptions from leaving destructors
 
-- Destructors should never emit exceptions. 
-  If functions called in a destructor may throw, 
-  the destructor should catch any exceptions, 
+- Destructors should **never** ~~emit exceptions~~.
+  If functions called in a destructor may throw,
+  the destructor should catch any exceptions,
   then swallow them or terminate the program.
-- If class clients need to be able to react to exceptions thrown during an operation, 
+- If class clients need to be able to react to exceptions thrown during an operation,
   the class should provide a regular (i.e., non-destructor) function that performs the operation.
+
+
+C++ doesn’t prohibit destructors from emitting exceptions, but it certainly discourages the practice with good reason.
+```c++
+class Widget
+{
+public:
+    // ...
+    
+    ~Widget()
+    {
+        // ...
+        // assume this might emit an exception
+    }
+};
+
+void doSomething()
+{
+    std::vector<Widget> v;
+    // ...
+    // v is automatically destroyed here
+} 
+```
+When the vector `v` is destroyed, it is responsible for destroying all the `Widget`s it contains.
+Suppose `v` has ten `Widget`s in it, and during destruction of the first one, an exception is thrown.
+The other nine `Widget`s still have to be destroyed (otherwise any resources they hold would be leaked),
+so `v` should invoke their destructors.
+But suppose that during those calls, a second `Widget` destructor throws an exception.
+Now there are two simultaneously active exceptions, and that’s one too many for C++.
+Depending on the precise conditions under which such pairs of simultaneously active exceptions arise,
+program execution either terminates or yields undefined behavior.
+In this example, it yields undefined behavior.
+It would yield equally undefined behavior using any other standard library containers, or even an array.
+Premature program termination or undefined behavior can result from destructors emitting exceptions even without using containers and arrays.
+
+But what should you do if your destructor needs to perform an operation that may fail by throwing an exception?
+For example, suppose you’re working with a class for database connections:
+```c++
+class DBConnection
+{
+public:
+    // ...
+    
+    static DBConnection create();  // function to return DBConnection objects; 
+                                   // params omitted for simplicity
+    
+    void close();                  // close connection; 
+                                   // throw an exception if closing fails
+}; 
+```
+To ensure that clients don’t forget to call close on `DBConnection` objects,
+a reasonable idea would be to create a resource-managing class for `DBConnection` that calls close in its destructor.
+```c++
+// class to manage DBConnection objects
+class DBConn
+{
+public:
+    // ...
+    
+    ~DBConn()
+    {
+        // make sure database connections are always closed
+        db.close();
+    }
+
+private:
+    DBConnection db;
+};
+```
+That allows clients to program like this:
+```c++
+// open a block
+{
+    DBConn dbc(DBConnection::create());  // create DBConnection object 
+                                         // and turn it over to a DBConn object to manage
+    // ...                               // use the DBConnection object via the DBConn interface
+}
+// at end of block, the DBConn object is destroyed, 
+// thus automatically calling close on the DBConnection object
+```
+This is fine as long as the call to close succeeds, but if the call yields an exception,
+`DBConn`’s destructor will propagate that exception, i.e., allow it to leave the destructor.
+That’s a problem, because destructors that throw mean trouble.
+
+
+There are two primary ways to avoid the trouble. `DBConn`’s destructor could:
+
+- **Terminate the program** if close throws, typically by calling `std::abort` or `std::terminate`:
+  ```c++
+  DBConn::~DBConn()
+  {
+      try
+      {
+          db.close();
+      }
+      catch (...)
+      {
+          // make log entry that the call to close failed;
+          std::terminate();
+      }
+  }
+  ```
+  This is a reasonable option if the program cannot continue to run after an error is encountered during destruction.
+  It has the advantage that if allowing the exception to propagate from the destructor would lead to undefined behavior,
+  this prevents that from happening.
+  That is, calling `std::abort` or `std::terminate` may forestall undefined behavior.
+- **Swallow the exception** arising from the call to close:
+  ```c++
+  DBConn::~DBConn()
+  {
+      try
+      {
+          db.close();
+      }
+      catch (...)
+      {
+          // make log entry that the call to close failed;
+          // and do nothing. 
+      }
+  }
+  ```
+  In general, swallowing exceptions is a bad idea,
+  because it suppresses the important information that something failed!
+  Sometimes, however, swallowing exceptions is preferable
+  to running the risk of premature program termination or undefined behavior.
+  For this to be a viable option, the program must be able to reliably continue execution
+  even after an error has been encountered and ignored.
+
+Neither of these approaches is especially appealing.
+The problem with both is that the program has no way to react to the condition
+that led to close throwing an exception in the first place.
+
+
+A better strategy is to design `DBConn`’s interface so that
+its clients have an opportunity to react to problems that may arise.
+For example, `DBConn` could offer a close function itself,
+thus giving clients a chance to handle exceptions arising from that operation.
+It could also keep track of whether its `DBConnection` had been closed,
+closing it itself in the destructor if not.
+That would prevent a connection from leaking.
+If the call to close were to fail in the `DBConn` destructor,
+however, we’d be back to terminating or swallowing:
+```c++
+class DBConn
+{
+public:
+    // ...
+    
+    // new function for client use
+    void close()
+    {
+    db.close();
+    closed = true;
+    }
+
+    ~DBConn()
+    {
+        if (!closed)
+        {
+            try
+            {
+                // close the connection if the client didn’t
+                db.close();
+            }
+            catch (...)
+            {
+                // if closing fails,
+                // make log entry that call to close failed; 
+                // note that and terminate or swallow
+            }
+        }
+    }
+
+private:
+    DBConnection db;
+    bool closed;
+};
+```
+If an operation may fail by throwing an exception and there may be a need to handle that exception,
+the exception has to come from some non-destructor function.
+That’s because destructors that emit exceptions are dangerous,
+always running the risk of premature program termination or undefined behavior.
+In this example, telling clients to call close themselves doesn’t impose a burden on them;
+it gives them an opportunity to deal with errors they would otherwise have no chance to react to.
+If they don’t find that opportunity useful (perhaps because they believe that no error will really occur),
+they can ignore it, relying on `DBConn`’s destructor to call close for them.
+If an error occurs at that point, i.e., if close does throw,
+they’re in no position to complain if `DBConn` swallows the exception or terminates the program.
+After all, they had first crack at dealing with the problem, and they chose not to use it.
 
 
 
@@ -981,8 +1170,202 @@ As a result, they don’t need virtual destructors.
 ### 📌 Item 9: Never call virtual functions during construction or destruction
 
 - Don't call virtual functions during construction or destruction,
-  because such calls will never go to a more derived class 
+  because such calls will never go to a more derived class
   than that of the currently executing constructor or destructor.
+
+
+You **shouldn’t** ~~call virtual functions during construction or destruction~~,
+because the calls won’t do what you think, and if they did, you’d still be unhappy.
+If you’re a recovering Java or C# programmer, pay close attention to this Item.
+
+
+Suppose you’ve got a class hierarchy for modeling stock transactions,
+e.g., buy orders, sell orders, etc.
+It’s important that such transactions be auditable,
+so each time a transaction object is created,
+an appropriate entry needs to be created in an audit log:
+```c++
+class Transaction
+{
+public:
+    Transaction()
+    {
+        // ...
+        // as final action, log this transaction
+        logTransaction();
+    }
+    
+    // make type-dependent log entry
+    virtual void logTransaction() const = 0;
+    
+    // ...
+};
+
+
+class BuyTransaction : public Transaction
+{
+public:
+    // how to log transactions of this type
+    virtual void logTransaction() const; 
+    
+    // ...
+};
+
+
+class SellTransaction : public Transaction
+{
+public:
+    // how to log transactions of this type
+    virtual void logTransaction() const;  
+    
+    // ...
+};
+```
+Consider what happens when this code is executed:
+```c++
+BuyTransaction b;
+```
+Clearly a `BuyTransaction` constructor will be called, but first, a `Transaction` constructor must be called; 
+base class parts of derived class objects are constructed before derived class parts are.
+The last line of the `Transaction` constructor calls the virtual function `logTransaction`, 
+but this is where the surprise comes in. 
+The version of `logTransaction` that’s called is the one in `Transaction`, **not** the one in `BuyTransaction`, 
+even though the type of object being created is `BuyTransaction`. 
+**During base class construction, virtual functions never go down into derived classes.** 
+Instead, the object behaves as if it were of the base type.
+Informally speaking, during base class construction, virtual functions aren’t.
+
+
+There’s a good reason for this seemingly counterintuitive behavior.
+Because base class constructors execute before derived class constructors,
+derived class data members have not been initialized when base class constructors run. 
+If virtual functions called during base class construction went down to derived classes, 
+the derived class functions would almost certainly refer to local data members, 
+but those data members would not yet have been initialized. 
+
+
+Thus, C++ rules are that during base class construction of a derived class object, 
+the type of the object is that of the base class. 
+Not only do virtual functions resolve to the base class, 
+but the parts of the language using runtime type information (e.g., `dynamic_cast` and `typeid`) 
+treat the object as a base class type. 
+In our example, while the `Transaction` constructor 
+is running to initialize the base class part of a `BuyTransaction` object, 
+the object is of type `Transaction`. 
+That’s how every part of C++ will treat it, and the treatment makes sense: 
+the `BuyTransaction`-specific parts of the object haven’t been initialized yet, 
+so it’s safest to treat them as if they didn’t exist.
+An object doesn’t become a derived class object until execution of a derived class constructor begins.
+
+
+The same reasoning applies during destruction. 
+Once a derived class destructor has run, the object’s derived class data members assume undefined values, 
+so C++ treats them as if they no longer exist. 
+Upon entry to the base class destructor, the object becomes a base class object, 
+and all parts of C++ (virtual functions, dynamic_casts, etc.) treat it that way.
+
+
+In the example code above, the `Transaction` constructor made a direct call to a virtual function, 
+a clear and easy-to-see violation of this Item’s guidance. 
+The violation is so easy to see, some compilers issue a warning about it. 
+(Others don’t. See Item 53 for a discussion of warnings.) 
+Even without such a warning, the problem would almost certainly become apparent before runtime, 
+because the `logTransaction` function is pure virtual in `Transaction`. 
+Unless it had been defined (unlikely, but possible — see Item 34), the program wouldn’t link: 
+the linker would be unable to find the necessary implementation of `Transaction::logTransaction`.
+
+
+It’s not always so easy to detect calls to virtual functions during construction or destruction. 
+If Transaction had multiple constructors, each of which had to perform some of the same work, 
+it would be good software engineering to avoid code replication by putting the common initialization code, 
+including the call to `logTransaction`, into a private nonvirtual initialization function, say, `init`:
+```c++
+class Transaction
+{
+public:
+    Transaction()
+    {
+        // call to non-virtual ...
+        init();
+    } 
+    
+    virtual void logTransaction() const = 0;
+
+    // ...
+    
+private:
+    void init()
+    {
+        // ... that calls a virtual!
+        logTransaction(); 
+    }
+};
+```
+This code is conceptually the same as the earlier version, 
+but it’s more insidious, because it will typically compile and link without complaint.
+In this case, because `logTransaction` is pure virtual in `Transaction`, 
+most runtime systems will abort the program when the pure virtual is called (typically issuing a message to that effect). 
+However, if `logTransaction` were a “normal” virtual function (i.e., not pure virtual) with an implementation in `Transaction`, 
+that version would be called, and the program would merrily trot along, 
+leaving you to figure out why the wrong version of `logTransaction` was called when a derived class object was created. 
+The only way to avoid this problem is to make sure that none of your constructors or destructors call virtual functions
+on the object being created or destroyed and that all the functions they call obey the same constraint.
+
+
+But how do you ensure that the proper version of `logTransaction` is called 
+each time an object in the `Transaction` hierarchy is created?
+Clearly, calling a virtual function on the object from the `Transaction` constructor(s) is the wrong way to do it.
+
+
+There are different ways to approach this problem. 
+One is to turn `logTransaction` into a non-virtual function in `Transaction`, 
+then require that derived class constructors pass the necessary log information to the `Transaction` constructor. 
+That function can then safely call the non-virtual `logTransaction`:
+```c++
+class Transaction
+{
+public:
+    explicit Transaction(const std::string & logInfo)
+    {
+        // ...
+        // now a non-virtual call
+        logTransaction(logInfo);
+    }
+
+    // now a non-virtual function
+    void logTransaction(const std::string & logInfo) const; 
+    
+    virtual ~Transsaction() = 0;
+    
+    // ...
+};
+
+
+class BuyTransaction : public Transaction
+{
+public:
+    // pass log info to base class constructor
+    BuyTransaction(parameters) : Transaction(createLogString(parameters)) 
+    {
+        // ...
+    }
+    
+    // ...
+private:
+    static std::string createLogString(parameters);
+};
+```
+In other words, since you can’t use virtual functions to call down from base classes during construction, 
+you can compensate by having derived classes pass necessary construction information up to base class constructors instead.
+
+
+In this example, note the use of the (private) static function `createLogString` in `BuyTransaction`. 
+Using a helper function to create a value to pass to a base class constructor is often more convenient (and more readable) 
+than going through contortions in the member initialization list to give the base class what it needs. 
+By making the function static, there’s no danger of accidentally referring to 
+the nascent `BuyTransaction` object’s as-yet-uninitialized data members. 
+That’s important, because the fact that those data members will be in an undefined state is why calling virtual functions 
+during base class construction and destruction doesn’t go down into derived classes in the first place.
 
 
 
@@ -1000,11 +1383,11 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 11: Handle assignment to self in `operator=`
 
-- Make sure `operator=` is well-behaved when an object is assigned to itself. 
-  Techniques include comparing addresses of source and target objects, 
-  careful statement ordering, 
+- Make sure `operator=` is well-behaved when an object is assigned to itself.
+  Techniques include comparing addresses of source and target objects,
+  careful statement ordering,
   and copy-and-`swap`.
-- Make sure that any function operating on more than one object behaves correctly 
+- Make sure that any function operating on more than one object behaves correctly
   if two or more of the objects are the same.
 
 
@@ -1015,7 +1398,7 @@ As a result, they don’t need virtual destructors.
 ### 📌 Item 12: Copy all parts of an object
 
 - Copying functions should be sure to copy all of an object's data members and all of its base class parts.
-- Don't try to implement one of the copying functions in terms of the other. 
+- Don't try to implement one of the copying functions in terms of the other.
   Instead, put common functionality in a third function that both call.
 
 
@@ -1027,11 +1410,11 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 13: Use objects to manage resources
 
-- To prevent resource leaks, use RAII objects 
+- To prevent resource leaks, use RAII objects
   that acquire resources in their constructors and release them in their destructors.
-- ~~Two commonly useful RAII classes are `tr1::shared_ptr` and `std::auto_ptr`. 
-  `tr1::shared_ptr` is usually the better choice, because its behavior when copied is intuitive. 
-  Copying an `std::auto_ptr` sets it to null.~~ Refer to _Effective Modern C++_ Chapter 4 for details. 
+- ~~Two commonly useful RAII classes are `tr1::shared_ptr` and `std::auto_ptr`.
+  `tr1::shared_ptr` is usually the better choice, because its behavior when copied is intuitive.
+  Copying an `std::auto_ptr` sets it to null.~~ Refer to _Effective Modern C++_ Chapter 4 for details.
 
 
 
@@ -1040,9 +1423,9 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 14: Think carefully about copying behavior in resource-managing classes
 
-- Copying an RAII object entails copying the resource it manages, 
+- Copying an RAII object entails copying the resource it manages,
   so the copying behavior of the resource determines the copying behavior of the RAII object.
-- Common RAII class copying behaviors are disallowing copying and performing reference counting, 
+- Common RAII class copying behaviors are disallowing copying and performing reference counting,
   but other behaviors are possible.
 
 
@@ -1052,10 +1435,10 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 15: Provide access to raw resources in resource-managing classes
 
-- APIs often require access to raw resources, 
+- APIs often require access to raw resources,
   so each RAII class should offer a way to get at the resource it manages.
 - Access may be via explicit conversion or implicit conversion.
-  In general, explicit conversion is safer, 
+  In general, explicit conversion is safer,
   but implicit conversion is more convenient for clients.
 
 
@@ -1065,7 +1448,7 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 16: Use the same form in corresponding uses of `new` and `delete`
 
-- If you use `[]` in a `new` expression, you must use `[]` in the corresponding `delete` expression. 
+- If you use `[]` in a `new` expression, you must use `[]` in the corresponding `delete` expression.
   If you don't use `[]` in a `new` expression, you mustn't use `[]` in the corresponding `delete` expression.
 
 
@@ -1077,7 +1460,7 @@ As a result, they don’t need virtual destructors.
 
 - Store `new`ed objects in smart pointers in standalone statements.
   Failure to do this can lead to subtle resource leaks when exceptions are thrown.
-- Refer to _Effective Modern C++_ Item 21 for details. 
+- Refer to _Effective Modern C++_ Item 21 for details.
 
 
 
@@ -1088,17 +1471,17 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 18: Make interfaces easy to use correctly and hard to use incorrectly
 
-- Good interfaces are easy to use correctly and hard to use incorrectly. 
+- Good interfaces are easy to use correctly and hard to use incorrectly.
   You should strive for these characteristics in all your interfaces.
-- Ways to facilitate correct use include 
-  consistency in interfaces 
+- Ways to facilitate correct use include
+  consistency in interfaces
   and behavioral compatibility with built-in types.
-- Ways to prevent errors include creating new types, 
-  restricting operations on types, 
-  constraining object values, 
+- Ways to prevent errors include creating new types,
+  restricting operations on types,
+  constraining object values,
   and eliminating client resource management responsibilities.
-- `tr1::shared_ptr` supports custom deleters. 
-  This prevents the cross-DLL problem, 
+- `tr1::shared_ptr` supports custom deleters.
+  This prevents the cross-DLL problem,
   can be used to automatically unlock mutexes (see Item 14), etc.
 
 
@@ -1108,7 +1491,7 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 19: Treat class design as type design
 
-- Class design is type design. 
+- Class design is type design.
   Before defining a new type, be sure to consider all the issues discussed in this Item.
 
 
@@ -1118,9 +1501,9 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 20: Prefer pass-by-reference-to-`const` to pass-by-value
 
-- Prefer pass-by-reference-to-const over pass-by-value. 
+- Prefer pass-by-reference-to-const over pass-by-value.
   It's typically more efficient and it avoids the slicing problem.
-- The rule doesn't apply to built-in types and STL iterator and function object types. 
+- The rule doesn't apply to built-in types and STL iterator and function object types.
   For them, pass-by-value is usually appropriate.
 
 
@@ -1130,11 +1513,11 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 21: Don't try to return a reference when you must return an object
 
-- **Never** return a pointer or reference to a local stack object, 
-  a reference to a heap-allocated object, 
-  or a pointer or reference to a local static object 
-  if there is a chance that more than one such object will be needed. 
-  (Item 4 provides an example of a design where returning a reference to a local static is reasonable, 
+- **Never** return a pointer or reference to a local stack object,
+  a reference to a heap-allocated object,
+  or a pointer or reference to a local static object
+  if there is a chance that more than one such object will be needed.
+  (Item 4 provides an example of a design where returning a reference to a local static is reasonable,
   at least in single-threaded environments.)
 
 
@@ -1144,10 +1527,10 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 22: Declare data members `private`
 
-- Declare data members `private`. 
-  It gives clients syntactically uniform access to data, 
+- Declare data members `private`.
+  It gives clients syntactically uniform access to data,
   affords fine-grained access control,
-  allows invariants to be enforced, 
+  allows invariants to be enforced,
   and offers class authors implementation flexibility.
 - `protected` is **no** more encapsulated than `public`.
 
@@ -1169,7 +1552,7 @@ As a result, they don’t need virtual destructors.
 ### 📌 Item 24: Declare non-member functions when type conversions should apply to all parameters
 
 - If you need type conversions on all parameters to a function
-  (including the one that would otherwise be pointed to by the `this` pointer), 
+  (including the one that would otherwise be pointed to by the `this` pointer),
   the function must be a non-member.
 
 
@@ -1179,13 +1562,13 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 25: Consider support for a non-throwing `swap`
 
-- Provide a swap member function when `std::swap` would be inefficient for your type. 
+- Provide a swap member function when `std::swap` would be inefficient for your type.
   Make sure your swap **doesn't** throw exceptions.
-- If you offer a member `swap`, also offer a non-member `swap` that calls the member. 
+- If you offer a member `swap`, also offer a non-member `swap` that calls the member.
   For classes (not templates), specialize `std::swap`, too.
 - When calling `swap`, employ a using declaration `using std::swap;`,
   then call `swap` **without** namespace qualification.
-- It's fine to totally specialize `std` templates for user-defined types, 
+- It's fine to totally specialize `std` templates for user-defined types,
   but **never** try to add something completely new to `std`.
 
 
@@ -1197,8 +1580,8 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 26: Postpone variable definitions as long as possible
 
-- Postpone variable definitions as long as possible. 
-  It increases program clarity and improves program efficiency. 
+- Postpone variable definitions as long as possible.
+  It increases program clarity and improves program efficiency.
 
 
 
@@ -1207,11 +1590,11 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 27: Minimize casting
 
-- Avoid casts whenever practical, especially `dynamic_cast`s in performance-sensitive code. 
+- Avoid casts whenever practical, especially `dynamic_cast`s in performance-sensitive code.
   If a design requires casting, try to develop a cast-free alternative.
 - When casting is necessary, try to hide it inside a function.
   Clients can then call the function instead of putting casts in their own code.
-- Prefer C++-style casts to old-style casts. 
+- Prefer C++-style casts to old-style casts.
   They are easier to see, and they are more specific about what they do.
 
 
@@ -1221,9 +1604,9 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 28: Avoid returning handles to object internals
 
-- Avoid returning handles (references, pointers, or iterators) to object internals. 
+- Avoid returning handles (references, pointers, or iterators) to object internals.
   Not returning handles increases encapsulation,
-  helps const member functions act `const`, 
+  helps const member functions act `const`,
   and minimizes the creation of dangling handles.
 
 
@@ -1233,13 +1616,13 @@ As a result, they don’t need virtual destructors.
 
 ### 📌 Item 29: Strive for exception-safe code
 
-- Exception-safe functions leak no resources 
-  and allow no data structures to become corrupted, 
-  even when exceptions are thrown. 
+- Exception-safe functions leak no resources
+  and allow no data structures to become corrupted,
+  even when exceptions are thrown.
   Such functions offer the basic, strong, or `nothrow` guarantees.
 - The strong guarantee can often be implemented via copy-andswap,
-but the strong guarantee is not practical for all functions.
-- A function can usually offer a guarantee **no** stronger 
+  but the strong guarantee is not practical for all functions.
+- A function can usually offer a guarantee **no** stronger
   than the weakest guarantee of the functions it calls.
 
 
@@ -1249,11 +1632,11 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 30: Understand the ins and outs of inlining
 
-- Limit most inlining to small, frequently called functions. 
-  This facilitates debugging and binary upgradability, 
-  minimizes potential code bloat, 
+- Limit most inlining to small, frequently called functions.
+  This facilitates debugging and binary upgradability,
+  minimizes potential code bloat,
   and maximizes the chances of greater program speed.
-- **Don't** declare function templates `inline` 
+- **Don't** declare function templates `inline`
   just because they appear in header files.
 
 
@@ -1263,10 +1646,10 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 31: Minimize compilation dependencies between files
 
-- The general idea behind minimizing compilation dependencies 
-  is to depend on declarations instead of definitions. 
+- The general idea behind minimizing compilation dependencies
+  is to depend on declarations instead of definitions.
   Two approaches based on this idea are Handle classes and Interface classes.
-- Library header files should exist in full and declaration-only forms. 
+- Library header files should exist in full and declaration-only forms.
   This applies regardless of whether templates are involved.
 
 
@@ -1278,8 +1661,8 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 32: Make sure public inheritance models “is-a”
 
-- Public inheritance means “is-a”. 
-  Everything that applies to base classes must also apply to derived classes, 
+- Public inheritance means “is-a”.
+  Everything that applies to base classes must also apply to derived classes,
   because every derived class object is a base class object.
 
 
@@ -1289,9 +1672,9 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 33: Avoid hiding inherited names
 
-- Names in derived classes hide names in base classes. 
+- Names in derived classes hide names in base classes.
   Under public inheritance, this is **never** desirable.
-- To make hidden names visible again, 
+- To make hidden names visible again,
   employ using declarations or forwarding functions.
 
 
@@ -1301,7 +1684,7 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 34: Differentiate between inheritance of interface and inheritance of implementation
 
-- Inheritance of interface is different from inheritance of implementation. 
+- Inheritance of interface is different from inheritance of implementation.
   Under public inheritance, derived classes always inherit base class interfaces.
 - Pure virtual functions specify inheritance of interface only.
 - Simple (impure) virtual functions specify inheritance of interface plus inheritance of a default implementation.
@@ -1314,9 +1697,9 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 35: Consider alternatives to virtual functions
 
-- Alternatives to virtual functions include the NVI idiom and various forms of the Strategy design pattern. 
+- Alternatives to virtual functions include the NVI idiom and various forms of the Strategy design pattern.
   The NVI idiom is itself an example of the Template Method design pattern.
-- A disadvantage of moving functionality from a member function to a function outside the class 
+- A disadvantage of moving functionality from a member function to a function outside the class
   is that the non-member function lacks access to the class's non-public members.
 - `tr1::function` objects act like generalized function pointers.
   Such objects support all callable entities compatible with a given target signature.
@@ -1337,8 +1720,8 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 37: Never redefine a function's inherited default parameter value
 
-- **Never** redefine an inherited default parameter value, 
-  because default parameter values are statically bound, 
+- **Never** redefine an inherited default parameter value,
+  because default parameter values are statically bound,
   while virtual functions (the only functions you should be overriding) are dynamically bound.
 
 
@@ -1349,7 +1732,7 @@ but the strong guarantee is not practical for all functions.
 ### 📌 Item 38: Model “has-a” or “is-implemented-in-terms-of” through composition
 
 - Composition has meanings completely different from that of public inheritance.
-- In the application domain, composition means has-a. In the implementation domain, 
+- In the application domain, composition means has-a. In the implementation domain,
   it means is-implemented-in-terms-of.
 
 
@@ -1359,11 +1742,11 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 39: Use private inheritance judiciously
 
-- Private inheritance means is-implemented-in-terms of. 
-  It's usually inferior to composition, 
-  but it makes sense when a derived class needs access to protected base class members 
+- Private inheritance means is-implemented-in-terms of.
+  It's usually inferior to composition,
+  but it makes sense when a derived class needs access to protected base class members
   or needs to redefine inherited virtual functions.
-- Unlike composition, private inheritance can enable the empty base optimization. 
+- Unlike composition, private inheritance can enable the empty base optimization.
   This can be important for library developers who strive to minimize object sizes.
 
 
@@ -1373,11 +1756,11 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 40: Use multiple inheritance judiciously
 
-- Multiple inheritance is more complex than single inheritance. 
+- Multiple inheritance is more complex than single inheritance.
   It can lead to new ambiguity issues and to the need for virtual inheritance.
-- Virtual inheritance imposes costs in size, speed, and complexity of initialization and assignment. 
+- Virtual inheritance imposes costs in size, speed, and complexity of initialization and assignment.
   It's most practical when virtual base classes have no data.
-- Multiple inheritance does have legitimate uses. 
+- Multiple inheritance does have legitimate uses.
   One scenario involves combining public inheritance from an Interface class
   with private inheritance from a class that helps with implementation.
 
@@ -1391,9 +1774,9 @@ but the strong guarantee is not practical for all functions.
 ### 📌 Item 41: Understand implicit interfaces and compiletime polymorphism
 
 - Both classes and templates support interfaces and polymorphism.
-- For classes, interfaces are explicit and centered on function signatures. 
+- For classes, interfaces are explicit and centered on function signatures.
   Polymorphism occurs at runtime through virtual functions.
-- For template parameters, interfaces are implicit and based on valid expressions. 
+- For template parameters, interfaces are implicit and based on valid expressions.
   Polymorphism occurs during compilation through template instantiation and function overloading resolution.
 
 
@@ -1404,7 +1787,7 @@ but the strong guarantee is not practical for all functions.
 ### 📌 Item 42: Understand the two meanings of `typename`
 
 - When declaring template parameters, `class` and `typename` are interchangeable.
-- Use `typename` to identify nested dependent type names, 
+- Use `typename` to identify nested dependent type names,
   **except** in base class lists or as a base class identifier in a member initialization list.
 
 
@@ -1414,9 +1797,9 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 43: Know how to access names in templatized base classes
 
-- In derived class templates, refer to names in base class templates 
-  via a `this->` prefix, 
-  via using declarations, 
+- In derived class templates, refer to names in base class templates
+  via a `this->` prefix,
+  via using declarations,
   or via an explicit base class qualification.
 
 
@@ -1425,11 +1808,11 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 44: Factor parameter-independent code out of templates
 
-- Templates generate multiple classes and multiple functions, 
+- Templates generate multiple classes and multiple functions,
   so any template code not dependent on a template parameter causes bloat.
-- Bloat due to non-type template parameters can often be eliminated 
+- Bloat due to non-type template parameters can often be eliminated
   by replacing template parameters with function parameters or class data members.
-- Bloat due to type parameters can be reduced 
+- Bloat due to type parameters can be reduced
   by sharing implementations for instantiation types with identical binary representations.
 
 
@@ -1440,7 +1823,7 @@ but the strong guarantee is not practical for all functions.
 ### 📌 Item 45: Use member function templates to accept “all compatible types”
 
 - Use member function templates to generate functions that accept all compatible types.
-- If you declare member templates for generalized copy construction or generalized assignment, 
+- If you declare member templates for generalized copy construction or generalized assignment,
   you'll still need to declare the normal copy constructor and copy assignment operator, too.
 
 
@@ -1450,8 +1833,8 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 46: Define non-member functions inside templates when type conversions are desired
 
-- When writing a class template that offers functions related to 
-  the template that support implicit type conversions on all parameters, 
+- When writing a class template that offers functions related to
+  the template that support implicit type conversions on all parameters,
   define those functions as friends inside the class template.
 
 
@@ -1461,7 +1844,7 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 47: Use traits classes for information about types
 
-- Traits classes make information about types available during compilation. 
+- Traits classes make information about types available during compilation.
   They're implemented using templates and template specializations.
 - In conjunction with overloading, traits classes make it possible to perform compile-time `if`-`else` tests on types.
 
@@ -1472,9 +1855,9 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 48: Be aware of template metaprogramming
 
-- Template metaprogramming can shift work from runtime to compile-time, 
+- Template metaprogramming can shift work from runtime to compile-time,
   thus enabling earlier error detection and higher runtime performance.
-- TMP can be used to generate custom code based on combinations of policy choices, 
+- TMP can be used to generate custom code based on combinations of policy choices,
   and it can also be used to avoid generating code inappropriate for particular types.
 
 
@@ -1486,10 +1869,10 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 49: Understand the behavior of the `new`-handler
 
-- `set_new_handler` allows you to specify a function to be called 
+- `set_new_handler` allows you to specify a function to be called
   when memory allocation requests cannot be satisfied.
-- Nothrow `new` is of limited utility, 
-  because it applies only to memory allocation; 
+- Nothrow `new` is of limited utility,
+  because it applies only to memory allocation;
   associated constructor calls may still throw exceptions.
 
 
@@ -1499,7 +1882,7 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 50: Understand when it makes sense to replace `new` and `delete`
 
-- There are many valid reasons for writing custom versions of `new` and `delete`, 
+- There are many valid reasons for writing custom versions of `new` and `delete`,
   including improving performance, debugging heap usage errors, and collecting heap usage information.
 
 
@@ -1509,11 +1892,11 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 51: Adhere to convention when writing `new` and `delete`
 
-- `operator new` should contain an infinite loop trying to allocate memory, 
-  should call the `new`-handler if it can't satisfy a memory request, 
+- `operator new` should contain an infinite loop trying to allocate memory,
+  should call the `new`-handler if it can't satisfy a memory request,
   and should handle requests for zero bytes.
   Class-specific versions should handle requests for larger blocks than expected.
-- `operator delete` should do nothing if passed a pointer that is null. 
+- `operator delete` should do nothing if passed a pointer that is null.
   Class-specific versions should handle blocks that are larger than expected.
 
 
@@ -1523,10 +1906,10 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 52: Write placement `delete` if you write placement `new`
 
-- When you write a placement version of operator `new`, 
-  be sure to write the corresponding placement version of operator `delete`. 
+- When you write a placement version of operator `new`,
+  be sure to write the corresponding placement version of operator `delete`.
   If you don't, your program may experience subtle, intermittent memory leaks.
-- When you declare placement versions of `new` and `delete`, 
+- When you declare placement versions of `new` and `delete`,
   be sure **not** to ~~unintentionally hide the normal versions of those functions~~.
 
 
@@ -1538,9 +1921,9 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 53: Pay attention to compiler warnings
 
-- Take compiler warnings seriously, 
+- Take compiler warnings seriously,
   and strive to compile warning-free at the maximum warning level supported by your compilers.
-- **Don't** become dependent on compiler warnings, because different compilers warn about different things. 
+- **Don't** become dependent on compiler warnings, because different compilers warn about different things.
   Porting to a new compiler may eliminate warning messages you've come to rely on.
 
 
@@ -1550,14 +1933,14 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 54: Familiarize yourself with the standard library, including TR1
 
-- The primary standard C++ library functionality consists of the STL, iostreams, and locales. 
+- The primary standard C++ library functionality consists of the STL, iostreams, and locales.
   The C89 standard library is also included.
-- ~~TR1 adds support for smart pointers (e.g., `tr1::shared_ptr`), 
-  generalized function pointers (`tr1::function`), 
+- ~~TR1 adds support for smart pointers (e.g., `tr1::shared_ptr`),
+  generalized function pointers (`tr1::function`),
   hash-based containers, regular expressions, and 10 other components.~~
-- ~~TR1 itself is only a specification. 
+- ~~TR1 itself is only a specification.
   To take advantage of TR1, you need an implementation.
-  One source for implementations of TR1 components is Boost.~~ 
+  One source for implementations of TR1 components is Boost.~~
 
 
 
@@ -1566,8 +1949,8 @@ but the strong guarantee is not practical for all functions.
 
 ### 📌 Item 55: Familiarize yourself with Boost
 
-- Boost is a community and web site for the development of free, open source, peer-reviewed C++ libraries. 
+- Boost is a community and web site for the development of free, open source, peer-reviewed C++ libraries.
   Boost plays an influential role in C++ standardization.
-- Boost offers implementations of many TR1 components, 
+- Boost offers implementations of many TR1 components,
   but it also offers many other libraries, too.
 
