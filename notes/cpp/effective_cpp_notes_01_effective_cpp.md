@@ -1377,18 +1377,211 @@ during base class construction and destruction doesn’t go down into derived cl
 - Have assignment operators return a reference to `*this`.
 
 
+Assignments can be chained together:
+```c++
+int x, y, z;
+x = y = z = 15;  // chain of assignments
+```
+Assignments are right-associative, so the above assignment chain is parsed like this:
+```c++
+x = (y = (z = 15));
+```
+Here, 15 is assigned to `z`, 
+then the result of that assignment (the updated `z`) is assigned to `y`, 
+then the result of that assignment (the updated `y`) is assigned to `x`.
+
+
+The way this is implemented is that assignment returns a reference to its left-hand argument, 
+and that’s the convention you should follow when you implement assignment operators for your classes:
+```c++
+class Widget
+{
+public:
+    // ...
+
+    // return type is a reference to the current class
+    Widget & operator=(const Widget & rhs) 
+    {
+        // ...
+        return *this;  // return the left-hand object
+    }
+
+    // ...
+};
+```
+This convention applies to all assignment operators, not just the standard form shown above. Hence:
+```c++
+class Widget
+{
+public:
+    // ...
+
+    // the convention applies to +=, -=, *=, etc.
+    Widget & operator+=(const Widget & rhs) 
+    { 
+        // ...
+        return *this;
+    }
+
+    // it applies even if the operator’s parameter type is unconventional
+    Widget & operator=(int rhs) 
+    {
+        // ... 
+        return *this;
+    }
+
+    // ...
+};
+```
+This is only a convention; code that doesn’t follow it will compile. 
+However, the convention is followed by all the built-in types as well as by all the types in the standard library
+(e.g., `std::string`, `std::vector`, `std::complex`, `std::shared_ptr`, etc.). 
+Unless you have a good reason for doing things differently, don’t.
+
+
 
 
 
 
 ### 📌 Item 11: Handle assignment to self in `operator=`
 
-- Make sure `operator=` is well-behaved when an object is assigned to itself.
-  Techniques include comparing addresses of source and target objects,
-  careful statement ordering,
-  and copy-and-`swap`.
+- Make sure `operator=` is well-behaved when an object is assigned to itself. Techniques include:
+    - comparing addresses of source and target objects; 
+    - careful statement ordering;
+    - copy-and-`swap`.
 - Make sure that any function operating on more than one object behaves correctly
   if two or more of the objects are the same.
+
+
+An <u>_assignment to self_</u> occurs when an object is assigned to itself:
+```c++
+class Widget { ... };
+Widget w;
+// ...
+w = w;  // assignment to self
+```
+This looks silly, but it’s legal, so rest assured that clients will do it.
+Besides, assignments aren’t always so recognizable: 
+```c++
+a[i] = a[j];  // potential assignment to self if i == j
+*px = *py;    // potential assignment to self if px == py
+```
+These less obvious assignments to self are the result of <u>_aliasing_</u>:
+having more than one way to refer to an object. 
+In general, code that operates on references or pointers to multiple objects of the same type
+needs to consider that the objects might be the same. 
+Considering polymorphism, 
+the two objects need not even be declared to be of the same type if they’re from the same hierarchy: 
+```c++
+class Base { ... };
+
+class Derived: public Base { ... };
+
+// rb and *pd might actually be the same object
+void doSomething(const Base & rb, Derived * pd); 
+```
+If you follow the advice of Items 13 and 14, you’ll always use objects to manage resources, 
+and you’ll make sure that the resource-managing objects behave well when copied. 
+When that’s the case, your assignment operators will probably be self-assignment-safe 
+without your having to think about it. 
+If you try to manage resources yourself, however 
+(which you’d certainly have to do if you were writing a resource-managing class), 
+you can fall into the trap of accidentally releasing a resource before you’re done using it. 
+For example, suppose you create a class that holds a raw pointer to a dynamically allocated bitmap:
+```c++
+class Bitmap { ... };
+
+class Widget 
+{
+    // ...
+    
+private:
+    Bitmap * pb; // ptr to a heap-allocated object
+};
+```
+Here’s an implementation of `Widget::operator=` that looks reasonable on the surface 
+but is unsafe in the presence of assignment to self. 
+(It’s also not exception-safe, but we’ll deal with that in a moment.)
+```c++
+Widget & Widget::operator=(const Widget & rhs)
+{
+    delete pb;                 // stop using current bitmap
+    pb = new Bitmap(*rhs.pb);  // start using a copy of rhs’s bitmap
+    return *this;
+}
+```
+The self-assignment problem here is that inside `Widget::operator=`, 
+`*this` (the target of the assignment) and `rhs` could be the same object. 
+When they are, the `delete` not only destroys the bitmap for the current object, 
+it destroys the bitmap for `rhs`, too. 
+At the end of the function, the `Widget` finds itself holding a dangling pointer. 
+
+
+The traditional way to prevent this error is to check for assignment to self 
+via an identity test at the top of `operator=`:
+```c++
+Widget & Widget::operator=(const Widget & rhs)
+{
+    Bitmap * pOrig = pb;       // remember original pb
+    pb = new Bitmap(*rhs.pb);  // point pb to a copy of rhs’s bitmap
+    delete pOrig;              // delete the original pb
+    return *this;
+}
+```
+Now, if `new Bitmap` throws an exception, `pb` (and the `Widget` it’s inside of) remains unchanged. 
+Even without the identity test, this code handles assignment to self, because we make a copy of the original bitmap,
+point to the copy we made, then delete the original bitmap. 
+It may not be the most efficient way to handle self-assignment, but it does work.
+
+
+If you’re concerned about efficiency, you could put the identity test back at the top of the function. 
+Before doing that, however, ask yourself how often you expect self-assignments to occur, 
+because the test isn’t free. 
+It makes the code (both source and object) a bit bigger, and it introduces a branch into the flow of control, 
+both of which can decrease runtime speed. 
+The effectiveness of instruction prefetching, caching, and pipelining can be reduced, for example.
+
+
+An alternative to manually ordering statements in `operator=` to make sure the implementation is 
+both exception-safe and self-assignment-safe is to use the technique known as <u>_copy and swap_</u>. 
+This technique is closely associated with exception safety, so it’s described in Item 29.
+However, it’s a common enough way to write `operator=` that it’s worth seeing what such an implementation often looks like:
+```c++
+class Widget
+{
+    // ...
+
+    void swap(Widget & rhs);
+    
+    // ...
+};
+
+Widget & Widget::operator=(const Widget & rhs)
+{
+    using std::swap;
+    Widget temp(rhs);  // make a copy of rhs’s data
+    swap(temp);        // swap *this’s data with the copy’s
+    return *this;
+}
+```
+A variation on this theme takes advantage of the facts that 
+
+1. a class’s copy assignment operator may be declared to take its argument by value;
+2. passing something by value makes a copy of it (see Item 20):
+
+```c++
+// rhs is a copy of the object passed in; 
+// note pass-by-value
+Widget & Widget::operator=(Widget rhs) 
+{ 
+    using std::swap;
+    swap(rhs);        // swap *this’s data with the copy’s
+    return *this;
+}
+```
+Personally, I worry that this approach sacrifices clarity at the altar of cleverness, 
+but by moving the copying operation from the body of the function to construction of the parameter, 
+it’s a fact that compilers can sometimes generate more efficient code.
 
 
 
@@ -1397,9 +1590,175 @@ during base class construction and destruction doesn’t go down into derived cl
 
 ### 📌 Item 12: Copy all parts of an object
 
-- Copying functions should be sure to copy all of an object's data members and all of its base class parts.
+- Copying functions should be sure to copy all of an object's data members 
+  and all of its base class parts (by invoking base class's copying functions).
 - Don't try to implement one of the copying functions in terms of the other.
   Instead, put common functionality in a third function that both call.
+
+
+
+In well-designed object-oriented systems that encapsulate the internal parts of objects, 
+only two functions copy objects: the aptly named <u>_copy constructor_</u> and <u>_copy assignment operator_</u>. 
+We’ll call these the <u>_copying functions_</u>. 
+Item 5 observes that compilers will generate the copying functions if needed, 
+and it explains that the compiler-generated versions do precisely what you’d expect: 
+they copy all the data of the object being copied.
+
+
+When you declare your own copying functions, 
+you are indicating to compilers that there is something about the default implementations you don’t like. 
+Compilers seem to take offense at this, and they retaliate in a curious fashion: 
+they don’t tell you when your implementations are almost certainly wrong.
+
+
+Consider a class representing customers, 
+where the copying functions have been manually written so that calls to them are logged:
+```c++
+class Customer
+{
+public:
+    // ...
+
+    Customer(const Customer & rhs);
+
+    Customer & operator=(const Customer & rhs);
+
+    // ...
+private:
+    std::string name;
+};
+
+Customer::Customer(const Customer & rhs) : name(rhs.name)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+Customer & Customer::operator=(const Customer & rhs)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+    name = rhs.name;
+    return *this;
+}
+```
+Everything here looks fine, and in fact everything is fine, until another data member is added to `Customer`:
+```c++
+class Date
+{
+    // ...
+};
+
+class Customer
+{
+public:
+    // as before
+    // ...
+    
+private:
+    std::string name;
+    Date lastTransaction;
+};
+```
+At this point, the existing copying functions are performing a <u>_partial copy_</u>: 
+they’re copying the customer’s `name`, but not its `lastTransaction`.
+Yet most compilers say nothing about this, not even at maximal warning level. 
+You reject the copying functions they’d write, so they don’t tell you if your code is incomplete. 
+The conclusion is obvious: 
+if you add a data member to a class, you need to make sure that you update the copying functions, too. 
+(You’ll also need to update all the constructors as well as any non-standard forms of `operator=` in the class.
+If you forget, compilers are unlikely to remind you.)
+
+
+One of the most insidious ways this issue can arise is through inheritance. Consider:
+```c++
+class PriorityCustomer : public Customer
+{
+public:
+    // ...
+
+    PriorityCustomer(const PriorityCustomer & rhs);
+
+    PriorityCustomer & operator=(const PriorityCustomer & rhs);
+
+    // ...
+private:
+    int priority;
+};
+
+PriorityCustomer::PriorityCustomer(const PriorityCustomer & rhs) : priority(rhs.priority)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+PriorityCustomer & PriorityCustomer::operator=(const PriorityCustomer & rhs)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+    priority = rhs.priority;
+    return *this;
+}
+```
+`PriorityCustomer`’s copying functions look like they’re copying everything in `PriorityCustomer`, but look again. 
+Yes, they copy the data member that `PriorityCustomer` declares, 
+but every `PriorityCustomer` also contains a copy of the data members it inherits from `Customer`, 
+and those data members are not being copied at all! 
+`PriorityCustomer`’s copy constructor specifies no arguments to be passed to its base class constructor
+(i.e., it makes no mention of `Customer` on its member initialization list), 
+so the `Customer` part of the `PriorityCustomer` object will be initialized 
+by the default `Customer` constructor taking no arguments. (Assuming it has one. If not, the code won’t compile.)
+That constructor will perform a <u>_default initialization_</u> for `name` and `lastTransaction`.
+
+
+The situation is only slightly different for `PriorityCustomer`’s copy assignment operator. 
+It makes no attempt to modify its base class data members in any way, so they’ll remain unchanged.
+
+
+Any time you take it upon yourself to write copying functions for a derived class, 
+you must take care to also copy the base class parts.
+Those parts are typically private, of course (see Item 22), so you can’t access them directly. 
+Instead, derived class copying functions must invoke their corresponding base class functions:
+```c++
+PriorityCustomer::PriorityCustomer(const PriorityCustomer & rhs)
+        : Customer(rhs),  // invoke base class copy constructor
+          priority(rhs.priority)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+PriorityCustomer & PriorityCustomer::operator=(const PriorityCustomer & rhs)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+    Customer::operator=(rhs);  // assign base class parts
+    priority = rhs.priority;
+    return *this;
+}
+```
+The meaning of “copy all parts” in this Item’s title should now be clear.
+When you’re writing a copying function, be sure to 
+
+1. copy all local data members;
+2. invoke the appropriate copying function in all base classes. 
+
+In practice, the two copying functions will often have similar bodies, 
+and this may tempt you to try to avoid code duplication by having one function call the other. 
+Your desire to avoid code duplication is laudable,
+but having one copying function call the other is the wrong way to achieve it.
+
+
+It makes no sense to ~~have the copy assignment operator call the copy constructor~~, 
+because you’d be trying to construct an object that already exists. 
+This is so nonsensical, there’s not even a syntax for it.
+
+
+~~Having the copy constructor call the copy assignment operator~~ is equally nonsensical. 
+A constructor initializes new objects, 
+but an assignment operator applies only to objects that have already been initialized. 
+Performing an assignment on an object under construction would mean 
+doing something to a not-yet-initialized object that makes sense only for an initialized object.
+
+
+Instead, if you find that your copy constructor and copy assignment operator have similar code bodies, 
+eliminate the duplication by creating a third member function that both call. 
+Such a function is typically private and is often named init. 
+This strategy is a safe, proven way to eliminate code duplication in copy constructors and copy assignment operators.
 
 
 
