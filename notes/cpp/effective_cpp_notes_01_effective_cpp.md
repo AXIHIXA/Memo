@@ -2130,13 +2130,220 @@ but even `struct`s suffice to demonstrate that the judicious introduction of new
 can work wonders for the prevention of interface usage errors.
 
 
+Once the right types are in place, it can sometimes be reasonable to restrict the values of those types. 
+For example, there are only 12 valid month values, so the `Month` type should reflect that. 
+One way to do this would be to use an `enum` to represent the month, 
+but `enum`s are not as type-safe as we might like. 
+For example, `enum`s can be used like `int`s (see Item 2). 
+(Of course, scoped `enum` is a prefect solution to this problem. )
+A safer solution is to predefine the set of all valid `Month`s:
+```c++
+class Month
+{
+public:
+    // functions returning all valid Month values; 
+    // see below forwhy these are functions, not objects
+    static Month Jan()
+    {
+        return Month(1);
+    } 
+    
+    static Month Feb()
+    {
+        return Month(2);
+    }
+    
+    // ...
+    
+    static Month Dec()
+    {
+        return Month(12);
+    }
+    
+    // ...                  // other member functions
+    
+private:
+    explicit Month(int m);  // prevent creation of new Month values
+    
+    // ...                  // month-specific data
+};
+
+Date d(Month::Mar(), Day(30), Year(1995));
+```
+
+If the idea of using functions instead of objects to represent specific months strikes you as odd, 
+it may be because you have forgotten that reliable initialization of non-local static objects can be problematic.
+
+
+Another way to prevent likely client errors is to restrict what can be done with a type. 
+A common way to impose restrictions is to add `const`.
+For example, Item 3 explains how `const`-qualifying the return type from `operator *` 
+can prevent clients from making this error for userdefined types:
+```c++
+if (a * b = c)  // oops, meant to do a comparison!
+{
+    // ...  
+}
+```
+In fact, this is just a manifestation of another general guideline 
+for making types easy to use correctly and hard to use incorrectly: 
+**unless there’s a good reason not to, have your types behave consistently with the built-in types**. 
+Clients already know how types like `int` behave, 
+so you should strive to have your types behave the same way whenever reasonable. 
+For example, assignment to `a * b` isn’t legal if `a` and `b` are `int`s, 
+so unless there’s a good reason to diverge from this behavior,
+it should be illegal for your types, too. 
+When in doubt, do as the `int`s do.
+
+
+The real reason for avoiding gratuitous incompatibilities with the built-in types 
+is to offer interfaces that behave consistently.
+Few characteristics lead to interfaces that are easy to use correctly as much as consistency, 
+and few characteristics lead to aggravating interfaces as much as inconsistency. 
+The interfaces to STL containers are largely (though not perfectly) consistent, 
+and this helps make them fairly easy to use. 
+For example, every STL container has a member function named `size` that tells how many objects are in the container.
+Contrast this with Java, 
+where you use the `length` <u>_property_</u> for arrays, 
+the `length` <u>_method_</u> for `String`s, 
+and the `size` <u>_method_</u> for `List`s; 
+and with .NET, 
+where `Array`s have a property named `Length`, 
+while `ArrayList`s have a property named `Count`. 
+Some developers think that integrated development environments (IDEs) render such inconsistencies unimportant,
+but they are mistaken. 
+Inconsistency imposes mental friction into a developer’s work that no IDE can fully remove.
+Any interface that requires that clients remember to do something is prone to incorrect use, 
+because clients can forget to do it. 
+For example, Item 13 introduces a factory function that 
+returns pointers to dynamically allocated objects in an `Investment` hierarchy:
+```c++
+Investment * createInvestment();
+```
+To avoid resource leaks, the pointers returned from `createInvestment` must eventually be deleted, 
+but that creates an opportunity for at least two types of client errors: 
+failure to delete a pointer, and deletion of the same pointer more than once.
+
+
+Item 13 shows how clients can store `createInvestment`’s return value in a smart pointer 
+like `std::unique_ptr` or `std::shared_ptr`, 
+thus turning over to the smart pointer the responsibility for using `delete`. 
+But what if clients forget to use the smart pointer? 
+In many cases, a better interface decision would be to preempt the problem by having the factory function
+return a smart pointer in the first place:
+```c++
+std::shared_ptr<Investment> createInvestment();
+```
+This essentially forces clients to store the return value in a `std::shared_ptr`, 
+all but eliminating the possibility of forgetting to 
+`delete` the underlying `Investment` object when it’s no longer being used.
+
+
+In fact, returning a `std::shared_ptr` makes it possible 
+for an interface designer to prevent a host of other client errors regarding resource release, 
+because smart pointers allow a custom deleter to be bounded during creation. 
+
+
+Suppose clients who get an `Investment *` pointer from `createInvestment`
+are expected to pass that pointer to a function called `getRidOfInvestment`
+instead of using `delete` on it. 
+Such an interface would open the door to a new kind of client error, 
+one where clients use the wrong resource-destruction mechanism (i.e., `delete` instead of `getRidOfInvestment`).
+The implementer of `createInvestment` can forestall such problems by returning a `std::shared_ptr` 
+with `getRidOfInvestment` bound to it as its deleter: 
+```c++
+std::shared_ptr<Investment> createInvestment()
+{
+    return std::shared_ptr<new Investment(), [](Investment * p) { getRidOfInvestment(p); }>;
+}
+```
+An especially nice feature of `std::shared_ptr` is that it automatically uses its per-pointer deleter 
+to eliminate another potential client error, the “cross-DLL problem”. 
+This problem crops up when an object is created using `new` in one dynamically linked library (DLL) 
+but is deleted in a different DLL. 
+On many platforms, such cross-DLL `new` / `delete` pairs lead to runtime errors. 
+`std::shared_ptr` avoids the problem, because its default deleter uses `delete` 
+from the same DLL where the `std::shared_ptr` is created. 
+This means, for example, that if `Stock` is a class derived from `Investment` 
+and `createInvestment` is implemented like this,
+```c++
+std::shared_ptr<Investment> createInvestment()
+{
+    return std::shared_ptr<Investment>(new Stock);
+}
+```
+the returned `std::shared_ptr` can be passed among DLLs without concern for the cross-DLL problem. 
+The `std::shared_ptr`s pointing to the `Stock` keep track of which DLL’s `delete` should be used 
+when the reference count for the `Stock` becomes zero.
+
+
+
 
 
 
 ### 📌 Item 19: Treat class design as type design
 
 - Class design is type design.
-  Before defining a new type, be sure to consider all the issues discussed in this Item.
+
+
+Every class requires that you confront the following questions, 
+the answers to which often lead to constraints on your design:
+
+- **How should objects of your new type be created and destroyed?**
+  How this is done influences the design of your class’s constructors and destructor 
+  (and remember the rule of three / five when defining copy control members), 
+  as well as its memory allocation and deallocation functions 
+  (`operator new`, `operator new[]`, `operator delete`, and `operator delete[]`) if you write them.
+- **How should object initialization differ from object assignment?**
+  The answer to this question determines the behavior of and the differences 
+  between your constructors and your assignment operators. 
+  It’s important not to confuse initialization with assignment, 
+  because they correspond to different function calls.
+- **What does it mean for objects of your new type to be passed by value?** 
+  Remember, the copy constructor defines how pass-by-value is implemented for a type.
+- **What are the restrictions on legal values for your new type?**
+  Usually, only some combinations of values for a class’s data members are valid. 
+  Those combinations determine the invariants your class will have to maintain. 
+  The invariants determine the error checking you’ll have to do inside your member functions, 
+  especially your constructors, assignment operators, and “setter” functions. 
+  It may also affect the exceptions your functions throw and, on the off chance you use them, 
+  your functions’ exception specifications.
+- **Does your new type fit into an inheritance graph?** 
+  If you inherit from existing classes, 
+  you are constrained by the design of those classes, 
+  particularly by whether their functions are `virtual` or non-`virtual`. 
+  If you wish to allow other classes to inherit from your class, 
+  that affects whether the functions you declare are `virtual`, especially your destructor.
+- **What kind of type conversions are allowed for your new type?**
+  Your type exists in a sea of other types, so should there be conversions between your type and other types? 
+  If you wish to allow objects of type `T1` to be implicitly converted into objects of type `T2`, 
+  you will want to write either a type conversion function in `class T1` (e.g., `operator T2`) 
+  or a non-`explicit` constructor in `class T2` that can be called with a single argument. 
+  If you wish to allow explicit conversions only, 
+  you’ll want to write functions to perform the conversions, 
+  but you’ll need to avoid making them type conversion operators or non-`explicit` constructors 
+  that can be called with one argument. 
+- **What operators and functions make sense for the new type?**
+  The answer to this question determines which functions you’ll declare for your class.
+  Some functions will be member functions, but some will not.
+- **What standard functions should be `delete`d?**
+- **Who should have access to the members of your new type?** 
+  This question helps you determine which members are `public`, 
+  which are `protected`, and which are `private`. 
+  It also helps you determine which classes and/or functions should be `friend`s, 
+  as well as whether it makes sense to nest one class inside another.
+- **What is the “undeclared interface” of your new type?** 
+  What kind of guarantees does it offer with respect to performance,
+  exception safety, and resource usage (e.g., locks and dynamic memory)? 
+  The guarantees you offer in these areas will impose constraints on your class implementation.
+- **How general is your new type?** 
+  Perhaps you’re not really defining a new type. 
+  Perhaps you’re defining a whole <u>_family_</u> of types. 
+  If so, you don’t want to define a new class, 
+  you want to define a new <u>_class template_</u>.
+- **Is a new type really what you need?** 
+  If you’re defining a new derived class only so you can add functionality to an existing class, 
+  perhaps you’d better achieve your goals by simply defining one or more non-member functions or templates.
 
 
 
