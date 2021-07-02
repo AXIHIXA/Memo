@@ -15824,6 +15824,41 @@ quizB.reset(27);                  // student number 27 failed
 
 - 放`Chap 8`了
 
+
+#### [用户自定义字面量](https://en.cppreference.com/w/cpp/language/user_literal)（User Literal）
+
+```c++
+#include <iostream>
+
+
+struct Price
+{
+    friend std::ostream & operator <<(std::ostream &, const Price &);
+    long double val;
+};
+
+
+std::ostream & operator <<(std::ostream & cout, const Price & price)
+{
+    cout << '$' << price.val;
+    return cout;
+}
+
+
+constexpr Price operator "" _USD(long double p)
+{
+    return Price {p};
+}
+
+
+int main(int argc, char * argv[])
+{
+    std::cout << 12.5132_USD << '\n';  // $12.5132
+    
+    return EXIT_SUCCESS;
+}
+```
+
 #### [日期时间库](https://en.cppreference.com/w/cpp/chrono)（Date and time utilities）
 
 - `C++`日期时间库[`<chrono>`](https://en.cppreference.com/w/cpp/header/chrono)定义了三个核心类
@@ -15878,7 +15913,7 @@ quizB.reset(27);                  // student number 27 failed
         - `std::chrono::minutes`：`std::chrono::duration<int64_t, std::ratio<60>>`
         - `std::chrono::hours`：`std::chrono::duration<int64_t, std::ratio<3600>>`
         - `std::chrono::days`：`std::chrono::duration<int64_t, std::ratio<86400>>` `(since C++20)`
-        - `std::chrono::weeks`：`std::chrono::duration<int64_t, std::ratio<604800>> ``(since C++20)`
+        - `std::chrono::weeks`：`std::chrono::duration<int64_t, std::ratio<604800>>` `(since C++20)`
         - `std::chrono::months`：`std::chrono::duration<int64_t, std::ratio<2629746>>` `(since C++20)`
         - `std::chrono::years`：`std::chrono::duration<int64_t, std::ratio<31556952>>` `(since C++20)`
     - `std::chrono::duration`字面量 `(since C++14)`

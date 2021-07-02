@@ -768,8 +768,6 @@ To avoid using objects before they’re initialized, then, you need to do only t
 
 ### 📌 Item 5: Know what functions C++ silently writes and calls
 
-- Compilers may implicitly generate a class's default constructor, copy constructor, copy assignment operator, and destructor.
-
 **OUTDATED**. Refer to _Effective Modern C++_ Item 17. 
 
 
@@ -778,10 +776,6 @@ To avoid using objects before they’re initialized, then, you need to do only t
 
 
 ### 📌 Item 6: Explicitly disallow the use of compiler-generated functions you do not want
-
-- To disallow functionality automatically provided by compilers,
-  declare the corresponding member functions private and give no implementations. 
-  Using a base class like `Uncopyable` is one way to do this. 
 
 **OUTDATED**. Refer to _Effective Modern C++_ Item 11.
 
@@ -1591,7 +1585,7 @@ it’s a fact that compilers can sometimes generate more efficient code.
 ### 📌 Item 12: Copy all parts of an object
 
 - Copying functions should be sure to copy all of an object's data members 
-  and all of its base class parts (by invoking base class's copying functions).
+  and all of its base class parts (by invoking the base class's copying functions).
 - Don't try to implement one of the copying functions in terms of the other.
   Instead, put common functionality in a third function that both call.
 
@@ -1767,13 +1761,42 @@ This strategy is a safe, proven way to eliminate code duplication in copy constr
 
 ### 🎯 Chapter 3. Resource Management
 
+A resource is something that, once you’re done using it, you need to return to the system. 
+If you don’t, bad things happen. 
+In C++ programs, the most commonly used resource is dynamically allocated memory 
+(if you allocate memory and never deallocate it, you’ve got a memory leak), 
+but memory is only one of many resources you must manage. 
+Other common resources include file descriptors, mutex locks, 
+fonts and brushes in graphical user interfaces (GUIs), database connections, and network sockets. 
+Regardless of the resource, it’s important that it be released when you’re finished with it.
+
+
+Trying to ensure this by hand is difficult under any conditions, 
+but when you consider exceptions, functions with multiple return paths,
+and maintenance programmers modifying software without fully comprehending the impact of their changes, 
+it becomes clear that ad hoc ways of dealing with resource management **aren’t** sufficient.
+
+
+This chapter begins with a straightforward object-based approach 
+to resource management built on C++’s support for constructors, destructors, and copying operations. 
+Experience has shown that disciplined adherence to this approach can all but eliminate resource management problems.
+The chapter then moves on to Items dedicated specifically to memory management. 
+These latter Items complement the more general Items that come earlier, 
+because objects that manage memory have to know how to do it properly.
+
+
+
+
+
+
 ### 📌 Item 13: Use objects to manage resources
 
 - To prevent resource leaks, use RAII objects
   that acquire resources in their constructors and release them in their destructors.
 - ~~Two commonly useful RAII classes are `tr1::shared_ptr` and `std::auto_ptr`.
   `tr1::shared_ptr` is usually the better choice, because its behavior when copied is intuitive.
-  Copying an `std::auto_ptr` sets it to null.~~ Refer to _Effective Modern C++_ Chapter 4 for details.
+  Copying an `std::auto_ptr` sets it to null.~~ 
+- Refer to _Effective Modern C++_ Chapter 4 for details.
 
 
 
@@ -1786,6 +1809,148 @@ This strategy is a safe, proven way to eliminate code duplication in copy constr
   so the copying behavior of the resource determines the copying behavior of the RAII object.
 - Common RAII class copying behaviors are disallowing copying and performing reference counting,
   but other behaviors are possible.
+
+
+Not all resources are heap-based, and for such resources, 
+smart pointers like `std::unique_ptr` and `std::shared_ptr` are generally inappropriate as resource handlers. 
+That being the case, you’re likely to find yourself needing to create your own resource-managing classes.
+
+
+For example, for RAII objects for `std::mutex`s.
+[`std::lock_guard`](https://en.cppreference.com/w/cpp/thread/lock_guard)
+and [`std::scoped_lock`](https://en.cppreference.com/w/cpp/thread/scoped_lock)
+are already a proper choices for mutexes. 
+To make sure that you never forget to unlock a `std::mutex` you’ve locked, you’d like to create a class to manage locks.
+The basic structure of such a class is dictated by the RAII principle that resources are acquired 
+during construction and released during destruction:
+```c++
+/// <std_mutex.h>
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+namespace std
+{
+
+/// Do not acquire ownership of the mutex.
+struct defer_lock_t { explicit defer_lock_t() = default; };
+
+/// Try to acquire ownership of the mutex without blocking.
+struct try_to_lock_t { explicit try_to_lock_t() = default; };
+
+/// Assume the calling thread has already obtained mutex ownership
+/// and manage it.
+struct adopt_lock_t { explicit adopt_lock_t() = default; };
+
+/// Tag used to prevent a scoped lock from acquiring ownership of a mutex.
+_GLIBCXX17_INLINE constexpr defer_lock_t defer_lock { };
+
+/// Tag used to prevent a scoped lock from blocking if a mutex is locked.
+_GLIBCXX17_INLINE constexpr try_to_lock_t try_to_lock { };
+
+/// Tag used to make a scoped lock take ownership of a locked mutex.
+_GLIBCXX17_INLINE constexpr adopt_lock_t adopt_lock { };
+
+/** @brief A simple scoped lock type.
+ *
+ * A lock_guard controls mutex ownership within a scope, 
+ * releasing ownership in the destructor.
+ */
+template <typename _Mutex>
+class lock_guard
+{
+public:
+    typedef _Mutex mutex_type;
+    
+    explicit lock_guard(mutex_type & __m) : _M_device(__m)
+    {
+        _M_device.lock();
+    }
+    
+    lock_guard(mutex_type & __m, adopt_lock_t) noexcept : _M_device(__m)
+    {
+        // calling thread owns mutex
+    } 
+    
+    ~lock_guard()
+    {
+        _M_device.unlock();
+    }
+    
+    lock_guard(const lock_guard &) = delete;
+    
+    lock_guard & operator=(const lock_guard &) = delete;
+
+private:
+    mutex_type & _M_device;
+};
+
+}  // namespace std
+```
+Clients use `LockGuard` in the conventional RAII fashion:
+```c++
+std::mutex mutex;  // define the mutex you need to use
+// ...
+
+// create block to define critical section
+{ 
+    std::lock_guard grd(mutex);  // lock the mutex
+    // ...                       // perform critical section operations
+} 
+// automatically unlock mutex at end of block
+```
+This is fine, but what should happen if a lock guard object is copied?
+```c++
+Lock ml1(&m);   // lock m
+Lock ml2(ml1);  // copy ml1 to ml2; what should happen here?
+```
+This is a specific example of a more general question, one that every RAII class author must confront: 
+what should happen when an RAII object is copied? 
+Most of the time, you’ll want to choose one of the following possibilities:
+
+- **Prohibit copying**. 
+  In many cases, it makes no sense to allow RAII objects to be copied. 
+  This is likely to be true for a class like `std::lock_guard`, 
+  because it rarely makes sense to have “copies” of synchronization primitives. 
+  When copying makes no sense for an RAII class, you should prohibit it
+  (via `delete`ing its copy constructors and copy assignment operators). 
+- **Reference-count the underlying resource**. 
+  Sometimes it’s desirable to hold on to a resource until the last object using it has been destroyed. 
+  When that’s the case, copying an RAII object should increment the count of the number of objects referring to the resource.
+  This is the meaning of “copy” used by `std::shared_ptr`. 
+  Often, RAII classes can implement reference-counting copying behavior by containing a `std::shared_ptr` data member. 
+  For example, if our lock guard wanted to employ reference counting,
+  it could change the type of mutex from `std::mutex &` to `std::shared_ptr<std::mutex>` and provide a custom deleter.
+  ```c++
+  std::mutex mutex;
+  std::shared_ptr<std::mutex> mutexPtr(&mutex, [](std::mutex * p) { p->unlock(); });
+  ```
+  In this case, notice how the Lock class no longer declares a destructor.
+  That’s because there’s no need to. 
+  Item 5 explains that a class’s destructor (regardless of whether it is compiler-generated or user-defined) 
+  automatically invokes the destructors of the class’s non-static data members. 
+  In this example, that’s `mutexPtr`.
+  But `mutexPtr`’s destructor will automatically call the `std::shared_ptr`’s deleter (`std::mutex::unlock`)
+  when the mutex’s reference count goes to zero.
+- **Copy the underlying resource**. 
+  Sometimes you can have as many copies of a resource as you like,
+  and the only reason you need a resource-managing class is to make sure that 
+  each copy is released when you’re done with it. 
+  In that case, copying the resource-managing object should also copy the resource it wraps. 
+  That is, copying a resource-managing object performs a “deep copy.” 
+  Some implementations of the standard `std::string` type consist of pointers to heap memory, 
+  where the characters making up the `std::string` are stored. 
+  Objects of such `std::string`s contain a pointer to the heap memory. 
+  When a string object is copied, a copy is made of both the pointer and the memory it points to. 
+  Such strings exhibit deep copying.
+- **Transfer ownership of the underlying resource**. 
+  On rare occasion, you may wish to make sure that only one RAII object refers to a raw resource 
+  and that when the RAII object is copied, 
+  ownership of the resource is transferred from the copied object to the copying object. 
+  This is the meaning of “copy” used by `std::unique_ptr`s.
+
+
+The copying functions (copy constructor and copy assignment operator) may be generated by compilers, 
+so unless the compiler-generated versions will do what you want,
+you’ll need to write them yourself. 
 
 
 
@@ -1809,6 +1974,88 @@ This strategy is a safe, proven way to eliminate code duplication in copy constr
 
 - If you use `[]` in a `new` expression, you must use `[]` in the corresponding `delete` expression.
   If you don't use `[]` in a `new` expression, you mustn't use `[]` in the corresponding `delete` expression.
+- Do not use `typedef` on array types (doesn't know what form of `delete` to use)
+
+
+Considering the following code: 
+```c++
+std::string * stringArray = new std::string[100];
+// ...
+delete stringArray;
+```
+The `new` is matched with a `delete`, but the program’s behavior is undefined.
+At the very least, 99 of the 100 string objects pointed to by `stringArray` 
+are **unlikely** to ~~be properly destroyed~~, 
+because their destructors will probably **never** be called.
+
+
+When you employ a <u>_`new` expression_</u> (i.e., dynamic creation of an object via a use of `new`), two things happen: 
+memory is allocated (via a function named `operator new`; see Items 49 and 51); 
+then one or more constructors are called for that memory.
+
+
+When you employ a <u>_`delete` expression_</u> (i.e., use `delete`), two other things happen: 
+one or more destructors are called for the memory;
+then the memory is deallocated (via a function named `operator delete`; see Item 51). 
+
+
+The big question for `delete` is this: how many objects reside in the memory being deleted? 
+The answer to that determines how many destructors must be called.
+
+
+When you use `delete` on a pointer, 
+the only way for `delete` to know whether the array size information is there is for you to tell it. 
+If you use brackets in your use of `delete`, `delete` assumes an array is pointed to. 
+Otherwise, it assumes that a single object is pointed to:
+```c++
+std::string * stringPtr1 = new std::string;
+std::string * stringPtr2 = new std::string[100];
+// ...
+delete stringPtr1;     // delete an object
+delete [] stringPtr2;  // delete an array of objects
+```
+Using the “`delete []`” form on `stringPtr1` is undefined behavior that is unlikely to be pretty.
+Not using the “`delete []`” form on `stringPtr2` is also undefined behavior, 
+but you can see how it would lead to too few destructors being called. 
+Furthermore, it’s undefined (and sometimes harmful) for built-in types like `int`s, too, 
+even though such types lack destructors.
+
+
+If you use `[]` in a `new` expression, you must use `[]` in the corresponding `delete` expression.
+If you don't use `[]` in a `new` expression, you mustn't use `[]` in the corresponding `delete` expression.
+
+
+This is a particularly important rule to bear in mind 
+when you are writing a class containing a pointer to dynamically allocated memory
+and also offering multiple constructors, 
+because then you must be careful to use the <u>_same form_</u> of `new` in all the constructors 
+to initialize the pointer member. 
+If you don’t, how will you know what form of `delete` to use in your destructor?
+
+
+This rule is also noteworthy for the `typedef`-inclined, 
+because it means that a `typedef`’s author must document 
+which form of `delete` should be employed when `new` is used to conjure up objects of the `typedef` type.
+For example, consider this `typedef`:
+```c++
+typedef std::string AddressLines[4];   // a person’s address has 4 lines, 
+                                       // each of which is a string
+```
+Because `AddressLines` is an array, this use of `new`,
+```c++
+std::string * pal = new AddressLines;  // note that “new AddressLines” returns a string *, 
+                                       // just like “new string[4]” would
+```
+must be matched with the array form of `delete`:
+```c++
+delete pal;                            // undefined!
+delete [] pal;                         // fine
+```
+To avoid such confusion, abstain from `typedef`s for array types. 
+That’s easy, because STL library `std::string` and `std::array`, as well as alias (`using` expression). 
+and those templates reduce the need for dynamically allocated arrays to nearly zero.
+Here, for example, `AddressLines` could be defined to be a `std::array` of `std::string`s, 
+i.e., the type `using AddressLines = std::array<std::string, 4>`. 
 
 
 
@@ -1839,10 +2086,48 @@ This strategy is a safe, proven way to eliminate code duplication in copy constr
   restricting operations on types,
   constraining object values,
   and eliminating client resource management responsibilities.
-- `tr1::shared_ptr` supports custom deleters.
+- Smart pointers supports custom deleters.
   This prevents the cross-DLL problem,
-  can be used to automatically unlock mutexes (see Item 14), etc.
+  can be used to automatically unlock mutexes (See Item 14), etc.
 
+
+Developing interfaces that are easy to use correctly and hard to use incorrectly 
+requires that you consider the kinds of mistakes that clients might make. 
+For example, suppose you’re designing the constructor for a class representing dates in time:
+```c++
+class Date 
+{
+public:
+    Date(int month, int day, int year);
+    // ...
+};
+```
+At first glance, this interface may seem reasonable, but there are at least two errors that clients might easily make.
+First, they might pass parameters in the wrong order:
+```c++
+Date d(30, 3, 1995);  // incorrect order of arguments
+Date d(3, 40, 1995);  // invalid range of arguments
+```
+Many client errors can be prevented by the introduction of new types.
+Indeed, the type system is your primary ally in preventing undesirable code from compiling. 
+In this case, we can introduce simple wrapper types to distinguish days, months, and years, 
+then use these types in the `Date` constructor:
+```c++
+class Date
+{
+public:
+    Date(const std::chrono::month & month, const Day & day, const Year & year);
+    // ...
+};
+
+Date d(30, 3, 1995);                    // error! wrong types
+Date d(Day(30), Month(3), Year(1995));  // error! wrong types
+Date d(Month(3), Day(30), Year(1995));  // okay, types are correct
+```
+Making `Day`, `Month`, and `Year` full-fledged `class`es with encapsulated data 
+would be better than the simple use of `struct`s above (see Item 22), 
+but even `struct`s suffice to demonstrate that the judicious introduction of new types 
+can work wonders for the prevention of interface usage errors.
 
 
 
