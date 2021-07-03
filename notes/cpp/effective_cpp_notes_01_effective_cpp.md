@@ -2283,67 +2283,62 @@ when the reference count for the `Stock` becomes zero.
 
 ### 📌 Item 19: Treat class design as type design
 
-- Class design is type design.
-
-
-Every class requires that you confront the following questions, 
-the answers to which often lead to constraints on your design:
-
-- **How should objects of your new type be created and destroyed?**
-  How this is done influences the design of your class’s constructors and destructor 
-  (and remember the rule of three / five when defining copy control members), 
-  as well as its memory allocation and deallocation functions 
-  (`operator new`, `operator new[]`, `operator delete`, and `operator delete[]`) if you write them.
-- **How should object initialization differ from object assignment?**
-  The answer to this question determines the behavior of and the differences 
-  between your constructors and your assignment operators. 
-  It’s important not to confuse initialization with assignment, 
-  because they correspond to different function calls.
-- **What does it mean for objects of your new type to be passed by value?** 
-  Remember, the copy constructor defines how pass-by-value is implemented for a type.
-- **What are the restrictions on legal values for your new type?**
-  Usually, only some combinations of values for a class’s data members are valid. 
-  Those combinations determine the invariants your class will have to maintain. 
-  The invariants determine the error checking you’ll have to do inside your member functions, 
-  especially your constructors, assignment operators, and “setter” functions. 
-  It may also affect the exceptions your functions throw and, on the off chance you use them, 
-  your functions’ exception specifications.
-- **Does your new type fit into an inheritance graph?** 
-  If you inherit from existing classes, 
-  you are constrained by the design of those classes, 
-  particularly by whether their functions are `virtual` or non-`virtual`. 
-  If you wish to allow other classes to inherit from your class, 
-  that affects whether the functions you declare are `virtual`, especially your destructor.
-- **What kind of type conversions are allowed for your new type?**
-  Your type exists in a sea of other types, so should there be conversions between your type and other types? 
-  If you wish to allow objects of type `T1` to be implicitly converted into objects of type `T2`, 
-  you will want to write either a type conversion function in `class T1` (e.g., `operator T2`) 
-  or a non-`explicit` constructor in `class T2` that can be called with a single argument. 
-  If you wish to allow explicit conversions only, 
-  you’ll want to write functions to perform the conversions, 
-  but you’ll need to avoid making them type conversion operators or non-`explicit` constructors 
-  that can be called with one argument. 
-- **What operators and functions make sense for the new type?**
-  The answer to this question determines which functions you’ll declare for your class.
-  Some functions will be member functions, but some will not.
-- **What standard functions should be `delete`d?**
-- **Who should have access to the members of your new type?** 
-  This question helps you determine which members are `public`, 
-  which are `protected`, and which are `private`. 
-  It also helps you determine which classes and/or functions should be `friend`s, 
-  as well as whether it makes sense to nest one class inside another.
-- **What is the “undeclared interface” of your new type?** 
-  What kind of guarantees does it offer with respect to performance,
-  exception safety, and resource usage (e.g., locks and dynamic memory)? 
-  The guarantees you offer in these areas will impose constraints on your class implementation.
-- **How general is your new type?** 
-  Perhaps you’re not really defining a new type. 
-  Perhaps you’re defining a whole <u>_family_</u> of types. 
-  If so, you don’t want to define a new class, 
-  you want to define a new <u>_class template_</u>.
-- **Is a new type really what you need?** 
-  If you’re defining a new derived class only so you can add functionality to an existing class, 
-  perhaps you’d better achieve your goals by simply defining one or more non-member functions or templates.
+- Class design is type design. Every class requires that you confront the following questions:
+    - **How should objects of your new type be created and destroyed?**
+      How this is done influences the design of your class’s constructors and destructor 
+      (and remember the rule of three / five when defining copy control members), 
+      as well as its memory allocation and deallocation functions 
+      (`operator new`, `operator new[]`, `operator delete`, and `operator delete[]`) if you write them.
+    - **How should object initialization differ from object assignment?**
+      The answer to this question determines the behavior of and the differences 
+      between your constructors and your assignment operators. 
+      It’s important not to confuse initialization with assignment, 
+      because they correspond to different function calls.
+    - **What does it mean for objects of your new type to be passed by value?** 
+      Remember, the copy constructor defines how pass-by-value is implemented for a type.
+    - **What are the restrictions on legal values for your new type?**
+      Usually, only some combinations of values for a class’s data members are valid. 
+      Those combinations determine the invariants your class will have to maintain. 
+      The invariants determine the error checking you’ll have to do inside your member functions, 
+      especially your constructors, assignment operators, and “setter” functions. 
+      It may also affect the exceptions your functions throw and, on the off chance you use them, 
+      your functions’ exception specifications.
+    - **Does your new type fit into an inheritance graph?** 
+      If you inherit from existing classes, 
+      you are constrained by the design of those classes, 
+      particularly by whether their functions are `virtual` or non-`virtual`. 
+      If you wish to allow other classes to inherit from your class, 
+      that affects whether the functions you declare are `virtual`, especially your destructor.
+    - **What kind of type conversions are allowed for your new type?**
+      Your type exists in a sea of other types, so should there be conversions between your type and other types? 
+      If you wish to allow objects of type `T1` to be implicitly converted into objects of type `T2`, 
+      you will want to write either a type conversion function in `class T1` (e.g., `operator T2`) 
+      or a non-`explicit` constructor in `class T2` that can be called with a single argument. 
+      If you wish to allow explicit conversions only, 
+      you’ll want to write functions to perform the conversions, 
+      but you’ll need to avoid making them type conversion operators or non-`explicit` constructors 
+      that can be called with one argument. 
+    - **What operators and functions make sense for the new type?**
+      The answer to this question determines which functions you’ll declare for your class.
+      Some functions will be member functions, but some will not.
+    - **What standard functions should be `delete`d?**
+    - **Who should have access to the members of your new type?** 
+      This question helps you determine which members are `public`, 
+      which are `protected`, and which are `private`. 
+      It also helps you determine which classes and/or functions should be `friend`s, 
+      as well as whether it makes sense to nest one class inside another.
+    - **What is the “undeclared interface” of your new type?** 
+      What kind of guarantees does it offer with respect to performance,
+      exception safety, and resource usage (e.g., locks and dynamic memory)? 
+      The guarantees you offer in these areas will impose constraints on your class implementation.
+    - **How general is your new type?** 
+      Perhaps you’re not really defining a new type. 
+      Perhaps you’re defining a whole <u>_family_</u> of types. 
+      If so, you don’t want to define a new class, 
+      you want to define a new <u>_class template_</u>.
+    - **Is a new type really what you need?** 
+      If you’re defining a new derived class only so you can add functionality to an existing class, 
+      perhaps you’d better achieve your goals by simply defining one or more non-member functions or templates.
 
 
 
@@ -2352,10 +2347,196 @@ the answers to which often lead to constraints on your design:
 
 ### 📌 Item 20: Prefer pass-by-reference-to-`const` to pass-by-value
 
-- Prefer pass-by-reference-to-const over pass-by-value.
-  It's typically more efficient and it avoids the slicing problem.
-- The rule doesn't apply to built-in types and STL iterator and function object types.
-  For them, pass-by-value is usually appropriate.
+- Prefer pass-by-reference-to-`const` over pass-by-value. 
+  It's typically more efficient and it avoids the slicing problem. 
+- The rule **doesn't** apply to built-in types, STL iterator, and function object types. 
+  For them, pass-by-value is usually appropriate. 
+
+
+By default, C++ passes objects to and from functions by value (as from C). 
+Unless otherwise specified, function parameters are initialized with <u>_copies_</u> of the actual arguments, 
+and function callers get back a <u>_copy_</u> of the value returned by the function. 
+These copies are produced by the objects’ copy constructors. 
+This can make pass-by-value an expensive operation. 
+For example, consider the following class hierarchy:
+```c++
+class Person
+{
+public:
+    Person();           // parameters omitted
+    virtual ~Person();  // see Item 7 for why this is virtual
+    
+    // ...
+    
+private:
+    std::string name;
+    std::string address;
+};
+
+class Student : public Person
+{
+public:
+    Student();          // parameters omitted
+    virtual ~Student();
+
+    // ...
+    
+private:
+    std::string schoolName;
+    std::string schoolAddress;
+};
+```
+Now consider the following code, in which we call a function, `validateStudent`,
+that takes a `Student` argument (by value) and returns whether it has been validated:
+```c++
+bool validateStudent(Student s);          // function taking a Student by value
+
+Student plato;                            // Plato studied under Socrates
+bool platoIsOK = validateStudent(plato);  // call the function
+```
+When this function is called, 
+the `Student` copy constructor is called to initialize the parameter `s` from `plato`. 
+Equally clearly, `s` is destroyed when `validateStudent` returns. 
+So the parameter-passing cost of this function is 
+one call to the `Student` copy constructor and one call to the `Student` destructor.
+
+
+But that’s not the whole story. 
+A `Student` object has two `std::string` objects within it, 
+so every time you construct a `Student` object, you must also construct two `std::string` objects. 
+A `Student` object also inherits from a `Person` object, 
+so every time you construct a `Student` object, you must also construct a `Person` object. 
+A `Person` object has two additional `std::string` objects inside it, 
+so each `Person` construction also entails two more `std::string` constructions. 
+The end result is that passing a `Student` object by value leads to 
+one call to the `Student` copy constructor, 
+one call to the `Person` copy constructor, 
+and four calls to the `std::string` copy constructor. 
+When the copy of the `Student` object is destroyed, 
+each constructor call is matched by a destructor call, 
+so the overall cost of passing a `Student` by value is six constructors and six destructors!
+
+
+Now, this is correct and desirable behavior. 
+After all, you want all your objects to be reliably initialized and destroyed. 
+Still, it would be nice if there were a way to bypass all those constructions and destructions.
+There is: pass by reference-to-`const`:
+```c++
+bool validateStudent(const Student & s);
+```
+This is much more efficient: no constructors or destructors are called,
+because no new objects are being created. 
+The `const` in the revised parameter declaration is important. 
+The original version of `validateStudent` took a `Student` parameter by value, 
+so callers knew that they were shielded from any changes the function might make to the `Student` they passed in; 
+`validateStudent` would be able to modify only a copy of it. 
+Now that the `Student` is being passed by reference, 
+it’s necessary to also declare it `const`, 
+because otherwise callers would have to worry about `validateStudent` making changes to the `Student` they passed in.
+
+
+Passing parameters by reference also avoids the <u>_slicing problem_</u>. 
+When a derived class object is passed (by value) as a base class object, 
+the base class copy constructor is called, 
+and the specialized features that make the object behave like a derived class object are “sliced” off.
+You’re left with a simple base class object, since a base class constructor created it. 
+This is almost **never** what you want.
+For example, suppose you’re working on a set of classes for implementing a graphical window system:
+```c++
+class Window
+{
+public:
+    // ...
+
+    std::string name() const;      // return name of window
+    virtual void display() const;  // draw window and contents
+};
+
+class WindowWithScrollBars : public Window
+{
+public:
+    // ...
+
+    virtual void display() const;
+};
+```
+All `Window` objects have a name, which you can get at through the `name` function, 
+and all windows can be displayed, which you can bring about by invoking the `display` function. 
+The fact that display is `virtual` tells you that 
+the way in which simple base class `Window` objects are displayed 
+is apt to differ from the way in which the fancier `WindowWithScrollBars` objects are displayed (see Items 34 and 36). 
+
+
+Now suppose you’d like to write a function to print out a window’s name and then display the window. 
+Here’s the **wrong** way to write such a function:
+```c++
+// incorrect! parameter may be sliced!
+void printNameAndDisplay(Window w)
+{
+    std::cout << w.name() << '\n';
+    w.display();
+}
+```
+Consider what happens when you call this function with a `WindowWithScrollBars` object:
+```c++
+WindowWithScrollBars wwsb;
+printNameAndDisplay(wwsb);
+```
+The parameter `w` will be constructed as a `Window` object, 
+and all the specialized information that made `wwsb` act like a `WindowWithScrollBars` object will be sliced off.
+Inside `printNameAndDisplay`, 
+`w` will always act like an object of class `Window` (because it is an object of class `Window`), 
+regardless of the type of object passed to the function. 
+In particular, the call to display inside `printNameAndDisplay` will always call `Window::display`, 
+never `WindowWithScrollBars::display`.
+The way around the slicing problem is to pass `w` by reference-to-`const`:
+```c++
+void printNameAndDisplay(const Window & w)
+{
+    std::cout << w.name() << '\n';
+    w.display();
+}
+```
+Now `w` will act like whatever kind of window is actually passed in.
+
+
+If you peek under the hood of a C++ compiler, 
+you’ll find that references are typically implemented as pointers, 
+so passing something by reference usually means really passing a pointer. 
+As a result, if you have an object of a built-in type (e.g., an int), 
+it’s often more efficient to pass it by value than by reference. 
+For built-in types, then, when you have a choice between pass-by-value and pass-by-reference-to-`const`,
+it’s not unreasonable to choose pass-by-value. 
+This same advice applies to iterators and function objects in the STL, 
+because, by convention, they are designed to be passed by value. 
+Implementers of iterators and function objects are responsible for seeing to it that 
+they are efficient to copy and are not subject to the slicing problem. 
+
+
+Built-in types are small, so some people conclude that all small types are good candidates for pass-by-value, 
+even if they’re user-defined.
+This is shaky reasoning. Just because an object is small doesn’t mean that calling its copy constructor is inexpensive. 
+Many objects (most STL containers among them) contain little more than a pointer, 
+but copying such objects entails copying everything they point to. 
+That can be very expensive.
+
+
+Even when small objects have inexpensive copy constructors, there can be performance issues. 
+Some compilers treat built-in and userdefined types differently, even if they have the same underlying representation.
+For example, some compilers refuse to put objects consisting of only a `double` into a register, 
+even though they happily place naked `double`s there on a regular basis. 
+When that kind of thing happens, you can be better off passing such objects by reference, 
+because compilers will certainly put pointers (the implementation of references) into registers.
+
+
+Another reason why small user-defined types are not necessarily good pass-by-value candidates is that, 
+being user-defined, their size is subject to change. 
+A type that’s small now may be bigger in a future release, because its internal implementation may change. 
+Things can even change when you switch to a different C++ implementation. 
+As I write this, for example, some implementations of the `std::string` type are <u>_seven times_</u> as big as others.
+In general, the only types for which you can reasonably assume that pass-by-value is inexpensive 
+are built-in types and STL iterator and function object types. 
+For everything else, follow the advice of this Item and prefer pass-by-reference-to-const over pass-by-value.
 
 
 
@@ -2364,12 +2545,197 @@ the answers to which often lead to constraints on your design:
 
 ### 📌 Item 21: Don't try to return a reference when you must return an object
 
-- **Never** return a pointer or reference to a local stack object,
-  a reference to a heap-allocated object,
+- **Never** return a pointer or reference to a local stack object, 
+  a reference to a heap-allocated object, 
   or a pointer or reference to a local static object
-  if there is a chance that more than one such object will be needed.
-  (Item 4 provides an example of a design where returning a reference to a local static is reasonable,
-  at least in single-threaded environments.)
+  if there is a chance that more than one such object will be needed. 
+
+
+Consider a class for representing rational numbers, including a function for multiplying two rationals together:
+```c++
+class Rational
+{
+public:
+    friend const Rational operator*(const Rational & lhs, const Rational & rhs);
+    
+    // see Item 24 for why this constructor isn’t declared explicit
+    Rational(int numerator = 0, int denominator = 1); 
+    
+    // ...
+    
+private:
+    int n, d; // numerator and denominator
+};
+```
+This version of `operator*` is returning its result object by value, 
+and you’d be shirking your professional duties if you failed to worry about 
+the cost of that object’s construction and destruction. 
+You don’t want to pay for such an object if you don’t have to. 
+So the question is this:do you have to pay?
+
+
+Well, you don’t have to if you can return a reference instead. 
+But remember that a reference is just a name for some existing object. 
+Whenever you see the declaration for a reference,
+you should immediately ask yourself what it is another name for,
+because it must be another name for something.
+In the case of `operator*`, if the function is to return a reference,
+it must return a reference to some `Rational` object that already exists 
+and that contains the product of the two objects that are to be multiplied together.
+
+
+There is certainly no reason to expect that such an object exists prior to the call to `operator*`. 
+That is, if you have
+```c++
+Rational a(1, 2);    // a = 1/2
+Rational b(3, 5);    // b = 3/5
+Rational c = a * b;  // c should be 3/10
+```
+it seems unreasonable to expect that there already happens to exist a rational number with the value 3/10. 
+No, if `operator*` is to return a reference to such a number, it must create that number object itself.
+
+
+A function can create a new object in only two ways: on the stack or on the heap. 
+Creation on the stack is accomplished by defining a local variable. 
+Using that strategy, you might try to write operator* this way:
+```c++
+// warning! bad code!
+const Rational & operator*(const Rational & lhs, const Rational & rhs)
+{
+    Rational result(lhs.n * rhs.n, lhs.d * rhs.d);
+    return result;
+}
+```
+You can reject this approach out of hand, because your goal was to avoid a constructor call, 
+and result will have to be constructed just like any other object. 
+A more serious problem is that this function returns a reference to result, 
+but result is a local object, and local objects are destroyed when the function exits. 
+This version of `operator*`, then returns a <u>_dangling reference_</u>. 
+Any caller so much as glancing at this function’s return value would instantly enter the realm of undefined behavior. 
+The fact is, any function returning a reference (or a pointer) to a local object is broken.
+
+
+Let us consider, then, the possibility of constructing an object on the heap and returning a reference to it. 
+Heap-based objects come into being through the use of `new`, so you might write a heap-based `operator*` like this:
+```c++
+// warning! worse code!
+const Rational & operator*(const Rational & lhs, const Rational & rhs)
+{
+    Rational * result = new Result(lhs.n * rhs.n, lhs.d * rhs.d);
+    return *result;
+}
+```
+Well, you still have to pay for a constructor call, 
+because the memory allocated by new is initialized by calling an appropriate constructor,
+but now you have a different problem: 
+who will apply `delete` to the object conjured up by your use of `new`?
+
+
+Even if callers are conscientious and well intentioned, 
+there’s not much they can do to prevent leaks in reasonable usage scenarios like this:
+```c++
+Rational w, x, y, z;
+w = x * y * z;        // same as operator*(operator*(x, y), z)
+```
+Here, there are two calls to `operator*` in the same statement, 
+hence two uses of new that need to be undone with uses of `delete`. 
+Yet there is no reasonable way for clients of `operator*` to make those calls, 
+because there’s no reasonable way for them to get at the pointers 
+hidden behind the references being returned from the calls to `operator*`. 
+This is a guaranteed resource leak.
+
+
+But perhaps you notice that both the on-the-stack and on-the-heap approaches 
+suffer from having to call a constructor for each result returned from `operator*`. 
+Perhaps you recall that our initial goal was to avoid such constructor invocations. 
+Perhaps you think you know a way to avoid all but one constructor call. 
+Perhaps the following implementation occurs to you, 
+an implementation based on `operator*`returning a reference to a <u>_static_</u> `Rational` object, 
+one defined inside the function:
+```c++
+// warning! yet more worse code!
+const Rational & operator*(const Rational & lhs, const Rational & rhs)
+{
+    static Rational result;  // static object to which a reference will be returned
+    result = ...;            // multiply lhs by rhs and put the product inside result
+    return result;
+}
+```
+Like all designs employing the use of static objects,
+this one immediately raises our thread-safety hackles, 
+but that’s its more obvious weakness. 
+To see its deeper flaw, consider this perfectly reasonable client code:
+```c++
+bool operator==(const Rational& lhs, const Rational& rhs);
+
+Rational a, b, c, d;
+
+// ...
+
+if ((a * b) == (c * d))
+{
+    // do whatever’s appropriate when the products are equal;
+}
+else
+{
+    // do whatever’s appropriate when they’re not;
+}
+```
+The expression `((a * b) == (c * d))` will <u>_always_</u> evaluate to `true`, 
+regardless of the values of `a`, `b`, `c`, and `d`!
+This revelation is easiest to understand when the code is rewritten in its equivalent functional form:
+```c++
+if (operator==(operator*(a, b), operator*(c, d)))
+```
+Notice that when `operator==` is called, there will already be two active calls to `operator*`, 
+each of which will return a reference to the static `Rational` object inside `operator*`. 
+Thus, `operator==` will be asked to compare the value of the static `Rational` object inside `operator*` 
+with the value of the static Rational object inside `operator*`. 
+It would be surprising indeed if they did not compare equal.
+
+
+This should be enough to convince you that returning a reference from a function like `operator*` is a waste of time,
+but some of you are now thinking, “Well, if one static isn’t enough, maybe a static array will do the trick...”
+
+First, you must choose `n`, the size of the array. 
+If `n` is too small, you may run out of places to store function return values, 
+in which case you’ll have gained nothing over the single-static design we just discredited. 
+But if `n` is too big, you’ll decrease the performance of your program,
+because <u>_every_</u> object in the array will be constructed the first time the function is called. 
+That will cost you `n` constructors and `n` destructors (The destructors will be called once at program shutdown), 
+even if the function in question is called only once. 
+If “optimization” is the process of improving software performance, 
+this kind of thing should be called “pessimization.” 
+Finally, think about how you’d put the values you need into the array’s objects 
+and what it would cost you to do it.
+The most direct way to move a value between objects is via assignment,
+but what is the cost of an assignment? 
+For many types, it’s about the same as a call to a destructor (to destroy the old value) 
+plus a call to a constructor (to copy over the new value).
+But your goal is to avoid the costs of construction and destruction!
+
+
+The right way to write a function that must return a new object is to have that function return a new object. 
+For `Rational::operator*`, that means either the following code or something essentially equivalent:
+```c++
+inline const Rational operator*(const Rational & lhs, const Rational & rhs)
+{
+    return Rational(lhs.n * rhs.n, lhs.d * rhs.d);
+}
+```
+Sure, you may incur the cost of constructing and destructing `operator*`’s return value, 
+but in the long run, that’s a small price to pay for correct behavior. 
+Besides, the bill that so terrifies you may never arrive. 
+Like all programming languages, C++ allows compiler implementers to apply optimizations
+to improve the performance of the generated code without changing its observable behavior, 
+and it turns out that in some cases, 
+construction and destruction of `operator*`’s return value can be safely eliminated. 
+When compilers take advantage of that fact (and compilers often do), 
+your program continues to behave the way it’s supposed to, just faster than you expected.
+It all boils down to this: 
+when deciding between returning a reference and returning an object, 
+your job is to make the choice that offers correct behavior. 
+Let your compiler vendors wrestle with figuring out how to make that choice as inexpensive as possible.
 
 
 
