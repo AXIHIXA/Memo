@@ -724,6 +724,7 @@ Directory::Directory(params)
 
 // this replaces the tempDir object; 
 // it could be static in the Directory class
+// Meyers' Singleton flavor
 Directory & tempDir() 
 { 
     static Directory td(params);  // define & initialize local static object
