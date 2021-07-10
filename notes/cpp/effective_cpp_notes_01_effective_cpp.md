@@ -2762,6 +2762,197 @@ Let your compiler vendors wrestle with figuring out how to make that choice as i
   Doing so increases encapsulation, packaging flexibility, and functional extensibility.
 
 
+```c++
+class WebBrowser
+{
+public:
+    // ...
+    void clearCache();
+    void clearHistory();
+    void removeCookies();
+    void clearEverything();  // calls clearCache, clearHistory, and removeCookies
+    // ...
+};
+```
+The functionality of `clearEverything` could also be provided by a non-member function 
+that calls the appropriate member functions:
+```c++
+void clearBrowser(WebBrowser & wb)
+{
+    wb.clearCache();
+    wb.clearHistory();
+    wb.removeCookies();
+}
+```
+Object-oriented principles dictate that data and the functions that operate on them should be bundled together, 
+and that suggests that the member function is the better choice. 
+Unfortunately, this suggestion is incorrect. 
+It’s based on a misunderstanding of what being object-oriented means. 
+Object-oriented principles dictate that data should be as <u>_encapsulated_</u> as possible. 
+Counterintuitively, the member function `clearEverything` actually yields less encapsulation than the non-member `clearBrowser`. 
+Furthermore, offering the non-member function allows for greater packaging flexibility for `WebBrowser`-related functionality, 
+and that, in turn, yields fewer compilation dependencies and an increase in `WebBrowser` extensibility. 
+The non-member approach is thus better than a member function in many ways. It’s important to understand why.
+
+
+We’ll begin with encapsulation. 
+If something is encapsulated, it’s hidden from view. 
+The more something is encapsulated, the fewer things can see it. 
+The fewer things can see it, the greater flexibility we have to change it, 
+because our changes directly affect only those things that can see what we change. 
+The greater something is encapsulated, then, the greater our ability to change it. 
+That’s the reason we value encapsulation in the first place: it affords us the flexibility to change things
+in a way that affects only a limited number of clients.
+Consider the data associated with an object. The less code that can
+see the data (i.e., access it), the more the data is encapsulated, and
+the more freely we can change characteristics of an object’s data, such
+as the number of data members, their types, etc. As a coarse-grained
+measure of how much code can see a piece of data, we can count the
+number of functions that can access that data: the more functions
+that can access it, the less encapsulated the data.
+
+
+Consider the data associated with an object. 
+The less code that can see (access) the data, the more the data is encapsulated, 
+and the more freely we can change characteristics of an object’s data, 
+such as the number of data members, their types, etc. 
+As a coarse-grained measure of how much code can see a piece of data, 
+we can count the number of functions that can access that data: 
+the more functions that can access it, the less encapsulated the data.
+
+
+Data members should be `private`, otherwise an unlimited number of functions can access them.
+`public` / `protected` data members have no encapsulation at all. 
+For data members that are `private`, 
+the number of functions that can access them is 
+the number of member functions of the class plus the number of `friend` functions, 
+because only members and `friend`s have access to `private` members. 
+Given a choice between a member function 
+(which can access not only the `private` data, but also `private` functions, `enum`s, aliases, etc.)
+and a non-member non-`friend` function 
+(which can access none of these things) providing the same functionality, 
+the choice yielding greater encapsulation is the non-member non-`friend` function,
+because it doesn’t increase the number of functions that can access the `private` parts of the class. 
+This explains why `clearBrowser` (the nonmember non-`friend` function) 
+is preferable to `clearEverything` (the member function): 
+it yields greater encapsulation in the `WebBrowser` class.
+
+
+At this point, two things are worth noting. 
+First, this reasoning applies only to non-member non-`friend` functions. 
+`friend`s have the same access to a class’s `private` members that member functions have,
+hence the same impact on encapsulation. 
+From an encapsulation point of view, the choice isn’t between member and non-member functions,
+it’s between member functions and non-member non-`friend` functions. 
+(Encapsulation isn’t the only point of view, of course.
+Item 24 explains that when it comes to <u>_implicit type conversions_</u>, 
+the choice is between member and non-member functions.)
+
+
+The second thing to note is that just because concerns about encapsulation dictate that 
+a function be a non-member of one class doesn’t mean it can’t be a member of another class. 
+This may prove a mild salve to programmers accustomed to languages where all functions must be in classes 
+(e.g., Eiffel, Java, C#, etc.). 
+For example, we could make `clearBrowser` a `static` member function of some utility class. 
+As long as it’s not part of (or a `friend` of) `WebBrowser`, 
+it doesn’t affect the encapsulation of `WebBrowser`’s `private` members.
+
+
+In C++, a more natural approach would be to make `clearBrowser` 
+a non-member function <u>_in the same namespace_</u> as `WebBrowser`:
+```c++
+namespace WebBrowserStuff
+{
+
+class WebBrowser
+{
+    // ...
+};
+
+void clearBrowser(WebBrowser & wb);
+
+// ...
+
+}  // namespace WebBrowserStuff
+```
+This has more going for it than naturalness, because unlike classes, namespaces can be spread across multiple source files. 
+That’s important, because functions like `clearBrowser` are convenience functions. 
+Being neither members nor `friend`s, they have no special access to `WebBrowser`, 
+so they can’t offer any functionality a `WebBrowser` client couldn’t already get in some other way. 
+For example, if `clearBrowser` didn’t exist, clients could just call `clearCache`, `clearHistory`, and `removeCookies` themselves.
+
+
+A class like `WebBrowser` might have a large number of convenience functions, 
+some related to bookmarks, others related to printing, still others related to cookie management, etc. 
+As a general rule, most clients will be interested in only some of these sets of convenience functions.
+There’s no reason for a client interested only in bookmark-related convenience functions to be compilation dependent on, 
+e.g., cookie-related convenience functions. 
+The straightforward way to separate them is to declare bookmark-related convenience functions in one header file,
+cookie-related convenience functions in a different header file, 
+printing-related convenience functions in a third, etc.:
+```c++
+/// “WebBrowser.h”
+/// header for class WebBrowser itself
+/// as well as “core” WebBrowser-related functionality
+namespace WebBrowserStuff
+{
+
+class WebBrowser
+{
+    // ...
+};
+
+// “core” related functionality, e.g.
+// non-member functions almost all clients need
+// ... 
+
+}  // namespace WebBrowserStuff
+
+/// “WebBrowserBookmarks.h”
+namespace WebBrowserStuff
+{
+
+// bookmark-related convenience functions
+// ... 
+
+}  // namespace WebBrowserStuff
+
+/// “WebBrowserCookies.h”
+namespace WebBrowserStuff
+{
+
+// cookie-related convenience functions
+// ... 
+
+}  // namespace WebBrowserStuff
+```
+Note that this is exactly how the standard C++ library is organized.
+Rather than having a single monolithic `<C++StandardLibrary>` header (`<bits/stdc++.h>` is a `gcc` extension)
+containing everything in `namespace std`, 
+there are dozens of headers (e.g., `<vector>`, `<algorithm>`, `<memory>`, etc.),
+each declaring some of the functionality in `std`. 
+Clients who use only `std::vector`-related functionality aren’t required to `#include <memory>`; 
+clients who don’t use `std::list` don’t have to `#include <list>`. 
+This allows clients to be compilation dependent only on the parts of the system they actually use.
+(See Item 31 for a discussion of other ways to reduce compilation dependencies.)
+Partitioning functionality in this way is not possible when it comes from a class’s member functions,
+because a class must be defined in its entirety; it can’t be split into pieces.
+
+
+Putting all convenience functions in multiple header files but one namespace 
+also means that clients can easily extend the set of convenience functions. 
+All they have to do is add more non-member non-`friend` functions to the namespace. 
+For example, if a `WebBrowser` client decides to write convenience functions related to downloading images,
+he or she just needs to create a new header file containing 
+the declarations of those functions in the `WebBrowserStuff` namespace. 
+The new functions are now as available and as integrated as all other convenience functions. 
+This is another feature classes can’t offer, because class definitions are closed to extension by clients.
+Sure, clients can derive new classes, but derived classes have no access to encapsulated
+(i.e., `private`) members in the base class, 
+so such “extended functionality” has second-class status. 
+Besides, as Item 7 explains, not all classes are designed to be base classes.
+
+
 
 
 
@@ -2771,6 +2962,22 @@ Let your compiler vendors wrestle with figuring out how to make that choice as i
 - If you need type conversions on all parameters to a function
   (including the one that would otherwise be pointed to by the `this` pointer),
   the function must be a non-member.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
