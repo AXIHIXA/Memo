@@ -23,8 +23,8 @@ chmod 644 ~/.bashrc ~/.bash_history
 ## 🌱 dependencies
 
 ```
-# do NOT install tmux mlocate xfce4-terminal filemanager-actions in WSL! 
-sudo apt install tmux mlocate xfce4-terminal filemanager-actions
+# do NOT install tmux mlocate xfce4-terminal filemanager-actions nautilus-actions in WSL! 
+sudo apt install tmux mlocate xfce4-terminal filemanager-actions nautilus-actions
 
 sudo apt install build-essential git gcc g++ gdb make cmake clang vim
 
@@ -48,12 +48,12 @@ The default File Browser in GNOME (ubuntu 20.04) is nautilus.
 The "Open in Terminal" action in nautilus right click context menu is a plugin by GNOME Terminal so it's hard-coded. 
 We may add out own action "Open in xfce4 Terminal" via nautilus-actions. 
 
-1. FileManager-Actions Configuration Tool -> Runtime Preferences -> Nautilus menu layout -> disable "Create a root 'FileManager_Actions' menu"; 
-2. Define a new action, command: 
+1. FileManager-Actions Configuration Tool -> Preferences -> Runtime Preferences -> Nautilus menu layout -> disable "Create a root 'FileManager_Actions' menu"; 
+2. Define a new action `Open in xfce4 Terminal`, command: 
     - Path: `/bin/xfce4-terminal`
     - Parameters: `--working-directory=%d/%b`
     - Working directory: `%d`
-
+3. Use command `nautilus -q` to restart nautilus. 
 
 
 
