@@ -16,11 +16,12 @@ Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note.
 - 然后再进入boot options（DELL笔记本开机按F12），选择从U盘启动
 - 在选择install ubuntu之前，按e进入grub编辑页面，将倒数第二行的 quiet splash 替换成 nomodeset（后面安装成功，并利用软件更新器更新了软件后，启动黑屏问题也是这样解决），按F10保存，即可成功进入安装程序
 - 安装过程中的磁盘分区（其他步骤直接点继续就可以了，所以说一下如何进行磁盘分区）在进入到安装类型（install type）这一步骤的时候，建议选择其他（something else）手动进行分区，这样可以自己控制磁盘的分配。手动分区要在空闲分区（free space）分配，点击"+"号即可分配，分配的大小类型如下所示:　 
+- The size of the `swap` partition is copied from [this link](https://help.ubuntu.com/community/SwapFaq), `8G` is for `64G` memory. 
         
 ```
 partition    file system    size
 efi          --             300M
-swap         swap           32G
+swap         swap           8G
 /boot        ext4           1G
 /            ext4           remaining
 ```
