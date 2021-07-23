@@ -1,3 +1,13 @@
+# Windows
+
+`Shift + F10` to open cmd in Windows Installer. 
+```
+diskpart
+list disk
+select disk <num>
+detail disk
+```
+
 # Ubuntu Installation
 
 Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note. 
