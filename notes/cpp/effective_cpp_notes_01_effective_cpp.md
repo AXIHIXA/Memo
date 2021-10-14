@@ -895,7 +895,7 @@ It is possible to get bitten by the non-virtual destructor problem even in the c
 For example, the standard `std::string` type contains no virtual functions, 
 but misguided programmers sometimes use it as a base class anyway:
 ```c++
-class SpecialString: public std::string 
+class SpecialString : public std::string 
 { 
     // bad idea! std::string has a non-virtual destructor
     // ... 
@@ -1470,7 +1470,7 @@ the two objects need not even be declared to be of the same type if they’re fr
 ```c++
 class Base { ... };
 
-class Derived: public Base { ... };
+class Derived : public Base { ... };
 
 // rb and *pd might actually be the same object
 void doSomething(const Base & rb, Derived * pd); 
@@ -1491,7 +1491,7 @@ class Widget
     // ...
     
 private:
-    Bitmap * pb; // ptr to a heap-allocated object
+    Bitmap * pb;  // ptr to a heap-allocated object
 };
 ```
 Here’s an implementation of `Widget::operator=` that looks reasonable on the surface 
@@ -1546,6 +1546,7 @@ class Widget
 {
     // ...
 
+    // exchange *this's and rhs's data
     void swap(Widget & rhs);
     
     // ...
@@ -1900,8 +1901,8 @@ std::mutex mutex;  // define the mutex you need to use
 ```
 This is fine, but what should happen if a lock guard object is copied?
 ```c++
-Lock ml1(&m);   // lock m
-Lock ml2(ml1);  // copy ml1 to ml2; what should happen here?
+Lock ml1(mutex);  // lock mutex
+Lock ml2(ml1);    // copy ml1 to ml2; what should happen here?
 ```
 This is a specific example of a more general question, one that every RAII class author must confront: 
 what should happen when an RAII object is copied? 
