@@ -3152,6 +3152,23 @@ public:
 
 #### `dynamic_cast`
 
+**Performance**. 
+Many implementations of `dynamic_cast` are slow. 
+E.g., one common implementation is based on `strcmp` of class names. 
+If you're performing a `dynamic_cast` on an object in a single-inheritance hierarchy 10 levels deep, 
+each `dynamic_cast` under such an implementation could cost you _up to 10 calls to `strcmp`_ to compare class names! 
+There are reasons that some implementations work this way (they have to do with support for dynamic linking). 
+
+The need for `dynamic_cast` generally arises when performing derived class operations on base class pointers/references. 
+There are two ways to bypass this issue:
+
+1. Use `Container<std::shared_ptr<Derived *>>` directly. 
+2. Use virtual functions. 
+
+
+
+
+
 
 ### 📌 Item 28: Avoid returning handles to object internals
 
@@ -3170,8 +3187,11 @@ public:
 - Exception-safe functions leak no resources
   and allow no data structures to become corrupted,
   even when exceptions are thrown.
-  Such functions offer the basic, strong, or `nothrow` guarantees.
-- The strong guarantee can often be implemented via copy-andswap,
+  Such functions offer the 
+- basic (no resource leak, no corrupted data), 
+  strong (no resource leak, data either completely updated or completely untouched), 
+  or `noexcept` guarantees. 
+- The strong guarantee can often be implemented via copy-and-swap,
   but the strong guarantee is not practical for all functions.
 - A function can usually offer a guarantee **no** stronger
   than the weakest guarantee of the functions it calls.
@@ -3184,11 +3204,50 @@ public:
 ### 📌 Item 30: Understand the ins and outs of inlining
 
 - Limit most inlining to small, frequently called functions.
-  This facilitates debugging and binary upgradability,
-  minimizes potential code bloat,
+  This facilitates debugging and binary upgradability, minimizes potential code bloat,
   and maximizes the chances of greater program speed.
-- **Don't** declare function templates `inline`
-  just because they appear in header files.
+- **Don't** declare function templates `inline` just because they appear in header files.
+
+
+`inline` is a request to compilers, **not** a command. 
+The request can be given implicitly or explicitly. 
+The implicit way is to _define a function inside a class definition_.
+The explicit way to declare an inline function is to precede its definition with the `inline` keyword. 
+
+Inline functions must typically be in header files, because most build environments do inlining during compilation. 
+In order to replace a function call with the body of the called function,
+compilers must know what the function looks like. 
+(Some build environments can inline during linking, and a few can actually inline at runtime. 
+Such environments are the exception, however, not the rule. 
+Inlining in most C++ programs is a compile-time activity. )
+
+Templates are typically in header files, 
+because compilers need to know what a template looks like in order to instantiate it when it's used. 
+(Again, this is not universal. 
+Some build environments perform template instantiation during linking. 
+However, compile-time instantiation is more common. )
+
+Template instantiation is independent of inlining. 
+
+`inline` is a request that compilers may ignore. 
+Most compilers refuse to inline functions they deem too complicated (e.g., those that contain loops or are recursive).  
+All but the most trivial calls to virtual functions defy inlining (can not determine which function to call during compile time). 
+
+Sometimes compilers generate a function body for an inline function 
+even when they are perfectly willing to inline the function. 
+For example, if your program takes the address of an inline function (explictly by programmer, or implicitly by compiler), 
+compilers must typically generate an outlined function body for it.
+```c++
+inline void f() 
+{
+    // ...
+}
+
+void (*pf)() = f;
+
+f();   // inline
+pf();  // NOT inline
+```
 
 
 
