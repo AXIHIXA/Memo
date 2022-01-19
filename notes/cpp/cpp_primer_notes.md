@@ -2211,6 +2211,7 @@ Both prvalues and xvalues are rvalue expressions.
     - *左值* ，如果`T`为 *左值引用* 或 *函数类型的右值引用*  
     - *将亡值* ，如果`T`为 *对象类型的右值引用*
     - *纯右值* ，其他情况。此时生成转换结果需要一次 *拷贝构造* 
+- See Effective Cpp Notes Item 27: Minimize casting for common pitfalls!
 
 #### [`static_cast`](https://en.cppreference.com/w/cpp/language/static_cast)
 

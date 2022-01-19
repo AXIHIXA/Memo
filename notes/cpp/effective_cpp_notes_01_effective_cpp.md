@@ -2959,16 +2959,82 @@ as it could have been implemented only using `Rational`'s public interfaces.
 
 
 
-### 📌 Item 25: Consider support for a non-throwing `swap`
+### 📌 Item 25: Consider support for a `noexcept` `swap`
 
 - Provide a swap member function when `std::swap` would be inefficient for your type.
-  Make sure your swap **doesn't** throw exceptions.
+  Make sure your swap is `noexcept`.
 - If you offer a member `swap`, also offer a non-member `swap` that calls the member.
   For classes (not templates), specialize `std::swap`, too.
+  For class templates, overload swap (as function templates can **not** be partially specialized. ). 
 - When calling `swap`, employ a using declaration `using std::swap;`,
   then call `swap` **without** namespace qualification.
 - It's fine to totally specialize `std` templates for user-defined types,
-  but **never** try to add something completely new to `std`.
+  but **never** try to add something completely new to `namespace std`.
+
+
+First, if the default implementation of swap 
+offers acceptable efficiency for your class or class template, 
+you don't need to do anything. 
+
+Second, if the default implementation of swap isn't efficient enough 
+(which almost always means that your class or template is using some variation of the _pimpl idiom_), do the following:
+
+1. Offer a `public` `noexcept` swap member function that efficiently swaps the value of two objects of your type.
+2. Offer a non-member swap in the same namespace as your class or template. Have it call your swap member function.
+3. If you're writing a class (not a class template), specialize `std::swap` for your class. 
+   Have it also call your swap member function.
+   
+Finally, if you're calling swap, be sure to include a `using` declaration to make `std::swap` visible in your function, 
+then call swap without any namespace qualification.
+
+```c++
+/// Adapted and simplified from 
+/// <bits/move.h>
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+template <typename T>
+inline
+typename std::enable_if_t<std::__and_v<std::__not_<std::__is_tuple_like<T>>,
+        std::is_move_constructible<T>,
+        std::is_move_assignable<T>>>
+swap(T & a, T & b)
+noexcept(std::__and_v<std::is_nothrow_move_constructible<T>,
+        std::is_nothrow_move_assignable<T>>)
+{
+    T tmp = std::move(a);
+    a = std::move(b);
+    b = std::move(tmp);
+}
+```
+
+```c++
+namespace WidgetStuff
+{
+
+template <typename T>
+class Widget
+{
+public: 
+    // ...
+    
+    void swap(Widget & other)
+    {
+        using std::swap;
+        swap(this->pImpl, other.pImpl);
+    }
+    
+    // ...
+};
+
+// ...
+
+template <typename T>
+void swap(Widget<T> & a, Widget<T> & b)
+{
+    a.swap(b);
+}
+
+}  // namespace WidgetStuff
+```
 
 
 
@@ -2996,9 +3062,95 @@ as it could have been implemented only using `Rational`'s public interfaces.
 - Prefer C++-style casts to old-style casts.
   They are easier to see, and they are more specific about what they do.
 
+#### Single object with multiple address
 
+```c++
+struct Base1
+{
+    virtual ~Base1() = default;
+};
 
+struct Base2
+{
+    virtual ~Base2() = default;
+};
 
+struct Derived : public Base1, public Base2
+{
+    ~Derived() override = default;
+};
+
+Derived obj;
+Derived * d = &obj;  // 0x7ffd59fcc230
+Base1 * b1 = &obj;   // 0x7ffd59fcc230
+Base2 * b2 = &obj;   // 0x7ffd59fcc238 !!!
+```
+When creating a base class pointer to a derived class object, 
+the two pointer values will **not** be the same. 
+When that's the case,
+an offset is applied at runtime to the `Derived *` pointer to get the correct `Base *` pointer value.
+
+This example demonstrates that a single object (e.g., an object of type `Derived`) might have more than one address 
+(e.g., its address when pointed to by a `Base2 *` pointer and its address when pointed to by a `Derived *` pointer). 
+When multiple inheritance is in use, it happens virtually all the time, but it can happen under single inheritance, too. 
+Among other things, that means you should generally avoid ~~making assumptions about how things are laid out~~ in C++, 
+and you should certainly **not** perform casts based on such assumptions. 
+For example, casting object addresses to `char *` and then using pointer arithmetic on them 
+almost always yields _undefined behavior_. 
+
+#### `static_cast<Non-reference-type>` yields prvalue copy
+
+An interesting thing about casts is that it's easy to write something that 
+looks right (and might be right in other languages) but is wrong. 
+Many application frameworks require that 
+virtual member function implementations in derived classes call their base class counterparts first.
+Suppose we have a `Window` base class and a `SpecialWindow` derived class, 
+both of which define the virtual function `onResize`. 
+Further suppose that `SpecialWindow::onResize` is expected to invoke `Window::onResize` first.
+Here's a way to implement this that looks like it does the right thing, but **doesn't**:
+```c++
+class Window
+{
+public:
+    virtual void onResize()
+    {
+        // ...
+    }
+};
+
+class SpecialWindow : public Window
+{
+public:
+    void onResize() override
+    {
+        // WRONG! 
+        // onResize is applied on a temporary Window instance returned by static_cast!
+        static_cast<Window>(*this).onResize(); 
+        // ...
+    }
+};
+```
+`Window::onResize` is **not** invoked on the current object! 
+Instead, the cast creates a new, temporary copy of the base class part of `*this`, then invokes `onResize` on the copy! 
+The above code it calls `Window::onResize` on a copy of the base class part of the current object 
+before performing `SpecialWindow`-specific actions on the current object.
+The solution is to eliminate the cast. 
+You don't want to trick compilers into treating `*this` as a base class object; 
+you want to call the base class version of `onResize` on the current object. 
+```c++
+class SpecialWindow : public Window
+{
+public:
+    void onResize() override
+    {
+        // Correct. Call Window::onResize() on *this
+        Window::onResize();
+        // ...
+    }
+};
+```
+
+#### `dynamic_cast`
 
 
 ### 📌 Item 28: Avoid returning handles to object internals
