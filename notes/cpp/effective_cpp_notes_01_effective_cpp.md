@@ -3428,7 +3428,7 @@ std::cout << pp->name() << ' ' << pp->birthday << ' ' << pp->address() << '\n';
 
 - Alternatives to virtual functions include the NVI idiom and various forms of the Strategy design pattern.
   The NVI idiom is itself an example of the Template Method design pattern.
-- A disadvantage of moving functionality from a member function to a function outside the class
+- A disadvantage of Template Method (moving functionality from a member function to a function outside the class)
   is that the non-member function lacks access to the class's non-public members.
 - `std::function` objects act like generalized function pointers.
   Such objects support all callable entities compatible with a given target signature.
@@ -3446,7 +3446,7 @@ public:
 #### The Template Method Pattern via the Non-Virtual Interface (NVI) Idiom
 
 _Non-Virtual Interface (NVI) Idiom_: 
-Have clients call private virtual functions indirectly through public non-virtual member functions.
+Have clients call **private** virtual functions indirectly through public non-virtual member functions.
 This is a particular manifestation of the more general design pattern called _Template Method_. 
 ```c++
 class GameCharacter 
@@ -3472,6 +3472,37 @@ private:
 
 #### The Strategy Pattern via Function Pointers
 
+Strategy Pattern: 
+```c++
+class GameCharacter;
+
+int calculateHealth(const GameCharacter & gc);
+
+class GameCharacter
+{
+public:
+    using HealthCalculator = int (*)(const GameCharacter &);
+
+    explicit GameCharacter(HealthCalculator hcf = calculateHealth) : healthFunc(hcf)
+    {
+        
+    }
+
+    int healthValue() const
+    {
+        return healthCalculator(*this);
+    }
+    
+    // ...
+    
+private:
+    HealthCalculator healthCalculator;
+};
+```
+
+#### The Strategy Pattern via `std::function`
+
+Skipped. (`std::function` and `std::bind` are dissed in Effective Modern C++. )
 
 
 
@@ -3480,7 +3511,7 @@ private:
 
 ### 📌 Item 36: Never redefine an inherited non-virtual function
 
-- Never redefine an inherited non-virtual function.
+- **Never** redefine an inherited non-virtual function.
 
 
 
@@ -3501,8 +3532,10 @@ private:
 ### 📌 Item 38: Model “has-a” or “is-implemented-in-terms-of” through composition
 
 - Composition has meanings completely different from that of public inheritance.
-- In the application domain, composition means has-a. In the implementation domain,
-  it means is-implemented-in-terms-of.
+- In the application domain, composition means has-a. 
+  In the implementation domain, it means is-implemented-in-terms-of.
+
+
 
 
 
@@ -3540,7 +3573,17 @@ private:
 
 ### 🎯 Chapter 7. Templates and Generic Programming
 
-### 📌 Item 41: Understand implicit interfaces and compiletime polymorphism
+The C++ template mechanism is itself _Turing-complete_: 
+It can be used to compute any computable value. 
+That led to _Template Metaprogramming (TMP)_: 
+The creation of programs that execute inside C++ compilers and that stop running when compilation is complete. 
+
+
+
+
+
+
+### 📌 Item 41: Understand implicit interfaces and compile-time polymorphism
 
 - Both classes and templates support interfaces and polymorphism.
 - For classes, interfaces are explicit and centered on function signatures.
