@@ -3415,9 +3415,9 @@ std::cout << pp->name() << ' ' << pp->birthday << ' ' << pp->address() << '\n';
 
 - Inheritance of interface is different from inheritance of implementation.
   Under public inheritance, derived classes always inherit base class interfaces.
-- Pure virtual functions specify inheritance of interface only.
-- Simple (impure) virtual functions specify inheritance of interface plus inheritance of a default implementation.
-- Non-virtual functions specify inheritance of interface plus inheritance of a mandatory implementation.
+- **Pure virtual functions** specify inheritance of _interface only_.
+- **Simple (impure) virtual functions** specify inheritance of interface plus inheritance of a _default implementation_.
+- **Non-virtual functions** specify inheritance of interface plus inheritance of a _mandatory implementation_.
 
 
 
@@ -3430,8 +3430,48 @@ std::cout << pp->name() << ' ' << pp->birthday << ' ' << pp->address() << '\n';
   The NVI idiom is itself an example of the Template Method design pattern.
 - A disadvantage of moving functionality from a member function to a function outside the class
   is that the non-member function lacks access to the class's non-public members.
-- `tr1::function` objects act like generalized function pointers.
+- `std::function` objects act like generalized function pointers.
   Such objects support all callable entities compatible with a given target signature.
+
+```c++
+class GameCharacter
+{
+public:
+    virtual int healthValue() const;  // impurity implies there is a default implementation
+    
+    // ... 
+};
+```
+
+#### The Template Method Pattern via the Non-Virtual Interface (NVI) Idiom
+
+_Non-Virtual Interface (NVI) Idiom_: 
+Have clients call private virtual functions indirectly through public non-virtual member functions.
+This is a particular manifestation of the more general design pattern called _Template Method_. 
+```c++
+class GameCharacter 
+{
+public:
+    int healthValue() const
+    {
+        // ... 
+        int retVal = doHealthValue();
+        // ...
+        return retVal;
+    }
+    
+    // ...
+    
+private:
+    virtual int doHealthValue() const
+    {
+        // default algorithm for calculating character’s health
+    }
+};
+```
+
+#### The Strategy Pattern via Function Pointers
+
 
 
 
