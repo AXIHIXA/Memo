@@ -3602,6 +3602,24 @@ The creation of programs that execute inside C++ compilers and that stop running
 - Use `typename` to identify nested dependent type names,
   **except** in base class lists or as a base class identifier in a member initialization list.
 
+The exception to the “`typename` must precede nested dependent type names” rule is that 
+`typename` must not precede nested dependent type names in a list of base classes 
+or as a base class identifier in a member initialization list.
+```c++
+template <typename T>
+class Derived : public Base<T>::Nested  // base class list: typename not allowed
+{ 
+public: 
+    explicit Derived(int x)
+            : Base<T>::Nested(x)  // base class identifier in member initializer list: typename not allowed
+    {
+        // use of nested dependent typename not in a base class list 
+        // or as a base class identifier in a member initializer list: typename required
+        typename Base<T>::Nested temp; 
+    }
+};
+```
+
 
 
 
@@ -3610,7 +3628,7 @@ The creation of programs that execute inside C++ compilers and that stop running
 ### 📌 Item 43: Know how to access names in templatized base classes
 
 - In derived class templates, refer to names in base class templates
-  via a `this->` prefix,
+  via a `this->` prefix (hints compiler to search base template scope too),
   via using declarations,
   or via an explicit base class qualification.
 
