@@ -3257,10 +3257,11 @@ pf();  // NOT inline
 ### 📌 Item 31: Minimize compilation dependencies between files
 
 - The general idea behind minimizing compilation dependencies
-  is to depend on declarations instead of definitions.
-  Two approaches based on this idea are Handle classes and Interface classes.
+  is to depend on declarations instead of definitions (except standard libraries).
+  Two approaches based on this idea are Handle classes (pimpl idiom) and Interface classes (abstract base class).
 - Library header files should exist in full and declaration-only forms.
-  This applies regardless of whether templates are involved.
+  This applies regardless of whether templates are involved 
+  (Some environment allows template to be implemented separately).
 
 
 A C++ class definition specifies not only a class interface but also a fair number of implementation details.
@@ -3291,9 +3292,10 @@ private:
 };
 ```
 
-Solution: 
-
-1. <u><i>Pimpl Idiom</i></u>: Hide object implementation behind pointers
+<u><i>Pimpl Idiom</i></u>: 
+A _handle class_ hide object implementation behind pointers. 
+CONS: Adds one additional level of indirection per access. 
+Takes more space and incurs dynamic memory management. 
 ```c++
 // standard library should NEVER be forward-declared
 #include <memory>
@@ -3320,6 +3322,63 @@ private:
     struct Impl;
     std::unique_ptr<Impl> pImpl;
 };
+```
+
+1. **Avoid using objects when references and pointers will do**.
+2. **Depend on forward declarations (except standard libraries) instead of definitions whenever you can**.
+3. **Provide separate header files for both definitions and forward declarations** 
+   (`Widget.h` + `WidgetFwd.h`, or `Widget.h` + `WidgetImpl.h`). 
+
+<u><i>Interface Class</i></u>: 
+Abstract base class + derived implementation class. 
+CONS: Pay for indirect jump in virtual function calls. Takes more space (virtual function table pointer). 
+```c++
+// "Person.h"
+class Person
+{
+public:
+    virtual ~Person() = 0;
+
+    virtual std::string name() const = 0;
+    virtual std::string birthDate() const = 0;
+    virtual std::string address() const = 0;
+
+    static std::unique_ptr<Person> create(const std::string & name, const Date & birthday, const Address & address);
+
+    // ...
+};
+
+// "PersonImpl.h"
+class PersonImpl : public Person
+{
+public:
+    PersonImpl(const std::string & name, const Date & birthday, const Address & address)
+            : mName(name), mBirthday(birthday), mAddress(address)
+    {
+    
+    }
+
+    virtual ~PersonImpl() = default;
+    
+    std::string name() const;
+    std::string birthDate() const;
+    std::string address() const;
+
+private:
+    std::string mName;
+    Date mBirthday;
+    Address mAddress;
+};
+
+// "PersonImpl.cpp"
+std::unique_ptr<Person> Person::create(const std::string & name, const Date & birthday, const Address & address)
+{
+    return std::make_unique<PersonImpl>(name, birthday, address);
+}
+
+// client code somewhere
+std::unique_ptr<Person> pp(Person::create(name, birthday, address));
+std::cout << pp->name() << ' ' << pp->birthday << ' ' << pp->address() << '\n';
 ```
 
 
