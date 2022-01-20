@@ -3263,6 +3263,66 @@ pf();  // NOT inline
   This applies regardless of whether templates are involved.
 
 
+A C++ class definition specifies not only a class interface but also a fair number of implementation details.
+The class `Person` **can’t** be compiled without access to definitions for data members, 
+which are typically _provided through `#include` directives_. 
+```c++
+#include <string>     // dependency
+
+#include "Address.h"  // dependency
+#include "Date.h"     // dependency
+
+
+class Person
+{
+public:
+    Person(const std::string & name, const Date & birthday, const Address & address);
+
+    std::string name() const;
+    std::string birthday() const;
+    std::string address() const;
+
+    // ...
+    
+private:
+    std::string mName;  // implementation detail
+    Date mBirthday;     // implementation detail
+    Address mAddress;   // implementation detail
+};
+```
+
+Solution: 
+
+1. <u><i>Pimpl Idiom</i></u>: Hide object implementation behind pointers
+```c++
+// standard library should NEVER be forward-declared
+#include <memory>
+#include <string>     
+
+
+class Date;
+class Address;
+
+
+class Person
+{
+public:
+    Person(const std::string & name, const Date & birthday, const Address & address);
+    ~Person();  // declaration only, = default in implementation file, to bypass unique_ptr-related type error
+    
+    std::string name() const;
+    std::string birthday() const;
+    std::string address() const;
+
+    // ...
+    
+private:
+    struct Impl;
+    std::unique_ptr<Impl> pImpl;
+};
+```
+
+
 
 
 
