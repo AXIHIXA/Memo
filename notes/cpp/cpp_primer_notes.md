@@ -2875,46 +2875,55 @@ item.combine(std::cin);                                  // 错误，对应构�
     - `C`有友元`B`、`B`有友元`A`，则`A`能访问`B`的私有成员，但不能访问`C`的私有成员
 - 在类定义开始或结束的地方**集中声明**友元
 - *友元函数*
-    - 友元函数的声明仅仅是指定访问权限，并不是真正的函数声明。想要使用友元，仍**另需一单独的函数声明**
+    - 友元函数的声明仅仅是指定访问权限，并不是真正的函数声明。想要使用友元，仍**另需一单独的函数声明**（重载运算符友元除外，**不需**单独声明）
     - 对于重载函数，必须对特定的函数（特有的参数列表）单独声明
 - *友元类*
     - 令一个类成为友元
 - *友元成员函数*
     - 令一个类的某个成员函数成为友元
-- *友元声明和作用域*
-    - 关于这段代码最重要的是：理解友元声明的作用是**影响访问权限**，它本身**并非**普通意义上的函数声明
-    - 并不是所有编译器都强制执行关于友元的这一规定
-    ```
-    struct X
-    {
-        friend void f()
-        { 
-            // friend functions can be defined in the class
-            // this does NOT serve as declaration, even though this is already a defination
-            // to use this function, another declaration is REQUIRED
-        }
+      - *友元声明和作用域*
+          - 关于这段代码最重要的是：理解友元声明的作用是**影响访问权限**，它本身**并非**普通意义上的函数声明（重载运算符友元除外，**不需**单独声明）
+          - 并不是所有编译器都强制执行关于友元的这一规定
+          ```
+          struct X
+          {
+              friend void f()
+              { 
+                  // friend functions can be defined in the class
+                  // this does NOT serve as declaration, even though this is already a defination
+                  // to use this function, another declaration is REQUIRED
+              }
+  
+              friend X operator+(const X & x1, const X & x2)
+              {
+                  // this stuff serves as declaration somehow 
+                  return {x1.v + x2.v};
+              }
 
-        X()
-        {
-            f();     // ERROR: no declaration for f
-        } 
+              X()
+              {
+                  f();     // ERROR: no declaration for f
+                  X tmp = X {1} + X {2};  // CORRECT  
+              } 
         
-        void g();
-        void h();
-    };
+              void g();
+              void h();
+  
+              int v;
+          };
 
-    void X::g()
-    {
-        return f();  // ERROR: f hasn't been declared
-    } 
+          void X::g()
+          {
+              return f();  // ERROR: f hasn't been declared
+          } 
 
-    void f();        // declares the function defined inside X
+          void f();        // declares the function defined inside X
 
-    void X::h()
-    {
-        return f();  // OK: declaration for f is now in scope
-    } 
-    ```
+          void X::h()
+          {
+              return f();  // OK: declaration for f is now in scope
+          } 
+          ```
 
 #### 类的类型成员
 
