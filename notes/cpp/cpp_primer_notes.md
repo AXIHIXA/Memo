@@ -2902,7 +2902,7 @@ item.combine(std::cin);                                  // 错误，对应构�
 
               X()
               {
-                  f();     // ERROR: no declaration for f
+                  f();                    // ERROR: no declaration for f
                   X tmp = X {1} + X {2};  // CORRECT  
               } 
         
