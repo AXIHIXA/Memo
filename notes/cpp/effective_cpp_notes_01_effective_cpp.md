@@ -3509,9 +3509,9 @@ Skipped. (`std::function` and `std::bind` are dissed in Effective Modern C++. )
 
 
 
-### 📌 Item 36: Never redefine an inherited non-virtual function
+### 📌 Item 36: Never re-define an inherited non-virtual function
 
-- **Never** redefine an inherited non-virtual function.
+- **Never** re-define an inherited non-virtual function.
 
 
 
@@ -3523,6 +3523,10 @@ Skipped. (`std::function` and `std::bind` are dissed in Effective Modern C++. )
 - **Never** redefine an inherited default parameter value,
   because default parameter values are statically bound,
   while virtual functions (the only functions you should be overriding) are dynamically bound.
+
+
+You may end up invoking a virtual function defined in a derived class 
+but using a default parameter value from a base class. 
 
 
 
@@ -3542,9 +3546,9 @@ Skipped. (`std::function` and `std::bind` are dissed in Effective Modern C++. )
 
 
 
-### 📌 Item 39: Use private inheritance judiciously
+### 📌 Item 39: Use private inheritance judiciously (only when having considered all the alternatives)
 
-- Private inheritance means is-implemented-in-terms of.
+- Private inheritance means is-implemented-in-terms-of.
   It's usually inferior to composition,
   but it makes sense when a derived class needs access to protected base class members
   or needs to redefine inherited virtual functions.
@@ -3552,19 +3556,60 @@ Skipped. (`std::function` and `std::bind` are dissed in Effective Modern C++. )
   This can be important for library developers who strive to minimize object sizes.
 
 
+In terms of "is-implemented-in-terms-of", private inheritance is not necessary, 
+as composition do the same stuff. 
+
+
+This accurately reflects the fact that the reason for the base class 
+is only to facilitate the derived classes’ implementations, 
+not to express a conceptual is-a relationship. 
+
+
+One common use of private inheritance could be something like `DisableCopy`:
+```c++
+// Almost identical to boost::noncopyable
+// available in <boost/core/noncopyable.hpp>
+// https://www.boost.org/doc/libs/1_63_0/libs/core/doc/html/core/noncopyable.html
+class DisableCopy
+{
+public:
+    DisableCopy(const DisableCopy &) = delete;
+    DisableCopy operator=(const DisableCopy &) = delete;
+    
+protected:
+    DisableCopy() = default;
+    ~DisableCopy() = default;
+};
+
+
+class Derived : private DisableCopy
+{
+public:
+    Derived() = default;
+    
+    // ...
+};`
+o
+```
 
 
 
 
-### 📌 Item 40: Use multiple inheritance judiciously
+
+
+### 📌 Item 40: Use multiple inheritance judiciously (only when having considered all the alternatives)
 
 - Multiple inheritance is more complex than single inheritance.
   It can lead to new ambiguity issues and to the need for virtual inheritance.
 - Virtual inheritance imposes costs in size, speed, and complexity of initialization and assignment.
-  It's most practical when virtual base classes have no data.
+  It's most practical when virtual base classes have no data (e.g. abstract virtual base class).
 - Multiple inheritance does have legitimate uses.
   One scenario involves combining public inheritance from an Interface class
   with private inheritance from a class that helps with implementation.
+
+
+One C++ multiple inheritance hierarchy: 
+`basic_ios` (virtual base), `basic_istream`, `basic_ostream`, `basic_iostream`. 
 
 
 
@@ -3587,9 +3632,108 @@ The creation of programs that execute inside C++ compilers and that stop running
 
 - Both classes and templates support interfaces and polymorphism.
 - For classes, interfaces are explicit and centered on function signatures.
-  Polymorphism occurs at runtime through virtual functions.
+  Polymorphism occurs _at runtime_ through virtual functions.
 - For template parameters, interfaces are implicit and based on valid expressions.
-  Polymorphism occurs during compilation through template instantiation and function overloading resolution.
+  Polymorphism occurs _during compilation_ through template instantiation and function overloading resolution.
+
+
+**Object-oriented programming (OOP)** revolves around _explicit interfaces_ and _runtime polymorphism_.
+```c++
+class Widget
+{
+public:
+    Widget();
+    
+    virtual ~Widget();
+    
+    virtual std::size_t size() const;
+    
+    virtual void normalize();
+    
+    void swap(Widget &);
+};
+
+
+void doProcessing(Widget & w)
+{
+    if (10 < w.size() && w != someNastyWidget)
+    {
+        Widget temp(w);
+        temp.normalize();
+        temp.swap(w);
+    }
+}
+```
+
+- Because `w` is declared to be of type `Widget`, `w` must support the `Widget` interface. 
+  We can look up this interface in the source code to see exactly what it looks like, 
+  so I call this an _explicit interface_: 
+ one explicitly visible in the source code.
+- Because some of `Widget`’s member functions are `virtual`, 
+ `w`’s calls  to those functions will exhibit _runtime polymorphism_: 
+  the specific function to call will be determined at runtime based on `w`’s dynamic type.
+
+
+**Template meta programming (TMP)** is fundamentally different. 
+Explicit interfaces and runtime polymorphism continue to exist yet being less important. 
+Instead, _implicit interfaces_ and _compile-time polymorphism_ move to the fore.
+```c++
+template <typename T>
+void doProcessing(T & w)
+{
+    if (10 < w.size() && w != someNastyWidget)
+    {
+        T temp(w);
+        temp.normalize();
+        temp.swap(w);
+    }
+}
+```
+- The interface that `w` must support is determined by the operations performed on `w` in the template. 
+  In this example, it appears that `T` must support the `size`, `normalize`, `swap` member functions, 
+  and be _copy-constructable_ and _comparable_. 
+  The set of expressions that must be valid in order for the template to compile 
+  is the _implicit interface_ that `T` must support. 
+- The calls to functions involving `w` such as `operator<` and `operator!=`
+  may involve instantiating templates to make these calls succeed. 
+  Such instantiation occurs during compilation. 
+  Because instantiating function templates with different template parameters 
+  leads to different functions being called, 
+  this is known as _compile-time polymorphism_. 
+
+
+Runtime/compile-time polymorphism is just 
+dynamic binding of virtual functions (at runtime)
+and overload resolution (at compile-time). 
+
+
+An explicit interface typically consists of _function signatures_.
+An implicit interface consists of _valid expressions_. 
+
+
+The implicit interface for `T` appears to have these constraints:
+- It "must" offer a member function named `size` that returns an integral value.
+- It "must" support `operator!=` function that compares two objects of type `T`. 
+  (Here, we assume that `someNastyWidget` is of type `T`.)
+
+
+Thanks to the possibility of _operator overloading_, **neither** of these constraints need be satisfied. 
+Yes, `T` must support a size member function, though the function might be inherited from a base class. 
+But this member function need **not** return a numeric type, not even a type for which `operator<` is defined. 
+All it needs to do is return an object of some type `X` such that 
+there is an `operator<` that can be called with an object of type `X` and an `int`. 
+The `operator<` need **not** take a parameter of type `X`, 
+because it could take a parameter of type `Y` which can be converted from `X` implicitly. 
+
+
+Similarly, there is **no** requirement that `T` support `operator!=`, 
+because it would be just as acceptable for `operator!= `to take one `X` and one `Y`. 
+As long as `T` can be converted to `X` and `someNastyWidget`’s type can be converted to `Y`, 
+the call to `operator!=` would be valid.
+
+
+(As an aside, this analysis **doesn’t** take into account the possibility  that `operator&&` could be overloaded, 
+thus changing the meaning of the above expression from a conjunction to something potentially quite different.)
 
 
 
@@ -3598,13 +3742,57 @@ The creation of programs that execute inside C++ compilers and that stop running
 
 ### 📌 Item 42: Understand the two meanings of `typename`
 
-- When declaring template parameters, `class` and `typename` are interchangeable.
+- When declaring _template parameters_, `class` and `typename` are identical.
 - Use `typename` to identify nested dependent type names,
   **except** in base class lists or as a base class identifier in a member initialization list.
 
+
+Names in a template that are dependent on a template parameter are called _dependent names_. 
+When a dependent name is nested inside a class, I call it a _nested dependent name_. 
+E.g., `C::const_iterator` is a nested dependent name. 
+In fact, it’s a `nested dependent type name`, i.e., a nested dependent name that refers to a type.
+
+
+On the other hand, `int` is a name that does **not** depend on any template parameter. 
+Such names are known as `non-dependent names`. 
+
+
+Nested dependent names can lead to parsing difficulties.
+```c++
+template <typename C>
+void print2nd(const C & container)
+{
+    C::const_iterator * x;
+    // ...
+}
+```
+This looks like we’re declaring `x` as a local variable that’s a pointer to a `C::const_iterator`. 
+But it looks that way only because we “know” that `C::const_iterator` is a type. 
+But what if `C::const_iterator` weren’t a type?
+What if `C` had a `static` data member that happened to be named `const_iterator`, 
+and what if `x` happened to be the name of a global variable?
+In that case, the code above wouldn’t declare a local variable, 
+it would be a multiplication of `C::const_iterator` by `x`! 
+
+
+Until `C` is known, there’s no way to know whether `C::const_iterator` is a type or isn’t, 
+and when the template `print2nd` is parsed, `C` isn’t known.
+C++ has a rule to resolve this ambiguity: 
+if the parser encounters a nested dependent name in a template, 
+it assumes that the name is **not** a type unless you use keyword `typename`, with two exceptions. 
+By default, nested dependent names are not types.
+
+
+The general rule is simple: 
+Anytime you refer to a nested dependent type name in a template, 
+you must immediately precede it by the keyword `typename`.
+(With two exceptions to be detailed afterwards.) 
+
+
 The exception to the “`typename` must precede nested dependent type names” rule is that 
-`typename` must not precede nested dependent type names in a list of base classes 
-or as a base class identifier in a member initialization list.
+`typename` must not precede nested dependent type names: 
+- in a list of base classes, or: 
+- as a base class identifier in a member initialization list.
 ```c++
 template <typename T>
 class Derived : public Base<T>::Nested  // base class list: typename not allowed
@@ -3633,7 +3821,42 @@ public:
   or via an explicit base class qualification.
 
 
+```c++
+template <typename T>
+class Base
+{
+public:
+    T get() 
+    { 
+        return T(1); 
+    }
+};
 
+template <typename T>
+class Derived : public Base<T>
+{
+public:
+    T foo1()
+    {
+        return this->get();
+    }
+    
+    using Base<T>::get;
+
+    T foo2()
+    {
+        return get();
+    }
+
+    T foo3()
+    {
+        return Base<T>::get();
+    }
+};
+
+Derived<int> d;
+std::cout << d.foo1() << d.foo2() << d.foo3() << d.get() << '\n';  // 1111
+```
 
 
 ### 📌 Item 44: Factor parameter-independent code out of templates
@@ -3646,6 +3869,80 @@ public:
   by sharing implementations for instantiation types with identical binary representations.
 
 
+Using templates can lead to _code bloat_: Binaries with replicated (or almost replicated) code, data, or both.
+
+This template takes a _type parameter_ `T`, and a _non-type parameter_ `std::size_t n`.
+```c++
+template <typename T, std::size_t n>
+class SquareMatrix
+{
+public:
+    // ...
+    void invert();
+};
+```
+
+Two copies of `invert` will be instantiated here. 
+Other than the constants 5 and 10, the two functions will be the same. 
+This is a classic way for template-induced code bloat to arise.
+```c++
+SquareMatrix<double, 5> sm1;
+// ...
+sm1.invert(); // call SquareMatrix<double, 5>::invert
+
+SquareMatrix<double, 10> sm2;
+// ...
+sm2.invert(); // call SquareMatrix<double, 10>::invert
+```
+
+Solution: Share a single copy of the base class template’s version of invert.
+`private` inheritance accurately reflects the fact that the reason for `SquareMatrixBase`
+is only to facilitate the `SquareMatrix`’ implementations,
+not to express a conceptual is-a relationship.
+```c++
+template <typename T>
+class SquareMatrixBase
+{
+protected:
+    SquareMatrixBase(std::size_t n, T * data) : mSize(n), mData(data)
+    {
+        
+    }
+    
+    void setData(T * ptr)
+    {
+        mData = ptr;
+    }
+    
+    // ...
+    
+private:
+    std::size_t mSize;
+    T * mData;
+};
+
+template <typename T, std::size_t n>
+class SquareMatrix : private SquareMatrixBase<T>
+{
+public:
+    SquareMatrix() : SquareMatrixBase<T>(n, nullptr)
+    { 
+        SquareMatrixBase<T>::setData(data.data());
+    }
+    
+    void invert()
+    {
+        SquareMatrixBase<T>::invert(n);
+    }
+
+    // ...
+    
+private:
+    std::array<T, n * n> data;
+};
+```
+
+
 
 
 
@@ -3654,18 +3951,178 @@ public:
 
 - Use member function templates to generate functions that accept all compatible types.
 - If you declare member templates for generalized copy construction or generalized assignment,
-  you'll still need to declare the normal copy constructor and copy assignment operator, too.
+  you'll still need to declare the normal copy constructor and copy assignment operator, 
+  as function templates do **not** affect auto-generation of special member functions.
+
+
+There is **no** inherent relationship among different instantiations of the same template, 
+so compilers view `SmartPtr<Middle>` and `SmartPtr<Top>` as completely different classes, 
+no more closely related than, say, `std::vector<float>` and `Widget`.
+
+_Generalized copy constructors via member function templates_.
+```c++
+template <typename T>
+class SmartPtr
+{
+public:
+    // Generalized copy constructor. 
+    // Deliberately non-explicit, enabling implicit conversions between SmartPtrs. 
+    // Complies iff. there is an implicit conversion from U * to T *.
+    template <typename U>
+    SmartPtr(const SmartPtr & other) : ptr(other.get())
+    {
+        
+    }
+    
+    // Regular copy constructor
+    // NOTE: function templates do NOT affect auto-generation of regular default copy constructors. 
+    // You still need to provide a regular copy constructor
+    SmartPtr(const SmartPtr<T> & other) : ptr(other.get())
+    {
+        
+    }
+    
+    T * get() const 
+    { 
+        return ptr; 
+    }
+    
+    // ...
+};
+
+private:
+    T * ptr;
+```
 
 
 
 
 
 
-### 📌 Item 46: Define non-member functions inside templates when type conversions are desired
+### 📌 Item 46: Define non-member functions inside templates when type conversions are desired on all arguments
 
-- When writing a class template that offers functions related to
-  the template that support implicit type conversions on all parameters,
+- When writing a class template offering functions
+  that support implicit type conversions on all arguments to this class template,
   define those functions as friends inside the class template.
+
+
+Implicit type conversion functions are **never** considered during template argument deduction.
+Implicit type conversion is used during function calls (happens after template argument deduction). 
+
+
+Inside a class template, the name of the template can be used as shorthand for the template and its parameters, 
+so inside `Rational<T>`, we can just write `Rational` instead of `Rational<T>`.
+This code compiles but **won't** link:
+```c++
+template <typename T>
+class Rational
+{
+public:
+    // WRONG IMPLEMENTATION! COMPILES BUT WON'T LINK! 
+    friend Rational operator*(const Rational &, const Rational &);
+    
+public:
+    Rational(const T & numerator = 0, const T & denominator = 1);
+    const T numerator() const;
+    const T denominator() const;
+    
+    // ...
+};
+
+// WRONG IMPLEMENTATION! COMPILES BUT WON'T LINK! 
+template <typename T>
+Rational<T> operator*(const Rational<T> & lhs, const Rational<T> & rhs)
+{
+    return {lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator()};
+}
+
+Rational oneHalf {1, 2};
+Rational res = oneHalf * 2;  // won't link here
+```
+The code compiles because compilers know that we want to call
+`operator*(const Rational<int> &, const Rational<int> &)`, 
+but that function is only _declared_ inside `Rational`, **not** _defined_ inside the template. 
+Our intent is to have the `operator*` template outside the class provide that definition, 
+but things **don’t** work that way.
+If we declare a function ourselves (which is what we’re doing inside the `Rational` template), 
+we’re also responsible for defining that function. 
+In this case, we never provide a definition, and that’s why linkers can’t find one.
+
+
+The simplest thing that could possibly work is to merge the body of `operator*` into its declaration:
+```c++
+template <typename T>
+class Rational
+{
+public:
+    friend Rational operator*(const Rational & lhs, const Rational & rhs)
+    {
+        return {lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator()};
+    }
+    
+public:
+    Rational(const T & numerator = 0, const T & denominator = 1);
+    const T numerator() const;
+    const T denominator() const;
+    
+    // ...
+};
+```
+An interesting observation about this technique is that 
+_the use of `friend`ship has **nothing** to do with a need to access non-public parts of the class._ 
+In order to make type conversions possible on all arguments, we need a non-member function; 
+and in order to have the proper function automatically instantiated, 
+we need to declare the function inside the class. 
+The only way to declare a non-member function inside a class is to make it a `friend`. 
+
+
+Functions defined inside a class are implicitly declared `inline`, 
+and that includes `friend` functions like `operator*`. 
+You can minimize the impact of such inline declarations by having `operator*`
+do nothing but call a helper function defined outside the class. 
+In the example in this Item, there’s not much point in doing that,
+because `operator*` is already implemented as a one-line function, 
+but for more complex function bodies, it may be desirable. 
+It’s worth taking a look at the “have the friend call a helper” approach.
+```c++
+template <typename T> 
+class Rational;
+
+namespace
+{
+
+template <typename T>
+Rational<T> doMultiply(const Rational<T> & lhs, const Rational<T> & rhs)
+{
+    return {lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator()};
+}
+
+}  // namespace
+
+template <typename T>
+class Rational
+{
+public:
+    friend Rational operator*(const Rational & lhs, const Rational & rhs)
+    {
+        return doMultiply(lhs, rhs);
+    }
+    
+
+public:
+    Rational(const T & numerator = 0, const T & denominator = 1);
+    const T numerator() const;
+    const T denominator() const;
+
+    // ...
+};
+```
+As a template, `doMultiply` **won’t** support mixed-mode multiplication, but it doesn’t need to. 
+It will only be called by `operator*`, and `operator*` does support mixed-mode operations! 
+In essence, the function `operator*` supports whatever type conversions are necessary 
+to ensure that two `Rational` objects are being multiplied, 
+then it passes these two objects to an appropriate instantiation of the `doMultiply` template 
+to do the actual multiplication. 
 
 
 

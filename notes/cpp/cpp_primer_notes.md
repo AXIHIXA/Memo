@@ -1186,7 +1186,7 @@ new T                                                         (2)
 ```
 - 初始化流程
     1. 位于 *静态存储区* 和 *线程局部存储区* 的对象，首先进行 *零初始化* 
-    2. 若`T`是 *类类型* ，则考虑各构造函数并实施针对空实参列表的 [*重载决议*](https://en.cppreference.com/w/cpp/language/overload_resolution)（Overload resolution）。调用所选的构造函数（默认构造函数之一），以提供新对象的初始值
+    2. 若`T`是 *类类型* ，则考虑各构造函数并实施针对空实参列表的 [*重载确定/重载决议*](https://en.cppreference.com/w/cpp/language/overload_resolution)（overload resolution）。调用所选的构造函数（默认构造函数之一），以提供新对象的初始值
     3. 若`T`是 *数组类型* ，则每个数组元素都被 *默认初始化* 
     4. 否则，不做任何事。 *自动对象（及其子对象）* 被初始化为 *不确定值*  
 - 注意事项
@@ -2572,7 +2572,7 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
     }
     ```
 
-#### [重载确定](https://en.cppreference.com/w/cpp/language/overload_resolution)（overload resolution）
+#### [重载确定/重载决议](https://en.cppreference.com/w/cpp/language/overload_resolution)（overload resolution）
 
 - 又称 *函数匹配* （function matching）
 - 编译器首先将调用的实参与重载集合中每一个函数的形参进行比较，然后根据结果确定调用版本
@@ -14066,7 +14066,7 @@ protected:
 
 - 函数模板可以被另一模板或非模板函数重载
 - 名字相同的函数必须具有不一样的形参列表
-- 函数模板匹配规则
+- 函数模板匹配规则 (function matching) 重载确定/重载决议 (overload resolution)
     - 对于一个调用，其 *候选函数* 包括 *所有* 模板实参推断成功的模板实例
     - 候选的函数模板总是 *可行的* ，因为模板实参会排除掉任何不可行的模板
     - *可行函数* （模板的和非模板的）按 *类型转换* 来排序
@@ -18071,7 +18071,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                 ```
                 - *模板类型参数的右值引用类型的形参* 事实上可以匹配 *任何类型以及任何值类别的实参* 
                     - 如果我们的应用程序也定义了一个接受单一形参的`move`函数，则不管该形参是什么类型，都会与`std::move`冲突
-                        - 如下写法将`std::move`提升到了当前作用域。 *重载确定* 流程首先进行 *名字查找* ，会在当前作用域中同时找到`std::move`和自定义的`move`两个 *候选函数* ，而它们也都是 *可行函数* ，一同进入最佳匹配决策环节。由于自行定义的一般是更特化的版本，根据模板函数重载匹配规则 *匹配特化完犊子* ，一旦形参和实参的类型恰好又是 *精确匹配* ，最终编译器就会调用自行编写的版本。即亦，此时如下写法就将永远**无法**调用到`std::move`
+                      - 如下写法将`std::move`提升到了当前作用域。 *重载确定/重载决议* (overload resolution) 流程首先进行 *名字查找* ，会在当前作用域中同时找到`std::move`和自定义的`move`两个 *候选函数* ，而它们也都是 *可行函数* ，一同进入最佳匹配决策环节。由于自行定义的一般是更特化的版本，根据模板函数重载匹配规则 *匹配特化完犊子* ，一旦形参和实参的类型恰好又是 *精确匹配* ，最终编译器就会调用自行编写的版本。即亦，此时如下写法就将永远**无法**调用到`std::move`
                         ```
                         using std::move;
                         move(...);
@@ -18080,53 +18080,53 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
                         ```
                         std::move(...);
                         ```
-                    - `forward`也一样
-        - 友元声明与实参相关的查找
-            - 当类声明了一个友元时，该友元声明并未使友元本身可见
-                - 即使这个友元声明是个定义，也还是不可见
-            - 然而，一个另外的未声明的类或函数如果第一次出现在友元声明中，则我们认为它是上一层命名空间的成员
-            - 这条规则与实参相关的查找规则结合在一起将产生意想不到的效果
-                - 如以下代码
-                ```
-                namespace A
-                {
-                class C
-                {
-                public:
-                    // two friends; neither is declared apart from a friend declaration
-                    // these functions implicitly are members of namespace A
-                    friend void f(const C &) {}  // can be found when being called outside A
-                                                 // by argument-dependent lookup
+                        - `forward`也一样
+                        - 友元声明与实参相关的查找
+                            - 当类声明了一个友元时，该友元声明并未使友元本身可见
+                                - 即使这个友元声明是个定义，也还是不可见
+                            - 然而，一个另外的未声明的类或函数如果第一次出现在友元声明中，则我们认为它是上一层命名空间的成员
+                            - 这条规则与实参相关的查找规则结合在一起将产生意想不到的效果
+                                - 如以下代码
+                                ```
+                                namespace A
+                                {
+                                class C
+                                {
+                                public:
+                                    // two friends; neither is declared apart from a friend declaration
+                                    // these functions implicitly are members of namespace A
+                                    friend void f(const C &) {}  // can be found when being called outside A
+                                                                 // by argument-dependent lookup
 
-                    friend void f2() {}          // won't be found when being called outside A
-                                                 // unless otherwise declared
-                };
-                }
-                ```
-                - 此时`f`和`f2`都是`namespace A`的成员，即使`f`**不**存在其它声明，我们也能在`namespace A`之外通过实参相关的查找规则调用`f`
-                ```
-                int main()
-                {
-                    A::C o;
+                                    friend void f2() {}          // won't be found when being called outside A
+                                                                 // unless otherwise declared
+                                };
+                                }
+                                ```
+                                - 此时`f`和`f2`都是`namespace A`的成员，即使`f`**不**存在其它声明，我们也能在`namespace A`之外通过实参相关的查找规则调用`f`
+                                ```
+                                int main()
+                                {
+                                    A::C o;
                     
-                    f(o);                        // ok: finds A::f through the friend declaration in A::C
-                    f2();                        // error: f2 not declared
+                                    f(o);                        // ok: finds A::f through the friend declaration in A::C
+                                    f2();                        // error: f2 not declared
                     
-                    A::f(o);                     // error: A::f not declared
-                    A::f2();                     // error: A::f2 not declared
-                }
-                ```
-                - 因为`f`接受一个 *类类型实参* ，所以名字查找流程会额外搜寻`C`所属的`namespace A`，就会找到`f`的 *隐式声明* 
-                    - 由`C`中对`f`的友元声明，编译器认为`f`是`namespace A`的成员，因而产生一个隐式声明
-                - 相反，因为`f2`没有 *类类型实参* ，因此它就不能被找到了
-                - 加入如下声明令`f`和`f2`可见，则可让上面代码直接没事
-                ```
-                namespace A
-                {
-                void f(const C &);
-                voif f2();
-                }
-                ```
+                                    A::f(o);                     // error: A::f not declared
+                                    A::f2();                     // error: A::f2 not declared
+                                }
+                                ```
+                                - 因为`f`接受一个 *类类型实参* ，所以名字查找流程会额外搜寻`C`所属的`namespace A`，就会找到`f`的 *隐式声明* 
+                                    - 由`C`中对`f`的友元声明，编译器认为`f`是`namespace A`的成员，因而产生一个隐式声明
+                                - 相反，因为`f2`没有 *类类型实参* ，因此它就不能被找到了
+                                - 加入如下声明令`f`和`f2`可见，则可让上面代码直接没事
+                                ```
+                                namespace A
+                                {
+                                void f(const C &);
+                                voif f2();
+                                }
+                                ```
 - 重载与命名空间
     - 与实参相关的查找与重载
         - 给 *函数* 传递 *类类型实参* 时，在常规的名字查找之后，还会额外查找 *实参类及其基类所属的命名空间* 

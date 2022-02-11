@@ -1549,7 +1549,8 @@ When you want to refer to a null pointer, use `nullptr`, **not** `0` or `NULL`.
 ### 📌 Item 9: Prefer alias declarations to `typedef`s
 
 - `typedef`s **don’t** support templatization, but alias declarations do. 
-- *Alias templates* avoid the `::type` suffix; in templates, the `typename` prefix is often required to refer to `typedef`s. 
+- *Alias templates* avoid the `::type` suffix; 
+  in templates, the `typename` prefix is often required to refer to `typedef`s. 
 - C++14 offers alias templates for all the C++11 type traits transformations. 
 
 #### `typedef`s and alias declarations
