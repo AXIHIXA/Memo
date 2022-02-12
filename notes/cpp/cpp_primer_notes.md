@@ -2906,15 +2906,14 @@ item.combine(std::cin);                                  // 错误，对应构�
           {
               friend void f()
               { 
-                  // friend functions can be defined in the class, 
-                  // this declaration does not come with visibility, even though this is already a definition
-                  // to use this function, another declaration at namespace scope is REQUIRED
+                  // friend functions can be defined in the class
+                  // this declaration provides NO visibility to regular name lookup, even though this is already a defination
+                  // to use this function, another declaration is REQUIRED
               }
   
               friend X operator+(const X & x1, const X & x2)
               {
-                  // this declaration does not come with visibility, even though this is already a definition
-                  // but can be found via ADL
+                  // this declaration also provides NO visibility to regular name lookup, but can be found via ADL
                   return {x1.v + x2.v};
               }
 
