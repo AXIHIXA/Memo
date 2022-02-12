@@ -4001,24 +4001,59 @@ private:
 
 ### 📌 Item 46: Define non-member functions inside templates when type conversions are desired on all arguments
 
+- Implicit type conversion functions are **never** considered during _template argument deduction_.
+- Class templates **don’t** depend on _template argument deduction_ (which applies only to function templates). 
+    - Might be incorrect in later C++ standards (some class template usage requires no template argument too). 
 - When writing a class template offering functions
   that support implicit type conversions on all arguments to this class template,
   define those functions as friends inside the class template.
 
 
-Implicit type conversion functions are **never** considered during template argument deduction.
-Implicit type conversion is used during function calls (happens after template argument deduction). 
-
-
-Inside a class template, the name of the template can be used as shorthand for the template and its parameters, 
-so inside `Rational<T>`, we can just write `Rational` instead of `Rational<T>`.
-This code compiles but **won't** link:
+Implicit type conversion functions are **never** considered during _template argument deduction_.
+Implicit type conversion is used during _function calls_. 
+The compiler do _overload resolution_ to determine which function to call, 
+and the first step of overload resolution, i.e., finding candidate functions, involves template argument deduction. 
+The following code will **not** compile because failure in template argument deduction (`Rational<int>` v.s. `int`):
 ```c++
 template <typename T>
 class Rational
 {
 public:
-    // WRONG IMPLEMENTATION! COMPILES BUT WON'T LINK! 
+    Rational(const T & numerator = 0, const T & denominator = 1);
+    const T numerator() const;
+    const T denominator() const;
+    
+    // ...
+};
+
+// DOES NOT COMPILE!
+template <typename T>
+Rational<T> operator*(const Rational<T> & lhs, const Rational<T> & rhs)
+{
+    return {lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator()};
+}
+
+Rational<int> oneHalf {1, 2};
+Rational<int> res = oneHalf * 2;  // won't compile here
+```
+
+Class `Rational<T>` can declare `operator*` for `Rational<T>` as a friend function.
+This code compiles because when the object `oneHalf` is declared to be of type `Rational<int>`, 
+the class `Rational<int>` is already instantiated, and as part of that process, 
+the friend function `operator*` that takes `Rational<int>` parameters is automatically declared. 
+As a declared _function_ (**not** a _function template_), 
+compilers can use implicit conversion functions (such as `Rational`’s non-explicit constructor) when calling it.
+
+
+Inside a class template, the name of the template can be used as shorthand for the template and its parameters,
+so inside `Rational<T>`, we can just write `Rational` instead of `Rational<T>`.
+Yet, this code **won't** link:
+```c++
+template <typename T>
+class Rational
+{
+public:
+    // COMPILES BUT WON'T LINK! 
     friend Rational operator*(const Rational &, const Rational &);
     
 public:
@@ -4029,23 +4064,22 @@ public:
     // ...
 };
 
-// WRONG IMPLEMENTATION! COMPILES BUT WON'T LINK! 
+// COMPILES BUT WON'T LINK! 
 template <typename T>
 Rational<T> operator*(const Rational<T> & lhs, const Rational<T> & rhs)
 {
     return {lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator()};
 }
 
-Rational oneHalf {1, 2};
-Rational res = oneHalf * 2;  // won't link here
+Rational<int> oneHalf {1, 2};
+Rational<int> res = oneHalf * 2;  // won't link here
 ```
-The code compiles because compilers know that we want to call
-`operator*(const Rational<int> &, const Rational<int> &)`, 
-but that function is only _declared_ inside `Rational`, **not** _defined_ inside the template. 
-Our intent is to have the `operator*` template outside the class provide that definition, 
-but things **don’t** work that way.
-If we declare a function ourselves (which is what we’re doing inside the `Rational` template), 
-we’re also responsible for defining that function. 
+The code compiles because compilers know that we want to call the _function_ (**not** _function template_)
+`operator*(const Rational<int> &, const Rational<int> &)`. 
+But, the function is only _declared_ inside `Rational`, **not** _defined_. 
+There is **no** defined function `operator*(const Rational<int> &, const Rational<int> &)`, 
+but only a function template (that is not yet instantiated with `T = int`)
+`template <typename T> Rational<T> operator*(const Rational<T> & lhs, const Rational<T> & rhs)`.
 In this case, we never provide a definition, and that’s why linkers can’t find one.
 
 
