@@ -2892,55 +2892,55 @@ item.combine(std::cin);                                  // 错误，对应构�
     - 令一个类的某个成员函数成为友元
       - *友元声明和作用域*
           - 关于这段代码最重要的是：理解友元声明的作用是**影响访问权限**，它本身**并非**普通意义上的函数声明（仍旧是声明，但不自带可见性）
-            - [cppreference关于这一点的具体解释](https://en.cppreference.com/w/cpp/language/namespace)
-            - Names introduced by friend declarations within a non-local class X become members of the innermost enclosing namespace of X, 
+            - [cppreference关于这一点的具体解释](https://en.cppreference.com/w/cpp/language/namespace)：
+              Names introduced by friend declarations within a non-local class X become members of the innermost enclosing namespace of X, 
               but they do not become visible to ordinary name lookup (neither unqualified nor qualified) 
               unless a matching declaration is provided at namespace scope, 
               either before or after the class definition. 
               Such name may be found through ADL which considers both namespaces and classes.
-            - Only the innermost enclosing namespace is considered by such friend declaration 
-              when deciding whether the name would conflict with a previously declared name.
 - 并不是所有编译器都强制执行关于友元的这一规定
-          ```
-          struct X
-          {
-              friend void f()
-              { 
-                  // friend functions can be defined in the class
-                  // this declaration provides NO visibility to regular name lookup, even though this is already a defination
-                  // to use this function, another declaration is REQUIRED
-              }
-  
-              friend X operator+(const X & x1, const X & x2)
-              {
-                  // this declaration also provides NO visibility to regular name lookup, but can be found via ADL
-                  return {x1.v + x2.v};
-              }
+```c++
+struct X
+{
+    friend void f()
+    {
+        // Friend functions can be defined in the class. 
+        // This declaration provides NO visibility to regular name lookup, 
+        // even though this is already a definition. 
+        // To use this function, another declaration is REQUIRED
+    }
 
-              void foo()
-              {
-                  f();                    // ERROR: no declaration for f
-                  X tmp = X {1} + X {2};  // CORRECT  
-              } 
-        
-              void g();
-              void h();
-  
-              int v;
-          };
+    friend X operator+(const X & x1, const X & x2)
+    {
+        // This declaration also provides NO visibility to regular name lookup, 
+        // but can be found via ADL
+        return {x1.v + x2.v};
+    }
 
-          void X::g()
-          {
-              return f();  // ERROR: f hasn't been declared
-          } 
+    void foo()
+    {
+        f();                    // ERROR: no declaration for f found
+        X tmp = X {1} + X {2};  // CORRECT  
+    }
 
-          void f();        // declares the function defined inside X
+    void g();
+    void h();
 
-          void X::h()
-          {
-              return f();  // OK: declaration for f is now in scope
-          } 
-          ```
+    int v;
+};
+
+void X::g()
+{
+    return f();  // ERROR: no declaration for f found
+}
+
+void f();        // declares the function defined inside X
+
+void X::h()
+{
+    return f();  // OK: declaration for f is now in scope
+}
+```
 
 #### 类的类型成员
 
