@@ -619,6 +619,15 @@ It’s basically a single source file, plus all of its `#include` files.
     - 编译器通过[名字查找](https://en.cppreference.com/w/cpp/language/lookup)（Name lookup）实现名字和声明的关联
         - 如果名字已经指明了 *命名空间* ，则进行[限定名字查找](https://en.cppreference.com/w/cpp/language/qualified_lookup)（Qualified name lookup）
         - 否则，进行[无限定名字查找](https://en.cppreference.com/w/cpp/language/unqualified_lookup)（Unqualified name lookup）
+        - [实参依赖查找](https://en.cppreference.com/w/cpp/language/adl)（Argument-dependent Lookup，ADL）
+            - 对于函数调用（包括对重载运算符的隐式调用），在非限定名字查找范围内的作用域和命名空间之外，还查找实参类型所在命名空间和类
+                - 名字查找一旦发现如下三种情况，ADL不会发生：
+                    - 类成员名；
+                    - 块作用域里的函数声明（不包括using声明）；
+                    - 任何不是函数或函数模板的名字（例如，函数对象，普通变量，等等）
+            - ADL应用举例：
+                - ADL可以找到定义在类体内的友元运算符（对于没有参数的友元函数，那是找不到的）；
+                - `std::cout << '\n'`：`operator<<`并不在全局命名空间里，之所以能找到是因为`std::cout`的类型`std::ostream`在`std`里
 - 根据变量的 *定义位置* 和 *生命周期* ，`C++`的变量具有不同的 *作用域* ，共分为以下几类 
     - [*块作用域*](https://en.cppreference.com/w/cpp/language/scope#Block_scope)（Block scope）
     - [*函数形参作用域*](https://en.cppreference.com/w/cpp/language/scope#Function_parameter_scope)（Function parameter scope）
@@ -2882,21 +2891,30 @@ item.combine(std::cin);                                  // 错误，对应构�
 - *友元成员函数*
     - 令一个类的某个成员函数成为友元
       - *友元声明和作用域*
-          - 关于这段代码最重要的是：理解友元声明的作用是**影响访问权限**，它本身**并非**普通意义上的函数声明（重载运算符友元除外，**不需**单独声明）
-          - 并不是所有编译器都强制执行关于友元的这一规定
+          - 关于这段代码最重要的是：理解友元声明的作用是**影响访问权限**，它本身**并非**普通意义上的函数声明（仍旧是声明，但不自带可见性）
+            - [cppreference关于这一点的具体解释](https://en.cppreference.com/w/cpp/language/namespace)
+            - Names introduced by friend declarations within a non-local class X become members of the innermost enclosing namespace of X, 
+              but they do not become visible to ordinary name lookup (neither unqualified nor qualified) 
+              unless a matching declaration is provided at namespace scope, 
+              either before or after the class definition. 
+              Such name may be found through ADL which considers both namespaces and classes.
+            - Only the innermost enclosing namespace is considered by such friend declaration 
+              when deciding whether the name would conflict with a previously declared name.
+- 并不是所有编译器都强制执行关于友元的这一规定
           ```
           struct X
           {
               friend void f()
               { 
-                  // friend functions can be defined in the class
-                  // this does NOT serve as declaration, even though this is already a defination
-                  // to use this function, another declaration is REQUIRED
+                  // friend functions can be defined in the class, 
+                  // this declaration does not come with visibility, even though this is already a definition
+                  // to use this function, another declaration at namespace scope is REQUIRED
               }
   
               friend X operator+(const X & x1, const X & x2)
               {
-                  // this stuff serves as declaration somehow 
+                  // this declaration does not come with visibility, even though this is already a definition
+                  // but can be found via ADL
                   return {x1.v + x2.v};
               }
 
