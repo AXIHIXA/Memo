@@ -4074,12 +4074,10 @@ Rational<T> operator*(const Rational<T> & lhs, const Rational<T> & rhs)
 Rational<int> oneHalf {1, 2};
 Rational<int> res = oneHalf * 2;  // won't link here
 ```
-The code compiles because compilers know that we want to call the _function_ (**not** _function template_)
-`operator*(const Rational<int> &, const Rational<int> &)`. 
-But, the function is only _declared_ inside `Rational`, **not** _defined_. 
-There is **no** defined function `operator*(const Rational<int> &, const Rational<int> &)`, 
-but only a function template (that is not yet instantiated with `T = int`)
-`template <typename T> Rational<T> operator*(const Rational<T> & lhs, const Rational<T> & rhs)`.
+The _function_ (**not** _function template_)
+`operator*(const Rational<int> &, const Rational<int> &)` 
+is only _declared_ inside `Rational`, but **not** _defined_ at all. 
+A function template definition (not yet instantiated with `T = int`) is **not** a definition of this function.
 In this case, we never provide a definition, and that’s why linkers can’t find one.
 
 
@@ -4107,7 +4105,8 @@ _the use of `friend`ship has **nothing** to do with a need to access non-public 
 In order to make type conversions possible on all arguments, we need a non-member function; 
 and in order to have the proper function automatically instantiated, 
 we need to declare the function inside the class. 
-The only way to declare a non-member function inside a class is to make it a `friend`. 
+The only way to declare a non-member function inside a class is to make it a `friend`.
+(P.S. This friend declaration inside class body is not visible to regular name lookup, but can be found via ADL.)
 
 
 Functions defined inside a class are implicitly declared `inline`, 
@@ -4167,8 +4166,147 @@ to do the actual multiplication.
 
 - Traits classes make information about types available during compilation.
   They're implemented using templates and template specializations.
-- In conjunction with overloading, traits classes make it possible to perform compile-time `if`-`else` tests on types.
+- In conjunction with overloading, traits classes make it possible to perform compile-time if-else tests on types.
 
+
+### [`std::iterator_traits`](https://en.cppreference.com/w/cpp/iterator/iterator_traits)
+
+C++ iterator types:
+- Input iterator
+  - Supports `++`, each position can be read _only once_. 
+  - E.g., `std::istream_iterator`. 
+- Output iterator
+  - Supports `++`, each position can be written _only once_.
+  - E.g., `std::ostream_iterator`.
+- Forward iterator
+  - Supports `++`, each position can be read/written for multiple times
+  - E.g., iterators for `std::forward_list`, `std::unordered_(multi)set/map`
+- Bidirectional iterator
+  - Supports `++`, `--`, each position can be read/written for multiple times
+  - E.g., iterators for `std::set`, `std::map`, `std::multiset`, `std::multimap`
+- Random access iterator
+  - Supports _iterator arithmetic_, each position can be read/written for multiple times
+  - E.g., iterators for `std::vector`, `std::deque`, `std::string`
+
+
+For each of the five iterator categories, C++ has a _tag struct_ in the standard library that serves to identify it:
+```c++
+namespace std
+{
+
+struct input_iterator_tag {};
+struct output_iterator_tag {};
+struct forward_iterator_tag : public input_iterator_tag {};
+struct bidirectional_iterator_tag : public forward_iterator_tag {};
+struct random_access_iterator_tag : public bidirectional_iterator_tag {};
+
+}  // namespace std
+```
+
+_traits_ allow you to get information about a type during compilation.
+Traits **aren’t** a keyword or a predefined construct in C++; 
+they’re a technique and a convention followed by C++ programmers.
+One of the demands made on the technique is that it has to work as well 
+for built-in types as it does for user-defined types.
+
+
+The fact that traits must work with built-in types means that 
+things like nesting information inside types **won’t** work, 
+because there’s no way to nest information inside built-in pointers. 
+The traits information for a type must be external to the type. 
+The standard technique is to put it into a template and one or more specializations of that template. 
+For iterators, the template in the standard library is named `iterator_traits`:
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+namespace std
+{
+
+template <typename ...>
+using __void_t = void;
+
+}  // namespace std
+
+/// <bits/stl_iterator_base_types.h>
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+namespace std
+{
+
+template <typename _Iterator, typename = __void_t<>>
+struct __iterator_traits {};
+
+template <typename _Iterator>
+struct __iterator_traits<_Iterator,
+        __void_t<typename _Iterator::iterator_category,
+            typename _Iterator::value_type,
+            typename _Iterator::difference_type,
+            typename _Iterator::pointer,
+            typename _Iterator::reference>>
+{
+    typedef typename _Iterator::iterator_category iterator_category;
+    typedef typename _Iterator::value_type value_type;
+    typedef typename _Iterator::difference_type difference_type;
+    typedef typename _Iterator::pointer pointer;
+    typedef typename _Iterator::reference reference;
+};
+
+template <typename _Iterator>
+struct iterator_traits : public __iterator_traits<_Iterator> {};
+
+// Partial specialization for pointer types.
+template <typename _Tp>
+struct iterator_traits<_Tp *>
+{
+    typedef random_access_iterator_tag iterator_category;
+    typedef _Tp                        value_type;
+    typedef ptrdiff_t                  difference_type;
+    typedef _Tp *                      pointer;
+    typedef _Tp &                      reference;
+};
+
+// Partial specialization for const pointer types.
+template <typename _Tp>
+struct iterator_traits<const _Tp *>
+{
+    typedef random_access_iterator_tag iterator_category;
+    typedef _Tp                        value_type;
+    typedef ptrdiff_t                  difference_type;
+    typedef const _Tp *                pointer;
+    typedef const _Tp &                reference;
+};
+
+}  // namespace std
+```
+By convention, traits are always implemented as structs.
+Another convention is that the structs used to implement traits are known as traits _classes_.
+
+
+The way `iterator_traits` works is that for each type `IterT`, 
+a typedef named `iterator_category` is declared in the struct `iterator_traits<IterT>`. 
+This typedef identifies the iterator category of `IterT`.
+
+
+For user-defined types, it imposes the requirement that 
+any user-defined iterator type must typedef a proper tag struct as `iterator_category`,
+and `iterator_traits` just parrots back the typedef.
+```c++
+class SomeRandomAccessIterator
+{
+public:
+    typedef std::random_access_iterator_tag iterator_category;
+    // ...
+};
+```
+For built-in pointers, there’s no such thing as a pointer with a nested typedef.
+`std::iterator_traits` offers a _partial template specialization_ for pointer types. 
+
+
+How to design and implement a traits class:
+- Identify some information about types you’d like to make available
+  (e.g., for iterators, their iterator category).
+- Choose a name to identify that information (e.g., `std::iterator_category`).
+- Provide a template and set of specializations (e.g., `std::iterator_traits`) 
+  that contain the information for the types you want to support.
 
 
 

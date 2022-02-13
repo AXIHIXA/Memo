@@ -218,6 +218,7 @@ gedit -idea64.vmoptions
 
 - `__CLION_IDE__`：在 CLion 的 CMakeLists.txt 以及程序中都可使用的宏
 - `$ENV{USER}`： CMakeLists.txt 中调用系统变量
+- [Data flow analysis timeout](https://youtrack.jetbrains.com/issue/CPP-17623): press shift in CLion quickly twice, then we have a search window, search "Registry..." and change the timeout key. 
 
 ### `gcc-9` on `ubuntu 18.04 LTS`
 ```
