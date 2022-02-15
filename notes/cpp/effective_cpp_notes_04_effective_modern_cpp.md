@@ -3768,7 +3768,7 @@ Item 26 demonstrates that it can have important consequences.
 
 
 
-### 🎯 Chapter 4. Smart Pointers
+### 🎯 Chapter 4. Smart Pointerss
 
 Six reasons why a raw pointer is hard to love:
 1. Its declaration **doesn’t** indicate whether it points to a single object or to an array. 
@@ -3836,6 +3836,20 @@ Because comprehensive references for these APIs are widely available,
 I’ll focus my discussions on information that’s often missing from API overviews, 
 e.g., noteworthy use cases, runtime cost analyses, etc. 
 Mastering such information can be the difference between merely using these smart pointers and using them effectively.
+
+
+- [Guideline: How to pass smart pointers](https://herbsutter.com/2013/06/05/gotw-91-solution-smart-pointer-parameters/):
+    - **Don’t** pass a smart pointer as a function parameter unless you want to use or manipulate the smart pointer itself,
+      such as to share or transfer ownership.
+    - Prefer passing objects by value, `*`, or `&`, **not** by smart pointer.
+    - Express a “sink” function using a by-value `std::unique_ptr` parameter.
+    - Use a non-`const` `std::unique_ptr &` parameter only to modify the `std::unique_ptr`.
+    - **Don’t** use a `const std::unique_ptr &` as a parameter; use `Widget *` instead.
+    - Express that a function will store and share ownership of a heap object using a by-value `std::shared_ptr` parameter.
+    - Use a non-`const` `std::shared_ptr &` parameter only to modify the `std::shared_ptr`.
+      Use a `const std::shared_ptr &` as a parameter only if
+      you’re not sure whether you’ll take a copy and share ownership;
+      otherwise use `Widget *` instead (or if not nullable, a `Widget &`).
 
 
 
