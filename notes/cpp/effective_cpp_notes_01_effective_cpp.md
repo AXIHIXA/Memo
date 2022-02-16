@@ -4459,19 +4459,19 @@ Here are three examples:
   for example, that the unit `time^{1/2}` is the same as `time^{4/8}`.
 - **Optimizing matrix operations**. 
   Item 21 explains that some functions, including `operator*`, must return new objects, 
-  and Item 44 introduces the `SquareMatrix` class, so consider the following code:
+  and Item 44 introduces the `SquareMatrix` class, so consider the following code. 
+  Calculating result in the “normal” way calls for the creation of four temporary matrices,
+  one for the result of each call to `operator*`.
+  Furthermore, the independent multiplications generate a sequence of four loops over the matrix elements.
+  Using an advanced template technology related to TMP called _expression templates_,
+  it’s possible to eliminate the temporaries and merge the loops,
+  all without changing the syntax of the client code above.
+  The resulting software uses less memory and runs dramatically faster.
 ```c++
 using BigMatrix = SquareMatrix<double, 10000>;
 BigMatrix m1, m2, m3, m4, m5;               // create matrices and give them values
 BigMatrix result = m1 * m2 * m3 * m4 * m5;  // compute their product
 ```
-  Calculating result in the “normal” way calls for the creation of four temporary matrices, 
-  one for the result of each call to `operator*`.
-  Furthermore, the independent multiplications generate a sequence of four loops over the matrix elements. 
-  Using an advanced template technology related to TMP called _expression templates_,
-  it’s possible to eliminate the temporaries and merge the loops, 
-  all without changing the syntax of the client code above. 
-  The resulting software uses less memory and runs dramatically faster.
 - **Generating custom design pattern implementations**. 
   Design patterns like Strategy (see Item 35), Observer, Visitor, etc. 
   can be implemented in many ways. 
@@ -4488,16 +4488,6 @@ BigMatrix result = m1 * m2 * m3 * m4 * m5;  // compute their product
 
 
 
-
-
-
-
-
-
-
-
-
-
 ### 🎯 Chapter 8. Customizing `new` and `delete`
 
 ### 📌 Item 49: Understand the behavior of the `new`-handler
@@ -4507,6 +4497,279 @@ BigMatrix result = m1 * m2 * m3 * m4 * m5;  // compute their product
 - Nothrow `new` is of limited utility,
   because it applies only to memory allocation;
   associated constructor calls may still throw exceptions.
+
+
+Before `operator new` throws an exception in response to an unsatisfiable request for memory, 
+it calls a client-specifiable error-handling function called a _new-handler_. 
+(This is **not** quite true. 
+What _operator new_ really does is a bit more complicated. 
+Details are provided in Item 51.) 
+To specify the out-of-memory-handling function, clients call `std::set_new_handler`, 
+a standard library function declared in `<new>`:
+```c++
+/// <new>
+namespace std
+{
+
+typedef void (* new_handler)();
+
+new_handler set_new_handler(new_handler p) throw();
+
+}  // namespace std
+
+
+/// client code
+// function to call if operator new can’t allocate enough memory
+void outOfMem()
+{
+    std::cerr << "Unable to satisfy request for memory\n";
+    std::abort();
+}
+
+int main(int argc, char * argv[])
+{
+    std::set_new_handler(outOfMem);
+    int * pBigDataArray = new int[100000000ULL];
+    // ...
+}
+```
+When operator new is unable to fulfill a memory request, 
+it calls the new-handler function repeatedly until it can find enough memory. 
+The code giving rise to these repeated calls is shown in Item 51, 
+but this high-level description is enough to conclude that 
+a well-designed new-handler function must do one of the following:
+- **Make more memory available**. 
+  This may allow the next memory allocation attempt inside `operator new` to succeed. 
+  One way to implement this strategy is to allocate a large block of memory at program start-up, 
+  then release it for use in the program the first time the new-handler is invoked.
+- **Install a different new-handler**. 
+  If the current new-handler can’t make any more memory available, 
+  perhaps it knows of a different new-handler that can. 
+  If so, the current new-handler can install the other new-handler in its place (by calling `std::set_new_handler`). 
+  The next time `operator new` calls the new-handler function, 
+  it will get the one most recently installed. 
+  (A variation on this theme is for a new-handler to modify its own behavior, 
+  so the next time it’s invoked, it does something different. 
+  One way to achieve this is to have the new-handler modify 
+  static, namespace-specific, or global data 
+  that affects the new-handler’s behavior.)
+- **Uninstall the new-handler**, 
+  i.e., pass `nullptr` to `std::set_new_handler`. 
+  With no new-handler installed, `operator new` will throw an exception when memory allocation is unsuccessful.
+- **Throw an exception** 
+  of type `std::bad_alloc` or some type derived from it. 
+  Such exceptions will not be caught by `operator new`, 
+  so they will propagate to the site originating the request for memory.
+- **Not return**, 
+  typically by calling `std::abort` or exit.
+
+Sometimes you’d like to handle memory allocation failures in different ways, 
+depending on the class of the object being allocated: 
+```c++
+struct X
+{
+    static void outOfMemory();
+    // ...
+};
+
+struct Y
+{
+    static void outOfMemory();
+    // ...
+};
+
+X * p1 = new X; // if allocation is unsuccessful, call X::outOfMemory
+Y * p2 = new Y; // if allocation is unsuccessful, call Y::outOfMemory
+```
+C++ **doesn’t** need any class-specific new-handler. 
+You just have each class provide its own versions of `set_new_handler` and `operator new`. 
+The class’s `set_new_handler` allows clients to specify the new-handler for the class 
+(exactly like the standard `std::set_new_handler` allows clients to specify the global new-handler). 
+The class’s `operator new` ensures that the class-specific new-handler is used 
+in place of the global new-handler when memory for class objects is allocated.
+
+
+Suppose you want to handle memory allocation failures for the `Widget` class. 
+You’ll have to keep track of the function to call when `operator new` can’t allocate enough memory for a `Widget` object, 
+so you’ll declare a static member of type `std::new_handler` to point to the new-handler function for the class. 
+`Widget` will just inherit `EnableCustomNewHandler<Widget>`:
+```c++
+// "EnableCustomNewHandler.h"
+template <typename T>
+class EnableCustomNewHandler
+{
+public:
+    static std::new_handler set_new_handler(std::new_handler p) noexcept;
+
+    static void * operator new(std::size_t size) noexcept(false);
+
+private:
+    static std::new_handler mNewHandler;
+};
+
+// "EnableCustomNewHandler.cpp"
+template <typename T>
+std::new_handler EnableCustomNewHandler<T>::set_new_handler(std::new_handler p) noexcept
+{
+    std::new_handler oldHandler = mNewHandler;
+    mNewHandler = p;
+    return oldHandler;
+}
+
+class NewHandlerGuard
+{
+public:
+    explicit NewHandlerGuard(std::new_handler newHandler) : handler(newHandler)
+    {
+    
+    }
+    
+    NewHandlerGuard(const NewHandlerGuard &) = delete;
+    
+    NewHandlerGuard & operator=(const NewHandlerGuard &) = delete;
+    
+    ~NewHandlerGuard()
+    {
+        std::set_new_handler(handler);
+    }
+
+private:
+        std::new_handler handler;
+};
+
+template <typename T>
+void * EnableCustomNewHandler<T>::operator new(std::size_t size) noexcept(false)
+{
+    NewHandlerGuard guard(std::set_new_handler(mNewHandler));
+    return ::operator new(size);
+}
+
+template <typename T>
+std::new_handler EnableCustomNewHandler<T>::currentNewHandler {nullptr};
+
+// "Widget.h"
+class Widget : public EnableCustomNewHandler<Widget>
+{
+    // ...
+};
+```
+Finally, `Widget::operator new` will do the following: 
+1. Call the standard `set_new_handler` with `Widget`’s error-handling function. 
+   This installs `Widget`’s new-handler as the global new-handler.
+2. Call the global operator new to perform the actual memory allocation.
+   If allocation fails, the global operator new invokes `Widget`’s own version of new-handler, 
+   because that function was just installed as the global new-handler. 
+   If the global `operator new` is ultimately unable to allocate the memory, 
+   it throws a `std::bad_alloc` exception. 
+   In that case, `Widget::operator new` must restore the original global new-handler,
+   then propagate the exception. 
+   To ensure that the original new-handler is always reinstated, 
+   `Widget` treats the global new-handler as a resource 
+   and follows the advice of Item 13 
+   to use resource-managing objects to prevent resource leaks.
+4. If the global `operator new` was able to allocate enough memory for a `Widget` object, 
+   `Widget::operator new` returns a pointer to the allocated memory. 
+   The destructor for the object managing the global new-handler 
+   automatically restores the global new-handler
+   to what it was prior to the call to `Widget::operator new.`
+
+
+Clients of `Widget` use its new-handling capabilities like this:
+```c++
+void outOfMem();
+
+Widget::set_new_handler(outOfMem); 
+Widget * pw1 = new Widget;
+std::string * ps = new std::string;
+
+Widget::set_new_handler(nullptr);
+Widget * pw2 = new Widget;
+```
+
+
+But why `Widget` inherits from `EnableCustomNewHandler<Widget>`? 
+This template `EnableCustomNewHandler` **never** uses its type parameter `T`. 
+It doesn’t need to. 
+All we need is a different copy of `EnableCustomNewHandler::mNewHandler` 
+for each class that inherits from `EnableCustomNewHandler`. 
+The template parameter `T` just _distinguishes one inheriting class from another_. 
+The template mechanism itself automatically generates a copy of `mNewHandler` 
+for each `T` with which `EnableCustomNewHandler` is instantiated.
+
+
+As for `Widget` inheriting from a templatized base class that takes `Widget` as a type parameter, 
+it has a name called the 
+[Curiously Recurring Template Pattern (CRTP)](https://en.cppreference.com/w/cpp/language/crtp). 
+```c++
+// The Curiously Recurring Template Pattern (CRTP)
+template <typename T>
+class Base
+{
+    // methods within Base can use template to access members of Derived
+};
+
+class Derived : public Base<Derived>
+{
+    // ...
+};
+```
+
+```c++
+template <typename T>
+class Singleton
+{
+public:
+    Singleton(const Singleton &) = delete;
+    Singleton & operator=(const Singleton &) = delete;
+    
+    Singleton(Singleton &&) = delete;
+    Singleton & operator=(Singleton &&) = delete;
+    
+    ~Singleton() = default;
+    
+    T & getInstance()
+    {
+        static T instance;
+        return instance;
+    }
+
+private:
+    Singleton() = default;
+};
+
+
+class A : public Singleton<A>
+{
+    
+};
+```
+Until 1993, C++ required that `operator new` return `NULL` when it was unable to allocate the requested memory. 
+`operator new` is now specified to throw a `std::bad_alloc` exception. 
+_Placement `new`_ on `std::nothrow` objects (defined in the header `<new>`) 
+offers the traditional failure-yields-`NULL` behavior (nothrow forms): 
+```c++
+class Widget { ... };
+Widget * pw1 = new Widget;                // throws bad_alloc if allocation fails
+if (pw1 == 0) ...                         // this test must fail
+Widget * pw2 = new (std::nothrow) Widget; // returns 0 if allocation for the Widget fails
+if (pw2 == 0) ...                         // this test may succeed
+```
+Nothrow `new` offers a less compelling guarantee about exceptions than is initially apparent. 
+In the expression `new (std::nothrow) Widget`, two things happen. 
+First, the nothrow version of `operator new` is called to allocate enough memory for a `Widget` object. 
+If that allocation fails, `operator new` returns `nullptr`, just as advertised. 
+If it succeeds, however, the `Widget` constructor is called, and at that point, all bets are off. 
+The `Widget` constructor can do whatever it likes. 
+It might itself `new` up some memory, and if it does, it’s **not** constrained to use nothrow `new`.
+Although the `operator new` call in `new (std::nothrow) Widget` won’t throw, then, the `Widget` constructor might. 
+If it does, the exception will be propagated as usual. 
+Using nothrow new guarantees only that `operator new` won’t throw, 
+**not** that an expression like `new (std::nothrow) Widget` will never yield an exception. 
+In all likelihood, you will never have a need for nothrow `new`.
+
+
+Regardless of whether you use “normal” (i.e., exception-throwing) `new` or its somewhat stunted nothrow cousin, 
+it’s important that you understand the behavior of the new-handler, because it’s used with both forms.
 
 
 
