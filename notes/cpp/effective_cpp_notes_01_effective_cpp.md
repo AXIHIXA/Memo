@@ -3999,7 +3999,7 @@ private:
 
 
 
-### 📌 Item 46: Define non-member functions inside templates when type conversions are desired on all arguments
+### 📌 Item 46: Define non-member functions inside templates (as friends) when type conversions are desired on all arguments
 
 - Implicit type conversion functions are **never** considered during _template argument deduction_.
 - Class templates **don’t** depend on _template argument deduction_ (which applies only to function templates). 
@@ -4106,7 +4106,9 @@ In order to make type conversions possible on all arguments, we need a non-membe
 and in order to have the proper function automatically instantiated, 
 we need to declare the function inside the class. 
 The only way to declare a non-member function inside a class is to make it a `friend`.
-(P.S. This friend declaration inside class body is not visible to regular name lookup, but can be found via ADL.)
+(P.S. 
+This friend declaration inside class body is not visible to regular name lookup (both restricted and unrestricted), 
+but can be found via Argument-dependent Lookup, or ADL.)
 
 
 Functions defined inside a class are implicitly declared `inline`, 
@@ -4166,7 +4168,8 @@ to do the actual multiplication.
 
 - Traits classes make information about types available during compilation.
   They're implemented using templates and template specializations.
-- In conjunction with overloading, traits classes make it possible to perform compile-time if-else tests on types.
+- In conjunction with overloading (master API dispatching internal calls to workers with different traits flags), 
+  traits classes make it possible to perform compile-time `if-else` tests on types.
 
 
 ### [`std::iterator_traits`](https://en.cppreference.com/w/cpp/iterator/iterator_traits)
@@ -4309,15 +4312,186 @@ How to design and implement a traits class:
   that contain the information for the types you want to support.
 
 
+`If-else` test during compilation via function overloading with TMP:  
+```c++
+template <typename IterT, typename DistT>
+void doAdvance(IterT & iter, DistT d, std::random_access_iterator_tag)
+{
+    iter += d;
+}
+
+template <typename IterT, typename DistT>
+void doAdvance(IterT & iter, DistT d, std::bidirectional_iterator_tag)
+{
+    if (0 <= d)
+    {
+        while (d--)
+        {
+            ++iter;
+        }
+    }
+    else
+    {
+        while (d++)
+        {
+            --iter;
+        }
+    }
+}
+
+template <typename IterT, typename DistT>
+void doAdvance(IterT & iter, DistT d, std::input_iterator_tag)
+{
+    if (d < 0)
+    {
+        throw std::out_of_range("Negative distance");
+    }
+    while (d--)
+    {
+        ++iter;
+    }
+}
+
+
+template <typename IterT, typename DistT>
+void advance(IterT & iter, DistT d)
+{
+    doAdvance(iter, d, typename std::iterator_traits<IterT>::iterator_category());
+}
+```
+How to use a traits class:
+- Create a set of overloaded “worker” functions or function templates that differ in a traits parameter. 
+  Implement each function in accord with the traits information passed.
+- Create a “master” function or function template that calls the workers, 
+  passing information provided by a traits class.
+
+
+Commonly-used traits in C++ STL:
+- `std::iterator_traits<IterT>`
+- `std::char_traits<CharT>`
+- `std::numeric_limits<NumericT>`
+- `std::is_fundamental<T>`
+- `std::is_array<T>`
+- `std::is_base_of<T1, T2>`
+- ...
 
 
 
-### 📌 Item 48: Be aware of template metaprogramming
+### 📌 Item 48: Be aware of template metaprogramming (TMP)
 
-- Template metaprogramming can shift work from runtime to compile-time,
-  thus enabling earlier error detection and higher runtime performance.
-- TMP can be used to generate custom code based on combinations of policy choices,
-  and it can also be used to avoid generating code inappropriate for particular types.
+- Template metaprogramming (TMP) can shift work from runtime to compile-time, 
+  thus enabling earlier error detection and higher runtime performance. 
+- TMP can be used to generate custom code based on combinations of policy choices, 
+  and it can also be used to avoid generating code inappropriate for particular types. 
+
+
+Template metaprogramming (TMP) is the process of 
+writing template-based C++ programs that execute during compilation. 
+A template metaprogram is a program written in C++ that executes inside the C++ compiler. 
+When a template metaprogram finishes running, 
+its output (pieces of C++ source code instantiated from templates) is then compiled as usual. 
+
+
+C++ was not designed for template metaprogramming, 
+but since TMP was discovered (**not** invented) in the early 1990s, it has proven to be so useful,
+extensions are likely to be added to both the language and its standard library to make TMP easier.
+The features underlying TMP were introduced when templates were added to C++. 
+All that was needed was for somebody to notice how they could be used in clever and unexpected ways.
+
+
+Two great strengths of TMP:
+- It makes some things easy that would otherwise be hard or impossible;
+- It shifts work from runtime to compile-time (because template metaprograms execute during C++ compilation);
+    - Earlier error detection: 
+        - Some kinds of errors that are usually detected at runtime can be found during compilation. 
+    - Better runtime performance in just about every way: 
+        - Smaller executables;
+        - Shorter runtimes;
+        - Less memory requirements.
+    - Compilation takes _much_ longer.
+
+
+TMP has been shown to be _Turing-complete_, which means that it is powerful enough to compute anything. 
+Using TMP, you can declare variables, perform loops, write and call functions, etc. 
+But such constructs look very different from their “normal” C++ counterparts. 
+For example, Item 47 shows how `if-else` conditionals in TMP are expressed
+via templates and template specializations. 
+Another example: Loops are done in TMP via _recursive template instantiations_.
+
+
+But that’s assembly-level TMP. 
+Libraries for TMP 
+(e.g., [Boost.MPL](https://www.boost.org/doc/libs/1_78_0/libs/mpl/doc/index.html)) 
+offer a higher-level syntax, though still not something you’d mistake for “normal” C++.
+```c++
+template <unsigned long long N>
+struct Binary
+{
+    // prepend higher bits to the lowest bit
+    static constexpr unsigned value = (binary<N / 10>::value << 1) | (N % 10);
+};
+
+// specialization terminates recursion
+template <>
+struct Binary<0>
+{
+    static constexpr unsigned value = 0;
+};
+
+constexpr unsigned ONE = Binary<1>::value;
+constexpr unsigned THREE = Binary<11>::value;
+constexpr unsigned FIVE = Binary<101>::value;
+constexpr unsigned SEVEN = Binary<111>::value;
+constexpr unsigned NINE = Binary<1001>::value;
+```
+To grasp why TMP is worth knowing about, it’s important to have a better understanding of what it can accomplish. 
+Here are three examples:
+- **Ensuring dimensional unit correctness**. 
+  In scientific and engineering applications, it’s essential that dimensional units 
+  (e.g., mass, distance, time, etc.) be combined correctly. 
+  Assigning a variable representing mass to a variable representing velocity, for example, is an error, 
+  but dividing a distance variable by a time variable and assigning the result to a velocity variable is fine. 
+  Using TMP, it’s possible to ensure (during compilation) that all dimensional unit combinations in a program are correct, 
+  no matter how complex the calculations. 
+  (This is an example of how TMP can be used for early error detection.) 
+  One interesting aspect of this use of TMP is that fractional dimensional exponents can be supported. 
+  This requires that such fractions be reduced _during compilation_ so that compilers can confirm, 
+  for example, that the unit `time^{1/2}` is the same as `time^{4/8}`.
+- **Optimizing matrix operations**. 
+  Item 21 explains that some functions, including `operator*`, must return new objects, 
+  and Item 44 introduces the `SquareMatrix` class, so consider the following code:
+```c++
+using BigMatrix = SquareMatrix<double, 10000>;
+BigMatrix m1, m2, m3, m4, m5;               // create matrices and give them values
+BigMatrix result = m1 * m2 * m3 * m4 * m5;  // compute their product
+```
+  Calculating result in the “normal” way calls for the creation of four temporary matrices, 
+  one for the result of each call to `operator*`.
+  Furthermore, the independent multiplications generate a sequence of four loops over the matrix elements. 
+  Using an advanced template technology related to TMP called _expression templates_,
+  it’s possible to eliminate the temporaries and merge the loops, 
+  all without changing the syntax of the client code above. 
+  The resulting software uses less memory and runs dramatically faster.
+- **Generating custom design pattern implementations**. 
+  Design patterns like Strategy (see Item 35), Observer, Visitor, etc. 
+  can be implemented in many ways. 
+  Using a TMP-based technology called _policy-based design_, 
+  it’s possible to create templates representing independent design choices (“policies”) 
+  that can be combined in arbitrary ways to yield pattern implementations with custom behavior.
+  For example, this technique has been used to allow a few templates implementing smart pointer behavioral policies 
+  to generate (during compilation) any of hundreds of different smart pointer types. 
+  Generalized beyond the domain of programming artifacts like design patterns and smart pointers, 
+  this technology is a basis for what’s known as generative programming. 
+
+
+
+
+
+
+
+
+
+
 
 
 
