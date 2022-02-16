@@ -3324,10 +3324,12 @@ private:
 };
 ```
 
+General guideline: 
 1. **Avoid using objects when references and pointers will do**.
 2. **Depend on forward declarations (except standard libraries) instead of definitions whenever you can**.
+   - **Never** add (forward-declare, declare, define, etc.) anything to `namespace std`. 
 3. **Provide separate header files for both definitions and forward declarations** 
-   (`Widget.h` + `WidgetFwd.h`, or `Widget.h` + `WidgetImpl.h`). 
+   (`Widget.h` + `WidgetFwd.h`). 
 
 <u><i>Interface Class</i></u>: 
 Abstract base class + derived implementation class. 
@@ -4702,6 +4704,7 @@ it has a name called the
 [Curiously Recurring Template Pattern (CRTP)](https://en.cppreference.com/w/cpp/language/crtp). 
 ```c++
 // The Curiously Recurring Template Pattern (CRTP)
+// Base form: Deriving a Base class template with Derived class as argument
 template <typename T>
 class Base
 {
@@ -4712,9 +4715,8 @@ class Derived : public Base<Derived>
 {
     // ...
 };
-```
 
-```c++
+// One common use: Singleton base class template
 template <typename T>
 class Singleton
 {
@@ -4740,7 +4742,7 @@ private:
 
 class A : public Singleton<A>
 {
-    
+    // ...
 };
 ```
 Until 1993, C++ required that `operator new` return `NULL` when it was unable to allocate the requested memory. 
@@ -4749,10 +4751,10 @@ _Placement `new`_ on `std::nothrow` objects (defined in the header `<new>`)
 offers the traditional failure-yields-`NULL` behavior (nothrow forms): 
 ```c++
 class Widget { ... };
-Widget * pw1 = new Widget;                // throws bad_alloc if allocation fails
-if (pw1 == 0) ...                         // this test must fail
-Widget * pw2 = new (std::nothrow) Widget; // returns 0 if allocation for the Widget fails
-if (pw2 == 0) ...                         // this test may succeed
+Widget * pw1 = new Widget;                 // throws std::bad_alloc if allocation fails
+if (!pw1) ...                              // this test must fail
+Widget * pw2 = new (std::nothrow) Widget;  // returns nullptr if allocation for the Widget fails
+if (!pw2) ...                              // this test may succeed
 ```
 Nothrow `new` offers a less compelling guarantee about exceptions than is initially apparent. 
 In the expression `new (std::nothrow) Widget`, two things happen. 
@@ -4780,6 +4782,188 @@ it’s important that you understand the behavior of the new-handler, because it
 
 - There are many valid reasons for writing custom versions of `new` and `delete`,
   including improving performance, debugging heap usage errors, and collecting heap usage information.
+- A good memory manager takes account of a lot of details like alignment, thread safety, new-handlers, etc. 
+  Do **not** attempt a custom memory manager unless you really have to. 
+
+
+Three most-commonly-seen reasons for customizing `new` and `delete`
+1. **To detect usage errors**. 
+   - Failure to `delete` memory conjured up by `new` leads to memory leaks. 
+     Using more than one `delete` on `new`-ed memory yields undefined behavior. 
+     If `operator new` keeps a list of allocated addresses and `operator delete` removes addresses from the list, 
+     it’s easy to detect such usage errors. 
+   - Similarly, a variety of programming mistakes can lead to 
+     _data overruns_ (writing beyond the end of an allocated block) and 
+     _data underruns_ (writing prior to the beginning of an allocated block). 
+     Custom `operator new` s can over-allocate blocks so there’s room to put known Byte patterns (“signatures”) 
+     before and after the memory made available to clients. 
+     `operator delete`s can check to see if the signatures are still intact. 
+     If they’re not, an overrun or underrun occurred sometime during the life of the allocated block, 
+     and `operator delete` can log that fact, along with the value of the offending pointer. 
+2. **To improve efficiency**. 
+   The versions of `operator new` and `operator delete` that ship with compilers are designed for general-purpose use. 
+   They have to be acceptable for long-running programs (e.g., web servers), 
+   but they also have to be acceptable for programs that execute for less than a second. 
+   They have to handle series of requests for large blocks of memory, small blocks, and mixtures of the two. 
+   They have to accommodate allocation patterns ranging 
+   from the dynamic allocation of a few blocks that exist for the duration of the program 
+   to the constant allocation and deallocation of a large number of short-lived objects. 
+   They have to worry about heap fragmentation, 
+   a process that, if unchecked, eventually leads to the inability to satisfy requests for large blocks of memory, 
+   even when ample free memory is distributed across many small blocks.   
+   Given the demands made on memory managers, it’s no surprise that 
+   the `operator new`s and `operator delete`s that ship with compilers take a middle-of-the-road strategy. 
+   They work reasonably well for everybody, but optimally for nobody. 
+   If you have a good understanding of your program’s dynamic memory usage patterns, 
+   you can often find that custom versions of `operator new` and `operator delete` outperform the default ones. 
+   By “outperform,” I mean they run faster and require less memory. 
+   For some (though by no means all) applications, replacing the stock `new` and `delete` with custom versions 
+   is an easy way to pick up significant performance improvements.
+3. **To collect usage statistics**. 
+   Before heading down the path of writing custom `new`s and `delete`s, 
+   it’s prudent to gather information about how your software uses its dynamic memory. 
+   What is the distribution of allocated block sizes? 
+   What is the distribution of their lifetimes? 
+   Do they tend to be allocated and deallocated in FIFO (“first in, first out”) order, 
+   LIFO (“last in, first out”) order, or something closer to random order? 
+   Do the usage patterns change over time, 
+   e.g., does your software have different allocation/deallocation patterns in different stages of execution? 
+   What is the maximum amount of dynamically allocated memory in use at any one time (i.e., its “high watermark”)? 
+   Custom versions of `operator new` and `operator delete` make it easy to collect this kind of information. 
+
+
+In concept, writing a custom `operator new` is pretty easy. 
+For example, here’s a quick first pass at a global `operator new` that 
+facilitates the detection of underruns and overruns. 
+There are a lot of little things **wrong** with it, 
+but we’ll worry about those in a moment.
+```c++
+namespace
+{
+
+constexpr unsigned signature {0xDEADBEEFU};
+
+using Byte = unsigned char;
+
+}  // namespace anonymous
+
+
+// this code has several flaws — see below
+void * operator new(std::size_t size) noexcept(false)
+{
+    // increase size of request so 2 signatures will also fit inside
+    std::size_t realSize = size + 2 * sizeof(unsigned);
+
+    // call malloc to get the actual
+    void * pMem = std::malloc(realSize);
+
+    if (!pMem)
+    {
+        // call new handler
+        std::get_new_handler()();
+    }
+
+    // memory
+    // write signature into first and last parts of the memory
+    *(static_cast<unsigned *>(pMem)) = signature;
+    
+    *(reinterpret_cast<unsigned *>(static_cast<Byte *>(pMem) + realSize - sizeof(unsigned))) = signature;
+    
+    // return a pointer to the memory just past the first signature
+    return static_cast<Byte *>(pMem) + sizeof(unsigned);
+}
+```
+**Alignment**.
+Many computer architectures require that data of particular types be placed in memory at particular kinds of addresses.
+For example, an architecture might require 
+that pointers occur at addresses that are a multiple of four (i.e., be four-Byte aligned), 
+or that `double`s must occur at addresses that are a multiple of eight (i.e., be eight-Byte aligned). 
+Failure to follow such constraints could lead to hardware exceptions at runtime. 
+Other architectures are more forgiving, though they may offer better performance if alignment preferences are satisfied. 
+For example, `double`s may be aligned on any Byte boundary on the Intel x86 architecture, 
+but access to them is a lot faster if they are eight-Byte aligned. 
+
+
+Alignment is relevant here because C++ requires that 
+all `operator new`s return pointers that are suitably aligned for any data type. 
+`std::malloc` labors under the same requirement, 
+so having `operator new` return a pointer it gets from `std::malloc` is safe. 
+However, in `operator new` above, we’re not returning a pointer we got from `std::malloc`, 
+we’re returning a pointer we got from `std::malloc` offset by the size of an `unsigned`. 
+There is no guarantee that this is safe! 
+If the client called `operator new` to get enough memory for a `double` 
+(or, if we were writing `operator new[]` , an array of `double`s), 
+and we were running on a machine 
+where `int`s were four Bytes in size but `double`s were required to be eight-Byte aligned, 
+we’d probably return a pointer with improper alignment. 
+That might cause the program to crash. 
+Or it might just cause it to run more slowly. 
+Either way, it’s probably not what we had in mind.
+
+
+Details like alignment are the kinds of things that 
+distinguish professional-quality memory managers from ones thrown together 
+by programmers distracted by the need to get on to other tasks. 
+Writing a custom memory manager that almost works is pretty easy.
+Writing one that works well is a lot harder.
+As a general rule, **do not attempt a custom memory manager unless you have to**.
+
+
+In many cases, you don’t have to. 
+Some compilers have switches that enable debugging and logging functionality in their memory management functions.
+Many commercial products can also replace the memory management functions that ship with compilers.
+All you need do is to buy them and relink. 
+
+
+Another option is open source memory managers like 
+[Boost.Pool](https://www.boost.org/doc/libs/1_78_0/libs/pool/doc/html/index.html). 
+Boost.Pool offers _memory pools_ for allocation of a large number of small objects. 
+Many C++ books show the code for a high-performance small-object allocator, 
+but they usually omit such pesky details as portability and alignment considerations, thread safety, etc. 
+Real libraries tend to have code that’s a lot more robust. 
+Even if you decide to write your own `new`s and `delete`s, 
+looking at open source versions is likely to give you insights into the easy-to-overlook details 
+that separate almost working from really working. 
+
+
+The topic of this Item is to know when it can make sense to replace the default versions of `new` and `delete`, 
+either globally or on a per-class basis. 
+We’re now in a position to summarize when in more detail than we did before.
+- **To detect usage errors**
+- **To collect statistics about the use of dynamically allocated memory** 
+- **To increase the speed of allocation and deallocation**. 
+  General-purpose allocators are often (though not always) a lot slower than custom versions, 
+  especially if the custom versions are designed for objects of a particular type. 
+  Class-specific allocators are an example application of fixed-size allocators such as those offered by Boost.Pool. 
+  If your application is single-threaded, but your compilers’ default memory management routines are thread-safe, 
+  you may be able to win measurable speed improvements by writing thread-unsafe allocators. 
+  Of course, before jumping to the conclusion that `operator new` and `operator delete` are worth speeding up, 
+  be sure to profile your program to confirm that these functions are truly a bottleneck.
+- **To reduce the space overhead of default memory management**. 
+  General-purpose memory managers are often (though not always) not just slower than custom versions, 
+  they often use more memory, too. 
+  That’s because they often incur some overhead for each allocated block. 
+  Allocators tuned for small objects (such as those in Boost.Pool) essentially eliminate such overhead.
+- **To compensate for suboptimal alignment in the default allocator**. 
+  As I mentioned earlier, it’s fastest to access `double`s on the x86 architecture when they are eight-Byte aligned. 
+  Unfortunately, `operator new`s that ship with some compilers 
+  **don’t** guarantee eight-Byte alignment for dynamic allocations of `double`s. 
+  In such cases, replacing the default `operator new` with one that guarantees eight-Byte alignment 
+  could yield big increases in program performance. 
+- **To cluster related objects near one another**. 
+  If you know that particular data structures are generally used together, 
+  and you’d like to minimize the frequency of page faults when working on the data, 
+  it can make sense to create a separate heap for the data structures, 
+  so they are clustered together on as few pages as possible. 
+  Placement versions of `new` and `delete` (see Item 52) can make it possible to achieve such clustering.
+- **To obtain unconventional behavior**. 
+  Sometimes you want `operator new`s and `operator delete`s to do something that the compiler-provided versions don’t offer. 
+  For example, you might want to allocate and deallocate blocks in shared memory, 
+  but have only a C API through which to manage that memory. 
+  Writing custom versions of `new` and `delete` (probably placement versions) 
+  would allow you to drape the C API in C++ clothing. 
+  As another example, you might write a custom `operator delete` 
+  that overwrites deallocated memory with zeros in order to increase the security of application data.
 
 
 
@@ -4845,7 +5029,7 @@ it’s important that you understand the behavior of the new-handler, because it
 
 ### 📌 Item 55: Familiarize yourself with Boost
 
-- Boost is a community and web site for the development of free, open source, peer-reviewed C++ libraries.
+- Boost is a community and website for the development of free, open source, peer-reviewed C++ libraries.
   Boost plays an influential role in C++ standardization.
 - Boost offers implementations of many TR1 components,
   but it also offers many other libraries, too.

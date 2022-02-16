@@ -774,7 +774,7 @@ int a = n;                                // OK ：名称 n 在作用域中
 #### [函数作用域](https://en.cppreference.com/w/cpp/language/scope#Function_scope)（Function scope）
 
 - 声明于函数内的`label`（且 *只有* `label`），在 *该函数* 和 *其所有内嵌代码块* 的 *任何位置* 都在作用域中，无论在其自身声明的前后
-    - E. Dijkstra: Go To Statement Considered Harmful. *Communications of the ACM (CACM)* (1968) 
+    - E. Dijkstra: Go To Statement Considered Harmful. *Communications of the ACM* (1968) 
 ```
 void f()
 {
@@ -1701,7 +1701,7 @@ int & &r;    // error
 ```
 - *引用坍缩* （Reference collapsing） => 16.2.5
     - 容许通过 *模板* 或 *`typedef`中的类型操作* 构成 *引用的引用* 
-        - 这种情况下适用引用坍缩（reference coolapsing）规则
+        - 这种情况下适用引用坍缩（reference collapsing）规则
         - *右值引用的右值引用* 坍缩成 *右值引用* ， *所有其他组合* 均坍缩成 *左值引用* 
     - 这条规则，和将`T &&`用于 *函数模板* 时的 *模板实参推导* 的特殊规则一起，组成使得`std::forward`可行的规则
 ```
@@ -2075,15 +2075,15 @@ In C++11, expressions that:
 
 - have identity and cannot be moved from are called lvalue expressions;
 - have identity and can be moved from are called xvalue expressions;
-- do not have identity and can be moved from are called prvalue expressions;
+- do not have identity and can be moved from are called `prvalue` expressions;
 - do not have identity and cannot be moved from are not used.
 
-The expressions that have identity are called glvalue expressions.
-Both lvalues and xvalues are glvalue expressions.
+The expressions that have identity are called `glvalue` expressions.
+Both lvalues and `xvalues` are `glvalue` expressions.
 
 
 The expressions that can be moved from are called rvalue expressions.
-Both prvalues and xvalues are rvalue expressions.
+Both `prvalues` and `xvalues` are rvalue expressions.
 
 #### 基本值类别
 
@@ -2600,7 +2600,7 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
                 - 如果函数有 *默认实参* ，则传入的实参 *数量* 可能 *少于* 实际使用的实参数量
             2. 每个实参的 *类型* 都与对应的形参类型 *相同* ，或 *能隐式转换* 成该类型
         - 如果没有 *可行函数* ： *无匹配* 
-    3. 寻找 *最佳匹配* （best match / best viable function）
+    3. 寻找 *最佳匹配* （best match）（best viable function）
         - 如果有且仅有一个函数同时满足下列两个条件，则匹配成功
             1. 该函数的每个实参的匹配都不劣于其他可行函数需要的匹配
             2. 该函数的至少有一个实参的匹配优于其他可行函数需要的匹配
@@ -2976,11 +2976,11 @@ void X::h()
     - 常成员函数则只能引用本类中的数据成员，而**不能**修改除 *可变数据成员* 以外任何成员
     - 凡是不修改类数据成员的函数一律定义成常成员函数
     
-数据成员              | 普通成员函数          | `const`成员函数
---------------------|---------------------|---------------------
-普通数据成员          | 可引用，可修改        | 可引用，**不可**修改 
-常数据成员            | 可引用，**不可**修改 | 可引用，**不可**修改 
-*常对象* 的数据成员   | 不允许                | 可引用，**不可**修改 
+| 数据成员            | 普通成员函数          | `const`成员函数      |
+|--------------------|--------------------|----------------------|
+| 普通数据成员        | 可引用，可修改         | 可引用，**不可**修改  | 
+| 常数据成员          | 可引用，**不可**修改   | 可引用，**不可**修改  |
+| *常对象* 的数据成员  | 不允许               | 可引用，**不可**修改   | 
 
 
 #### 可变数据成员（mutable data member）
@@ -6677,10 +6677,10 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - `f`如有返回值，则直接被丢弃
         - **不能**复制序列中的元素
     - `f`
-        - Function object, to be applied to the result of dereferencing every iterator in the range `[first, last)`
+        - Function object, to be applied to the result of de-referencing every iterator in the range `[first, last)`
         - Signature of the function should be equivalent to the following: `void fun(const Type & a);`
             - The signature does not need to have `const &`
-            - `Type` must be such that an object of type `InputIt` can be dereferenced and then implicitly converted to `Type`
+            - `Type` must be such that an object of type `InputIt` can be de-referenced and then implicitly converted to `Type`
     - 返回：传入的`f`经过迭代之后的 *右值引用* 
         - 想要获得经历过迭代的`f`，则 *只能依靠返回值* ，传入的`f`在`for_each`结束后 *未定义* 
     - 复杂度：`Omega(last - first)`次`f`调用
@@ -9513,85 +9513,104 @@ std::map<std::string, int>::mapped_type v5;  // int
 #### 动态内存和智能指针（Dynamic memory and smart pointers）
 
 - `C++`直接管理动态内存
-    - 动态申请内存：[`new`表达式](https://en.cppreference.com/w/cpp/language/new)
-        - 初始化可以选择
-            - *默认初始化* 
-                - *不提供* 初始化器 
-                - 对象的值 *未定义* 
-            ```
-            int * pi = new int;
-            std::string * ps = new std::string;
-            ```
-            - *值初始化* 
-                - 提供 *空的* 初始化器 
-                - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
-                - 对于内置类型，值初始化的效果则是 *零初始化* 
-            ```
-            std::string * ps1 = new std::string;   // default initialized to the empty string
-            std::string * ps = new std::string();  // value initialized to the empty string
-            int * pi1 = new int;                   // default initialized; *pi1 is undefined
-            int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
-            ```
-            - *直接初始化* 
-                - 提供 *非空* 的初始化器 
-                - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
-            ```
-            int * pi = new int(1024);
-            std::string * ps = new std::string(10, '9');
-            std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-            ```
-        - 使用`auto`
-            - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
-                - 编译器需要从初始化器中推断类型
+- 动态申请内存：[`new`表达式](https://en.cppreference.com/w/cpp/language/new)
+    - 初始化可以选择
+        - *默认初始化* 
+            - *不提供* 初始化器 
+            - 对象的值 *未定义* 
+        ```c++
+        int * pi = new int;
+        std::string * ps = new std::string;
         ```
-        auto p1 = new auto(obj);      // p points to an object of the type of obj
-                                      // that object is initialized from obj
-        auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
+        - *值初始化* 
+            - 提供 *空的* 初始化器 
+            - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
+            - 对于内置类型，值初始化的效果则是 *零初始化* 
+        ```c++
+        std::string * ps1 = new std::string;   // default initialized to the empty string
+        std::string * ps = new std::string();  // value initialized to the empty string
+        int * pi1 = new int;                   // default initialized; *pi1 is undefined
+        int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
         ```
-        - 动态分配`const`对象
-            - 用`new`分配`const`对象是合法的，返回指向`const`的指针
-            - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
-                - 对于有 *默认构造函数* 的类类型，可以默认初始化
-                - 否则，必须直接初始化
+        - *直接初始化* 
+            - 提供 *非空* 的初始化器 
+            - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
+        ```c++
+        int * pi = new int(1024);
+        std::string * ps = new std::string(10, '9');
+        std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
         ```
-        // allocate and direct-initialize a const int
-        const int * pci = new const int(1024);
+    - 使用`auto`
+        - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
+            - 编译器需要从初始化器中推断类型
+    ```c++
+    auto p1 = new auto(obj);      // p points to an object of the type of obj
+                                  // that object is initialized from obj
+    auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
+    ```
+    - 动态分配`const`对象
+        - 用`new`分配`const`对象是合法的，返回指向`const`的指针
+        - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
+            - 对于有 *默认构造函数* 的类类型，可以默认初始化
+            - 否则，必须直接初始化
+    ```c++
+    // allocate and direct-initialize a const int
+    const int * pci = new const int(1024);
 
-        // allocate a default-initialized const empty string
-        const std::string * pcs = new const std::string;
-        ```
-        - 内存耗尽
-            - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
-            - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
-                - 定位`new`本质作用是在指定地点`new`个东西出来，配合`std::allocator<T>`用的
-        ```
-        // if allocation fails, new returns a null pointer
-        int * p1 = new int;                 // if allocation fails, new throws std::bad_alloc
-        int * p2 = new (std::nothrow) int;  // if allocation fails, new returns a null pointer
-        ```
+    // allocate a default-initialized const empty string
+    const std::string * pcs = new const std::string;
+    ```
+    - 内存耗尽
+        - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
+        - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
+            - 定位`new`本质作用是在指定地点`new`个东西出来，配合`std::allocator<T>`用的
+    ```c++
+    // if allocation fails, new returns a null pointer
+    int * p1 = new int;                 // if allocation fails, new throws std::bad_alloc
+    int * p2 = new (std::nothrow) int;  // if allocation fails, new returns a null pointer
+    ```
+    - `new` and `operator new`
+    ```c++
+    // allocates memory by calling: operator new(sizeof(MyClass))
+    // and then constructs an object at the newly allocated space
+    MyClass * p1 = new MyClass;
+    
+    // allocates memory by calling: operator new(sizeof(MyClass), std::nothrow)
+    // and then constructs an object at the newly allocated space
+    MyClass * p2 = new (std::nothrow) MyClass;
+    
+    // does not allocate memory; calls: operator new(sizeof(MyClass), p2)
+    // but constructs an object at p2
+    new (p2) MyClass;
+    
+    // Notice though that calling this function directly does not construct an object. 
+    // allocates memory by calling: operator new (sizeof(MyClass))
+    // but does not call MyClass's constructor
+    MyClass * p3 = (MyClass*) ::operator new (sizeof(MyClass));
+    ```
     - 动态释放内存：[`delete`表达式](https://en.cppreference.com/w/cpp/language/delete)
         - 传递给`delete`的指针必须是 *指向被动态分配的对象* 的指针或者 *空指针* 
         - 将同一个对象反复释放多次是 *未定义行为*
         - *`const`对象* 虽然不能更改，但却 *可以销毁* 
         - `delete`之后指针成为了 *空悬指针* （dangling pointer）
             - *你就是一个没有对象的野指针*
-        ```
-        int i; 
-        int * pi1 = &i; 
-        int * pi2 = nullptr;
-        
-        double * pd = new double(33); 
-        double * pd2 = pd;
-        
-        delete i;    // error: i is not a pointer
-        delete pi1;  // undefined: pi1 refers to a local
-        delete pd;   // ok
-        delete pd2;  // undefined: the memory pointed to by pd2 was already freed
-        delete pi2;  // ok: it is always ok to delete a null pointer    
-        
-        const int * pci = new const int(1024);
-        delete pci;  // ok: free a const object 
-        ```
+    ```c++
+    int i; 
+    int * pi1 = &i; 
+    int * pi2 = nullptr;
+    
+    double * pd = new double(33); 
+    double * pd2 = pd;
+    
+    delete i;    // error: i is not a pointer
+    delete pi1;  // undefined: pi1 refers to a local
+    delete pd;   // ok
+    delete pd2;  // undefined: the memory pointed to by pd2 was already freed
+    delete pi2;  // ok: it is always ok to delete a null pointer    
+    
+    const int * pci = new const int(1024);
+    delete pci;  // ok: free a const object 
+    ```
     - 动态对象的生存期直到被释放时为止
         - `std::shared_ptr`管理的对象会在引用计数降为`0`时被自动释放
         - 内置类型指针管理的对象则一直存在到被显式释放为止
@@ -10090,12 +10109,21 @@ std::map<std::string, int>::mapped_type v5;  // int
         ```
     - 标准库`std::allocator`类
         - `std::allocator<T> a`：定义一个`std::allocator<T>`类型对象`a`，用于为`T`类型对象分配 *未构造的内存*
-        - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`
-        - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。`p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。调用`a.deallocate(p, n)`之前，这块内存中的对象必须已经被析构
+        - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`. 
+          - Calls `::operator new(n)` (which in turn calls std::malloc(n)), but how and when to call is unspecified
+        - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。
+          - `p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。
+          - 调用`a.deallocate(p, n)`之前，这块内存中的对象必须已经被析构
         - 初始化： *定位* `new` => 19.1.2
-        - 下面俩货已经被新时代抛弃了，就当他们不存在，现在构造应使用 *定位`new`表达式* 和`std::destory`、`std::destory_at`和`std::destroy_n`
-            - `a.construct(p, args)`：`p`必须是类型为`T *`的指针，指向一块原始内存；`arg`被传递给`T`的构造函数，用来在`p`指向的内存中构造一个对象`(deprecated in C++17)(removed in C++20)`
-            - `a.destory(p)`：`p`为`T *`类型指针，此算法对`p`指向的对象执行析构函数`(deprecated in C++17)(removed in C++20)`
+        - 构造使用
+          - [Placement `new`](https://en.cppreference.com/w/cpp/language/new#Placement_new) 
+          - Manually call object destructor
+          - `std::destory`、`std::destory_at`和`std::destroy_n`
+          - [`std::allocator_traits`](https://en.cppreference.com/w/cpp/memory/allocator_traits)'s static methods 
+            - [`std::allocator_traits::allocate`](https://en.cppreference.com/w/cpp/memory/allocator_traits/allocate)
+            - [`std::allocator_traits::deallocate`](https://en.cppreference.com/w/cpp/memory/allocator_traits/deallocate)
+            - [`td::allocator_traits::construct`](https://en.cppreference.com/w/cpp/memory/allocator_traits/construct)
+            - [`td::allocator_traits::destory`](https://en.cppreference.com/w/cpp/memory/allocator_traits/destory)
     - 标准库 *未初始化内存* 算法（`<memory>`）
         - [`std::uninitialized_copy`](https://en.cppreference.com/w/cpp/memory/uninitialized_copy)
             - 可能的实现
@@ -11735,15 +11763,15 @@ Entry & operator=(Entry rhs)
     - `@`代表对应的 *前置* 、 *中置* 或 *后置* *运算符* 
     - `a`、`b`代表对应的 *操作数* 
     
-表达式    | 成员函数             | 非成员函数        | 示例
----------|--------------------|------------------|-----------------------------------
-`@a`      | `(a).operator@()`    | `operator@(a)`    | `!std::cin => std::cin.operator!()`
-`a@`      | `(a).operator@(0)`   | `operator@(a, 0)` | `std::vector<int>::iterator i;`，`i++ => i.operator++(0)`
-`a @ b`   | `(a).operator@(b)`   | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`
-`a = b`   | `(a).operator=(b)`   | *必须为成员函数*  | `std::string s;`，`str = "abc" => str.operator=("abc")`
-`a(b...)` | `(a).operator(b...)` | *必须为成员函数*  | `std::greater(1, 2) => std::greater.operator()(1, 2)`   
-`a[b]`    | `(a).operator[](b)`  | *必须为成员函数*  | `std::map<int, int> m;`，`m[1] => m.operator[](1)`
-`a->   `  | `(a).operator->()`   | *必须为成员函数*  | `std::unique_ptr<S> p;`，`p->bar() => p.operator->()`
+| 表达式     | 成员函数              | 非成员函数          | 示例                                                        |
+|-----------|----------------------|-------------------|-----------------------------------------------------------|
+| `@a`      | `(a).operator@()`    | `operator@(a)`    | `!std::cin => std::cin.operator!()`                       |
+| `a@`      | `(a).operator@(0)`   | `operator@(a, 0)` | `std::vector<int>::iterator i;`，`i++ => i.operator++(0)`  |
+| `a @ b`   | `(a).operator@(b)`   | `operator@(a, b)` | `std::cout << 42 => std::cout.operator<<(42)`             |
+| `a = b`   | `(a).operator=(b)`   | *必须为成员函数*     | `std::string s;`，`str = "abc" => str.operator=("abc")`    |
+| `a(b...)` | `(a).operator(b...)` | *必须为成员函数*     | `std::greater(1, 2) => std::greater.operator()(1, 2)`     |
+| `a[b]`    | `(a).operator[](b)`  | *必须为成员函数*     | `std::map<int, int> m;`，`m[1] => m.operator[](1)`         |
+| `a->   `  | `(a).operator->()`   | *必须为成员函数*     | `std::unique_ptr<S> p;`，`p->bar() => p.operator->()`      |
 
 - 直接调用重载的运算符函数
 ```
