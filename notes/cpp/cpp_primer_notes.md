@@ -10052,7 +10052,7 @@ std::map<std::string, int>::mapped_type v5;  // int
             - **不能**使用 *成员访问运算符* （ *点运算符* `.`和 *箭头运算符* `->`）
                 - 这俩货对数组没意义
             - 其他操作 *不变* 
-        ```
+        ```c++
         // up points to an array of ten uninitialized ints
         std::unique_ptr<int[]> up(new int[10]);
         
@@ -10069,7 +10069,7 @@ std::map<std::string, int>::mapped_type v5;  // int
                 - 这种情况下不提供删除器是 *未定义行为*
             - *智能指针类型* **不**支持下标运算符、**不**支持指针算术运算
                 - 必须使用`sp.get()`获取内置指针进行访问
-        ```
+        ```c++
         // to use a shared_ptr we must supply a deleter
         std::shared_ptr<int> sp(new int[10], [] (int *p) { delete[] p; });
 
@@ -10090,7 +10090,7 @@ std::map<std::string, int>::mapped_type v5;  // int
             - 否则将造成不必要的浪费（对象先被初始化，之后又被重复赋值）
                 - 比如下面的例子，`p`中每个`std::string`都先被默认初始化，之后又被赋值
             - 且没有默认构造函数的类类型干脆就不能动态分配数组了
-        ```
+        ```c++
         std::string * const p = new std::string[n];  // construct n empty strings
         std::string s;
         std::string * q = p;                         // q points to the first string
@@ -10111,17 +10111,18 @@ std::map<std::string, int>::mapped_type v5;  // int
         - 将 *内存分配* 和 *对象构造* 分离开
         - `std::allocator`是一个 *模板* ，定义时需指明将分配的对象类型
         - `std::allocotor<T>`的 *对象* 分配 *未构造的内存* 时，它将根据`T`的类型确定 *内存大小* 和 *对齐位置*
-        ```
+        ```c++
         std::allocator<std::string> alloc;  // object that can allocate strings
         auto const p = alloc.allocate(n);   // allocate n unconstructed strings
         ```
     - 标准库`std::allocator`类
         - `std::allocator<T> a`：定义一个`std::allocator<T>`类型对象`a`，用于为`T`类型对象分配 *未构造的内存*
         - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`. 
-          - Calls `::operator new(n)` (which in turn calls std::malloc(n)), but how and when to call is unspecified
+          - Calls `::operator new(n)` (which in turn calls `std::malloc(std::size_t)`), but how and when to call is unspecified
         - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。
           - `p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。
           - 调用`a.deallocate(p, n)`之前，这块内存中的对象必须已经被析构
+          - Calls `::operator delete(void *)`, but it is unspecified when and how it is called.
         - 初始化： *定位* `new` => 19.1.2
         - 构造使用
           - [Placement `new`](https://en.cppreference.com/w/cpp/language/new#Placement_new) 

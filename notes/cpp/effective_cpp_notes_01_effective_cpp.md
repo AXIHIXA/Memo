@@ -4616,12 +4616,12 @@ public:
         return oldHandler;
     }
 
-    static void * operator new(std::size_t size)
+    static void * operator new(std::size_t count)
     {
         std::new_handler oldHandler = std::set_new_handler(mNewHandler));
-        void * pMem = ::operator new(size);  // can NOT use std::malloc here!
+        void * ptr = ::operator new(count);  // can NOT use std::malloc here!
         std::set_new_handler(oldHandler);
-        return pMem;
+        return ptr;
     }
 
 private:
@@ -4828,21 +4828,21 @@ using Byte = unsigned char;
 
 
 // this code has several flaws — see below
-void * operator new(std::size_t size)
+void * operator new(std::size_t count)
 {
     // increase size of request so 2 signatures will also fit inside
-    std::size_t realSize = size + 2 * sizeof(unsigned long long);
+    std::size_t realSize = count + 2 * sizeof(unsigned long long);
 
     // call malloc to get the actual
-    void * pMem = std::malloc(realSize);
+    void * ptr = std::malloc(realSize);
 
     // maybe with a maximum number of tries other than endless loop?
-    while (!pMem)
+    while (!ptr)
     {
         if (std::new_handler newHandler = std::get_new_handler())
         {
             (*newHandler)();
-            pMem = std::malloc(realSize);
+            ptr = std::malloc(realSize);
         }
         else
         {
@@ -4851,11 +4851,11 @@ void * operator new(std::size_t size)
     }
     
     // write signature into first and last parts of the memory
-    *(static_cast<unsigned long long*>(pMem)) = signature;
-    *(reinterpret_cast<unsigned long long*>(static_cast<Byte *>(pMem) + realSize - sizeof(unsigned long long))) = signature;
+    *(static_cast<unsigned long long*>(ptr)) = signature;
+    *(reinterpret_cast<unsigned long long*>(static_cast<Byte *>(ptr) + realSize - sizeof(unsigned long long))) = signature;
     
     // return a pointer to the memory just past the first signature
-    return static_cast<Byte *>(pMem) + sizeof(unsigned long long);
+    return static_cast<Byte *>(ptr) + sizeof(unsigned long long);
 }
 ```
 **Alignment**.
@@ -4990,19 +4990,19 @@ Curiously, C++ requires that `operator new` return a legitimate pointer even whe
 (Requiring this odd-sounding behavior simplifies things elsewhere in the language.) 
 That being the case, pseudocode for a non-member `operator new` looks like this:
 ```c++
-void * operator new(std::size_t size)
+void * operator new(std::size_t count)
 {
-    if (size == 0)
+    if (count == 0)
     {
         // handle 0-byte requests by treating them as 1-byte requests
-        size = 1;
+        count = 1;
     }
 
     while (true)
     {
-        if (void * pMem = std::malloc(size))
+        if (void * ptr = std::malloc(count))
         {
-            return pMem;
+            return ptr;
         }
         else
         {
@@ -5047,7 +5047,7 @@ the `operator new` in a base class will be called to allocate memory for an obje
 class Base
 {
 public:
-    static void * operator new(std::size_t size);
+    static void * operator new(std::size_t count);
     // ...
 };
 
@@ -5063,12 +5063,12 @@ If `Base::operator new` wasn’t designed to cope with this (and chances are tha
 the best way for it to handle the situation is to 
 dispatch calls requesting the “wrong” amount of memory to `::operator new`:
 ```c++
-void * Base::operator new(std::size_t size)
+void * Base::operator new(std::size_t count)
 {
     // If size is "wrong", have ::operator new handle the request
-    if (size != sizeof(Base))
+    if (count != sizeof(Base))
     {
-        return ::operator new(size);
+        return ::operator new(count);
     }
     
     // Otherwise, handle the request for Base here
@@ -5123,16 +5123,16 @@ you’ve got to forward “wrongly sized” deletion requests to `::operator del
 class Base
 {
 public:
-    static void * operator new(std::size_t size);
-    static void operator delete(void * ptr, std::size_t size) noexcept;
+    static void * operator new(std::size_t count);
+    static void operator delete(void * ptr, std::size_t count) noexcept;
     // ...
 };
 
-void Base::operator delete(void * ptr, std::size_t size) noexcept
+void Base::operator delete(void * ptr, std::size_t count) noexcept
 {
     if (ptr)
     {
-        if (size != sizeof(Base))
+        if (count != sizeof(Base))
         {
             ::operator delete(ptr);
         }
@@ -5192,6 +5192,57 @@ corresponds to the normal `operator delete`
 void operator delete(void *) noexcept;
 void operator delete(void *, std::size_t) noexcept;
 ```
+When you’re using only the normal forms of `new` and `delete`, 
+the runtime system has no trouble finding the `delete` that knows how to undo what `new` did.
+However, the which-`delete`-goes-with-this-`new` issue does arise 
+when you start declaring non-normal forms of `operator new`: 
+forms that take additional parameters.
+
+
+For example, suppose you write a class-specific `operator new` 
+that requires specification of a `std::ostream` to which allocation information should be logged, 
+and you also write a normal class-specific `operator delete`:
+```c++
+class Widget
+{
+public:
+    static void * operator new(std::size_t count, std::ostream & clog);
+    static void operator delete(void * ptr, std::size_t size) noexcept;
+    // ...
+};
+```
+When an `operator new` function takes extra parameters (other than the mandatory `std::size_t` argument), 
+that function is known as a _placement `new`_.
+A particularly useful placement `new` is the one that takes a pointer specifying where an object should be constructed:
+```c++
+void * operator new(std::size_t count, void * ptr) noexcept;
+```
+This version of `new` is part of C++’s standard library, 
+and you have access to it whenever you `#include <new>`. 
+Among other things, this `new` is used inside `std::vector` (together with `std::allocator`)
+to create objects in the vector’s unused capacity. 
+It’s also the original placement new . In fact, that’s how this
+function is known: as placement new . Which means that the term
+“placement new ” is overloaded. Most of the time when people talk
+about placement new , they’re talking about this specific function, the
+operator new taking a single extra argument of type void* . Less com-
+monly, they’re talking about any version of operator new that takes
+extra arguments. Context generally clears up any ambiguity, but it’s
+important to understand that the general term “placement new ”
+means any version of new taking extra arguments, because the phrase
+“placement delete ” (which we’ll encounter in a moment) derives
+directly from it.
+
+
+But let’s get back to the declaration of the Widget class, the one whose
+design I said was problematic. The difficulty is that this class will give
+rise to subtle memory leaks. Consider this client code, which logs allo-
+cation information to cerr when dynamically creating a Widget :
+
+
+
+
+
 
 
 ### 🎯 Chapter 9. Miscellany
