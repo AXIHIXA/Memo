@@ -227,6 +227,39 @@ sudo apt update
 sudo apt install gcc-9 g++-9
 ```
 
+### `gcc-11-multilib` on `ubuntu 20.04 LTS`
+
+Follow the instructions from 
+[here](https://packages.ubuntu.com/hirsute/amd64/gcc-11-multilib/download), 
+which is to:
+- Update the listed mirrors by adding a line to your `/etc/apt/sources.list` like:
+- `sudo add-apt-repository 'deb http://mirrors.kernel.org/ubuntu hirsute main universe'`
+- Choose a mirror based on your location from the list. I chose the kernel mirror as I am in North America.
+- `sudo apt-get update`
+- `sudo apt-get install gcc-11`
+After that which `gcc-11` should produce a path to `gcc-11`. 
+```bash
+$ which gcc-11
+/usr/bin/gcc-11
+```
+
+```bash
+$ sudo update-alternatives --config gcc
+There are 6 choices for the alternative gcc (providing /usr/bin/gcc).
+
+  Selection    Path             Priority   Status
+------------------------------------------------------------
+* 0            /usr/bin/gcc-11   1010      auto mode
+  1            /usr/bin/gcc-10   1000      manual mode
+  2            /usr/bin/gcc-11   1010      manual mode
+  3            /usr/bin/gcc-5    40        manual mode
+  4            /usr/bin/gcc-7    700       manual mode
+  5            /usr/bin/gcc-8    800       manual mode
+  6            /usr/bin/gcc-9    900       manual mode
+
+Press <enter> to keep the current choice[*], or type selection number:
+```
+
 ### Libraries
 
 ```

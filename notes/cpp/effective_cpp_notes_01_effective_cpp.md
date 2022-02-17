@@ -5155,11 +5155,16 @@ For now, simply note that if you omit virtual destructors in base classes,
 
 
 
-### 📌 Item 52: Write placement `delete` if you write placement `new`
+### 📌 Item 52: Write both normal and placement `delete` if you write placement `new`
 
-- When you write a placement version of operator `new`,
-  be sure to write the corresponding placement version of operator `delete`.
-  If you don't, your program may experience subtle, intermittent memory leaks.
+- When you write a placement version of `operator new`,
+  be sure to write both the normal version and the corresponding placement version of `operator delete`. 
+    - No normal version of `operator delete`: program ill-formed;
+    - No corresponding placement `delete`: program may experience subtle, intermittent memory leaks.
+- Placement `delete` is called _only if_ an exception arises from 
+  a constructor call that’s coupled to a call to a placement `new`. 
+  Applying `delete` to a pointer (such as `p` above) 
+  **never** yields a call to a placement version of `delete`.
 - When you declare placement versions of `new` and `delete`,
   be sure **not** to ~~unintentionally hide the normal versions of those functions~~.
 
@@ -5206,7 +5211,8 @@ and you also write a normal class-specific `operator delete`:
 class Widget
 {
 public:
-    static void * operator new(std::size_t count, std::ostream & clog);
+    // WRONG!
+    static void * operator new(std::size_t count, std::ostream & lout);
     static void operator delete(void * ptr, std::size_t size) noexcept;
     // ...
 };
@@ -5217,28 +5223,183 @@ A particularly useful placement `new` is the one that takes a pointer specifying
 ```c++
 void * operator new(std::size_t count, void * ptr) noexcept;
 ```
-This version of `new` is part of C++’s standard library, 
+Placement `new` is part of C++’s standard library, 
 and you have access to it whenever you `#include <new>`. 
-Among other things, this `new` is used inside `std::vector` (together with `std::allocator`)
-to create objects in the vector’s unused capacity. 
-It’s also the original placement new . In fact, that’s how this
-function is known: as placement new . Which means that the term
-“placement new ” is overloaded. Most of the time when people talk
-about placement new , they’re talking about this specific function, the
-operator new taking a single extra argument of type void* . Less com-
-monly, they’re talking about any version of operator new that takes
-extra arguments. Context generally clears up any ambiguity, but it’s
-important to understand that the general term “placement new ”
-means any version of new taking extra arguments, because the phrase
-“placement delete ” (which we’ll encounter in a moment) derives
-directly from it.
+Placement `new` is used inside `std::vector` (together with `std::allocator`)
+to create objects in the vector’s unused capacity.
+Placement `new` is overloaded. 
+Most of the time when people talk about placement `new`, 
+they’re talking about this specific taking a single extra argument of type `void *`. 
+Less commonly, they’re talking about any version that takes extra arguments. 
+Context generally clears up any ambiguity, but it’s important to understand that the general term 
+_placement `new`_ means any version of `operator new` taking extra arguments, 
+because the phrase _placement `delete`_  (which we’ll encounter in a moment) derives directly from it.
 
 
-But let’s get back to the declaration of the Widget class, the one whose
-design I said was problematic. The difficulty is that this class will give
-rise to subtle memory leaks. Consider this client code, which logs allo-
-cation information to cerr when dynamically creating a Widget :
+But let’s get back to the declaration of the `Widget` class, 
+the one whose design I said was problematic. 
+The difficulty is that this class will give rise to subtle memory leaks. 
+Consider this client code, which logs allocation information to `std::cerr` when dynamically creating a `Widget`:
+```c++
+// Call operator new, passing std::cerr as the std::ostream object. 
+// This leaks memory if the Widget constructor throws an exception. 
+Widget * p = new (std::cerr) Widget;
+```
+Once again, if memory allocation succeeds and the `Widget` constructor throws an exception, 
+the runtime system is responsible for undoing the allocation that `operator new` performed. 
+However, the runtime system can’t really understand how the called version of `operator new` works, 
+so it can’t undo the allocation itself. 
+Instead, the runtime system looks for a version of `operator delete` 
+that takes the same number and types of extra arguments as `operator new`, 
+and, if it finds it, that’s the one it calls. 
+In this case, `operator new` takes an extra argument of type `std::ostream &`, 
+so the corresponding operator delete would have this signature:
+```c++
+void operator delete(void *, std::ostream &) noexcept;
+```
+By analogy with placement versions of `new`, 
+versions of `operator delete` that take extra parameters are known as _placement `delete`_ s. 
+In this case, `Widget` declares no placement version of `operator delete`, 
+so the runtime system doesn’t know how to undo what the call to placement `new` does. 
+As a result, it does nothing. 
+In this example, _no operator `delete` is called_ if the `Widget` constructor throws an exception! 
 
+The rule is simple: 
+if an `operator new` with extra parameters isn’t matched by an `operator delete` with the same extra parameters, 
+no `operator delete` will be called if a memory allocation by the `new` needs to be undone. 
+To eliminate the memory leak in the code above, 
+`Widget` needs to declare a placement `delete` that corresponds to the logging placement `new`:
+```c++
+class Widget
+{
+public:
+    static void * operator new(std::size_t count, std::ostream & lout);
+    static void operator delete(void * ptr) noexcept;
+    static void operator delete(void * ptr, std::ostream & lout) noexcept;
+    // ...
+};
+```
+With this change, if an exception is thrown from the `Widget` constructor
+```c++
+Widget * p = new (std::cerr) Widget;  // as before, but no leak this time
+```
+the corresponding placement `delete` is automatically invoked, 
+and that allows `Widget` to ensure that no memory is leaked.
+
+
+However, consider what happens if no exception is thrown (which will usually be the case) 
+and we get to a `delete` in client code:
+```c++
+delete p;  // invokes the normal operator delete
+```
+As the comment indicates, this calls the normal `operator delete`, not the placement version. 
+Placement `delete` is called _only if_ an exception arises from 
+a constructor call that’s coupled to a call to a placement `new`. 
+Applying `delete` to a pointer (such as `p` above) never yields a call to a placement version of `delete`. 
+
+
+This means that to forestall all memory leaks associated with placement versions of `new`, 
+you must provide both the normal `operator delete` and a placement version 
+that takes the same extra arguments as operator `new` does. 
+
+
+Incidentally, because member function names hide functions with the same names in outer scopes, 
+you need to be careful to avoid having class-specific `new`s 
+hide other `new`s (including the normal versions) that your clients expect. 
+For example, if you have a base class that declares only a placement version of `operator new`, 
+clients will find that the normal form of `new` is unavailable to them:
+```c++
+class Base
+{
+public:
+    static void * operator new(std::size_t count, std::ostream & lout);
+    // ...
+};
+
+Base * p1 = new Base;              // error, normal version of operator new is hidden
+Base * p2 = new (std::cerr) Base;  // fine, call Base::operator new(std::size_t, std::ostream &)
+```
+Similarly, `operator new`s in derived classes hide both global and inherited versions of `operator new`:
+```c++
+class Derived : public Base
+{
+public:
+    static void * operator new(std::size_t count);
+    // ...
+};
+
+Derived * p1 = new (std::clog) Derived;  // error, Base’s placement new is hidden
+Derived * p2 = new Derived;              // fine, calls Derived’s operator new
+```
+Item 33 discusses this kind of name hiding in considerable detail, 
+but for purposes of writing memory allocation functions, 
+what you need to remember is that by default, 
+C++ offers the following forms of `operator new` at global scope:
+```c++
+void * operator new(std::size_t count);
+void * operator new(std::size_t count, const std::nothrow_t & tag);
+void * operator new(std::size_t count, void * ptr);
+```
+If you declare any `operator new`s in a class, you’ll hide all these standard forms. 
+Unless you mean to prevent class clients from using these forms, 
+be sure to make them available in addition to any custom `operator new` forms you create. 
+For each `operator new` you make available, of course, be sure to offer the corresponding `operator delete` too. 
+If you want these functions to behave in the usual way, 
+just have your class-specific versions call the global versions.
+An easy way to do this is to create a base class containing all the normal forms of `new` and `delete`:
+```c++
+class StandardNewDeleteForms
+{
+public:
+    // normal new/delete
+    static void * operator new(std::size_t count)
+    {
+        return ::operator new(count);
+    }
+
+    static void operator delete(void * ptr) noexcept
+    {
+        ::operator delete(ptr);
+    }
+
+    // placement new/delete
+    static void * operator new(std::size_t count, void * ptr) noexcept
+    {
+        return ::operator new(count, ptr);
+    }
+
+    static void operator delete(void * ptr, void * place) noexcept
+    {
+        return ::operator delete(ptr, place);
+    }
+
+    // nothrow new/delete
+    static void * operator new(std::size_t count, const std::nothrow_t & tag) noexcept
+    {
+        return ::operator new(count, tag);
+    }
+
+    static void operator delete(void * ptr, const std::nothrow_t &) noexcept
+    {
+        ::operator delete(ptr);
+    }
+};
+```
+Clients who want to augment the standard forms with custom forms 
+can then just use inheritance and `using` declarations to get the standard forms:
+```c++
+class Widget : public StandardNewDeleteForms
+{
+public:
+    using StandardNewDeleteForms::operator new;
+    using StandardNewDeleteForms::operator delete;
+
+    static void * operator new(std::size_t count, std::ostream & lout);
+    static void operator delete(void * ptr, std::ostream & lout) noexcept;
+
+    // ...
+};
+```
 
 
 
