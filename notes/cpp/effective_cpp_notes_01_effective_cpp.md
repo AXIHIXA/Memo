@@ -4496,6 +4496,14 @@ BigMatrix result = m1 * m2 * m3 * m4 * m5;  // compute their product
 
 - `set_new_handler` allows you to specify a function to be called
   when memory allocation requests cannot be satisfied.
+- A new-handler function must do one of the following to end the endless loop inside `operator new`:
+    - Make more memory available;
+    - Install a different new-handler;
+    - Uninstall the new-handler;
+    - Throw a `std::bad_alloc` exception or something derived from it;
+    - Not return.
+- [Curiously Recurring Template Pattern (CRTP)](https://en.cppreference.com/w/cpp/language/crtp)
+    - `class Derived : Base<Derived> { ... }`
 - Nothrow `new` is of limited utility,
   because it applies only to memory allocation;
   associated constructor calls may still throw exceptions.
@@ -4559,7 +4567,7 @@ a well-designed new-handler function must do one of the following:
   i.e., pass `nullptr` to `std::set_new_handler`. 
   With no new-handler installed, `operator new` will throw an exception when memory allocation is unsuccessful.
 - **Throw an exception** 
-  of type `std::bad_alloc` or some type derived from it. 
+  of type `std::bad_alloc` or something derived from it. 
   Such exceptions will not be caught by `operator new`, 
   so they will propagate to the site originating the request for memory.
 - **Not return**, 
@@ -4601,53 +4609,24 @@ template <typename T>
 class EnableCustomNewHandler
 {
 public:
-    static std::new_handler set_new_handler(std::new_handler p) noexcept;
-
-    static void * operator new(std::size_t size) noexcept(false);
-
-private:
-    static std::new_handler mNewHandler;
-};
-
-// "EnableCustomNewHandler.cpp"
-template <typename T>
-std::new_handler EnableCustomNewHandler<T>::set_new_handler(std::new_handler p) noexcept
-{
-    std::new_handler oldHandler = mNewHandler;
-    mNewHandler = p;
-    return oldHandler;
-}
-
-class NewHandlerGuard
-{
-public:
-    explicit NewHandlerGuard(std::new_handler newHandler) : handler(newHandler)
+    static std::new_handler set_new_handler(std::new_handler p) noexcept
     {
-    
+        std::new_handler oldHandler = mNewHandler;
+        mNewHandler = p;
+        return oldHandler;
     }
-    
-    NewHandlerGuard(const NewHandlerGuard &) = delete;
-    
-    NewHandlerGuard & operator=(const NewHandlerGuard &) = delete;
-    
-    ~NewHandlerGuard()
+
+    static void * operator new(std::size_t size)
     {
-        std::set_new_handler(handler);
+        std::new_handler oldHandler = std::set_new_handler(mNewHandler));
+        void * pMem = ::operator new(size);  // can NOT use std::malloc here!
+        std::set_new_handler(oldHandler);
+        return pMem;
     }
 
 private:
-        std::new_handler handler;
+    static std::new_handler mNewHandler {nullptr};
 };
-
-template <typename T>
-void * EnableCustomNewHandler<T>::operator new(std::size_t size) noexcept(false)
-{
-    NewHandlerGuard guard(std::set_new_handler(mNewHandler));
-    return ::operator new(size);
-}
-
-template <typename T>
-std::new_handler EnableCustomNewHandler<T>::currentNewHandler {nullptr};
 
 // "Widget.h"
 class Widget : public EnableCustomNewHandler<Widget>
@@ -4841,7 +4820,7 @@ but we’ll worry about those in a moment.
 namespace
 {
 
-constexpr unsigned signature {0xDEADBEEFU};
+constexpr unsigned long long signature {0xDEADBEEFULL};
 
 using Byte = unsigned char;
 
@@ -4849,28 +4828,34 @@ using Byte = unsigned char;
 
 
 // this code has several flaws — see below
-void * operator new(std::size_t size) noexcept(false)
+void * operator new(std::size_t size)
 {
     // increase size of request so 2 signatures will also fit inside
-    std::size_t realSize = size + 2 * sizeof(unsigned);
+    std::size_t realSize = size + 2 * sizeof(unsigned long long);
 
     // call malloc to get the actual
     void * pMem = std::malloc(realSize);
 
-    if (!pMem)
+    // maybe with a maximum number of tries other than endless loop?
+    while (!pMem)
     {
-        // call new handler
-        std::get_new_handler()();
+        if (std::new_handler newHandler = std::get_new_handler())
+        {
+            (*newHandler)();
+            pMem = std::malloc(realSize);
+        }
+        else
+        {
+            throw std::bad_alloc();
+        }
     }
-
-    // memory
-    // write signature into first and last parts of the memory
-    *(static_cast<unsigned *>(pMem)) = signature;
     
-    *(reinterpret_cast<unsigned *>(static_cast<Byte *>(pMem) + realSize - sizeof(unsigned))) = signature;
+    // write signature into first and last parts of the memory
+    *(static_cast<unsigned long long*>(pMem)) = signature;
+    *(reinterpret_cast<unsigned long long*>(static_cast<Byte *>(pMem) + realSize - sizeof(unsigned long long))) = signature;
     
     // return a pointer to the memory just past the first signature
-    return static_cast<Byte *>(pMem) + sizeof(unsigned);
+    return static_cast<Byte *>(pMem) + sizeof(unsigned long long);
 }
 ```
 **Alignment**.
@@ -4973,11 +4958,197 @@ We’re now in a position to summarize when in more detail than we did before.
 ### 📌 Item 51: Adhere to convention when writing `new` and `delete`
 
 - `operator new` should contain an infinite loop trying to allocate memory,
-  should call the `new`-handler if it can't satisfy a memory request,
-  and should handle requests for zero bytes.
-  Class-specific versions should handle requests for larger blocks than expected.
-- `operator delete` should do nothing if passed a pointer that is null.
-  Class-specific versions should handle blocks that are larger than expected.
+  should call the new-handler if it can't satisfy a memory request,
+  and should handle zero-sized requests. 
+  Class-specific versions should handle requests for children (blocks that are larger than expected)
+  by forwarding `size != sizeof(Base)` requests to `::operator new`. 
+- `operator delete` is `noexcept` and should do nothing if passed `nullptr`. 
+  Class-specific versions should handle requests for children (blocks that are larger than expected)
+  by forwarding `size != sizeof(Base)` requests to `::operator delete`.
+
+
+Implementing a conformant `operator new` requires having the right return value, 
+calling the new-handling function when insufficient memory is available (see Item 49), 
+and being prepared to cope with requests for no memory. 
+You’ll also want to avoid inadvertently hiding the “normal” form of `new`, 
+though that’s more a class interface issue than an implementation requirement; 
+it’s addressed in Item 52.
+
+
+The return value part of `operator new` is easy. 
+If you can supply the requested memory, you return a pointer to it. 
+If you can’t, you follow the rule described in Item 49 and throw a `std::bad_alloc` exception.
+
+
+It’s not quite that simple, however, because `operator new` actually tries to allocate memory more than once, 
+calling the new-handling function after each failure. 
+The assumption here is that the new-handling function might be able to do something to free up some memory. 
+Only when the pointer to the new-handling function is `nullptr` does `operator new` throw an exception.
+
+
+Curiously, C++ requires that `operator new` return a legitimate pointer even when zero bytes are requested. 
+(Requiring this odd-sounding behavior simplifies things elsewhere in the language.) 
+That being the case, pseudocode for a non-member `operator new` looks like this:
+```c++
+void * operator new(std::size_t size)
+{
+    if (size == 0)
+    {
+        // handle 0-byte requests by treating them as 1-byte requests
+        size = 1;
+    }
+
+    while (true)
+    {
+        if (void * pMem = std::malloc(size))
+        {
+            return pMem;
+        }
+        else
+        {
+            if (std::new_handler newHandler = std::get_new_handler())
+            {
+                (*newHandler)();
+            }
+            else
+            {
+                throw std::bad_alloc();
+            }
+        }
+    }
+}
+```
+Item 49 remarks that `operator new` contains an infinite loop, 
+and the code above shows that loop explicitly as `while (true)`. 
+The only way out of the loop is for memory to be successfully allocated 
+or for the new-handling function to do one of the things described in Item 49: 
+- Make more memory available, 
+- Install a different new-handler, 
+- Uninstall the new-handler, 
+- Throw an exception `std::bad_alloc` or something derived from it,
+- Fail to return. 
+It should now be clear why the new-handler must do one of those things. 
+If it doesn’t, the loop inside `operator new` will never terminate.
+
+
+Many people don’t realize that `operator new` member functions are inherited by derived classes. 
+That can lead to some interesting complications. 
+In the pseudocode for `operator new` above, notice that the function tries to allocate size bytes (unless size is zero). 
+That makes perfect sense, because that’s the argument that was passed to the function. 
+However, as Item 50 explains, one of the most common reasons for writing a custom memory manager 
+is to optimize allocation for objects of a specific class, 
+not for a class or any of its derived classes. 
+That is, given an `operator new` for a class `X`, 
+the behavior of that function is typically tuned for objects of size `sizeof(X)`, 
+nothing larger and nothing smaller. 
+Because of inheritance, however, it is possible that 
+the `operator new` in a base class will be called to allocate memory for an object of a derived class:
+```c++
+class Base
+{
+public:
+    static void * operator new(std::size_t size);
+    // ...
+};
+
+class Derived : public Base
+{
+    // Derived doesn't declare operator new
+};
+
+// Calls Base::operator new!
+Derived * p = new Derived;
+```
+If `Base::operator new` wasn’t designed to cope with this (and chances are that it wasn’t),
+the best way for it to handle the situation is to 
+dispatch calls requesting the “wrong” amount of memory to `::operator new`:
+```c++
+void * Base::operator new(std::size_t size)
+{
+    // If size is "wrong", have ::operator new handle the request
+    if (size != sizeof(Base))
+    {
+        return ::operator new(size);
+    }
+    
+    // Otherwise, handle the request for Base here
+    // ...
+}
+```
+**Test for zero sizes** 
+is incorporated into `if (size != sizeof(Base))`. 
+C++ works in some mysterious ways, and one of those
+ways is to decree that all freestanding objects have non-zero size (see Item 39). 
+By definition, `sizeof(Base)` can **never** be zero, so if `size` is zero,
+the request will be forwarded to `::operator new`, 
+and it will be `::operator new`’s responsibility to handle zero-size memory allocations.
+
+
+If you’d like to control memory allocation for arrays on a per-class basis, 
+you need to implement the _array new_ operator `operator new[]`. 
+If you decide to write `operator new[]`, 
+remember that all you’re doing is allocating a chunk of raw memory.
+You can’t do anything to the as-yet-nonexistent objects in the array. 
+In fact, you can’t even figure out how many objects will be in the array. 
+First, you don’t know how big each object is. 
+After all, a base class’s `operator new[]` might, through inheritance,
+be called to allocate memory for an array of derived class objects, 
+and derived class objects are usually bigger than base class objects.
+
+
+Hence, you can’t assume inside `Base::operator new[]` that the size of each object going into the array is `sizeof(Base)`,
+and that means you can’t assume that the number of objects in the array is `(bytesRequested) / sizeof(Base)`. 
+Second, the `std::size_t` parameter passed to `operator new[]` may be for more memory than will be filled with objects,
+because, as Item 16 explains, dynamically allocated arrays may include extra space to store the number of array elements.
+
+
+For `operator delete`, things are simpler. 
+About all you need to remember is that C++ guarantees it’s always safe to `delete nullptr`, 
+so you need to honor that guarantee. 
+Here’s pseudocode for a non-member `operator delete`:
+```c++
+void operator delete(void * ptr) noexcept
+{
+    if (ptr)
+    {
+        // deallocate the memory pointed to by ptr
+    }
+}
+```
+The member version of `operator delete` is simple, too, 
+except you’ve got to be sure to check the size of what’s being deleted. 
+Assuming your class-specific `operator new` forwards requests of the “wrong” size to `::operator new`, 
+you’ve got to forward “wrongly sized” deletion requests to `::operator delete`:
+```c++
+class Base
+{
+public:
+    static void * operator new(std::size_t size);
+    static void operator delete(void * ptr, std::size_t size) noexcept;
+    // ...
+};
+
+void Base::operator delete(void * ptr, std::size_t size) noexcept
+{
+    if (ptr)
+    {
+        if (size != sizeof(Base))
+        {
+            ::operator delete(ptr);
+        }
+        else
+        {
+            // deallocate ptr here
+        }
+    }
+}
+```
+The `std::size_t` value C++ passes to `operator delete` may be incorrect 
+if the object being deleted was derived from a base class lacking a virtual destructor. 
+This is reason enough for making sure your base classes have virtual destructors, 
+but Item 7 describes a second, arguably better reason. 
+For now, simply note that if you omit virtual destructors in base classes, 
+`operator delete` functions may not work correctly. 
 
 
 
@@ -4993,8 +5164,34 @@ We’re now in a position to summarize when in more detail than we did before.
   be sure **not** to ~~unintentionally hide the normal versions of those functions~~.
 
 
+When you write a new expression such as `Widget * p = new Widget;`,
+two functions are called: 
+one to `operator new` to allocate memory, 
+a second to `Widget`’s default constructor. 
 
 
+Suppose that the first call succeeds, but the second call results in an exception being thrown. 
+In that case, the memory allocation performed in step 1 must be undone. 
+Otherwise we’ll have a memory leak. 
+Client code can’t deallocate the memory, 
+because if the `Widget` constructor throws an exception, `p` is never assigned. 
+There’d be no way for clients to get at the pointer to the memory that should be deallocated. 
+The responsibility for undoing step 1 must therefore fall on the C++ runtime system.
+
+
+The runtime system is happy to call the `operator delete` 
+that corresponds to the version of `operator new` it called in step 1, 
+but it can do that only if it knows which `operator delete` is the proper one to call. 
+This isn’t an issue if you’re dealing with the versions of `new` and `delete` that have the normal signatures, 
+because the normal `operator new` 
+```c++
+void * operator new(std::size_t)
+```
+corresponds to the normal `operator delete`
+```c++
+void operator delete(void *) noexcept;
+void operator delete(void *, std::size_t) noexcept;
+```
 
 
 ### 🎯 Chapter 9. Miscellany

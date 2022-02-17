@@ -9513,7 +9513,11 @@ std::map<std::string, int>::mapped_type v5;  // int
 #### 动态内存和智能指针（Dynamic memory and smart pointers）
 
 - `C++`直接管理动态内存
-- 动态申请内存：[`new`表达式](https://en.cppreference.com/w/cpp/language/new)
+- 动态申请内存：[`new`表达式](https://en.cppreference.com/w/cpp/language/new)（`new` expression, New expression）
+    - Is **different** from [`operator new`](https://en.cppreference.com/w/cpp/memory/new/operator_new)
+        - `operator new` is only for memory allocation, no object construction occurs
+        - Size-unware versions of `operator new`s are preferred over size-aware versions (when both are present)
+        - `new` expression first calls `operator new` to allocate memory, then calls the constructor to construct the object.
     - 初始化可以选择
         - *默认初始化* 
             - *不提供* 初始化器 
@@ -9588,7 +9592,11 @@ std::map<std::string, int>::mapped_type v5;  // int
     // but does not call MyClass's constructor
     MyClass * p3 = (MyClass*) ::operator new (sizeof(MyClass));
     ```
-    - 动态释放内存：[`delete`表达式](https://en.cppreference.com/w/cpp/language/delete)
+    - 动态释放内存：[`delete`表达式](https://en.cppreference.com/w/cpp/language/delete)（`delete` expression, Delete expression）
+        - Still different from [`operator delete`](https://en.cppreference.com/w/cpp/memory/new/operator_delete)
+            - `operator delete` just deallocates the memory, no object destruction is done
+            - `delete` expression first calls destructor to destruct the object, 
+              then calls `operator delete` to deallocate the memory. 
         - 传递给`delete`的指针必须是 *指向被动态分配的对象* 的指针或者 *空指针* 
         - 将同一个对象反复释放多次是 *未定义行为*
         - *`const`对象* 虽然不能更改，但却 *可以销毁* 
