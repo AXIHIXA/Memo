@@ -2214,7 +2214,7 @@ Both `prvalues` and `xvalues` are rvalue expressions.
 
 
 
-### 🌱 类型转换（Conversions）
+### 🌱 类型转换（Type Conversions, Type cast）
 
 - 所有`cast<T>`的结果的 *值类别* （value category）是
     - *左值* ，如果`T`为 *左值引用* 或 *函数类型的右值引用*  
@@ -2234,7 +2234,8 @@ Both `prvalues` and `xvalues` are rvalue expressions.
 #### [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
 
 - `dynamic_cast<T>(expr)`
-    - 支持运行时的类型识别（Runtime Type Identification，RTTI） => 19.2
+    - 支持运行时的类型识别（Runtime Type Identification，RTTI）
+    - Search RTTI in this document. 
 
 #### [`const_cast`](https://en.cppreference.com/w/cpp/language/const_cast)
 
