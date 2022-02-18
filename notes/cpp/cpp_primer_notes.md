@@ -2239,12 +2239,12 @@ Both `prvalues` and `xvalues` are rvalue expressions.
 ```c++
 dynamic_cast<T>(expression) 		
 ```
-If the cast is successful, `dynamic_cast` returns a value of type `T`. 
-If the cast fails and `T` is a pointer type, it returns a null pointer of that type. 
+If the cast is successful, `dynamic_cast` returns a value of type `T`.   
+If the cast fails and `T` is a pointer type, it returns a null pointer of that type.   
 If the cast fails and `T` is a reference type, it throws an exception that matches a handler of type `std::bad_cast`.
 
 Only the following conversions can be done with `dynamic_cast`, 
-except when such conversions would cast away constness or volatility: 
+**except** when such conversions would cast away constness or volatility: 
 1. If the type of `expression` is exactly `T` or a less cv-qualified version of `T`, 
    the result is the value of expression, with type T. 
    (In other words, dynamic_cast can be used to add constness. 
@@ -2254,26 +2254,26 @@ except when such conversions would cast away constness or volatility:
 3. If `T` is a pointer or reference to `Base`, 
    and the type of `expression` is a pointer or reference to `Derived`, 
    where `Base` is a unique, accessible base class of `Derived`, 
-   the result is a pointer or reference to the `Base` class sub-object within the `Derived` object pointed or identified by expression. 
+   the result is a pointer or reference to the `Base` class sub-object within the `Derived` object pointed or identified by `expression`. 
    (Note: an implicit conversion and `static_cast` can perform this conversion as well.)
-4. If expression is a pointer to a polymorphic type, 
+4. If `expression` is a pointer to a polymorphic type, 
    and `T` is a pointer to `void`, 
-   the result is a pointer to the most derived object pointed or referenced by expression.
-5. If expression is a pointer or reference to a polymorphic type `Base`, 
+   the result is a pointer to the most derived object pointed or referenced by `expression`.
+5. If `expression` is a pointer or reference to a polymorphic type `Base`, 
    and `T` is a pointer or reference to the type `Derived`, 
    a run-time check is performed:
-   1. The most derived object pointed/identified by expression is examined. 
-      If, in that object, expression points/refers to a public base of Derived, 
-      and if only one object of Derived type is derived from the subobject pointed/identified by expression, 
+   1. The most derived object pointed/identified by `expression` is examined. 
+      If, in that object, `expression` points/refers to a public base of Derived, 
+      and if only one object of Derived type is derived from the subobject pointed/identified by `expression`, 
       then the result of the cast points/refers to that Derived object. (This is known as a _downcast_.)
-   2. Otherwise, if expression points/refers to a public base of the most derived object, 
+   2. Otherwise, if `expression` points/refers to a public base of the most derived object, 
       and, simultaneously, the most derived object has an unambiguous public base class of type Derived, 
       the result of the cast points/refers to that Derived (This is known as a _sidecast_.)
    3. Otherwise, the runtime check fails. 
       If the `dynamic_cast` is used on pointers, the null pointer value of type `T` is returned. 
       If it was used on references, the exception `std::bad_cast` is thrown.
 6. When `dynamic_cast` is used in a constructor or a destructor (directly or indirectly), 
-   and expression refers to the object that's currently under construction/destruction, 
+   and `expression` refers to the object that's currently under construction/destruction, 
    the object is considered to be the most derived object. 
    If T is not a pointer or reference to the constructor's/destructor's own class or one of its bases, 
    the behavior is undefined.
