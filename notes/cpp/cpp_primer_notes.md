@@ -2236,6 +2236,54 @@ Both `prvalues` and `xvalues` are rvalue expressions.
 - `dynamic_cast<T>(expr)`
     - 支持运行时的类型识别（Runtime Type Identification，RTTI）
     - Search RTTI in this document. 
+```c++
+dynamic_cast<new-type>(expression) 		
+```
+If the cast is successful, `dynamic_cast` returns a value of type `new-type`. 
+If the cast fails and `new-type` is a pointer type, it returns a null pointer of that type. 
+If the cast fails and `new-type` is a reference type, it throws an exception that matches a handler of type `std::bad_cast`.
+
+Only the following conversions can be done with `dynamic_cast`, 
+except when such conversions would cast away constness or volatility: 
+1. If the type of `expression` is exactly `new-type` or a less cv-qualified version of `new-type`, 
+   the result is the value of expression, with type new-type. 
+   (In other words, dynamic_cast can be used to add constness. 
+   An implicit conversion and `static_cast` can perform this conversion as well.)
+2. If the value of `expression` is the null pointer value, 
+   the result is the null pointer value of type `new-type`.
+3. If `new-type` is a pointer or reference to `Base`, 
+   and the type of `expression` is a pointer or reference to `Derived`, 
+   where `Base` is a unique, accessible base class of `Derived`, 
+   the result is a pointer or reference to the `Base` class sub-object within the `Derived` object pointed or identified by expression. 
+   (Note: an implicit conversion and `static_cast` can perform this conversion as well.)
+4. If expression is a pointer to a polymorphic type, 
+   and `new-type` is a pointer to `void`, 
+   the result is a pointer to the most derived object pointed or referenced by expression.
+5. If expression is a pointer or reference to a polymorphic type `Base`, 
+   and `new-type` is a pointer or reference to the type `Derived`, 
+   a run-time check is performed:
+   1. The most derived object pointed/identified by expression is examined. 
+      If, in that object, expression points/refers to a public base of Derived, 
+      and if only one object of Derived type is derived from the subobject pointed/identified by expression, 
+      then the result of the cast points/refers to that Derived object. (This is known as a _downcast_.)
+   2. Otherwise, if expression points/refers to a public base of the most derived object, 
+      and, simultaneously, the most derived object has an unambiguous public base class of type Derived, 
+      the result of the cast points/refers to that Derived (This is known as a _sidecast_.)
+   3. Otherwise, the runtime check fails. 
+      If the `dynamic_cast` is used on pointers, the null pointer value of type `new-type` is returned. 
+      If it was used on references, the exception `std::bad_cast` is thrown.
+6. When `dynamic_cast` is used in a constructor or a destructor (directly or indirectly), 
+   and expression refers to the object that's currently under construction/destruction, 
+   the object is considered to be the most derived object. 
+   If new-type is not a pointer or reference to the constructor's/destructor's own class or one of its bases, 
+   the behavior is undefined.
+
+Similar to other cast expressions, the result is:
+- An lvalue if `new-type` is an lvalue reference type (`expression` must be an lvalue)
+- An xvalue if `new-type` is an rvalue reference type 
+  (`expression` must be a glvalue (prvalues are materialized `since C++17`) of a complete class type)
+- A prvalue if `new-type` is a pointer type 
+
 
 #### [`const_cast`](https://en.cppreference.com/w/cpp/language/const_cast)
 
