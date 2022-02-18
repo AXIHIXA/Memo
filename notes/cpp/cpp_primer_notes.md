@@ -2234,8 +2234,9 @@ Both `prvalues` and `xvalues` are rvalue expressions.
 #### [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
 
 - `dynamic_cast<T>(expr)`
+    - Safely converts pointers and references to classes up, down, and sideways along the inheritance hierarchy.
     - `dynamic_cast`s are usually expensive, might involve multiple `std::strcmp`s along the inheritance hierarchy. 
-    - Supports _Runtime Type Identification_，RTTI
+    - Supports _Runtime Type Identification (RTTI)_
 
 If the cast is successful, `dynamic_cast` returns a value of type `T`.   
 If the cast fails and `T` is a pointer type, it returns a null pointer of that type.   
@@ -2281,6 +2282,15 @@ Similar to other cast expressions, the result is:
 - An xvalue if `T` is an rvalue reference type 
   (`expr` must be a glvalue (prvalues are materialized `since C++17`) of a complete class type)
 - A prvalue if `T` is a pointer type
+
+A _downcast_ can also be performed with `static_cast`, 
+which avoids the cost of the runtime check, 
+but it's only safe if the program can guarantee (through some other logic) 
+that the object pointed to by expression is definitely `Derived`. 
+
+Some forms of `dynamic_cast` rely on _Runtime Type Identification (RTTI)_, 
+that is, information about each polymorphic class in the compiled program. 
+Compilers typically have options to disable the inclusion of this information.
 
 #### [`const_cast`](https://en.cppreference.com/w/cpp/language/const_cast)
 

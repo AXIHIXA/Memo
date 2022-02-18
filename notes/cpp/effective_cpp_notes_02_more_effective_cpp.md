@@ -612,13 +612,19 @@ public:
 Lizard liz1, liz2;
 liz1 = liz2;
 
-// calls operator= taking a const Animal&
+// calls operator= taking a const Animal &
 Animal * pAnimal1 = &liz1;
 Animal * pAnimal2 = &liz2;
 *pAnimal1 = *pAnimal2;
 ```
-
-
+In fact, given this latter `operator=`, 
+it’s simplicity itself to implement the former one in terms of it:
+```c++
+Lizard & Lizard::operator=(const Animal & rhs)
+{
+    return operator=(dynamic_cast<const Lizard &>(rhs));
+}
+```
 
 
 
