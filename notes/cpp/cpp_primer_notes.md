@@ -2261,12 +2261,12 @@ Only the following conversions can be done with `dynamic_cast`,
    and `T` is a pointer or reference to the type `Derived`, 
    a run-time check is performed:
    1. The most derived object pointed/identified by `expr` is examined. 
-      If, in that object, `expr` points/refers to a public base of Derived, 
-      and if only one object of Derived type is derived from the subobject pointed/identified by `expr`, 
-      then the result of the cast points/refers to that Derived object. (This is known as a _downcast_.)
+      If, in that object, `expr` points/refers to a public base of `Derived`, 
+      and if only one object of `Derived` type is derived from the sub-object pointed/identified by `expr`, 
+      then the result of the cast points/refers to that `Derived` object. (This is known as a _downcast_.)
    2. Otherwise, if `expr` points/refers to a public base of the most derived object, 
-      and, simultaneously, the most derived object has an unambiguous public base class of type Derived, 
-      the result of the cast points/refers to that Derived (This is known as a _sidecast_.)
+      and, simultaneously, the most derived object has an unambiguous public base class of type `Derived`, 
+      the result of the cast points/refers to that `Derived` (This is known as a _sidecast_.)
    3. Otherwise, the runtime check fails. 
       If the `dynamic_cast` is used on pointers, the null pointer value of type `T` is returned. 
       If it was used on references, the exception `std::bad_cast` is thrown.
