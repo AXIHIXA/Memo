@@ -2234,6 +2234,7 @@ Both `prvalues` and `xvalues` are rvalue expressions.
 #### [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
 
 - `dynamic_cast<T>(expr)`
+    - `dynamic_cast`s are usually expensive, might involve multiple `std::strcmp`s along the inheritance hierarchy. 
     - 支持运行时的类型识别（Runtime Type Identification，RTTI）
     - Search RTTI in this document. 
 ```c++
