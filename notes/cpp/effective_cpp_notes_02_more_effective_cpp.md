@@ -445,12 +445,28 @@ I encourage you to turn to Item 33 and read all about them.
 
 ### 📌 Item 32: Program in the future tense
 
+Future-tense thinking simply adds a few additional considerations:
+- Provide complete classes, e.g., virtual destructor, even if some parts aren’t currently used.
+  When new demands are made on your classes, you’re less likely to have to go back and modify them.
+- Design your interfaces to facilitate common operations and prevent common errors. 
+  Make the classes easy to use correctly, hard to use incorrectly. 
+  For example, prohibit copying and assignment for classes where those operations make no sense. 
+  Prevent partial assignments (see Item 33).
+- If there is no great penalty for generalizing your code, generalize it.
+  For example, if you are writing an algorithm for tree traversal, 
+  consider generalizing it to handle any kind of directed acyclic graph.
+
 
 
 
 
 
 ### 📌 Item 33: Make non-leaf classes abstract
+
+- Never write non-leaf concrete base classes to avoid problems 
+  like partial assignment via dereferenced polymorphic pointers.
+  Make non-leaf classes abstract 
+  (e.g., by adding pure virtual destructors and implement them outside the class).
 
 
 Suppose you’re working on a project whose software deals with animals. 
@@ -517,14 +533,14 @@ public:
 class Lizard : public Animal 
 {
 public:
-    virtual Lizard & operator=(const Animal & rhs);  // NOT Lizard & rhs!
+    Lizard & operator=(const Animal & rhs) override;  // NOT const Lizard & rhs!
     // ...
 };
 
 class Chicken : public Animal 
 {
 public:
-    virtual Chicken & operator=(const Animal & rhs);  // NOT Chicken & rhs!
+    Chicken & operator=(const Animal & rhs) override;  // NOT const Chicken & rhs!
     // ...
 };
 ```
@@ -603,7 +619,7 @@ by adding to `Lizard` the conventional assignment operator:
 class Lizard : public Animal
 {
 public:
-    virtual Lizard & operator=(const Animal & rhs);
+    Lizard & operator=(const Animal & rhs) override;
     Lizard & operator=(const Lizard & rhs);
     // ...
 };
@@ -625,6 +641,362 @@ Lizard & Lizard::operator=(const Animal & rhs)
     return operator=(dynamic_cast<const Lizard &>(rhs));
 }
 ```
+This function attempts to cast `rhs` to be a `Lizard`. 
+If the cast succeeds, the normal class assignment operator is called. 
+Otherwise, a `std::bad_cast` exception is thrown.
+
+
+Checking types at runtime and using `dynamic_casts` are expensive. 
+For one thing, some compilers lack support for `dynamic_cast`, so code that uses it, 
+though theoretically portable, is not necessarily portable in practice. 
+More importantly, it requires that clients of `Lizard` and `Chicken` be prepared to catch `std::bad_cast` exceptions 
+and do something sensible with them each time they perform an assignment. 
+There just aren’t that many programmers who are willing to program that way. 
+If they don’t, it’s not clear we’ve gained a whole lot over our original situation
+where we were trying to guard against partial assignments.
+
+
+Given this rather unsatisfactory state of affairs regarding virtual assignment operators, 
+it makes sense to regroup and try to find a way 
+to prevent clients from making problematic assignments in the first place. 
+If such assignments are rejected during compilation, we don’t have to worry about them doing the wrong thing.
+
+
+The easiest way to prevent such assignments is to make `operator=` `private` in `Animal`. 
+That way, lizards can be assigned to lizards and chickens can be assigned to chickens, 
+but partial and mixed-type assignments are forbidden:
+```c++
+class Animal
+{
+private:
+    Animal & operator=(const Animal & rhs);
+    // ...
+};
+
+class Lizard : public Animal
+{
+public:
+    Lizard & operator=(const Lizard & rhs);
+    // ...
+};
+
+class Chicken : public Animal
+{
+public:
+    Chicken & operator=(const Chicken & rhs);
+    // ...
+};
+
+// fine
+Lizard liz1, liz2;
+liz1 = liz2;
+
+// also fine
+Chicken chick1, chick2;
+chick1 = chick2;
+
+// error! attempt to call private Animal::operator=
+Animal * pAnimal1 = &liz1;
+Animal * pAnimal2 = &chick1;
+*pAnimal1 = *pAnimal2; 
+```
+Unfortunately, `Animal` is a concrete class, 
+and this approach also makes assignments between `Animal` objects illegal:
+```c++
+// error! attempt to call private Animal::operator=
+Animal animal1, animal2;
+animal1 = animal2;
+```
+Moreover, it makes it impossible to implement the `Lizard` and `Chicken` assignment operators correctly, 
+because assignment operators in derived classes are responsible for calling assignment operators in their base classes:
+```c++
+Lizard & Lizard::operator=(const Lizard & rhs)
+{
+    if (this == &rhs)
+    {
+        return *this;
+    }
+
+    // Error! 
+    // Attempt to call private function. 
+    // But Lizard::operator= must call this function to
+    // assign the Animal parts of *this!
+    Animal::operator=(rhs); 
+    // ...
+}
+```
+We can solve this latter problem by declaring `Animal::operator=` `protected`,
+but the conundrum of allowing assignments between `Animal` objects 
+while preventing partial assignments of `Lizard` and `Chicken` objects through Animal pointers remains.
+
+
+The easiest thing is to eliminate the need to allow assignments between `Animal` objects, 
+and the easiest way to do that is to make `Animal` an abstract class. 
+As an abstract class, `Animal` can’t be instantiated, 
+so there will be no need to allow assignments between `Animals`. 
+Of course, this leads to a new problem, 
+because our original design for this system presupposed that `Animal` objects were necessary.
+There is an easy way around this difficulty.
+Instead of making `Animal` itself abstract, we create a new class `AbstractAnimal`, 
+say, consisting of the common features of `Animal`, `Lizard`, and `Chicken` objects, and we make _that_ class abstract. 
+Then we have each of our concrete classes inherit from `AbstractAnimal`. 
+The revised hierarchy looks like this,
+```c++
+class AbstractAnimal
+{
+public:
+    virtual ~AbstractAnimal() = 0;
+
+protected:
+    AbstractAnimal & operator=(const AbstractAnimal & rhs);
+    // ...
+};
+
+AbstractAnimal::~AbstractAnimal() = default;
+
+class Animal : public AbstractAnimal
+{
+public:
+    Animal & operator=(const Animal & rhs);
+    // ...
+};
+
+class Lizard : public AbstractAnimal
+{
+public:
+    Lizard & operator=(const Lizard & rhs);
+    // ...
+};
+
+class Chicken : public AbstractAnimal
+{
+public:
+    Chicken & operator=(const Chicken & rhs);
+    // ...
+};
+```
+This design gives you everything you need. 
+Homogeneous assignments are allowed for lizards, chickens, and animals; 
+partial assignments and heterogeneous assignments are prohibited; 
+and derived class assignment operators may call the assignment operator in the base class. 
+Furthermore, none of the code written in terms of the Animal,
+Lizard, or Chicken classes requires modification, because these
+classes continue to exist and to behave as they did before AbstractAnimal
+was introduced. Sure, such code has to be recompiled, but
+that’s a small price to pay for the security of knowing that assignments
+that compile will behave intuitively and assignments that would behave
+unintuitively won’t compile.
+
+
+For all this to work, `AbstractAnimal` must be abstract: 
+it must contain at least one pure virtual function. 
+In most cases, coming up with a suitable function is not a problem, 
+but on rare occasions you may find yourself facing the need to create a class like `AbstractAnimal` 
+in which none of the member functions would naturally be declared pure virtual. 
+In such cases, the conventional technique is to make the destructor a pure virtual function; 
+that’s what’s shown above. 
+In order to support polymorphism through pointers correctly, 
+base classes need virtual destructors anyway, 
+so the only cost associated with making such destructors pure virtual is the inconvenience of 
+having to implement them outside their class definitions. 
+
+
+If the notion of implementing a pure virtual function strikes you as odd, you just haven’t been getting out enough. 
+Declaring a function pure virtual **doesn’t** mean ~~it has no implementation~~, it means: 
+1. The current class is abstract; 
+2. Any concrete class inheriting from the current class 
+   must declare the function as an _impure_ virtual function (i.e., without the `= 0`). 
+
+
+Most pure virtual functions are never implemented, but pure virtual destructors are a special case. 
+They must be implemented because they are called whenever a derived class destructor is invoked. 
+Furthermore, they often perform useful tasks, such as releasing resources (see Item 9) or logging messages. 
+Implementing pure virtual functions may be uncommon in general, 
+but for pure virtual destructors, it’s not just common, it’s mandatory. 
+
+
+You may have noticed that this discussion of assignment through base class pointers 
+is based on the assumption that concrete derived classes like `Lizard` contain data members. 
+If there are no data members in a derived class, you might point out, there is no problem, 
+and it would be safe to have a data-less concrete class inherit from another concrete class. 
+However, just because a class has no data now is no reason to conclude that it will have no data in the future. 
+If it might have data members in the future, 
+all you’re doing is postponing the problem until the data members are added, 
+in which case you’re merely trading short-term convenience for long-term grief (see also Item 32).
+
+
+Replacement of a concrete base class like `Animal` with an abstract base class like `AbstractAnimal` 
+yields benefits far beyond simply making the behavior of `operator=` easier to understand. 
+It also reduces the chances that you’ll try to treat arrays polymorphically, 
+the unpleasant consequences of which are examined in Item 3. 
+The most significant benefit of the technique, however, occurs at the design level,
+because replacing concrete base classes with abstract base classes 
+forces you to explicitly recognize the existence of useful abstractions.
+That is, it makes you create new abstract classes for useful concepts,
+even if you aren’t aware of the fact that the useful concepts exist.
+If you have two concrete classes `C1` and `C2` and you’d like `C2` to publicly inherit from `C1`, 
+you should transform that two-class hierarchy into a three-class hierarchy 
+by creating a new abstract class `A` and having both `C1` and `C2` publicly inherit from it:
+```
+C1 <- C2
+
+A <- C1
+  <- C2
+```
+The primary value of this transformation is that it forces you to identify the abstract class `A`. 
+Clearly, `C1` and `C2` have something in common; that’s why they’re related by public inheritance. 
+With this transformation, you must identify what that something is. 
+Furthermore, you must formalize the something as a class in C++, 
+at which point it becomes more than just a vague something, 
+it achieves the status of a formal abstraction, 
+one with well-defined member functions and well-defined semantics.
+
+
+Although every class represents some kind of abstraction, 
+so we should **not** create two classes for every concept in our hierarchy, 
+one being abstract (to embody the abstract part of the abstraction) 
+and one being concrete (to embody the object-generation part of the abstraction)? 
+If we do, we will end up with a huge hierarchy with too many classes. 
+which is difficult to understand, hard to maintain, and expensive to compile.
+That is not the goal of object-oriented design.
+
+
+The goal is to identify useful abstractions 
+and to force them (and only them) into existence as abstract classes.
+The need for an abstraction in one context may be coincidental, 
+but the need for an abstraction in more than one context is usually meaningful. 
+Useful abstractions, then, are those that are needed in more than one context. 
+
+
+This is precisely why the transformation from concrete base class to abstract base class is useful: 
+it forces the introduction of a new abstract class 
+only when an existing concrete class is about to be used as a base class, 
+i.e., when the class is about to be (re)used in a new context. 
+Such abstractions are useful, because they have, through demonstrated need, shown themselves to be so.
+
+
+The first time a concept is needed, 
+we can’t justify the creation of both an abstract class (for the concept) 
+and a concrete class (for the objects corresponding to that concept), 
+but the second time that concept is needed, we can justify the creation of both the abstract and the concrete classes. 
+The transformation I’ve described simply mechanizes this process,
+and in so doing it forces designers and programmers to represent explicitly those abstractions that are useful, 
+even if the designers and programmers are not consciously aware of the useful concepts. 
+It also happens to make it a lot easier to bring sanity to the behavior of assignment operators.
+
+
+Let’s consider a brief example. 
+Suppose you’re working on an application that deals with moving information between computers on a network 
+by breaking it into packets and transmitting them according to some protocol. 
+All we’ll consider here is the class or classes for representing packets. 
+We’ll assume such classes make sense for this application.
+
+
+Suppose you deal with only a single kind of transfer protocol and only a single kind of packet. 
+Perhaps you’ve heard that other protocols and packet types exist, 
+but you’ve never supported them, nor do you have any plans to support them in the future. 
+Should you make an abstract class for packets (for the concept that a packet represents) 
+as well as a concrete class for the packets you’ll actually be using? 
+If you do, you could hope to add new packet types later without changing the base class for packets. 
+That would save you from having to recompile packet-using applications if you add new packet types. 
+But that design requires two classes, and right now you need only one (for the particular type of packets you use). 
+Is it worth complicating your design now to allow for future extension that may never take place?
+
+
+There is no unequivocally correct choice to be made here, 
+but experience has shown it is nearly impossible to design good classes for concepts we do not understand well. 
+If you create an abstract class for packets, how likely are you to get it right, 
+especially since your experience is limited to only a single packet type? 
+Remember that you gain the benefit of an abstract class for packets 
+only if you can design that class so that future classes can inherit from it without its being changed in any way. 
+(If it needs to be changed, you have to recompile all packet clients, and you’ve gained nothing.)
+
+
+It is unlikely you could design a satisfactory abstract packet class 
+unless you were well versed in many different kinds of packets and in the varied contexts in which they are used. 
+Given your limited experience in this case, 
+the advice would be **not** to define an abstract class for packets, 
+adding one later only if you find a need to inherit from the concrete packet class.
+
+
+The transformation here is merely one way to identify the need for abstract classes, not the only way.
+
+
+As is often the case in such matters, brash reality sometimes intrudes on the peaceful ruminations of theory. 
+Third-party C++ class libraries are proliferating with gusto, 
+and what are you to do if you find yourself wanting to create a concrete class 
+that inherits from a concrete class in a library to which you have only read access?
+
+
+You can’t modify the library to insert a new abstract class, so your choices are both limited and unappealing:
+- Derive your concrete class from the existing concrete class, 
+  and put up with the assignment-related problems we examined at the beginning of this Item. 
+  You’ll also have to watch out for the array-related pitfalls described in Item 3.
+- Try to find an abstract class higher in the library hierarchy that does most of what you need, 
+  then inherit from that class. 
+  Of course, there may not be a suitable class, and even if there is, 
+  you may have to duplicate a lot of effort that has already been put into the implementation 
+  of the concrete class whose functionality you’d like to extend.
+- Make do with what you’ve got. 
+  Use the concrete class that’s in the library and modify your software so that the class suffices. 
+  Write non-member functions to provide the functionality you’d like to but can't add to the class. 
+  The resulting software may not be as clear, as efficient, as maintainable, or as extensible as you’d like,
+  but at least it will get the job done. 
+- Implement your new class in terms of the library class you’d like to inherit from. 
+  For example, you could have an object of the library class as a data member, 
+  then reimplement the library class’s interface in your new class.
+  This strategy requires that you be prepared to update your class 
+  each time the library vendor updates the class on which you’re dependent. 
+  It also requires that you be willing to forgo the ability to redefine virtual functions declared in the library class, 
+  because you can’t redefine virtual functions unless you inherit them.
+```c++
+// this is the library class
+class Window
+{
+public:
+    virtual void resize(int newWidth, int newHeight);
+
+    virtual void repaint() const;
+
+    int width() const;
+
+    int height() const;
+};
+
+// this is the class you wanted to inherit from Window
+class SpecialWindow
+{
+public:
+    // ...
+    
+    // pass-through implementations of non-virtual functions
+    int width() const
+    {
+        return w.width();
+    }
+
+    int height() const
+    {
+        return w.height();
+    }
+
+    // new implementations of "inherited" virtual functions
+    virtual void resize(int newWidth, int newHeight);
+
+    virtual void repaint() const;
+
+private:
+    Window w;
+};
+```
+None of these choices is particularly attractive, 
+so you have to apply some engineering judgment and choose the poison you find least un-appealing. 
+
+
+Still, the general rule remains: **Non-leaf classes should be abstract**.
+You may need to bend the rule when working with outside libraries,
+but in code over which you have control, adherence to it will yield dividends 
+in the form of increased reliability, robustness, comprehensibility, and extensibility throughout your software.
 
 
 
