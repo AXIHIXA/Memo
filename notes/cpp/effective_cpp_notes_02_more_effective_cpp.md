@@ -121,8 +121,8 @@ In all other cases, stick with pointers.
 
 ### 📌 Item 3: Never treat arrays polymorphically
 
-- Polymorphism does **not** work involving pointer arithmetic. 
-  Array operations always involve pointer arithmetic, so arrays **do** not work with polymorphism. 
+- Polymorphism does **not** work with pointer arithmetic. 
+  Array operations always involve pointer arithmetic, so they **do** not work with polymorphism. 
 
 
 One of the most important features of inheritance is that 
@@ -225,7 +225,7 @@ Array operations almost always involve pointer arithmetic, so arrays and polymor
 
 
 Note that you’re unlikely to make the mistake of treating an array polymorphically 
-if you avoid having a concrete class (like `AVL`) inherit from another concrete class (such as `BST`).
+if you avoid having a concrete (non-abstract) class (like `AVL`) inherit from another concrete class (such as `BST`).
 As Item 33 explains, designing your software so that concrete classes never inherit from one another has many benefits. 
 I encourage you to turn to Item 33 and read all about them. 
 
