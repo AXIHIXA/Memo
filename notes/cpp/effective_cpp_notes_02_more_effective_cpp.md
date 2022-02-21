@@ -1006,6 +1006,197 @@ in the form of increased reliability, robustness, comprehensibility, and extensi
 ### 📌 Item 34: Understand how to combine C++ and C in the same program
 
 
+In many ways, the things you have to worry about when making a program 
+out of some components in C++ and some in C 
+are the same as those you have to worry about when cobbling together a C program 
+out of object files produced by more than one C compiler. 
+There is **no** way to combine such files 
+unless the different compilers agree on implementation-dependent features 
+like the size of `long`s, 
+the mechanism by which parameters are passed from caller to callee, 
+and whether the caller or the callee orchestrates the passing. 
+These pragmatic aspects of mixed-compiler software development 
+are quite properly ignored by language standardization efforts, 
+so the only reliable way to know that object files from compilers A and B 
+can be safely combined in a program 
+is to obtain assurances from the vendors of A and B 
+that their products produce compatible output. 
+This is as true for programs made up of C++ and C 
+as it is for purely-C++ or purely-C programs, 
+so before you try to mix C++ and C in the same program,
+make sure your C++ and C compilers generate compatible object files.
+
+
+Having done that, there are four other things you need to consider:
+1. Name Mangling; 
+2. Initialization of Statics; 
+3. Dynamic Memory Allocation;
+4. Data Structure Compatibility.
+
+
+#### Name Mangling
+
+_Name Mangling_ is the process through which your C++ compilers give each function in your program a unique name. 
+In C, this process is unnecessary because you can’t overload function names.  
+But, nearly all C++ programs have at least a few functions with the same name. 
+(E.g., `<iostream>` declares several versions of `operator<<` and `operator>>`.) 
+Overloading is incompatible with most linkers, 
+because linkers generally take a dim view of multiple functions with the same name. 
+Name mangling is a concession to the realities of linkers; 
+in particular, to the fact that linkers usually insist on all function names being unique. 
+As long as you stay within the confines of C++, name mangling is not likely to concern you. 
+If you have a function name `drawLine` that a compiler mangles into `xyzzy`, 
+you’ll always use the name `drawLine`, 
+and you’ll have little reason to care that the underlying object files happen to refer to `xyzzy`.
+It’s a different story if `drawLine` is in a C library. 
+In that case, your C++ source file probably includes a header file that contains a declaration like this,
+```c++
+void drawLine(int x1, int y1, int x2, int y2);
+```
+and your code contains calls to `drawLine` in the usual fashion. 
+Each such call is translated by your compilers 
+into a call to the mangled name of that function, 
+so when you write this,
+```c++
+// call to unmangled function name
+drawLine(a, b, c, d);
+```
+your object files contain a function call that corresponds to this:
+```c++
+// call to mangled function mame
+xyzzy(a, b, c, d);
+```
+But if `drawLine` is a C function, 
+the object file that contains the compiled version of `drawLine` 
+contains a function called `drawLine`; 
+**no** name mangling has taken place. 
+When you try to link the object files comprising your program together, you’ll get an error, 
+because the linker is looking for a function called `xyzzy`, and there is no such function.
+
+
+To solve this problem, you need a way to tell your C++ compilers not to mangle certain function names. 
+You never want to mangle the names of functions written in other languages like C.
+After all, if you call a C function named `drawLine`, it’s literally called `drawLine`, 
+and your object code should contain a reference to that name, not to some mangled version of that name.
+
+
+To suppress name mangling, use C++’s `extern "C"` directive:
+```c++
+// declare a function called drawLine; don’t mangle its name
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+void drawLine(int x1, int y1, int x2, int y2);
+#ifdef __cplusplus
+};
+#endif
+```
+Technically, `extern "C"` means the function has _C linkage_.
+The best way to view `extern "C"` is not as an assertion that the associated function _is written in C_, 
+but as a statement that the function should be called as _if it were written in C_.
+
+
+For example, if you were so unfortunate as to have to write a function in assembler, 
+you could declare it `extern "C"`, too:
+```c++
+// this function is in assembler — don’t mangle its name
+extern "C" void twiddleBits(unsigned char bits);
+```
+There is, by the way, no such thing as a “standard” name mangling algorithm. 
+Different compilers are free to mangle names in different ways, and different compilers do. 
+This is a good thing. 
+If all compilers mangled names the same way, you might be lulled into thinking they all generated compatible code. 
+The way things are now, if you try to mix object code from incompatible C++ compilers, 
+there’s a good chance you’ll get an error during linking, 
+because the mangled names won’t match up. 
+This implies you’ll probably have other compatibility problems, too, 
+and it’s better to find out about such incompatibilities sooner than later,
+
+#### Initialization of Statics
+
+Once you’ve mastered name mangling, you need to deal with the fact that in C++, 
+lots of code can get executed before and after `main`. 
+In particular, the constructors of static class objects and objects at global, namespace, and file scope 
+are usually called _before_ the body of `main` is executed. 
+This process is known as _static initialization_. 
+This is in direct opposition to the way we normally think about C++ and C programs,
+in which we view `main` as the entry point to execution of the program. 
+Similarly, objects that are created through static initialization must
+have their destructors called during _static destruction_; 
+that process typically takes place _after_ `main` has finished executing.
+
+
+To resolve the dilemma that `main` is supposed to be invoked first, 
+yet objects need to be constructed before main is executed, 
+many compilers insert a call to a special compiler-written function at the beginning of `main`, 
+and it is this special function that takes care of static initialization. 
+Similarly, compilers often insert a call to another special function at the end of `main` 
+to take care of the destruction of static objects.
+Code generated for `main` often looks as if `main` had been written like this:
+```c++
+int main(int argc, char * argv[])
+{
+    // generated by the implementation
+    performStaticInitialization();
+
+    // the statements you put in main go here
+    
+    // generated by the implementation
+    performStaticDestruction();
+}
+```
+Now don’t take this too literally. 
+The functions `performStaticInitialization` and `performStaticDestruction` usually have much more cryptic names, 
+and they may even be generated `inline`, in which case you won’t see any functions for them in your object files. 
+
+
+The important point is this: 
+If a C++ compiler adopts this approach to the initialization and destruction of static objects, 
+such objects will be **neither** initialized **nor** destroyed unless `main` is written in C++.
+Because this approach to static initialization and destruction is common,
+you should try to write main in C++ if you write any part of a software
+system in C++.
+
+
+Sometimes it would seem to make more sense to write `main` in C 
+if most of a program is in C and C++ is just a support library. 
+Nevertheless, there’s a good chance the C++ library contains static objects 
+(even if it doesn’t now, it probably will in the future), 
+so it’s still a good idea to write main in C++ if you possibly can. 
+That doesn’t mean you need to rewrite your C code, however. 
+Just rename the `main` you wrote in C to be `realMain`, 
+then have the C++ version of `main` call `realMain`:
+```c++
+// implement this function in C
+extern "C"
+int realMain(int argc, char * argv[]);
+
+// write this in C++
+int main(int argc, char * argv[])
+{
+    return realMain(argc, argv);
+}
+```
+If you do this, it’s a good idea to put a comment above `main` explaining what is going on.
+
+
+If you can not write `main` in C++, you’ve got a problem, 
+because there is no other portable way to ensure that constructors and destructors for static objects are called. 
+This doesn’t mean all is lost, it just means you’ll have to work a little harder. 
+Compiler vendors are well acquainted with this problem, 
+so almost all provide some extralinguistic mechanism 
+for initiating the process of static initialization and static destruction. 
+For information on how this works with your compilers,
+dig into your compilers’ documentation or contact their vendors.
+
+#### Dynamic Memory Allocation
+
+
+
+
+
+#### Data Structure Compatibility
 
 
 
