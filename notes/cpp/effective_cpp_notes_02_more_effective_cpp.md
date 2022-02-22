@@ -412,8 +412,10 @@ class EquipmentPiece
 public:
     explicit EquipmentPiece(int IDNumber = UNSPECIFIED);
     // ...
+    
 private:
-    static constexpr int UNSPECIFIED;  // magic ID number value meaning no ID was specified
+    // magic ID number value meaning no ID was specified
+    static constexpr int UNSPECIFIED;  
 };
 ```
 This allows `EquipmentPiece` objects to be created like this:
@@ -444,7 +446,7 @@ Often default constructors can’t offer that kind of assurance,
 so it’s best to avoid them in classes where they make no sense. 
 That places some limits on how such classes can be used, 
 but it also guarantees that when you do use such classes, 
-you can expect that the objects they generate are fully initialized and are efficiently implemented.
+you can expect that the objects they generate are fully initialized and are efficiently implemented. 
 
 
 
@@ -456,8 +458,238 @@ you can expect that the objects they generate are fully initialized and are effi
 ### 📌 Item 5: Be wary of user-defined conversion functions
 
 
+C++ allows compilers to perform implicit conversions between types. 
+E.g., C++ allows implicit conversions 
+from `char` to `int`, from `short` to `double`, from `int` to `short`, and from `double` to `char`. 
 
 
+You can’t do anything about such conversions, because they’re hardcoded into the language. 
+When you add your own types, however, you have more control, 
+because you can choose whether to provide the functions compilers are allowed to use for implicit type conversions.
+
+
+Two kinds of functions allow compilers to perform user-defined implicit conversions:
+1. Non-`explicit` Single-argument Constructors; 
+2. Implicit Type Conversion Operators. 
+
+
+A single-argument constructor is a constructor that may be called with only one argument. 
+Such a constructor may declare a single parameter or it may declare multiple parameters, 
+with each parameter after the first having a default value. 
+```c++
+class Name
+{
+public:
+    // converts std::string to Name
+    Name(const std::string & s); 
+    // ...
+};
+
+class Rational
+{
+public:
+    // converts int to Rational
+    Rational(int numerator = 0, int denominator = 1);
+    // ...
+};
+```
+An implicit type conversion operator is simply a member function with a strange-looking name: 
+the word `operator` followed by a type specification. 
+You are **not** allowed to specify a type for the function’s return value, 
+because the type of the return value is basically just the name of the function. 
+For example, to allow `Rational` objects to be implicitly converted to `double`s 
+(which might be useful for mixed-mode arithmetic involving `Rational` objects), 
+you might define class `Rational` like this:
+```c++
+class Rational
+{
+public:
+    // ...
+
+    // converts Rational to double
+    operator double() const; 
+};
+
+// r has the value 1/2
+Rational r(1, 2);    
+// converts r to a double, then does multiplication
+double d = 0.5 * r;  
+```
+You usually **don’t** want to provide type conversion functions of _any_ ilk. 
+
+
+The fundamental problem is that such functions often end up 
+being called when you neither want nor expect them to be. 
+The result can be incorrect and unintuitive program behavior 
+that is maddeningly difficult to diagnose.
+
+
+Let us deal first with implicit type conversion operators, 
+as they are the easiest case to handle. 
+Suppose you have a class for rational numbers similar to the one above, 
+and you’d like to print `Rational` objects as if they were a built-in type. 
+That is, you’d like to be able to do this:
+```c++
+Rational r(1, 2);
+std::cout << r << '\n';  // should print "1/2"
+```
+Further suppose you forgot to write an `operator<<` for `Rational` objects. 
+You would probably expect that the attempt to print `r` would fail,
+because there is no appropriate `operator<<` to call. 
+You would be mistaken. 
+Your compilers, faced with a call to a function called `operator<<` that takes a `Rational`, 
+would find that no such function existed, 
+but they would then try to find an acceptable sequence of implicit type conversions 
+they could apply to make the call succeed. 
+The rules defining which sequences of conversions are acceptable are complicated,
+but in this case your compilers would discover they could make the call succeed 
+by implicitly converting `r` to a `double` by calling `Rational::operator double`. 
+The result of the code above would be to print `r` as a floating point number, 
+**not** as a rational number. 
+This is hardly a disaster, 
+but it demonstrates the disadvantage of implicit type conversion operators: 
+Their presence can lead to the wrong function being called 
+(i.e., one other than the one intended).
+
+
+The solution is to replace the operators with equivalent functions 
+that don’t have the syntactically magic names. 
+For example, to allow conversion of a `Rational` object to a `double`, 
+replace `operator double` with a function called something like `asDouble`: 
+```c++
+class Rational 
+{
+public:
+    // ...
+    
+    // converts Rational to double
+    double asDouble() const;  
+};
+```
+Such a member function must be called explicitly:
+```c++
+Rational r(1, 2);
+std::cout << r << '\n';             // Error! No operator<< for Rationals
+std::cout << r.asDouble() << '\n';  // Fine, prints r as a double
+```
+In most cases, the inconvenience of having to call conversion functions explicitly is more 
+than compensated for by the fact that unintended functions can no longer be silently invoked.
+E.g., `std::string` type contains **no** implicit conversion 
+from a `std::string` object to a C-style `char *`. 
+Instead, there’s an explicit member function, 
+`std::string::c_str`, that performs that conversion. 
+
+
+Implicit conversions via single-argument constructors are more difficult to eliminate 
+(before the introduction of `explicit` constructors). 
+Furthermore, the problems these functions cause are in many cases
+worse than those arising from implicit type conversion operators.
+
+
+As an example, consider a class template for array objects. 
+These arrays allow clients to specify upper and lower index bounds:
+```c++
+template <typename T>
+class Array 
+{
+public:
+    Array(std::size_t lowerIndexBound, std::size_t upperIndexBound);
+    Array(std::size_t size);
+    T & operator[](std::size_t index);
+    // ...
+};
+```
+The first constructor in the class allows clients to specify a range of array indices. 
+As a two-argument constructor, this function is ineligible for use as a type-conversion function. 
+The second constructor, which allows clients to define `Array` objects 
+by specifying only the number of elements in the array 
+(in a manner similar to that used with built-in arrays), is different. 
+It can be used as a type conversion function, and that can lead to problems:
+```c++
+bool operator==(const Array<int> & lhs, const Array<int> & rhs);
+
+Array<int> a(10);
+Array<int> b(10);
+
+for (std::size_t i = 0; i < 10; ++i)
+{
+    if (a == b[i])  // oops! "a" should be "a[i]"
+    {
+        // do something for when a[i] and b[i] are equal;
+    } 
+    else
+    {
+        // do something for when they’re not;
+    }
+}
+```
+We intended to compare each element of `a` to the corresponding element in `b`, 
+but we accidentally omitted the subscripting syntax when we typed `a`. 
+Certainly we expect this to elicit all manner of unpleasant commentary from our compilers, 
+but they will complain not at all.
+That’s because they see a call to `operator==` with arguments of type `Array<int>` (for `a`) and `int` (for `b[i]`), 
+and though there is no `operator==` function taking those types, 
+our compilers notice they can convert the `int` into an `Array<int>` object 
+by calling the `Array<int>` constructor that takes a single `int` as an argument. 
+This they proceed to do, thus generating code for a program we never meant to write, 
+one that looks like this:
+```c++
+for (std::size_t i = 0; i < 10; ++i)
+{
+    if (a == static_cast<Array<int>>(b[i]))
+    {
+        // ...
+    }
+    // ...
+}
+```
+Each iteration through the loop thus compares the contents of a with
+the contents of a temporary array of size b[i] (whose contents are presumably
+undefined). Not only is this unlikely to behave in a satisfactory
+manner, it is also tremendously inefficient, because each time
+through the loop we both create and destroy a temporary Array<int>
+object (see Item 19).
+The drawbacks to implicit type conversion operators can be avoided by
+simply failing to declare the operators, but single-argument constructors
+cannot be so easily waved away. After all, you may really want to
+offer single-argument constructors to your clients. At the same time,
+you may wish to prevent compilers from calling such constructors indiscriminately.
+Fortunately, there is a way to have it all. In fact, there
+are two ways: the easy way and the way you’ll have to use if your compilers
+don’t yet support the easy way.
+The easy way is to avail yourself of one of the newest C++ features, the
+explicit keyword. This feature was introduced specifically to address
+the problem of implicit type conversion, and its use is about as
+straightforward as can be. Constructors can be declared explicit,
+and if they are, compilers are prohibited from invoking them for pur-
+poses of implicit type conversion. Explicit conversions are still legal,
+however:
+```c++
+template<class T>
+class Array {
+public:
+...
+explicit Array(int size); // note use of "explicit"
+...
+};
+Array<int> a(10); // okay, explicit ctors can
+// be used as usual for
+// object construction
+Array<int> b(10); // also okay
+if (a == b[i]) ... // error! no way to
+// implicitly convert
+// int to Array<int>
+if (a == Array<int>(b[i])) ... // okay, the conversion
+// from int to Array<int> is
+// explicit (but the logic of
+// the code is suspect)
+if (a == static_cast< Array<int> >(b[i])) ...
+// equally okay, equally
+// suspect
+if (a == (Array<int>)b[i]) ... // C-style casts are also
+// okay, but the logic of
+// the code is still suspect
+```
 
 
 ### 📌 Item 6: Distinguish between prefix and postfix forms of increment and decrement operators

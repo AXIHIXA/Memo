@@ -9570,49 +9570,90 @@ std::map<std::string, int>::mapped_type v5;  // int
 
 - `C++`直接管理动态内存
 - 动态申请内存：[`new`表达式](https://en.cppreference.com/w/cpp/language/new)（`new` expression, New expression）
-    - Is **different** from [`operator new`](https://en.cppreference.com/w/cpp/memory/new/operator_new)
-        - `operator new` is only for memory allocation, no object construction occurs
-        - Size-unware versions of `operator new`s are preferred over size-aware versions (when both are present)
-        - `new` expression first calls `operator new` to allocate memory, then calls the constructor to construct the object.
+  - Is **different** from [`operator new`](https://en.cppreference.com/w/cpp/memory/new/operator_new)
+      - `operator new` is only for memory allocation, no object construction occurs
+      - Size-unware versions of `operator new`s are preferred over size-aware versions (when both are present)
+      - `new` expression first calls `operator new` to allocate memory, then calls the constructor to construct the object.
+    ```c++
+    struct MyStruct
+    {
+    public:
+        static void * operator new(std::size_t count)
+        {
+            std::cout << __PRETTY_FUNCTION__ << ' ' << count << '\n';
+            return ::operator new(count);
+        }
+    
+        static void operator delete(void * ptr)
+        {
+            std::cout << __PRETTY_FUNCTION__ << '\n';
+            return ::operator delete(ptr);
+        }
+    
+    public:
+        explicit MyStruct()
+        {
+            std::cout << __PRETTY_FUNCTION__ << '\n';
+        }
+    
+        ~MyStruct()
+        {
+            std::cout << __PRETTY_FUNCTION__ << '\n';
+        }
+    
+    public:
+        int a {1};
+        int b {2};
+    };
+        
+    auto p = new MyStruct();
+    delete p;
+    
+    // OUTPUT:
+    // static void* MyStruct::operator new(std::size_t) 8
+    // MyStruct::MyStruct()
+    // MyStruct::~MyStruct()
+    // static void MyStruct::operator delete(void*)
+    ```
     - 初始化可以选择
-        - *默认初始化* 
-            - *不提供* 初始化器 
-            - 对象的值 *未定义* 
-        ```c++
-        int * pi = new int;
-        std::string * ps = new std::string;
-        ```
-        - *值初始化* 
-            - 提供 *空的* 初始化器 
-            - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
-            - 对于内置类型，值初始化的效果则是 *零初始化* 
-        ```c++
-        std::string * ps1 = new std::string;   // default initialized to the empty string
-        std::string * ps = new std::string();  // value initialized to the empty string
-        int * pi1 = new int;                   // default initialized; *pi1 is undefined
-        int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
-        ```
-        - *直接初始化* 
-            - 提供 *非空* 的初始化器 
-            - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
-        ```c++
-        int * pi = new int(1024);
-        std::string * ps = new std::string(10, '9');
-        std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-        ```
+      - *默认初始化* 
+          - *不提供* 初始化器 
+          - 对象的值 *未定义* 
+      ```c++
+      int * pi = new int;
+      std::string * ps = new std::string;
+      ```
+      - *值初始化* 
+          - 提供 *空的* 初始化器 
+          - 如类类型没有合成的默认构造函数，则值初始化进行的也是默认初始化，没有意义
+          - 对于内置类型，值初始化的效果则是 *零初始化* 
+      ```c++
+      std::string * ps1 = new std::string;   // default initialized to the empty string
+      std::string * ps = new std::string();  // value initialized to the empty string
+      int * pi1 = new int;                   // default initialized; *pi1 is undefined
+      int * pi2 = new int();                 // value initialized to 0; *pi2 is 0
+      ```
+      - *直接初始化* 
+          - 提供 *非空* 的初始化器 
+          - 显式指定对象初值，可以使用 *括号* 或 *花括号* 初始化器
+      ```c++
+      int * pi = new int(1024);
+      std::string * ps = new std::string(10, '9');
+      std::vector<int> * pv = new std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+      ```
     - 使用`auto`
-        - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
-            - 编译器需要从初始化器中推断类型
+      - 需提供 *初始化器* ，且初始化器中 *只能有一个值* 
+          - 编译器需要从初始化器中推断类型
     ```c++
     auto p1 = new auto(obj);      // p points to an object of the type of obj
-                                  // that object is initialized from obj
+                                // that object is initialized from obj
     auto p2 = new auto{a, b, c};  // error: must use parentheses for the initializer
     ```
     - 动态分配`const`对象
-        - 用`new`分配`const`对象是合法的，返回指向`const`的指针
-        - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
-            - 对于有 *默认构造函数* 的类类型，可以默认初始化
-            - 否则，必须直接初始化
+      - 用`new`分配`const`对象是合法的，返回指向`const`的指针
+      - 类似于其他`const`对象，动态分配的`const`对象亦必须进行初始化
+          - 对于有 *默认构造函数* 的类类型，可以默认初始化
+          - 否则，必须直接初始化
     ```c++
     // allocate and direct-initialize a const int
     const int * pci = new const int(1024);
@@ -9621,9 +9662,9 @@ std::map<std::string, int>::mapped_type v5;  // int
     const std::string * pcs = new const std::string;
     ```
     - 内存耗尽
-        - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
-        - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
-            - 定位`new`本质作用是在指定地点`new`个东西出来，配合`std::allocator<T>`用的
+      - 无内存可用时，`new`会抛出`std::bad_alloc`异常，返回 *空指针*
+      - 可以使用 *定位`new`* 表达式`new (std::nothrow)`（placement new）阻止抛出异常 => 19.1.2
+          - 定位`new`本质作用是在指定地点`new`个东西出来，配合`std::allocator<T>`用的
     ```c++
     // if allocation fails, new returns a null pointer
     int * p1 = new int;                 // if allocation fails, new throws std::bad_alloc
@@ -9644,20 +9685,20 @@ std::map<std::string, int>::mapped_type v5;  // int
     new (p2) MyClass;
     
     // Notice though that calling this function directly does not construct an object. 
-    // allocates memory by calling: operator new (sizeof(MyClass))
+    // allocates memory by calling: operator new(sizeof(MyClass))
     // but does not call MyClass's constructor
-    MyClass * p3 = (MyClass*) ::operator new (sizeof(MyClass));
+    MyClass * p3 = (MyClass *) ::operator new(sizeof(MyClass));
     ```
     - 动态释放内存：[`delete`表达式](https://en.cppreference.com/w/cpp/language/delete)（`delete` expression, Delete expression）
-        - Still different from [`operator delete`](https://en.cppreference.com/w/cpp/memory/new/operator_delete)
-            - `operator delete` just deallocates the memory, no object destruction is done
-            - `delete` expression first calls destructor to destruct the object, 
-              then calls `operator delete` to deallocate the memory. 
-        - 传递给`delete`的指针必须是 *指向被动态分配的对象* 的指针或者 *空指针* 
-        - 将同一个对象反复释放多次是 *未定义行为*
-        - *`const`对象* 虽然不能更改，但却 *可以销毁* 
-        - `delete`之后指针成为了 *空悬指针* （dangling pointer）
-            - *你就是一个没有对象的野指针*
+      - Still different from [`operator delete`](https://en.cppreference.com/w/cpp/memory/new/operator_delete)
+          - `operator delete` just deallocates the memory, no object destruction is done
+          - `delete` expression first calls destructor to destruct the object, 
+            then calls `operator delete` to deallocate the memory. 
+      - 传递给`delete`的指针必须是 *指向被动态分配的对象* 的指针或者 *空指针* 
+      - 将同一个对象反复释放多次是 *未定义行为*
+      - *`const`对象* 虽然不能更改，但却 *可以销毁* 
+      - `delete`之后指针成为了 *空悬指针* （dangling pointer）
+          - *你就是一个没有对象的野指针*
     ```c++
     int i; 
     int * pi1 = &i; 
@@ -9676,8 +9717,8 @@ std::map<std::string, int>::mapped_type v5;  // int
     delete pci;  // ok: free a const object 
     ```
     - 动态对象的生存期直到被释放时为止
-        - `std::shared_ptr`管理的对象会在引用计数降为`0`时被自动释放
-        - 内置类型指针管理的对象则一直存在到被显式释放为止
+      - `std::shared_ptr`管理的对象会在引用计数降为`0`时被自动释放
+      - 内置类型指针管理的对象则一直存在到被显式释放为止
 - *智能指针*
     - 定义于头文件`<memory>`中，包括 
         - [`std::shared_ptr`](https://en.cppreference.com/w/cpp/memory/shared_ptr)：允许多个指针指向同一个对象
