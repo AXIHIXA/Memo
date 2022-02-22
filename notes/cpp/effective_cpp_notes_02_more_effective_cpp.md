@@ -237,6 +237,216 @@ I encourage you to turn to Item 33 and read all about them.
 ### 📌 Item 4: Avoid gratuitous default constructors
 
 
+A default constructor (i.e., a constructor that can be called with no arguments)
+is the C++ way of saying you can get something for nothing. 
+Constructors initialize objects, 
+so default constructors initialize objects without any information from the place where the object is being created. 
+Sometimes this makes perfect sense. 
+Objects that act like numbers, for example, may reasonably be initialized to zero or to undefined values. 
+Objects that act like pointers may reasonably be initialized to null or to undefined values. 
+Data structures like linked lists, hash tables, maps, and the like may reasonably be initialized to empty containers. 
+
+
+Not all objects fall into this category. 
+For many objects, there is no reasonable way to 
+perform a complete initialization in the absence of outside information. 
+For example, an object representing an entry in an address book 
+makes no sense unless the name of the thing being entered is provided. 
+In some companies, all equipment must be tagged with a corporate ID number, 
+and creating an object to model a piece of equipment in such companies is nonsensical 
+unless the appropriate ID number is provided.
+
+
+In a perfect world, 
+classes in which objects could reasonably be created from nothing would contain default constructors 
+and classes in which information was required for object construction would not. 
+If a class lacks a default constructor, there are restrictions on how you can use that class.
+Consider a class for company equipment 
+in which the corporate ID number of the equipment is a mandatory constructor argument:
+```c++
+class EquipmentPiece 
+{
+public:
+    EquipmentPiece(int IDNumber);
+    // ...
+};
+```
+Because `EquipmentPiece` lacks a default constructor, its use may be problematic in three contexts. 
+The first is the _creation of arrays_. 
+There is, in general, no way to specify constructor arguments for objects in arrays, 
+so it is not usually possible to create arrays of `EquipmentPiece` objects:
+```c++
+EquipmentPiece bestPieces[10];                         // Error! No EquipmentPiece::EquipmentPiece()
+EquipmentPiece * bestPieces = new EquipmentPiece[10];  // Error! Same problem
+```
+There are three ways to get around this restriction. 
+A solution for non-heap arrays is to provide the necessary arguments 
+at the point where the array is defined:
+```c++
+EquipmentPiece bestPieces[] = 
+        { 
+            EquipmentPiece(ID1),
+            EquipmentPiece(ID2),
+            EquipmentPiece(ID3),
+            ...,
+            EquipmentPiece(ID10)
+        };
+```
+Unfortunately, there is **no** way to extend this strategy to heap arrays.
+A more general approach is to use an array of pointers instead of an array of objects:
+```c++
+using PEP = EquipmentPiece *;    // a PEP is a pointer to an EquipmentPiece
+PEP bestPieces[10];              // fine, no constructors called
+PEP * bestPieces = new PEP[10];  // also fine
+```
+Each pointer in the array can then be made to point to a different `EquipmentPiece` object:
+```c++
+for (std::size_t i = 0; i < 10; ++i)
+{
+    bestPieces[i] = new EquipmentPiece(someIDNumber);
+}
+```
+There are two disadvantages to this approach. 
+First, you have to remember to `delete` all the objects pointed to by the array. 
+If you forget, you have a resource leak. 
+Second, the total amount of memory you need increases, 
+because you need the space for the pointers as well as the space for the `EquipmentPiece` objects.
+You can avoid the space penalty if you allocate the raw (uninitialized) memory for the array, 
+then use _placement `new`_ (see Item 8) to construct the `EquipmentPiece` objects in the memory:
+```c++
+// Allocate enough raw memory for an array of 10 EquipmentPiece objects; 
+// See Item 8 for details on the operator new[] function
+void * rawMemory = operator new[](10 * sizeof(EquipmentPiece));
+
+// Make bestPieces point to it so it can be treated as an EquipmentPiece array
+EquipmentPiece * bestPieces = static_cast<EquipmentPiece *>(rawMemory);
+
+// Construct the EquipmentPiece objects in the memory using placement new (see Item 8)
+for (std::size_t i = 0; i < 10; ++i)
+{
+    new (bestPieces + i) EquipmentPiece(someIDNumber);
+}
+```
+Notice that you still have to provide a constructor argument for each `EquipmentPiece` object. 
+This technique (as well as the array-of-pointers idea) 
+allows you to create arrays of objects when a class lacks a default constructor; 
+it doesn’t show you how to bypass required constructor arguments. 
+There is no way to do that. 
+If there were, it would defeat the purpose of constructors, 
+which is to guarantee that objects are initialized.
+
+
+The downside to using placement `new`, 
+aside from the fact that most programmers are unfamiliar with it (which will make maintenance more difficult), 
+is that you must manually call destructors on the objects
+in the array when you want them to go out of existence, 
+then you must manually deallocate the raw memory by calling `operator delete[]` (see Item 8):
+```c++
+// Destruct the objects in bestPieces 
+// in the inverse order in which they were constructed
+for (std::size_t i = 9; 0 <= i; --i)
+{
+    bestPieces[i].~EquipmentPiece();
+}
+
+// deallocate the raw memory
+operator delete[](rawMemory);
+```
+If you forget this requirement and use the normal array-deletion syntax,
+your program will behave _unpredictably_. 
+That’s because `delete`ing a pointer that didn’t come from the `new` operator is _undefined behavior_:
+```c++
+// undefined! bestPieces didn’t come from the new operator
+delete [] bestPieces;
+```
+The second problem with classes lacking default constructors is that
+they are ineligible for use with many template-based container classes. 
+That’s because it’s a common requirement for such templates that the
+type used to instantiate the template provide a default constructor. 
+This requirement almost always grows out of the fact that inside the template, 
+an array of the template parameter type is being created. 
+For example, a template for an `Array` class might look something like this:
+```c++
+template <typename T>
+class Array 
+{
+public:
+    Array(std::size_t size);
+    // ...
+    
+private:
+    T * data;
+};
+
+template <typename T>
+Array<T>::Array(std::size_t size)
+{
+    // calls T::T() for each element of the array
+    data = new T[size]; 
+    // ... 
+}
+```
+In most cases, careful template design can eliminate the need for a default constructor. 
+For example, `std::vector` template has **no** requirement that its type parameter have a default constructor. 
+Unfortunately, many templates are not carefully designed. 
+That being the case, classes without default constructors will be incompatible with many templates. 
+
+
+The final consideration in the to-provide-a-default-constructor-or-not-to-provide-a-default-constructor dilemma 
+has to do with virtual base classes. 
+Virtual base classes lacking default constructors are a pain to work with. 
+That’s because the arguments for virtual base class constructors must be provided 
+by the most derived class of the object being constructed. 
+As a result, a virtual base class lacking a default constructor requires that _all_ classes derived from that class
+must understand the meaning of and provide for the virtual base class’s constructors’ arguments. 
+Authors of derived classes neither expect nor appreciate this requirement. 
+
+
+Because of the restrictions imposed on classes lacking default constructors,
+some people believe all classes should have them, 
+even if a default constructor doesn’t have enough information to fully initialize objects of that class. 
+For example, adherents to this philosophy might modify `EquipmentPiece` as follows:
+```c++
+class EquipmentPiece 
+{
+public:
+    explicit EquipmentPiece(int IDNumber = UNSPECIFIED);
+    // ...
+private:
+    static constexpr int UNSPECIFIED;  // magic ID number value meaning no ID was specified
+};
+```
+This allows `EquipmentPiece` objects to be created like this:
+```c++
+EquipmentPiece e;  // now okay
+```
+Such a transformation almost always complicates the other member functions of the class, 
+because there is no longer any guarantee that 
+the fields of an `EquipmentPiece` object have been meaningfully initialized.
+Assuming it makes no sense to have an `EquipmentPiece` without an ID field, 
+most member functions must check to see if the ID is present. 
+If it’s not, they’ll have to figure out how to stumble on anyway.
+Often it’s not clear how to do that, and many implementations choose a solution that offers nothing but expediency: 
+they throw an exception or they call a function that terminates the program. 
+When that happens, it’s difficult to argue that the overall quality of the software has been improved 
+by including a default constructor in a class where none was warranted.
+
+
+Inclusion of meaningless default constructors affects the efficiency of classes, too. 
+If member functions have to test to see if fields have truly been initialized, 
+clients of those functions have to pay for the time those tests take. 
+Furthermore, they have to pay for the code that goes into those tests, 
+because that makes executables and libraries bigger.
+They also have to pay for the code that handles the cases where the tests fail. 
+All those costs are avoided if a class’s constructors ensure that 
+all fields of an object are correctly initialized. 
+Often default constructors can’t offer that kind of assurance, 
+so it’s best to avoid them in classes where they make no sense. 
+That places some limits on how such classes can be used, 
+but it also guarantees that when you do use such classes, 
+you can expect that the objects they generate are fully initialized and are efficiently implemented.
+
+
 
 
 
@@ -1154,7 +1364,7 @@ and they may even be generated `inline`, in which case you won’t see any funct
 The important point is this: 
 If a C++ compiler adopts this approach to the initialization and destruction of static objects, 
 such objects will be **neither** initialized **nor** destroyed unless `main` is written in C++.
-Because this approach to static initialization and destruction is common,
+Because this approach to static initialization and destruction is common, 
 you should try to write main in C++ if you write any part of a software
 system in C++.
 
@@ -1163,10 +1373,10 @@ Sometimes it would seem to make more sense to write `main` in C
 if most of a program is in C and C++ is just a support library. 
 Nevertheless, there’s a good chance the C++ library contains static objects 
 (even if it doesn’t now, it probably will in the future), 
-so it’s still a good idea to write main in C++ if you possibly can. 
+so it’s still a good idea to write `main` in C++ if you possibly can. 
 That doesn’t mean you need to rewrite your C code, however. 
 Just rename the `main` you wrote in C to be `realMain`, 
-then have the C++ version of `main` call `realMain`:
+then have the C++ version of `main` call `realMain`: 
 ```c++
 // implement this function in C
 extern "C"
@@ -1178,7 +1388,7 @@ int main(int argc, char * argv[])
     return realMain(argc, argv);
 }
 ```
-If you do this, it’s a good idea to put a comment above `main` explaining what is going on.
+If you do this, it’s a good idea to put a comment above `main` explaining what is going on. 
 
 
 If you can not write `main` in C++, you’ve got a problem, 
@@ -1188,15 +1398,89 @@ Compiler vendors are well acquainted with this problem,
 so almost all provide some extralinguistic mechanism 
 for initiating the process of static initialization and static destruction. 
 For information on how this works with your compilers,
-dig into your compilers’ documentation or contact their vendors.
+dig into your compilers’ documentation or contact their vendors. 
 
 #### Dynamic Memory Allocation
 
+For dynamic memory allocation, 
+the C++ parts of a program use `new` and `delete` expressions, 
+and the C parts of a program use `malloc` (and its variants) and `free`. 
+As long as memory that came from `new` is deallocated via `delete` and
+memory that came from `malloc` is deallocated via `free`, all is well.
+However, calling `free` on a `new`ed pointer yields _undefined behavior_, 
+as does `delete`ing a `malloc`ed pointer. 
+The only thing to remember is to segregate rigorously 
+your `new`s and `delete`s from your `malloc`s and `free`s.
 
 
-
+Sometimes this is easier said than done. 
+Consider the `strdup` function, which, though standard in neither C nor C++,
+is nevertheless widely available:
+```c++
+// return a copy of the string pointed to by ps
+char * strdup(const char * ps);
+```
+If a memory leak is to be avoided, the memory allocated inside `strdup`
+must be deallocated by `strdup`’s caller. 
+But how is the memory to be deallocated? 
+By using `delete`? By calling `free`? 
+If the `strdup` you’re calling is from a C library, it’s the latter. 
+If it was written for a C++ library, it’s probably the former. 
+What you need to do after calling `strdup`, then, 
+varies not only from system to system, but also from compiler to compiler. 
+To reduce such portability headaches, try to avoid calling functions that are neither in the standard library 
+(see Item 35) nor available in a stable form on most computing platforms.
 
 #### Data Structure Compatibility
+
+Which brings us at long last to passing data between C++ and C programs.
+There’s no hope of making C functions understand C++ features,
+so the level of discourse between the two languages 
+must be limited to those concepts that C can express. 
+Thus, it should be clear there’s no portable way 
+to pass objects or to pass pointers to member functions to routines written in C. 
+C does understand normal pointers,
+however, so, provided your C++ and C compilers produce compatible output, 
+functions in the two languages can safely 
+exchange pointers to objects and pointers to non-member or static functions. 
+Naturally, `struct`s and variables of built-in types (e.g., `int`s, `char`s, etc.) 
+can also freely cross the C++/C border.
+
+
+Because the rules governing the layout of a `struct` in C++ are consistent with those of C, 
+it is safe to assume that 
+a structure definition that compiles in both languages 
+is laid out the same way by both compilers.
+Such `struct`s can be safely passed back and forth between C++ and C.
+If you add non-`virtual` functions to the C++ version of the `struct`, 
+its memory layout should not change, 
+so objects of a `struct` (or `class`) containing only non-`virtual` functions 
+should be compatible with their C brethren 
+whose structure definition lacks only the member function declarations. 
+Adding `virtual` functions ends the game, because the addition of virtual functions to a class 
+causes objects of that type to use a different memory layout (see Item 24). 
+Having a `struct` inherit from another `struct` (or `class`) usually changes its layout, too, 
+so `struct`s with base `struct`s (or `class`es) are also poor candidates for exchange with C functions.
+
+
+From a data structure perspective, it boils down to this: 
+It is safe to pass data structures from C++ to C and from C to C++ 
+provided the definition of those structures compiles in both C++ and C. 
+Adding non-`virtual` member functions to the C++ version of a `struct` 
+that’s otherwise compatible with C will probably not affect its compatibility, 
+but almost any other change to the struct will.
+
+#### Summary
+
+If you want to mix C++ and C in the same program, remember the following simple guidelines:
+- Make sure the C++ and C compilers produce compatible object files.
+- Declare functions to be used by both languages `extern "C"`.
+- If at all possible, write `main` in C++.
+- Always use `delete` with memory from `new`; always use `free` with memory from `malloc`.
+- Limit what you pass between the two languages to data structures that compile under C; 
+  the C++ version of `struct`s may contain non-`virtual` member functions.
+
+
 
 
 
