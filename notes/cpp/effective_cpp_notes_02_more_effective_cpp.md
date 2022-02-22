@@ -580,8 +580,7 @@ Instead, there’s an explicit member function,
 `std::string::c_str`, that performs that conversion. 
 
 
-Implicit conversions via single-argument constructors are more difficult to eliminate 
-(before the introduction of `explicit` constructors). 
+Implicit conversions via single-argument constructors are more difficult to eliminate. 
 Furthermore, the problems these functions cause are in many cases
 worse than those arising from implicit type conversion operators.
 
@@ -604,7 +603,8 @@ As a two-argument constructor, this function is ineligible for use as a type-con
 The second constructor, which allows clients to define `Array` objects 
 by specifying only the number of elements in the array 
 (in a manner similar to that used with built-in arrays), is different. 
-It can be used as a type conversion function, and that can lead to problems:
+It can be used as a type conversion function, and that can lead to problems. 
+The following code
 ```c++
 bool operator==(const Array<int> & lhs, const Array<int> & rhs);
 
@@ -623,73 +623,91 @@ for (std::size_t i = 0; i < 10; ++i)
     }
 }
 ```
-We intended to compare each element of `a` to the corresponding element in `b`, 
-but we accidentally omitted the subscripting syntax when we typed `a`. 
-Certainly we expect this to elicit all manner of unpleasant commentary from our compilers, 
-but they will complain not at all.
-That’s because they see a call to `operator==` with arguments of type `Array<int>` (for `a`) and `int` (for `b[i]`), 
-and though there is no `operator==` function taking those types, 
-our compilers notice they can convert the `int` into an `Array<int>` object 
-by calling the `Array<int>` constructor that takes a single `int` as an argument. 
-This they proceed to do, thus generating code for a program we never meant to write, 
-one that looks like this:
+is essentially the same as the following via user-defined implicit conversions:
 ```c++
 for (std::size_t i = 0; i < 10; ++i)
 {
-    if (a == static_cast<Array<int>>(b[i]))
-    {
-        // ...
-    }
-    // ...
+    if (a == static_cast<Array<int>>(b[i])) ...
 }
 ```
-Each iteration through the loop thus compares the contents of a with
-the contents of a temporary array of size b[i] (whose contents are presumably
-undefined). Not only is this unlikely to behave in a satisfactory
-manner, it is also tremendously inefficient, because each time
-through the loop we both create and destroy a temporary Array<int>
-object (see Item 19).
 The drawbacks to implicit type conversion operators can be avoided by
-simply failing to declare the operators, but single-argument constructors
-cannot be so easily waved away. After all, you may really want to
-offer single-argument constructors to your clients. At the same time,
-you may wish to prevent compilers from calling such constructors indiscriminately.
-Fortunately, there is a way to have it all. In fact, there
-are two ways: the easy way and the way you’ll have to use if your compilers
-don’t yet support the easy way.
-The easy way is to avail yourself of one of the newest C++ features, the
-explicit keyword. This feature was introduced specifically to address
-the problem of implicit type conversion, and its use is about as
-straightforward as can be. Constructors can be declared explicit,
-and if they are, compilers are prohibited from invoking them for pur-
-poses of implicit type conversion. Explicit conversions are still legal,
-however:
+declaring single-parameter constructors `explicit`. 
+Compilers are prohibited from invoking `explicit` constructors 
+for purposes of implicit type conversion. 
+Explicit conversions are still legal.
 ```c++
-template<class T>
-class Array {
+template <typename T>
+class Array 
+{
 public:
-...
-explicit Array(int size); // note use of "explicit"
-...
+    explicit Array(std::size_t size); 
+    // ...
 };
-Array<int> a(10); // okay, explicit ctors can
-// be used as usual for
-// object construction
-Array<int> b(10); // also okay
-if (a == b[i]) ... // error! no way to
-// implicitly convert
-// int to Array<int>
-if (a == Array<int>(b[i])) ... // okay, the conversion
-// from int to Array<int> is
-// explicit (but the logic of
-// the code is suspect)
-if (a == static_cast< Array<int> >(b[i])) ...
-// equally okay, equally
-// suspect
-if (a == (Array<int>)b[i]) ... // C-style casts are also
-// okay, but the logic of
-// the code is still suspect
+
+// okay, explicitly calling the explicit constructor
+Array<int> a(10);               
+Array<int> b(10);
+
+// error! no such implicit conversion
+if (a == b[i]) ...              
+
+// okay, conversion is explicit (but the logic of the code is suspect)
+if (a == Array<int>(b[i])) ...
+if (a == static_cast<Array<int>>(b[i])) ...
+if (a == (Array<int>) b[i]) ...
 ```
+A sad story when `explicit` constructors were not introduced to C++ standard.
+The implicit conversion only allows one user-defined conversion 
+(conversion constructor and conversion operator), 
+otherwise the _implicit conversion sequence_ could be infinitely long. 
+Knowing this fact, we write the following ugly (but working) code: 
+```c++
+template <typename T>
+class Array
+{
+public:
+    class Size
+    {
+    public:
+        Size(std::size_t size) : mSize(size) {}
+        std::size_t size() const { return mSize; }
+
+    private:
+        std::size_t mSize;
+    };
+
+    Array(std::size_t lowerIndexBound, std::size_t upperIndexBound);
+
+    // Now the conversion from int to Array
+    // requires two adjacent user-defined conversions, 
+    // blocking the path of implicit conversion
+    Array(Size size);
+    
+    // ...
+};
+
+// Good, 
+// user calling Array<int>::Array(Array::Size) with argument of type int, 
+// just implicitly convert int into Array::Size with one user-defined conversion. 
+Array<int> a(10);
+
+bool operator==(const Array<int> & lhs, const Array<int> & rhs);
+
+Array<int> a(10);
+Array<int> b(10);
+
+for (int i = 0; i < 10; ++i)
+{
+    // Oops! "a" should be "a[i]". 
+    // This is now an error! 
+    if (a == b[i]) ...
+}
+```
+
+
+
+
+
 
 
 ### 📌 Item 6: Distinguish between prefix and postfix forms of increment and decrement operators

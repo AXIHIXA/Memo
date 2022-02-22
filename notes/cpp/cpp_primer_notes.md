@@ -2411,18 +2411,18 @@ int * q = x;                                            // 错误：无隐式转
 if (x) printf("x\n");                                   // OK
 ```
 
-#### [隐式类型转换](https://en.cppreference.com/w/cpp/language/implicit_conversion)（）
+#### [隐式类型转换](https://en.cppreference.com/w/cpp/language/implicit_conversion)（Implicit conversion）
 
 - *隐式类型转换* 就是由 *编译器自动完成* 的类型转换
-- 凡是在语境中使用了某种表达式类型`T1`，但语境不接受该类型，而接受另一类型`T2`的时候，会进行 *隐式转换* ，具体是
+- 凡是在语境中使用了某种表达式类型`T1`，但语境不接受该类型，而接受另一类型`T2`的时候，会进行 *隐式类型转换* ，具体是
     1. 调用以`T2`为形参声明的函数时，以该表达式为实参
     2. 运算符期待`T2`，而以该表达式为操作数
     3. 初始化`T2`类型的新对象，包括在返回`T2`的函数中的`return`语句
     4. 将表达式用于`switch`语句（`T2`为整型类型）
     5. 将表达式用于`if`语句或循环（`T2`为`bool`）
 - 仅当存在一个从`T1`到`T2`的无歧义 *隐式转换序列* 时，程序 *良构* （能编译）
-- *隐式转换序列* 由下列内容依照这个顺序所构成
-    1. 零或一个 *标准转换序列* 
+- *隐式转换序列* 由下列内容依照这个顺序所构成 (implicit conversion sequence)
+    1. 零或一个 *标准转换序列* (standard conversion sequence)
         1. 下列三者中的零或一个：
             - *左值到右值* 转换
             - *数组头到指针* 转换
@@ -2430,7 +2430,7 @@ if (x) printf("x\n");                                   // OK
         2. 零或一个 *数值提升* 或 *数值转换* 
         3. 零或一个 *函数指针转换* `(since C++17)`
         4. 零或一个 *限定调整* 
-    2. 零或一个 *用户定义转换* 
+    2. 零或一个 *用户定义转换* (user-defined conversion)
         - 零或一个非`explicit` *单实参构造函数* 或非`explicit` *类型转换运算符* 的调用构成
         - 表达式被用作 *条件* 时， *类型转换运算符* 即使是`explicit`的，仍会被 *隐式应用* => 14.9.1
     3. 零或一个 *标准转换序列* 
@@ -2671,7 +2671,7 @@ print(std::begin(j), std::end(j));        // calls print(const int *, const int 
                 2. 通过`const_cast`（添加或删除 *底层`const`* ）实现匹配
                 3. 通过 *类型提升* 实现匹配
                 4. 通过 *算数类型转换* 或 *指针转换* 实现匹配
-                5. 通过 *类类型转换* 实现匹配 => 14.9
+                5. 通过 *用户定义转换* (user-defined conversion) 实现匹配 => 14.9
             - 函数匹配和`const`实参
                 - 实参的 *顶层`const`* *被忽略*
                 - 如果重载函数的区别在于 *底层`const`* 
@@ -12262,8 +12262,8 @@ struct greater
 
 - *用户定义转换* （user-defined conversions）
     - 又称 *类类型转换* （class-type conversions），包括
-        - *转换构造函数* 
-        - *类型转换运算符* （conversion operator）
+        - *转换构造函数* (conversion constructor)
+        - *类型转换运算符* (conversion operator)
 - *类型转换运算符* 
     - 类的一种特殊 *成员函数* ，负责将该类类型转换为`type`类型
         - **没有**显式的返回类型
@@ -12276,8 +12276,8 @@ struct greater
     ```
     - 可以面向**除`void`之外**的任何 *能被函数返回的* 类型进行定义
         - **不能**转换成 *数组* 或 *函数* ，但可以转换成这俩的 *指针* 或 *引用* 
-    - *显式类型转换运算符* 
-        - 告诉编译器**不能**用此运算符进行 *隐式类型转换*   
+    - *显式类型转换运算符* (explicit conversion operator)
+        - 告诉编译器**不能**用此运算符进行 *隐式类型转换* (implicit conversion)
         - 一个**例外**：表达式被用作 *条件* 时，类型转换运算符即使是`explicit`的，仍会被 *隐式应用* **例外**：表达式被用作 *条件* 时，类型转换运算符即使是`explicit`的，仍会被 *隐式应用* 
             - `if`，`while`，`do while`语句的条件部分
             - `for`语句头的条件表达式
