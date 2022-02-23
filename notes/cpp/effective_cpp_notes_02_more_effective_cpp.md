@@ -1093,9 +1093,140 @@ int * p = alloc.allocate(1);               // auto p = static_cast<int *>(operat
 alloc_traits_t::construct(alloc, p, ...);  // new (p) MyStruct(...);
 alloc_traits_t::destory(alloc, p);         // p->~MyStruct();
 alloc.deallocate(p, 1);                    // operator delete(p);
-
 ```
+The expression `new (p) MyStruct(...);` looks a little strange at first, 
+but it’s just a use of the `new` operator in which an additional argument `p` is being specified 
+for the implicit call that the `new` operator makes to `operator new`. 
+The `operator new` thus called must, in addition to the mandatory `std::size_t` argument,
+accept a `void *` parameter that points to the memory the object being constructed is to occupy. 
+That `operator new` is _placement `new`_, and it looks like this:
+```c++
+void * operator new(std::size_t count, void * ptr)
+{
+    return ptr;
+}
+```
+This is probably simpler than you expected,
+but this is all placement `new` needs to do. 
+After all, the purpose of `operator new` is to find memory for an object and return a pointer to that memory. 
+In the case of placement `new`, the caller already knows what the pointer to the memory should be, 
+because the caller knows where the object is supposed to be placed. 
+All placement `new` has to do, then, is return the pointer that’s passed into it. 
+Placement `new` is part of the standard C++ library.
+To use placement `new`, all you have to do is `#include <new>`.
 
+
+If we step back from placement `new` for a moment, 
+we’ll see that the relationship between the `new` operator and `operator new`, 
+though perhaps terminologically confusing, is conceptually straightforward. 
+If you want to create an object on the heap, use the `new` operator. 
+It both allocates memory and calls a constructor for the object. 
+If you only want to allocate memory, call `operator new`; 
+no constructor will be called. 
+If you want to customize the memory allocation that takes place when heap objects are created, 
+write your own version of `operator new` and use the `new` operator; 
+it will automatically invoke your custom version of `operator new`. 
+If you want to construct an object in memory you’ve already got a pointer to, use _placement `new`_.
+
+#### Deletion and Memory Allocation
+
+To avoid resource leaks, every dynamic allocation must be matched by an equal and opposite deallocation. 
+The function `operator delete` is to the built-in `delete` operator as `operator new` is to the `new` operator.
+When you say something like this,
+```c++
+std::string * ps;
+delete ps;
+```
+your compilers must generate code both to destruct the object `ps`points to 
+and to deallocate the memory occupied by that object.
+The memory deallocation is performed by the `operator delete` function
+```c++
+void operator delete(void * ptr) noexcept;
+```
+Hence,
+```c++
+delete ps;
+```
+causes compilers to generate code that approximately corresponds to
+```c++
+ps->~string();        // call the object’s destructor
+operator delete(ps);  // deallocate the memory the object occupied
+```
+One implication of this is that if you want to deal only with raw, uninitialized memory, 
+you should bypass the `new` and `delete` operators entirely.
+Instead, you should call `operator new` to get the memory and `operator delete` to return it to the system:
+```c++
+// Allocate enough memory for 50 chars; Calls no constructors
+void * buffer = operator new(50 * sizeof(char));
+// Deallocate the memory; Calls no destructors
+operator delete(buffer);
+```
+This is the C++ equivalent of calling `malloc` and `free`. 
+If you use placement `new` to create an object in some memory, 
+you should avoid using the `delete` operator on that memory. 
+That’s because the `delete` operator calls `operator delete` to deallocate the memory, 
+but the memory containing the object wasn’t allocated by `operator new` in the first place; 
+placement `new` just returned the pointer that was passed to it. 
+Who knows where that pointer came from? 
+Instead, you should undo the effect of the constructor by explicitly calling the object’s destructor:
+```c++
+std::allocator<MyStruct> alloc;
+using alloc_traits_t = std::allocator_traits<decltype(alloc)>;
+
+// "Kind of" equivalent calls
+int * p = alloc.allocate(1);               // auto p = static_cast<int *>(operator new(sizeof(MyStruct)));
+alloc_traits_t::construct(alloc, p, ...);  // new (p) MyStruct(...);
+alloc_traits_t::destory(alloc, p);         // p->~MyStruct();
+alloc.deallocate(p, 1);                    // operator delete(p);
+```
+As this example demonstrates, 
+if the raw memory passed to placement `new` was itself dynamically allocated 
+(through some unconventional means), 
+you must still deallocate that memory if you wish to avoid a memory leak. 
+
+#### Arrays
+
+```c++
+// Allocate an array of objects
+std::string * ps = new std::string[10];
+```
+The `new` being used is still the `new` operator, 
+but because an array is being created, 
+the `new` operator behaves slightly differently from the case of single-object creation. 
+For one thing, memory is no longer allocated by `operator new`.
+Instead, it’s allocated by the array-allocation equivalent, `operator new[]` (_array `new`_).
+Like `operator new`, `operator new[]` can be overloaded.
+This allows you to seize control of memory allocation for arrays 
+in the same way you can control memory allocation for single objects.
+
+
+The second way in which the new operator behaves differently for arrays than for objects 
+is in the number of constructor calls it makes. 
+For arrays, a constructor must be called for each object in the array:
+```c++
+// Call operator new[] to allocate memory for 10 std::string objects,
+// then call the default std::string constructor for each array element
+std::string * ps = new std::string[10];
+```
+Similarly, when the `delete` operator is used on an array, 
+it calls a destructor for each array element 
+and then calls `operator delete[]` to deallocate the memory:
+```c++
+// Call the std::string destructor for each array element, 
+// then call operator delete[] to deallocate the array’s memory
+delete [] ps; 
+```
+Just as you can replace or overload `operator delete`, 
+you can replace or overload `operator delete[]`. 
+There are some restrictions on how they can be overloaded. 
+
+
+The `new` and `delete` operators are built-in and beyond your control, 
+but the memory allocation and deallocation functions they call are not. 
+When you think about customizing the behavior of the `new` and `delete` operators, 
+remember that you can’t really do it.
+You can modify how they do what they do, 
+but what they do is fixed by the language.
 
 
 
@@ -1106,12 +1237,547 @@ alloc.deallocate(p, 1);                    // operator delete(p);
 
 ### 📌 Item 9: Use destructors to prevent resource leaks
 
+Say goodbye to built-in pointers that are used to manipulate local resources.
+Suppose you’re writing software to read daily logs and do the appropriate processing. 
+A reasonable approach to this task is to define an abstract base class,
+`ALA` (“Adorable Little Animal”), 
+plus concrete derived classes for puppies and kittens. 
+A `virtual` function, `processAdoption`, handles the necessary species-specific processing:
+```
+ALA <- Puppy
+    <- Kitten
+```
+```c++
+class ALA 
+{
+public:
+    virtual void processAdoption() = 0;
+    ...
+};
+
+class Puppy : public ALA 
+{
+public:
+    virtual void processAdoption();
+    ...
+};
+
+class Kitten : public ALA
+{
+public:
+    virtual void processAdoption();
+    ...
+};
+```
+You’ll need a function that can read information from a file 
+and produce either a `Puppy` object or a `Kitten` object, 
+depending on the information in the file. 
+This is a perfect job for a _`virtual` constructor_. 
+For our purposes here, the function’s declaration is all we need:
+```c++
+// Read animal information from fin, 
+// then return a pointer to a newly allocated object of the appropriate type
+ALA * readALA(std::istream & sin);
+```
+The heart of your program is likely to be a function that looks something like this:
+```c++
+void processAdoptions(std::istream & sin)
+{
+    // while there’s data
+    while (sin) 
+    {
+        ALA * pa = readALA(sin);  // get next animal
+        pa->processAdoption();    // process adoption
+        delete pa;                // delete object that readALA returned
+    }
+}
+```
+This function loops through the information in `fin`, 
+processing each entry as it goes. 
+The only mildly tricky thing is the need to remember to `delete pa` at the end of each iteration. 
+This is necessary because `readALA` creates a new heap object each time it’s called. 
+Without the call to `delete`, the loop would contain a resource leak.
+
+
+Now consider what would happen if `pa->processAdoption` threw an exception. 
+`processAdoptions` fails to catch exceptions, 
+so the exception would propagate to `processAdoptions`’s caller. 
+In doing so, all statements in `processAdoptions` after the call to `pa->processAdoption`would be skipped, 
+and that means `pa` would never be `delete`d. 
+As a result, anytime `pa->processAdoption` throws an exception, 
+`processAdoptions` contains a resource leak.
+
+
+Plugging the leak is easy enough,
+```c++
+void processAdoptions(std::istream & sin)
+{
+    while (sin)
+    {
+        ALA * pa = readALA(sin);
+        
+        try
+        {
+            pa->processAdoption();
+        }
+        catch (...)  // catch all exceptions
+        {
+            // avoid resource leak when an exception is thrown
+            delete pa;
+            
+            // propagate exception to caller
+            throw; 
+        }
+
+        // avoid resource leak when no exception is thrown
+        delete pa; 
+    } 
+}
+```
+but then you have to litter your code with `try-catch` blocks. 
+More importantly, 
+you are forced to duplicate cleanup code 
+that is common to both normal and exceptional paths of control. 
+In this case, the call to `delete` must be duplicated. 
+Like all replicated code, this is annoying to write and difficult to maintain, but it also feels wrong. 
+Regardless of whether we leave `processAdoptions` by a normal return or by throwing an exception, 
+we need to `delete pa`, so why should we have to say that in more than one place?
+
+
+We don’t have to if we can somehow move the cleanup code that must always be executed 
+into the destructor for an object local to `processAdoptions`. 
+That’s because local objects are always destroyed when leaving a function, 
+regardless of how that function is exited. 
+(The only exception to this rule is when you call [`std::longjmp`](https://en.cppreference.com/w/cpp/utility/program/longjmp), 
+and this shortcoming of `std::longjmp` is the primary reason 
+why C++ has support for exceptions in the first place.) 
+Our real concern, then, is moving the `delete` from `processAdoptions` 
+into a destructor for an object local to `processAdoptions`.
+
+
+The solution is to replace the built-in pointer `pa` with an object that acts like a pointer. 
+That way, when the pointer-like object is (automatically) destroyed,
+we can have its destructor call `delete`. 
+Objects that act like pointers, but do more, are called _smart pointers_. 
+It’s not difficult to write a class for such objects, but we don’t need to.
+STL contains shared pointers. 
+```c++
+void processAdoptions(std::istream & sin)
+{
+    // while there’s data
+    while (sin) 
+    {
+        std::unique_ptr<ALA> pa(readALA(sin));  // get next animal
+        pa->processAdoption();                  // process adoption
+    }
+}
+```
+
 
 
 
 
 
 ### 📌 Item 10: Prevent resource leaks in constructors
+
+
+You are developing software for a multimedia address book 
+that holds a picture of the person and the sound of their voice, 
+together with other common stuff.
+
+To implement the book, you might come up with a design like this:
+```c++
+class Image
+{
+public:
+    Image(const std::string & imageDataFileName);
+    ...
+};
+
+class AudioClip
+{
+public:
+    AudioClip(const std::string & audioDataFileName);
+    ...
+};
+
+class PhoneNumber
+{
+    ...
+};
+
+class BookEntry
+{
+public:
+    BookEntry(const std::string & name,
+              const std::string & address = "",
+              const std::string & imageFileName = "",
+              const std::string & audioClipFileName = "");
+
+    ~BookEntry();
+
+    // phone numbers are added via this function
+    void addPhoneNumber(const PhoneNumber & number);
+
+    ...
+    
+private:
+    std::string theName;                      // person’s name
+    std::string theAddress;                   // their address
+    std::vector<PhoneNumber> thePhones;       // their phone numbers
+    std::shared_ptr<Image> theImage;          // their image
+    std::shared_ptr<AudioClip> theAudioClip;  // an audio clip from them
+};
+```
+Each `BookEntry` must have `name` data, 
+so you require that as a constructor argument, 
+but the other fields are optional.
+A straightforward way to write the `BookEntry` constructor and destructor is as follows:
+```c++
+BookEntry::BookEntry(const std::string & name,
+                     const std::string & address,
+                     const std::string & imageFileName,
+                     const std::string & audioClipFileName)
+        : theName(name),
+          theAddress(address),
+          theImage(nullptr),
+          theAudioClip(nullptr)
+{
+    if (imageFileName != "")
+    {
+        theImage = std::make_shared<Image>(imageFileName);
+    }
+    
+    if (audioClipFileName != "")
+    {
+        theAudioClip = std::make_shared<AudioClip>(audioClipFileName);
+    }
+}
+
+BookEntry::~BookEntry() = default;
+```
+The constructor initializes the pointers `theImage` and `theAudioClip` to null, 
+then makes them point to real objects if the corresponding arguments are non-empty strings. 
+
+
+Everything looks fine here (if using smart pointers),
+but if not using smart pointers, 
+things are **not** fine at all under exceptional conditions.
+
+
+Consider what will happen if an exception is thrown 
+during execution of this part of the `BookEntry` constructor:
+```c++
+if (audioClipFileName != "") 
+{
+    theAudioClip = new AudioClip(audioClipFileName);
+}
+```
+An exception might arise because `operator new` is unable to allocate enough memory for an `AudioClip` object. 
+One might also arise because the `AudioClip` constructor itself throws an exception.
+Regardless of the cause of the exception, if one is thrown within the `BookEntry` constructor, 
+it will be propagated to the site where the `BookEntry` object is being created.
+
+Now, if an exception is thrown during creation of the object `theAudioClip`is supposed to point to 
+(thus transferring control out of the `BookEntry` constructor), 
+who `delete`s the object that `theImage` already points to? 
+The obvious answer is that `BookEntry`’s destructor does,
+but the obvious answer is wrong. `BookEntry`’s destructor will **never** be called. 
+
+
+C++ destroys only fully constructed objects, 
+and an object isn’t fully constructed until its constructor has run to completion. 
+So if a `BookEntry` object b is created as a local object,
+```c++
+void testBookEntryClass()
+{
+    BookEntry b("Addison-Wesley Publishing Company", 
+                "One Jacob Way, Reading, MA 01867");
+    ...
+}
+```
+and an exception is thrown during construction of `b`, 
+`b`’s destructor will **not** be called. 
+Furthermore, if you try to take matters into your own hands 
+by allocating `b` on the heap and then calling `delete` if an exception is thrown: 
+```c++
+void testBookEntryClass()
+{
+    BookEntry * pb = nullptr;
+    
+    try
+    {
+        pb = new BookEntry("Addison-Wesley Publishing Company",
+                           "One Jacob Way, Reading, MA 01867");
+        ...
+    }
+    catch (...)  // catch all exceptions
+    {
+        // delete pb when an exception is thrown
+        delete pb; 
+        // propagate exception to caller
+        throw; 
+    }
+    
+    delete pb;  // delete pb normally
+}
+```
+you’ll find that the `Image` object allocated inside `BookEntry`’s constructor is still lost, 
+because no assignment is made to `pb` unless the `new` operation succeeds. 
+If `BookEntry`’s constructor throws an exception,
+`pb` will be the null pointer, 
+so `delete`ing it in the catch block does **nothing** except make you feel better about yourself.
+
+
+There is a reason why C++ refuses to call destructors for objects that haven’t been fully constructed. 
+It’s because it would be harmful in many cases. 
+If a destructor were invoked on an object that wasn’t fully constructed, 
+how would the destructor know what to do? 
+The only way it could know would be 
+if bits had been added to each object indicating how much of the constructor had been executed. 
+Then the destructor could check the bits and (maybe) figure out what actions to take. 
+Such bookkeeping would slow down constructors,
+and it would make each object larger, too. 
+C++ avoids this overhead, but the price you pay is that partially constructed objects
+aren’t automatically destroyed.
+
+
+Because C++ won’t clean up after objects that throw exceptions during construction, 
+you must design your constructors so that they clean up after themselves. 
+Often, this involves simply catching all possible exceptions,
+executing some cleanup code, then rethrowing the exception so it continues to propagate. 
+This strategy can be incorporated into the `BookEntry` constructor like this:
+```c++
+BookEntry::BookEntry(const std::string & name,
+                     const std::string & address,
+                     const std::string & imageFileName,
+                     const std::string & audioClipFileName)
+        : theName(name),
+          theAddress(address),
+          theImage(0),
+          theAudioClip(0)
+{
+    try
+    {
+        if (imageFileName != "")
+        {
+            theImage = new Image(imageFileName);
+        }
+        
+        if (audioClipFileName != "")
+        {
+            theAudioClip = new AudioClip(audioClipFileName);
+        }
+    }
+    catch (...)  // catch any exception
+    {
+        // perform necessary cleanup actions
+        delete theImage; 
+        delete theAudioClip;
+
+        // propagate the exception
+        throw; 
+    }
+}
+```
+There is no need to worry about `BookEntry`’s non-pointer data members.
+Data members are automatically initialized before a class’s constructor is called, 
+so if a `BookEntry` constructor body begins executing,
+the object’s `theName`, `theAddress`, and `thePhones` data members have already been fully constructed. 
+As fully constructed objects, these data members will be automatically destroyed
+even if an exception (provided that it is caught) arises in the `BookEntry` constructor. 
+Of course, if these objects’ constructors call functions that might throw exceptions, 
+those constructors have to worry about catching the exceptions 
+and performing any necessary cleanup before allowing them to propagate.
+
+
+You may have noticed that the statements in `BookEntry`’s catch block
+are almost the same as those in `BookEntry`’s destructor. 
+Code duplication here is no more tolerable than it is anywhere else, 
+so the best way to structure things is to move the common code into a private helper function 
+and have both the constructor and the destructor call it:
+```c++
+class BookEntry
+{
+public:
+    ... 
+    
+private:
+    ...
+    void cleanup();
+};
+
+BookEntry::BookEntry(const std::string & name,
+                     const std::string & address,
+                     const std::string & imageFileName,
+                     const std::string & audioClipFileName)
+        : theName(name), 
+          theAddress(address),
+          theImage(0), 
+          theAudioClip(0)
+{
+    try
+    {
+        ...
+    }
+    catch (...)
+    {
+        cleanup();  // release resources
+        throw;      // propagate exception
+    }
+}
+
+BookEntry::~BookEntry()
+{
+    cleanup();
+}
+
+void BookEntry::cleanup()
+{
+    delete theImage;
+    delete theAudioClip;
+}
+```
+Let us suppose we design our `BookEntry` class slightly differently 
+so that `theImage` and `theAudioClip` are _constant_ pointers:
+```c++
+class BookEntry
+{
+public:
+    ...
+
+private:
+    ...
+    Image * const theImage;
+    AudioClip * const theAudioClip; 
+};
+```
+Such pointers _must_ be initialized via the member initialization lists of `BookEntry`’s constructors, 
+because there is no other way to give `const` pointers a value. 
+A common temptation is to initialize `theImage` and `theAudioClip` like this,
+```c++
+// an implementation that may leak resources if an exception is thrown
+BookEntry::BookEntry(const std::string & name,
+                     const std::string & address,
+                     const std::string & imageFileName,
+                     const std::string & audioClipFileName)
+        : theName(name),
+          theAddress(address),
+          theImage(imageFileName != "" ? new Image(imageFileName) : nullptr),
+          theAudioClip(audioClipFileName != "" ? new AudioClip(audioClipFileName) : nullptr)
+{
+
+}
+```
+but this leads to the problem we originally wanted to eliminate: 
+if an exception is thrown during initialization of `theAudioClip`, 
+the object pointed to by `theImage` is never destroyed. 
+Furthermore, we can’t solve the problem by adding `try-catch` blocks to the constructor,
+because `try-catch` are statements, 
+and member initialization lists allow only expressions. 
+(That’s why we had to use the `?:` syntax instead of the `if-else` syntax 
+in the initialization of `theImage` and `theAudioClip`.)
+
+
+Nevertheless, the only way to perform cleanup chores 
+before exceptions propagate out of a constructor 
+is to `catch` those exceptions,
+we’ll have to put `try-catch` somewhere anyway. 
+
+
+The easiest way is to let smart pointers handle all of these stuff. 
+Smart pointers are exception safe as long as 
+they take resource _as soon as_ they are `new`ed in one statement **without** delay. 
+
+
+Another possibility is to make use of the 
+[function `try` block](https://en.cppreference.com/w/cpp/language/function-try-block): 
+```c++
+BookEntry::BookEntry(const std::string & name,
+                     const std::string & address,
+                     const std::string & imageFileName,
+                     const std::string & audioClipFileName)
+        : try 
+          theName(name),
+          theAddress(address),
+          theImage(imageFileName != "" ? new Image(imageFileName) : nullptr),
+          theAudioClip(audioClipFileName != "" ? new AudioClip(audioClipFileName) : nullptr)
+{
+    // constructor body
+}
+catch (...)
+{
+    // catch block
+    delete theImage;
+    delete theAddress;
+    throw;
+}
+```
+Another possibility is inside private member functions 
+that return pointers with which `theImage` and `theAudioClip` should be initialized: 
+```c++
+class BookEntry
+{
+public:
+    ... 
+    
+private:
+    ... 
+    Image * initImage(const std::string & imageFileName);
+    AudioClip * initAudioClip(const std::string & audioClipFileName);
+};
+
+BookEntry::BookEntry(const std::string & name,
+                     const std::string & address,
+                     const std::string & imageFileName,
+                     const std::string & audioClipFileName)
+        : theName(name), 
+          theAddress(address),
+          theImage(initImage(imageFileName)),
+          theAudioClip(initAudioClip(audioClipFileName))
+{
+}
+
+// theImage is initialized first, 
+// so there is no need to worry about a resource leak 
+// if this initialization fails. 
+// This function therefore handles no exceptions
+Image * BookEntry::initImage(const std::string & imageFileName)
+{
+    if (imageFileName != "")
+    {
+        return new Image(imageFileName);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+// theAudioClip is initialized second, 
+// so it must make sure theImage’s resources are released 
+// if an exception is thrown during initialization of theAudioClip. 
+// That’s why this function uses try-catch.
+AudioClip * BookEntry::initAudioClip(const std::string & audioClipFileName)
+{
+    try
+    {
+        if (audioClipFileName != "")
+        {
+            return new AudioClip(audioClipFileName);
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+    catch (...)
+    {
+        delete theImage;
+        throw;
+    }
+}
+```
 
 
 

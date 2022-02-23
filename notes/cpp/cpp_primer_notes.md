@@ -10231,12 +10231,12 @@ std::map<std::string, int>::mapped_type v5;  // int
         // Rebinding the allocator using the trait for strings gets the same type
         traits_t::rebind_alloc<std::string> alloc_ = alloc;
  
-        std::string * p = traits_t::allocate(alloc, 2); // space for 2 strings
+        std::string * p = traits_t::allocate(alloc, 2);  // space for 2 strings
  
         traits_t::construct(alloc, p, "foo");
         traits_t::construct(alloc, p + 1, "bar");
  
-        std::cout << p[0] << ' ' << p[1] << '\n';       // boo far
+        std::cout << p[0] << ' ' << p[1] << '\n';        // boo far
  
         traits_t::destroy(alloc, p + 1);
         traits_t::destroy(alloc, p);
@@ -17676,7 +17676,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 通常情况下，程序执行的任何时刻都可能发生异常，特别是异常可能发生于处理构造函数初始值的过程中
         - 构造函数在进入其函数体之前首先执行初始值列表
         - 因为在初始值列表抛出异常时，构造函数体内的`try`语句块还未生效，所以构造函数体内的`catch`语句**无法**处理构造函数初始化列表抛出的异常
-    - *函数`try`语句块* （function `try` blocks）
+    - [*函数`try`语句块*](https://en.cppreference.com/w/cpp/language/function-try-block) （function try blocks）
         - 另一译名为 *函数测试块* 
         - 函数`try`语句块使得一组`catch`语句既能处理构造 *函数体* （或析构函数体），也能处理构造函数的 *初始化过程* （或析构函数的 *析构过程* ）
         - 关键字`try`出现在表示构造函数初始值列表的 *冒号* （如有），或表示构造函数体的 *花括号* *之前* ，例如
