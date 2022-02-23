@@ -10246,9 +10246,9 @@ std::map<std::string, int>::mapped_type v5;  // int
         - `std::allocator<T> a`：定义一个`std::allocator<T>`类型对象`a`，用于为`T`类型对象分配 *未构造的内存*
         - 构造使用
           - Member functions:
-            - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`.
+            - [`a.allocate(n)`](https://en.cppreference.com/w/cpp/memory/allocator/allocate)：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`.
                 - Calls `::operator new(n)` (which in turn calls `std::malloc(std::size_t)`), but how and when to call is unspecified
-            - `a.deallocate(p, n)`：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。
+            - [`a.deallocate(p, n)`](https://en.cppreference.com/w/cpp/memory/allocator/deallocate)：释放`T * p`开始的内存，这块内存保存了`n`个`T`类型对象。
                 - `p`必须是先前由`a.allocate(n)`返回的指针，且`n`必须是之前所要求的大小。
                 - 调用`a.deallocate(p, n)`之前，这块内存中的对象必须已经被析构
                 - Calls `::operator delete(void *)`, but it is unspecified when and how it is called. 
