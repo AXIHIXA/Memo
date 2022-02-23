@@ -1085,6 +1085,14 @@ But occasionally you have some raw memory that’s already been allocated but no
 and you need to construct an object in the memory you have. 
 A special version of operator `new` called placement `new` allows you to do it.
 ```c++
+std::allocator<MyStruct> alloc;
+using alloc_traits_t = std::allocator_traits<decltype(alloc)>;
+
+// "Kind of" equivalent calls
+int * p = alloc.allocate(1);               // auto p = static_cast<int *>(operator new(sizeof(MyStruct)));
+alloc_traits_t::construct(alloc, p, ...);  // new (p) MyStruct(...);
+alloc_traits_t::destory(alloc, p);         // p->~MyStruct();
+alloc.deallocate(p, 1);                    // operator delete(p);
 
 ```
 
