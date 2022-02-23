@@ -2637,7 +2637,7 @@ ones that provide more efficient implementations of C++’s exception-handling f
 
 ### 📌 Item 16: Remember the 80-20 rule
 
-### 📌 Item 17: Consider using lazy evaluation
+### 📌 Item 17: Lazy evaluation: Postpone and perhaps bypass non-emergency computations
 
 - Lazy evaluation: 
   to avoid unnecessary copying of objects, 
@@ -2980,10 +2980,183 @@ and in many applications, that’s a payoff that easily justifies the significan
 
 
 
-### 📌 Item 18: Amortize the cost of expected computations
+### 📌 Item 18: Over-eager evaluation: Amortize the cost of expected computations
+
+- Lazy evaluation is a technique for improving the efficiency of programs
+  when you must support operations whose results are _not always needed_.
+- Over-eager evaluation is a technique for improving the efficiency of programs
+  when you must support operations whose results are _almost always needed or whose results are often needed more than once_.
+- Over-eager evaluation trades time with space.
+  Common techniques include caching and prefetching. 
 
 
+```c++
+template <typename NumericalType>
+class DataCollection 
+{
+public:
+    NumericalType min() const;
+    NumericalType max() const;
+    NumericalType avg() const;
+    ...
+};
+```
+Assuming the `min`, `max`, and `avg` functions return the current minimum, maximum, and average values of the collection, 
+there are three ways in which these functions can be implemented. 
+- Using _eager evaluation_, 
+  we’d examine all the data in the collection when `min`, `max`, or `avg` was called, 
+  and we’d return the appropriate value. 
+- Using _lazy evaluation_,
+  we’d have the functions return data structures that could be used 
+  to determine the appropriate value whenever the functions’ return values were actually used.
+- Using _over-eager evaluation_, 
+  we’d keep track of the running minimum, maximum, and average values of the collection, 
+  so whenever `min`, `max`, or `avg` was called, we’d be able to return the correct value immediately, 
+  no computation would be required. 
+  If `min`, `max`, and `avg` were called frequently, 
+  we’d be able to amortize the cost of keeping track of the collection’s minimum, maximum, and average values 
+  over all the calls to those functions, 
+  and the amortized cost per call would be lower than with eager or lazy evaluation.
 
+
+The idea behind over-eager evaluation is that 
+if you expect a computation to be requested frequently, 
+you can lower the average cost per request 
+by designing your data structures to handle the requests especially efficiently.
+
+#### Caching
+
+One of the simplest ways to do this is by caching values 
+that have already been computed and are likely to be needed again. 
+Suppose you’re writing a program to provide employees' cubicle numbers,  
+Employee information is stored in a database that is not optimized for cubicle numbers. 
+To avoid having your specialized application unduly stress the database 
+with repeated lookups of employee cubicle numbers, 
+you could write a `findCubicleNumber` function that caches the cubicle numbers it looks up. 
+Subsequent requests for cubicle numbers that have already been retrieved 
+can then be satisfied by consulting the cache instead of querying the database.
+```c++
+int findCubicleNumber(const std::string & employeeName)
+{
+    static std::map<std::string, int> cubes;
+    
+    if (cubes.contains(empolyeeName)) 
+    {
+        return it->second;
+    } 
+    else
+    {
+        int cubicle = fetchCubicleNumberFromDatabase();
+        cubes.insert(employeeName, cubicle); 
+        return cubicle;
+    }
+}
+```
+The strategy is to use a local cache to replace comparatively expensive database queries 
+with comparatively inexpensive lookups in an in-memory data structure. 
+Provided we’re correct in assuming that cubicle numbers 
+will frequently be requested more than once, 
+the use of a cache in `findCubicleNumber` should reduce
+the average cost of returning an employee’s cubicle number.
+
+### Prefetching
+
+Caching is one way to amortize the cost of anticipated computations.
+_Prefetching_ is another. 
+You can think of prefetching as the computational equivalent of a discount for buying in bulk. 
+Disk controllers, for example, read entire blocks or sectors of data when they read from disk, 
+even if a program asks for only a small amount of data. 
+That’s because it’s faster to read a big chunk once than to read two or three small chunks at different times.
+Furthermore, experience has shown that if data in one place is requested, 
+it’s quite common to want nearby data, too. 
+This is the infamous locality of reference phenomenon, 
+and systems designers rely on it to justify 
+disk caches, memory caches for both instructions and data, and instruction prefetches.
+
+
+For example, you’d like to implement a template for dynamic arrays,
+i.e., arrays that start with a size of one and automatically extend themselves 
+so that all non-negative indices are valid:
+```c++
+template <typename T>
+class DynArray { ... };
+
+// At this point, 
+// only a[0] is a legitimate array element
+DynArray<double> a;
+
+// a is automatically extended. 
+// Valid indices are now 0-22
+a[22] = 3.5;
+
+// a extends itself again. 
+// Now a[0]-a[32] are valid
+a[32] = 0;
+```
+How does a `DynArray` object go about extending itself when it needs to? 
+A straightforward strategy would be to allocate only as much additional memory as needed.
+This approach simply calls `new` each time it needs to increase the size of the array, 
+but calls to `new` invoke `operator new`, 
+and calls to `operator new` (and `operator delete`) are usually expensive.
+That’s because they typically result in calls to system calls, 
+and system calls are generally slower than are in-process function calls. 
+As a result, we’d like to make as few system calls as possible.
+
+
+An over-eager evaluation strategy employs this reasoning: 
+If we have to increase the size of the array now to accommodate index `i`, 
+the locality of reference principle suggests we’ll probably have to 
+increase it in the future to accommodate some other index a bit larger than `i`. 
+To avoid the cost of the memory allocation for the second (anticipated) expansion, 
+we’ll increase the size of the `DynArray` now by more than is required to make `i` valid, 
+and we’ll hope that future expansions occur within the range we have thereby provided for.
+
+
+E.g., we can allocates twice as much memory as needed each time the array must be extended. 
+If we look again at the usage scenario we saw earlier, 
+we note that the `DynArray` must allocate additional memory only once, 
+even though its logical size is extended twice:
+```c++
+// only a[0] is valid
+DynArray<double> a;
+
+// new is called to expand a’s storage through index 44; 
+// a’s logical size becomes 23
+a[22] = 3.5;
+
+// a’s logical size is changed to allow a[32],
+// but new is not called
+a[32] = 0; 
+```
+If a needs to be extended again, that extension, too, will be inexpensive, 
+provided the new maximum index is no greater than `44`.
+
+
+There is a common theme running through this Item, 
+and that’s that greater speed can often be purchased at a cost of increased memory usage. 
+Keeping track of running minima, maxima, and averages requires extra space, but it saves time. 
+Caching results necessitates greater memory usage but reduces the time 
+needed to regenerate the results once they’ve been cached. 
+Prefetching demands a place to put the things that are prefetched, 
+but it reduces the time needed to access those things. 
+The story is as old as Computer Science: 
+you can often trade space for time. 
+
+
+(Not always, however. 
+Using larger objects means fewer fit on a virtual memory or cache page. 
+In rare cases, making objects bigger reduces the performance of your software, 
+because your paging activity increases, your cache hit rate decreases, or both.
+How do you find out if you’re suffering from such problems? You profile. )
+
+
+Lazy evaluation is a technique for improving the efficiency of programs 
+when you must support operations whose results are _not always needed_. 
+Over-eager evaluation is a technique for improving the efficiency of programs 
+when you must support operations whose results are _almost always needed or whose results are often needed more than once_. 
+Both are more difficult to implement than run-of-the-mill eager evaluation, 
+but both can yield significant performance improvements in programs 
+whose behavioral characteristics justify the extra programming effort. 
 
 
 
