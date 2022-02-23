@@ -719,12 +719,289 @@ so it’s well worth your while to learn how to use them.
 
 ### 📌 Item 6: Distinguish between prefix and postfix forms of increment and decrement operators
 
+- Let prefix increment/decrement operators return a reference, 
+  and let their prefix counterparts return a `const` object. 
+- Postfix increment/decrement operators should be implemented 
+  in terms of their prefix counterparts. 
+- Prefix increment/decrement operators should be used whenever possible,
+  because they are inherently more efficient than their prefix counterparts. 
+
+
+Overloaded functions are differentiated on the basis of the parameter types they take, 
+but neither prefix nor postfix increment or decrement takes an argument. 
+To surmount this linguistic pothole, it was decreed that postfix forms take an `int` argument, 
+and compilers silently pass `0` as that `int` when those functions are called:
+```c++
+// Unlimited-precision Int
+class UPInt
+{
+public:
+    UPInt & operator++();         // prefix ++
+    const UPInt operator++(int);  // postfix ++
+    UPInt & operator--();         // prefix --
+    const UPInt operator--(int);  // postfix --
+    UPInt & operator+=(int); 
+    ...
+};
+
+UPInt i;
+++i;  // calls i.operator++();
+i++;  // calls i.operator++(0);
+--i;  // calls i.operator--();
+i--;  // calls i.operator--(0);
+```
+The prefix and postfix forms of these operators return different types. 
+In particular, prefix forms return a reference, postfix forms return a `const` object. 
+We’ll focus here on the prefix and postfix `++` operators. 
+
+
+From your days as a C programmer, 
+you may recall that the prefix form of the increment operator is sometimes called “increment and fetch,” 
+while the postfix form is often known as “fetch and increment.”
+These two phrases are important to remember, 
+because they all but act as formal specifications for how prefix and postfix increment should be implemented:
+```c++
+// prefix form: increment and fetch
+UPInt & UPInt::operator++()
+{
+    *this += 1;    // increment
+    return *this;  // fetch
+}
+
+// postfix form: fetch and increment
+const UPInt UPInt::operator++(int)
+{
+    const UPInt tmp = *this;  // fetch
+    ++(*this);                // increment
+    return tmp;               // return what was fetched
+}
+```
+Note how the postfix operator makes no use of its parameter. 
+The only purpose of the parameter is to distinguish prefix from postfix function invocation.
+C++ also allows you to _omit names for parameters you don’t plan to use_; 
+that’s what’s been done above.
+
+
+It’s clear why postfix increment must return an object (it’s returning an old value), but why a const object? 
+Imagine that it did not. Then the following would be legal:
+```c++
+UPInt i;
+i++++;    // apply postfix increment twice
+```
+This is the same as
+```c++
+i.operator++(0).operator++(0);
+```
+and it should be clear that the second invocation of `operator++` 
+is being applied to the object returned from the first invocation. 
+
+
+There are two reasons to abhor this. 
+1. It’s inconsistent with the behavior of the built-in types. 
+   A good rule to follow when designing classes is: 
+   _When in doubt, do as the `int`s do_.  
+   And, the `int`s most certainly do not allow double application of postfix increment:
+   ```c++
+   int i;
+   i++++;  // error!
+   ```
+2. Double application of postfix increment almost never does what clients expect it to. 
+   As noted above, the second application of `operator++` in a double increment 
+   changes the value of the object returned from the first invocation, 
+   not the value of the original object. 
+   Hence, if `i++++;`were legal, `i` would be incremented only once. 
+   This is counterintuitive and confusing (for both `int`s and `UPInt`s), 
+   so it’s best prohibited.
+
+C++ prohibits it for `int`s, but you must prohibit it yourself for classes you write. 
+The easiest way to do this is to make the return type of postfix increment a `const` object. 
+Then when compilers see
+```c++
+i++++;  // same as i.operator++(0).operator++(0);
+```
+they recognize that the `const` object returned from the first call to `operator++`
+is being used to call `operator++` again. 
+`operator++`, however, is a non-`const` member function, can not be called by `const` objects. 
+
+
+If you’re the kind who worries about efficiency, 
+you probably broke into a sweat when you first saw the postfix increment function. 
+That function has to create a temporary object for its return value (see Item 19),
+and the implementation above also creates an explicit temporary object (`tmp`)
+that has to be constructed and destructed. 
+The prefix increment function has no such temporaries. 
+This leads to the possibly startling conclusion that, for efficiency reasons alone, 
+clients of `UPInt` should prefer prefix increment to postfix increment 
+unless they really need the behavior of postfix increment. 
+Let us be explicit about this.
+When dealing with user-defined types, 
+_prefix increment should be used whenever possible, 
+because it’s inherently more efficient._
+
+
+Let us make one more observation about the prefix and postfix increment operators. 
+Except for their return values, they do the same thing:
+they increment a value. 
+That is, they’re supposed to do the same thing.
+How can you be sure the behavior of postfix increment is consistent
+with that of prefix increment? 
+What guarantee do you have that their implementations won’t diverge over time, 
+possibly as a result of different programmers maintaining and enhancing them? 
+Unless you’ve followed the design principle embodied by the code above, 
+you have no such guarantee. 
+That principle is that _postfix increment and decrement should be implemented in terms of their prefix counterparts_. 
+You then need only maintain the prefix versions, 
+because the postfix versions will automatically behave in a consistent fashion.
 
 
 
 
 
-### 📌 Item 7: Never overload `&&`, `||`, or `,`
+
+### 📌 Item 7: Never overload `operator&&`, `operator||`, or `operator,`
+
+
+Like C, C++ employs _short-circuit evaluation_ of boolean expressions.
+This means that once the truth or falsehood of an expression has been determined, 
+evaluation of the expression ceases, 
+even if some parts of the expression haven’t yet been examined.
+For example, in this case,
+```c++
+char * p;
+if (p && (10 < std::strlen(p))) ...
+```
+there is **no** need to worry about invoking `std::strlen` on `p` if it’s a null pointer, 
+because if the test of `p` against `nullptr` fails, `std::strlen` will never be called. 
+Similarly, given
+```c++
+std::size_t rangeCheck(std::size_t index)
+{
+    if ((index < lowerBound) || (index > upperBound)) ...
+}
+```
+`index` will never be compared to `upperBound` if it’s less than `lowerBound`.
+
+
+This is the behavior that has been drummed into C and C++ programmers since time immemorial, 
+so this is what they expect.
+Furthermore, they write programs whose correct behavior depends on short-circuit evaluation. 
+In the first code fragment above, for example, 
+it is important that `std::strlen` not be invoked if `p` is a null pointer, 
+because the standard for C++ states (as does the standard for C) 
+that the result of invoking `std::strlen` on a null pointer is undefined.
+
+
+C++ allows you to customize the behavior of the `&&` and `||` operators for user-defined types. 
+You _can_ do it by overloading the functions `operator&&` and `operator||`, 
+and you _can_ do this at the global scope or on a per-class basis. 
+If you decide to take advantage of this opportunity,
+however, you must be aware that you are changing the rules of the game quite radically, 
+because you are replacing short-circuit semantics with function call semantics. 
+That is, if you overload `operator&&`, what looks to you like this,
+```c++
+if (expr1 && expr2) ...
+```
+looks to compilers like one of these:
+```c++
+// when operator&& is a member function
+if (expr1.operator&&(expr2)) ...
+
+// when operator&& is a global function
+if (operator&&(expr1, expr2)) ...
+```
+This may not seem like that big a deal,
+but function call semantics differ from short-circuit semantics in two crucial ways. 
+1. When a function call is made, all parameters must be evaluated, 
+   so when calling the functions `operator&&` and `operator||`, 
+   both parameters are evaluated. 
+   There is, in other words, **no** short circuit. 
+2. The language specification leaves undefined the order of evaluation of parameters to a function call, 
+   so there is no way of knowing whether `expr1` or `expr2` will be evaluated first. 
+   This stands in stark contrast to short-circuit evaluation, 
+   which always evaluates its arguments in left-to-right order.
+
+
+As a result, if you overload `&&` or `||`, 
+there is **no** way to offer programmers the behavior they both expect and have come to depend on. 
+So _don’t overload `&&` or `||`_. 
+
+
+The situation with the comma operator `operator,` is similar,
+The comma operator is used to form expressions,
+and you’re most likely to run across it in the update part of a `for` loop. 
+```c++
+// reverse string s in place
+void reverse(char s[])
+{
+    for (int i = 0, j = std::strlen(s) - 1; i < j; ++i, --j) 
+    {
+        int c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+```
+Here, `i` is incremented and `j` is decremented in the final part of the for loop. 
+It is convenient to use the comma operator here, 
+because only an expression is valid in the final part of a `for` loop; 
+separate statements to change the values of `i` and `j` would be illegal.
+
+
+Just as there are rules in C++ defining how `&&` and `||` behave for builtin types, 
+there are rules defining how the comma operator behaves for such types. 
+An expression containing a comma is evaluated by first evaluating the part of the expression to the left of the comma, 
+then evaluating the expression to the right of the comma; 
+the result of the overall comma expression is the value of the expression on the right. 
+So in the final part of the loop above, compilers first evaluate `++i`, then `--j`, 
+and the result of the comma expression is the value returned from `--j`. 
+
+
+You need to mimic this behavior if you’re going to take
+it upon yourself to write your own comma operator. 
+Unfortunately, you **can't** perform the requisite mimicry. 
+
+
+If you write `operator,` as a non-member function, 
+you’ll **never** be able to guarantee that the left-hand expression 
+is evaluated before the right-hand expression, 
+because both expressions will be passed as arguments in a function call (to `operator,`). 
+But you have no control over the order in which a function’s arguments are evaluated. 
+So the non-member approach is definitely out. 
+
+
+That leaves only the possibility of writing `operator,` as a member function. 
+Even here you can’t rely on the left-hand operand to the comma operator being evaluated first, 
+because compilers are not constrained to do things that way. 
+Hence, you **can’t** overload the comma operator and also guarantee it will behave the way it’s supposed to. 
+It therefore seems imprudent to overload it at all. 
+
+
+You may be wondering if there’s an end to this overloading madness.
+After all, if you can overload the comma operator, what can’t you overload?
+As it turns out, there are limits. 
+You **can’t** overload the following operators:
+```c++
+.           .*           ::         ?:
+new         delete       sizeof     typeid
+static_cast dynamic_cast const_cast reinterpret_cast
+```
+You can overload these:
+```c++
+operator new        operator delete
+operator new[]      operator delete[]
++    -    *    /    %    ^    &    |    ~
+!    =    <    >    +=   -=   *=   /=   %=
+^=   &=   |=   <<   >>   >>=  <<=  ==   !=
+<=   >=   &&   ||   ++   --   ,    ->*   ->
+()  []
+```
+Of course, just because you can overload these operators is no reason to run off and do it. 
+The purpose of operator overloading is to make programs easier to read, write, and understand, 
+not to dazzle others with your knowledge that comma is an operator. 
+If you don’t have a good reason for overloading an operator, don’t overload it. 
+In the case of `&&,` `||,` and `,`, it’s difficult to have a good reason, 
+because no matter how hard you try, 
+you can’t make them behave the way they’re supposed to.
 
 
 
