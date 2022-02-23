@@ -1961,8 +1961,375 @@ We thus find ourselves with two good reasons for keeping exceptions from propaga
 
 ### 📌 Item 12: Understand how throwing an exception differs from passing a parameter or calling a virtual function
 
+- An object thrown as an exception is _always_ copied with its static type, 
+  no matter it is declared as normal object, as a reference, or as a pointer. 
+- Exception objects are **not** polymorphic 
+  because they are copied with their static type, **not** dynamic type. 
+  Never call virtual functions on caught exception objects. 
+- `throw;` rethrows the current exception object _as-is_ (keeping its dynamic type) without copying; 
+  `throw w;` always makes a copy of `w`. 
+  Use the `throw;` syntax to rethrow the current exception. 
+- **Never** throw a pointer to a local object,
+  because that local object will be destroyed when the exception leaves its scope. 
+- Type conversions in `catch` clauses are rare. 
+  Only base-to-children conversions and typed-to-untyped-pointer (`T *` to `void *`) conversions are allowed. 
+- `catch` clauses are _always tried in the order of their appearance_. 
+  **Never** put `catch` clauses for generic types before `catch` clauses specialized types.
+- There are three primary ways in which passing an object to a function
+  or using that object to invoke a virtual function
+  differs from throwing the object as an exception: 
+  1. Exception objects are _always copied_;
+     when caught by value, they are copied twice.
+     Objects passed to function parameters need not be copied at all.
+  2. Objects thrown as exceptions are subject to fewer forms of type conversion
+     than are objects passed to functions.
+  3. `catch` clauses are examined in the order in which they appear in the source code,
+     and the first one that can succeed is selected for execution.
+     When an object is used to invoke a `virtual` function,
+     the function selected is the one that provides the best match for the type of the object,
+     even if it’s not the first one listed in the source code.
 
 
+The syntax for declaring function parameters is almost the same as that for `catch` clauses:
+```c++
+class Widget { ... };
+
+void f1(Widget w); 
+void f2(Widget & w);
+void f3(const Widget & w); 
+void f4(Widget * pw);
+void f5(const Widget * pw);
+
+catch (Widget w) ... 
+catch (Widget & w) ... 
+catch (const Widget & w) ... 
+catch (Widget * pw) ...
+catch (const Widget * pw) ...
+```
+There are significant differences between 
+passing an exception from a `throw` site to a `catch` clause and
+passing an argument from a function call site to the function’s parameter. 
+
+
+You can pass both function parameters and exceptions by value, by reference, or by pointer.
+However, what _happens_ when you pass parameters and exceptions is quite different.
+When you call a function, control eventually returns to the call site (unless the function fails to return). 
+But, when you throw an exception, control does **not** return to the throw site.
+
+
+Consider a function that both passes a `Widget` as a parameter and throws a `Widget` as an exception:
+```c++
+// function to read the value of a Widget from a stream
+std::istream & operator>>(std::istream & cin, Widget & w);
+
+void passAndThrowWidget()
+{
+    Widget localWidget;
+    std::cin >> localWidget;  // pass localWidget to operator>>
+    throw localWidget;        // throw localWidget as an exception
+}
+```
+When `localWidget` is passed to `operator>>`, **no** copying is performed.
+Instead, the reference `w` inside `operator>>` is bound to `localWidget`,
+and anything done to `w` is really done to `localWidget`. 
+It’s a different story when `localWidget` is thrown as an exception. 
+Regardless of whether the exception is caught by value or by reference 
+(it **can’t** be caught by pointer, that would be a type mismatch), 
+a copy of `localWidget` will be made, 
+and it is the copy that is passed to the `catch` clause. 
+This must be the case, because `localWidget` will go out of scope once control leaves `passAndThrowWidget`, 
+and when `localWidget` goes out of scope, its destructor will be called. 
+If `localWidget` itself were passed to a catch clause, 
+the clause would receive a destructed `Widget`. 
+That’s why C++ specifies that an object thrown as an exception is copied.
+
+
+This copying occurs even if the object being thrown is **not** in danger of being destroyed. 
+For example, if `passAndThrowWidget` declares `localWidget` to be `static`,
+```c++
+void passAndThrowWidget()
+{
+    // static local objects exist until end of the program
+    static Widget localWidget;
+    std::cin >> localWidget;
+    throw localWidget;
+}
+```
+a copy of `localWidget` would still be made when the exception was thrown. 
+This means that even if the exception is caught by reference,
+it is **not** possible for the catch block to modify `localWidget`; 
+it can only modify a copy of `localWidget`. 
+This mandatory copying of exception objects helps explain another difference 
+between parameter passing and throwing an exception: 
+the latter is typically much slower than the former (see Item 15).
+
+
+Compilers are actually allowed a slight bit of leeway regarding the “mandatory” nature of the copying. 
+Copying can be eliminated under certain circumstances. 
+Similar leeway provides the foundation for the Return Value Optimization (RVO) (see Item 20). 
+
+
+When an object is copied for use as an exception,
+the copying is performed by the object’s copy constructor. 
+This copy constructor is the one in the class corresponding to the object’s static type, 
+**not** its dynamic type. 
+For example, consider this slightly modified version of `passAndThrowWidget`:
+```c++
+class Widget { ... };
+class SpecialWidget : public Widget { ... };
+
+void passAndThrowWidget()
+{
+    SpecialWidget localSpecialWidget;
+    Widget & rw = localSpecialWidget;
+    throw rw;
+}
+```
+Here a `Widget` exception is thrown, even though `rw` refers to a `SpecialWidget`.
+That’s because `rw`’s static type is `Widget`, **not** `SpecialWidget`. 
+That `rw` actually refers to a `SpecialWidget` is of no concern to your compilers; 
+all they care about is `rw`’s static type. 
+This behavior may not be what you want, limited
+but it’s consistent with all other cases in which C++ copies objects. 
+Copying is always based on an object’s static type 
+(but see Item 25 for a technique that lets you make copies on the basis of an object’s dynamic type). 
+
+
+The fact that exceptions are copies of other objects
+has an impact on how you propagate exceptions from a `catch` block. 
+Consider these two `catch` blocks, which at first glance appear to do the same thing:
+```c++
+catch (Widget & w)
+{
+    ... 
+    throw;
+}   
+
+catch (Widge t& w)
+{
+    ...
+    throw w;
+}
+```
+The only difference between these blocks is that the first one _rethrows the current exception_, 
+while the second one _throws a new copy_ of the current exception. 
+Setting aside the performance cost of the additional copy operation, 
+is there a difference between these approaches? 
+
+
+There is. 
+The first block rethrows the current exception, 
+regardless of its type.
+In particular, if the exception originally thrown was of type `SpecialWidget`, 
+the first block would propagate a `SpecialWidget` exception,
+even though `w`’s static type is `Widget`. 
+This is because **no** copy is made when the exception is rethrown. 
+The second catch block throws a new exception, 
+which will always be of type `Widget`, 
+because that’s `w`’s `static` type. 
+In general, you’ll want to use the `throw;` syntax to rethrow the current exception, 
+because there’s no chance that that will change the type of the exception being propagated. 
+Furthermore, it’s more efficient, because there’s no need to generate a new exception object.
+
+
+Incidentally, the copy made for an exception is a temporary object. 
+As Item 19 explains, this gives compilers the right to optimize it out of existence. 
+I wouldn’t expect your compilers to work that hard, however. 
+Exceptions are supposed to be rare, so it makes little sense for compiler vendors 
+to pour a lot of energy into their optimization. 
+
+
+Let us examine the three kinds of `catch` clauses
+that could catch the `Widget` exception thrown by `passAndThrowWidget`. They are:
+```c++
+catch (Widget w) ...
+catch (Widget & w) ...
+catch (const Widget & w) ...
+```
+Right away we notice another difference between parameter passing and exception propagation. 
+A thrown object (which, as explained above, is _always a temporary_) may be caught by simple reference; 
+it need not be caught by reference-to-`const`. 
+Passing a temporary object to a non-`const` reference parameter 
+is not allowed for function calls (see Item 19), 
+but it is for exceptions.
+Let us overlook this difference, however, 
+and return to our examination of copying exception objects. 
+We know that when we pass a function argument by value, 
+we make a copy of the passed object, 
+and we store that copy in a function parameter. 
+The same thing happens when we pass an exception by value. 
+Thus, when we declare a `catch` clause like this,
+```c++
+catch (Widget w) ...
+```
+we expect to pay for the creation of _two_ copies of the thrown object, 
+one to create the temporary that all exceptions generate, 
+the second to copy that temporary into `w`. 
+Similarly, when we catch an exception by reference,
+```c++
+catch (Widget & w) ...
+catch (const Widget & w) ...
+```
+we still expect to pay for the creation of _one_ copy of the exception: 
+The copy to create the temporary that all exceptions generate. 
+In contrast, when we pass function parameters by reference, no copying takes place. 
+When throwing an exception, then, 
+we expect to construct (and later destruct) one more copy of the thrown object 
+than if we passed the same object to a function.
+
+
+We have not yet discussed throwing exceptions by pointer, 
+but throw by pointer is equivalent to pass by pointer. 
+Either way, a copy of the pointer is passed. 
+About all you need to remember is **not** to throw a pointer to a local object, 
+because that local object will be destroyed when the exception leaves the local object’s scope. 
+The `catch` clause would then be initialized with a pointer to an object that had already been destroyed. 
+This is the behavior the mandatory copying rule is designed to avoid.
+
+
+The way in which objects are moved from call or throw sites to parameters or catch clauses 
+is one way in which argument passing differs from exception propagation. 
+A second difference lies in what constitutes a type match between caller or thrower and callee or catcher.
+Consider the `std::sqrt` function from the standard math library.
+We can determine the square root of an integer like this:
+```c++
+int i;
+double sqrtOfi = std::sqrt(i);
+```
+There is nothing surprising here. 
+The language allows implicit conversion from `int` to `double`, 
+so in the call to `std::sqrt`, `i` is silently converted to a `double`, 
+and the result of `std::sqrt` corresponds to that `double`. 
+In general, such conversions are **not** applied when matching exceptions to `catch` clauses. 
+In this code,
+```c++
+void f(int value)
+{
+    try 
+    {
+        if (someFunction()) 
+        {
+            throw value;
+        }
+        
+        ...
+    } 
+    catch (double d) 
+    {
+        ...
+    }
+    
+    ...
+}
+```
+the `int` exception thrown inside the try block will **never** be caught 
+by the catch clause that takes a `double`. 
+That clause catches only exceptions that are exactly of type `double`.
+As a result, if the `int` exception is to be caught, 
+it will have to be by some other (dynamically enclosing) catch clause taking an `int` 
+or an `int &` (possibly `const` or `volatile`).
+
+
+Two kinds of conversions are applied when matching exceptions to `catch` clauses. 
+The first is inheritance-based conversions. 
+A catch clause for base class exceptions is allowed to handle exceptions of (publicly) derived class types, too. 
+For example, consider the diagnostics portion of the hierarchy of exceptions defined by the standard C++ library:
+```c++
+std::exception <- std::logic_error   <- std::domain_error
+                                     <- std::invalid_argument
+                                     <- std::length_error
+                                     <- std::out_of_range
+               <- std::runtime_error <- std::range_error
+                                     <- std::underflow_error
+                                     <- std::overflow_error
+```
+A `catch` clause for `std::runtime_error`s can catch exceptions of type
+`std::range_error`, `std::underflow_error`, and `std::overflow_error`, too, 
+and a `catch` clause accepting an object of the root class `std::exception` 
+can catch any kind of exception derived from this hierarchy.
+
+
+This inheritance-based exception-conversion rule 
+applies to values, references, and pointers in the usual fashion 
+(though Item 13 explains why catching values or pointers is generally a bad idea):
+```c++
+// can catch runtime errors of type, runtime_error, range_error, or overflow_error
+catch (std::runtime_error) ...          
+catch (std::runtime_error &) ...  
+catch (const std::runtime_error &) ...
+
+// can catch runtime errors of type, runtime_error *, range_error *, or overflow_error *
+catch (std::runtime_error *) ... 
+catch (const std::runtime_error *) ...
+```
+The second type of allowed conversion is from a typed to an untyped pointer, 
+so a catch clause taking a `const void *` pointer will catch an exception of any pointer type:
+```c++
+// catches any exception that’s a pointer
+catch (const void *) ...
+```
+The final difference between passing a parameter and propagating an exception 
+is that `catch` clauses are _always tried in the order of their appearance_. 
+Hence, it is possible for an exception of a (publicly) derived class type 
+to be handled by a `catch` clause for one of its base class types, 
+even when a `catch` clause for the derived class is associated with the same try block! For example,
+```c++
+try
+{
+    ...
+}
+catch (std::logic_error & ex)
+{
+    // this block will catch all logic_error exceptions, 
+    // even those of derived types
+    ... 
+}
+catch (std::invalid_argument & ex)
+{ 
+    // this block can never be executed, 
+    // because all invalid_argument exceptions 
+    // will be caught by the clause above
+    ... 
+}
+```
+Contrast this behavior with what happens when you call a `virtual` function. 
+When you call a `virtual` function, 
+the function invoked is the one in the class closest to 
+the dynamic type of the object invoking the function. 
+You might say that `virtual` functions employ a “best fit” algorithm,
+while exception handling follows a “first fit” strategy. 
+Compilers may warn you if a catch clause for a derived class comes after one for a base class 
+(some issue an error, because such code used to be illegal in C++), 
+but your best course of action is preemptive: 
+**never** put a catch clause for a base class before a catch clause for a derived class. 
+The code above, for example, should be reordered like this:
+```c++
+try
+{
+    ...
+}
+catch (std::invalid_argument & ex)
+{
+    ... 
+}
+catch (std::logic_error & ex)
+{
+    ... 
+}
+```
+There are thus three primary ways in which passing an object to a function 
+or using that object to invoke a virtual function 
+differs from throwing the object as an exception. 
+1. Exception objects are _always copied_; 
+   when caught by value, they are copied twice. 
+   Objects passed to function parameters need not be copied at all. 
+2. Objects thrown as exceptions are subject to fewer forms of type conversion
+   than are objects passed to functions. 
+3. `catch` clauses are examined in the order in which they appear in the source code, 
+   and the first one that can succeed is selected for execution. 
+   When an object is used to invoke a `virtual` function, 
+   the function selected is the one that provides the best match for the type of the object, 
+   even if it’s not the first one listed in the source code.
 
 
 
@@ -2128,7 +2495,7 @@ Future-tense thinking simply adds a few additional considerations:
 
 ### 📌 Item 33: Make non-leaf classes abstract
 
-- Never write non-leaf concrete base classes to avoid problems 
+- **Never** write non-leaf concrete base classes to avoid problems 
   like partial assignment via dereferenced polymorphic pointers.
   Make non-leaf classes abstract 
   (e.g., by adding pure virtual destructors and implement them outside the class).
