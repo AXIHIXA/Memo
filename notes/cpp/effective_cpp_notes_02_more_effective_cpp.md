@@ -1786,6 +1786,152 @@ AudioClip * BookEntry::initAudioClip(const std::string & audioClipFileName)
 
 ### 📌 Item 11: Prevent exceptions from leaving destructors
 
+- We find ourselves with two good reasons for keeping exceptions from propagating out of destructors: 
+  1. It prevents `std::terminate` from being called during the stack-unwinding part of exception propagation.
+  2. It helps ensure that destructors always accomplish everything they are supposed to accomplish.
+
+
+There are two situations in which a destructor is called. 
+1. When an object is destroyed under “normal” conditions, 
+   e.g., when it goes out of scope or is explicitly `delete`d. 
+2. When an object is destroyed by the exception-handling mechanism 
+   during the stack unwinding part of exception propagation.
+
+
+That being the case, an exception may or may not be active when a destructor is invoked. 
+[`std::uncaught_exceptions`](https://en.cppreference.com/w/cpp/error/uncaught_exception) 
+may be used to see how many exceptions are still active (not caught yet).
+As a result, you must write your destructors under the conservative assumption that an exception is active, 
+because if control leaves a destructor due to an exception while another exception is active, 
+C++ calls the `std::terminate`.
+That function does just what its name suggests: It terminates execution of your program. 
+Furthermore, it terminates it _immediately_, **not** even local objects are destroyed.
+
+
+As an example, consider a `Session` class for monitoring online computer sessions, 
+i.e., things that happen from the time you log in through the time you log out. 
+Each `Session` object notes the date and time of its creation and destruction:
+```c++
+class Session
+{
+public:
+    Session();
+    ~Session();
+    ...
+    
+private:
+    static void logCreation(Session * objAddr);
+    static void logDestruction(Session * objAddr);
+};
+```
+The functions `logCreation` and `logDestruction` are used to record object creations and destructions, respectively. 
+We might therefore expect that we could code `Session`’s destructor like this:
+```c++
+Session::~Session()
+{
+    logDestruction(this);
+}
+```
+This looks fine, but consider what would happen if `logDestruction` throws an exception. 
+The exception would **not** be caught in `Session`’s destructor, 
+so it would be propagated to the caller of that destructor.
+But if the destructor was itself being called because some other exception had been thrown, 
+the `std::terminate` function would automatically be invoked, 
+and that would stop your program dead in its tracks.
+
+
+In many cases, this is not what you’ll want to have happen. 
+It may be unfortunate that the `Session` object’s destruction can’t be logged, 
+it might even be a major inconvenience, 
+but is it really so horrific a prospect that the program can’t continue running? 
+If not, you’ll have to prevent the exception thrown by `logDestruction` 
+from propagating out of `Session`’s destructor. 
+The only way to do that is by using `try-catch` blocks.
+A naive attempt might look like this,
+```c++
+Session::~Session()
+{
+    try
+    {
+        logDestruction(this);
+    }
+    catch (...)
+    {
+        std::cerr << "Unable to log destruction of Session object at address "
+                  << this << ".\n";
+    }
+}
+```
+but this is probably **no** safer than our original code. 
+If one of the calls to `operator<<` in the catch block 
+results in an exception being thrown, 
+we’re back where we started, 
+with an exception leaving the `Session` destructor.
+
+
+We could always put a `try` block inside the `catch` block,
+but that seems a bit extreme. 
+Instead, we’ll just forget about logging `Session` destructions 
+if `logDestruction` throws an exception:
+```c++
+Session::~Session()
+{
+    try 
+    {
+        logDestruction(this);
+    } 
+    catch (...) 
+    {
+        // do nothing
+    }
+}
+```
+The `catch` block appears to do nothing, but appearances can be deceiving.
+That block prevents exceptions thrown from `logDestruction` from propagating beyond `Session`’s destructor. 
+That’s all it needs to do. 
+We can now rest easy knowing that if a `Session` object is destroyed as part of stack unwinding, 
+`std::terminate` will not be called.
+
+
+There is a second reason why it’s bad practice to allow exceptions to propagate out of destructors. 
+If an exception is thrown from a destructor and is not caught there, 
+that destructor won’t run to completion. 
+(It will stop at the point where the exception is thrown.) 
+If the destructor doesn’t run to completion, it won’t do everything it’s supposed to do.
+For example, consider a modified version of the `Session` class 
+where the creation of a session starts a database transaction 
+and the termination of a session ends that transaction:
+```c++
+// To keep things simple, 
+// this constructor handles no exceptions
+Session::Session()
+{
+    logCreation(this);
+    
+    // start DB transaction
+    startTransaction(); 
+}
+
+Session::~Session()
+{
+    logDestruction(this);
+
+    // end DB transaction
+    endTransaction();
+}
+```
+Here, if `logDestruction` throws an exception, 
+the transaction started in the `Session` constructor will **never** be ended. 
+In this case, we might be able to reorder the function calls in `Session`’s destructor 
+to eliminate the problem, 
+but if `endTransaction` might throw an exception,
+we’ve no choice but to revert to `try-catch` blocks.
+
+
+We thus find ourselves with two good reasons for keeping exceptions from propagating out of destructors. 
+1. It prevents `std::terminate` from being called during the stack-unwinding part of exception propagation.
+2. It helps ensure that destructors always accomplish everything they are supposed to accomplish. 
+
 
 
 
