@@ -2508,14 +2508,14 @@ you would `catch` not only by reference, but also by reference-to-`const`.
 ### 📌 Item 15: Understand the costs of exception handling
 
 - Exception handling is expensive. 
-  - Compile without support for exceptions when feasible; 
-  - **Avoid** unnecessary `try` blocks 
-    because they bloat executable size and lower runtime performance 
-    even if no exception is actually thrown; 
-  - Throw exceptions only under exceptional conditions 
-    as handling an exception makes the program magnitude slower; 
-  - Switch to compilers with better exception efficiency 
-    when exception handling is the bottleneck on runtime performance. 
+- Compile without support for exceptions when feasible; 
+- **Avoid** unnecessary `try` blocks 
+  because they bloat executable size and hit runtime performance 
+  even if no exception is actually thrown; 
+- Throw exceptions only under exceptional conditions 
+  as handling an exception makes the program magnitude slower; 
+- Switch to compilers with better exception efficiency 
+  when exception handling is the bottleneck on runtime performance. 
 
 
 To handle exceptions at runtime, programs must do a fair amount of bookkeeping. 
@@ -2637,12 +2637,343 @@ ones that provide more efficient implementations of C++’s exception-handling f
 
 ### 📌 Item 16: Remember the 80-20 rule
 
-
-
-
-
-
 ### 📌 Item 17: Consider using lazy evaluation
+
+- Lazy evaluation: 
+  to avoid unnecessary copying of objects, 
+  to distinguish reads from writes using `operator[]`, 
+  to avoid unnecessary I/Os, 
+  to avoid unnecessary numerical computations, etc. 
+
+
+From the perspective of efficiency,
+the best computations are those you never perform at all.
+The key is _lazy evaluation_.
+When you employ lazy evaluation, 
+you write your classes in such a way that they defer computations 
+until the results of those computations are required. 
+If the results are never required, the computations are never performed. 
+
+#### Reference Counting
+
+```c++
+class String { ... };
+String s1 = "Hello";
+String s2 = s1;
+```
+A common implementation for the `String` copy constructor 
+would result in `s1` and `s2` each having its own copy of `“Hello”` 
+after `s2` is initialized with `s1`. 
+Such a copy constructor would incur a relatively large expense, 
+because it would have to make a copy of `s1`’s value to give to `s2`, 
+and that would typically entail allocating heap memory via the `new` operator 
+and calling `std::strcpy` to copy the data in s1 into the memory allocated by s2. 
+This is _eager evaluation_: 
+Making a copy of `s1`and putting it into `s2` 
+just because the `String` copy constructor was called. 
+At this point, however, there has been **no** real need for `s2` to have a copy of the value, 
+`s2` hasn’t been used yet.
+
+
+The lazy approach is a lot less work. 
+Instead of giving `s2` a copy of `s1`’s value, 
+we have `s2` _share_ `s1`’s value.
+All we have to do is a little bookkeeping so we know who’s sharing what, 
+and in return we save the cost of a call to `new` and the expense of copying anything. 
+The fact that `s1` and `s2` are sharing a data structure is transparent to clients, 
+and it certainly makes no difference in statements like the following, 
+because they only read values, they don’t write them:
+```c++
+std::cout << s1 << '\n';
+std::cout << s1 + s2 << '\n';
+```
+In fact, the only time the sharing of values makes a difference 
+is when one or the other string is _modified_; 
+then it’s important that only one string be changed, not both. 
+```c++
+s2.convertToUpperCase();
+```
+it’s crucial that only `s2`’s value be changed, not `s1`’s also.
+
+To handle statements like this, we have to implement `String::convertToUpperCase`
+so that it makes a copy of `s2`’s value and makes that value private to `s2` before modifying it. 
+Inside `convertToUpperCase`, we can no longer be lazy: 
+We have to make a copy of `s2`’s (shared) value for `s2`’s private use. 
+On the other hand, if `s2` is never modified, 
+we never have to make a private copy of its value. 
+It can continue to share a value as long as it exists. 
+If we’re lucky, s2 will never be modified, 
+in which case we’ll never have to expend the effort to give it its own value.
+
+
+The details on making this kind of value sharing work are provided in Item 29, 
+but the idea is lazy evaluation: 
+Don’t bother to make a copy of something until you really need one. 
+Instead, be lazy use someone else’s copy as long as you can get away with it.
+In some application areas, you can often get away with it forever.
+
+#### Distinguishing Reads from Writes
+
+```c++
+// Assume s is a reference-counted string
+String s = "Homer's Iliad";
+std::cout << s[3] << '\n';
+s[3] = 'x';
+```
+The first call to `operator[]` is to read part of a string, 
+but the second call is to perform a write. 
+We’d like to be able to distinguish the read call from the write, 
+because reading a reference-counted string is cheap, 
+but writing to such a string may require splitting off a new copy of the string’s value prior to the write.
+
+
+This puts us in a difficult implementation position. 
+To achieve what we want, we need to do different things inside `operator[]` 
+(depending on whether it’s being called to perform a read or a write). 
+How can we determine whether `operator[]` has been called in a read or a write context?
+The brutal truth is that we can’t. 
+However, by using lazy evaluation and proxy classes as described in Item 30, 
+we can defer the decision on whether to take read actions or write actions 
+until we can determine which is correct. 
+
+#### Lazy Fetching
+
+As a third example of lazy evaluation, 
+imagine you’ve got a program that uses `LargeObject` containing many fields. 
+Such objects are stored in a database.
+Each object has a unique `objectID` inside the database:
+```c++
+class LargeObject
+{
+public:
+    // restore object from disk
+    LargeObject(ObjectID id);
+    
+    const std::string & field1() const;
+    int field2() const; 
+    double field3() const;
+    const std::string & field4() const;
+    const std::string & field5() const;
+
+    ...
+};
+
+void restoreAndProcessObject(ObjectID id)
+{
+    LargeObject object(id);  // restore object
+    ...
+}
+```
+Because LargeObject instances are big, 
+getting all the data for such an object might be a costly database operation, 
+especially if the data must be retrieved from a remote database and pushed across a network. 
+In some cases, the cost of reading all that data would be unnecessary. 
+For example, consider this kind of application: 
+```c++
+void restoreAndProcessObject(ObjectID id)
+{
+    LargeObject object(id);
+    
+    if (object.field2() == 0) 
+    {
+        std::cout << "Object " << id << ": null field2.\n";
+    }
+}
+```
+Here only the value of `field2` is required, 
+so any effort spent setting up the other fields is wasted.
+
+
+The lazy approach to this problem is to read **no** data from disk when a `LargeObject` object is created. 
+Instead, only the “shell” of an object is created, 
+and data is retrieved from the database only when that particular data is needed inside the object. 
+Here’s one way to implement this kind of “demand-paged” object initialization:
+```c++
+class LargeObject
+{
+public:
+    LargeObject(ObjectID id);
+
+    const std::string & field1() const;
+    int field2() const;
+    double field3() const;
+    const std::string & field4() const;
+
+    ...
+
+private:
+    std::shared_ptr<std::string> fetchField1FromDatabase();
+    ...
+    
+private:
+    ObjectID mId;
+    
+    mutable std::shared_ptr<std::string> field1Value;
+    mutable std::shared_ptr<int> field2Value;
+    mutable std::shared_ptr<double> field3Value;
+    mutable std::shared_ptr<std::string> field4Value;
+    
+    ...
+};
+
+LargeObject::LargeObject(ObjectID id)
+        : mId(id), 
+          field1Value(nullptr), 
+          field2Value(nullptr), 
+          field3Value(nullptr), 
+          ...
+{
+    
+}
+
+const std::string & LargeObject::field1() const
+{
+    if (!field1Value)
+    {
+        field1Value = fetchField1FromDatabase();
+    }
+    
+    return *field1Value;
+}
+```
+Each field in the object is represented as a pointer to the necessary data, 
+and the `LargeObject` constructor initializes each pointer to null.
+Such null pointers signify fields that have not yet been read from the database. 
+Each `LargeObject` member function must check the state
+of a field’s pointer before accessing the data it points to.
+If the pointer is null, the corresponding data must be read from the database 
+before performing any operations on that data.
+
+
+When implementing lazy fetching, 
+you must confront the problem that null pointers may need to be initialized 
+to point to real data from inside any member function, 
+including `const` member functions like `field1`.
+The best way to say that is to declare the pointer fields `mutable`, 
+which means they can be modified inside any member function, even inside `const` member functions. 
+
+
+Before `mutable` was added to C++ standard, 
+one workable strategy is the “fake `this`” approach, 
+whereby you create a pointer-to-non-`const` that points to the same object as this does. 
+When you want to modify a data member, you access it through the “fake `this`” pointer:
+```c++
+class LargeObject 
+{
+public:
+    const std::string & field1() const;
+    ...
+    
+private:
+    std::shared_ptr<std::string> field1Value;
+    ...
+};
+
+const std::string & LargeObject::field1() const
+{
+    // Declare a pointer fakeThis that points where this does, 
+    // but where the constness of the object has been cast away
+    LargeObject * const fakeThis = const_cast<LargeObject * const>(this);
+    
+    if (!field1Value)
+    {
+        fakeThis->field1Value = fetchField1FromDatabase();
+    }
+    
+    return *field1Value;
+}
+```
+
+#### Lazy Expression Evaluation
+
+```c++
+template <typename T>
+class Matrix { ... };
+
+Matrix<int> m1(1000, 1000); 
+Matrix<int> m2(1000, 1000);
+Matrix<int> m3 = m1 + m2;    // add m1 and m2
+```
+The usual implementation of `operator+` would use eager evaluation;
+in this case it would compute and return the sum of `m1` and `m2`. 
+That’s a fair amount of computation (1,000,000 additions),
+and of course there’s the cost of allocating the memory to hold all those values, too.
+
+
+The lazy evaluation strategy says that’s way too much work, so it doesn’t do it. 
+Instead, it sets up a data structure inside `m3` that indicates that `m3`’s value is `m1 + m2`. 
+Such a data structure might consist of nothing more than a pointer to each of `m1` and `m2`, 
+plus an `enum` indicating that the operation on them is addition. 
+Clearly, it’s going to be faster to set up this data structure than to add `m1` and `m2`,
+and it’s going to use a lot less memory, too.
+
+
+Suppose that later in the program, before `m3` has been used, this code is executed:
+```c++
+Matrix<int> m4(1000, 1000);
+m3 = m4 * m1;
+```
+Now we can forget all about `m3` being the sum of `m1 + m2` (and thereby save the cost of the computation), 
+and in its place we can start remembering that `m3` is `m4 * m1`. 
+Needless to say, we still don’t perform the multiplication. 
+This example looks contrived, 
+because no good programmer would write a program 
+that computed the sum of two matrices and failed to use it, 
+but it’s not as contrived as it seems.
+No good programmer would deliberately compute a value that’s not needed, 
+but during maintenance, 
+it’s not uncommon for a programmer to modify the paths through a program 
+in such a way that a formerly useful computation becomes unnecessary. 
+The likelihood of that happening is reduced by defining objects immediately prior to use, 
+but it’s still a problem that occurs from time to time.
+
+
+Nevertheless, if that were the only time lazy evaluation paid off,
+it would hardly be worth the trouble. 
+A more common scenario is that we need only _part_ of a computation. 
+For example, suppose we use `m3` as follows after initializing it to `m1 + m2`:
+```c++
+// Print out the 4th row of m3
+std::cout << m3[4] << '\n';
+```
+Clearly we no longer can be completely lazy. 
+We’ve got to compute the values in the fourth row of `m3`. 
+But let’s not be overly ambitious, either. 
+There’s **no** reason we have to compute any more than the fourth row of `m3`; 
+the remainder of `m3` can remain uncomputed until it’s actually needed. 
+With luck, it never will be.
+
+
+To be fair, laziness sometimes fails to pay off. 
+If `m3` is used in this way,
+```c++
+std::cout << m3 << '\n';
+```
+the jig is up and we’ve got to compute a complete value for `m3`. 
+Similarly, if one of the matrices on which `m3` is dependent on is about to be modified, 
+we have to take immediate action:
+```c++
+// remember that m3 is the sum of m1 and m2
+m3 = m1 + m2;
+// now m3 is the sum of m2 and the OLD value of m1!
+m1 = m4;
+```
+Here we’ve got to do something to ensure that the assignment to `m1` doesn’t change `m3`. 
+Inside the `Matrix<int>` assignment operator, 
+we might compute `m3`’s value prior to changing `m1` 
+or we might make a copy of the old value of `m1` and make `m3` dependent on that,
+but we have to do something to guarantee that `m3` has the value it’s supposed to have 
+after `m1` has been the target of an assignment. 
+Other functions that might modify a matrix must be handled in a similar fashion. 
+
+
+Because of the need to store dependencies between values; 
+to maintain data structures that can store values, dependencies, 
+or a combination of the two;
+and to overload operators like assignment, copying, and addition,
+lazy evaluation in a numerical domain is a lot of work. 
+On the other hand, it often ends up saving significant amounts of time and space during program runs, 
+and in many applications, that’s a payoff that easily justifies the significant effort lazy evaluation requires.
 
 
 
