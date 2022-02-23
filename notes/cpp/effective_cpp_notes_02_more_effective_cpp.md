@@ -703,7 +703,14 @@ for (int i = 0; i < 10; ++i)
     if (a == b[i]) ...
 }
 ```
-
+The use of the `Array::Size` in this example might look like a special-purpose hack,
+but it’s actually a specific instance of a more general technique. 
+Classes like `Array::Size` are often called _proxy classes_ (see Item 30),
+because each object of such a class stands for (is a proxy for) some other object. 
+An `Array::Size` object is really just a stand-in for the integer used to specify the size of the `Array` being created. 
+Proxy objects can give you control over aspects of your software’s behavior, 
+in this case implicit type conversions, that is otherwise beyond your grasp, 
+so it’s well worth your while to learn how to use them. 
 
 
 
