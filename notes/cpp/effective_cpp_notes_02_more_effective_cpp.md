@@ -236,6 +236,11 @@ I encourage you to turn to Item 33 and read all about them.
 
 ### 📌 Item 4: Avoid gratuitous default constructors
 
+- If the default constructor can not initialize all members meaningfully, 
+  Other member functions will have to invalidate the data members. 
+- `Delete`ing default constructors when not able to initialize all members meaningfully can lead to problems. 
+  Some templates require the default constructors of their type parameters.
+
 
 A default constructor (i.e., a constructor that can be called with no arguments)
 is the C++ way of saying you can get something for nothing. 
@@ -456,6 +461,11 @@ you can expect that the objects they generate are fully initialized and are effi
 ### 🎯 Chapter 2. Operators
 
 ### 📌 Item 5: Be wary of user-defined conversion functions
+
+- User-defined (implicit) conversion functions are generally evil. 
+  They may end up calling undesired versions of functions. 
+- Declare single-parameter conversion constructors `explicit`. 
+- Do **not** define conversion operators.
 
 
 C++ allows compilers to perform implicit conversions between types. 
@@ -860,6 +870,10 @@ because the postfix versions will automatically behave in a consistent fashion.
 
 ### 📌 Item 7: Never overload `operator&&`, `operator||`, or `operator,`
 
+- The evaluation order of `operator&&`, `operator||`, and `operator,` (left-to-right, short-circuit) 
+  will be lost in the function-call logic of their user-overloaded versions. 
+  Programs working on these features may crash. 
+  **Never** overload `operator&&`, `operator||`, or `operator,`
 
 Like C, C++ employs _short-circuit evaluation_ of boolean expressions.
 This means that once the truth or falsehood of an expression has been determined, 
@@ -1235,7 +1249,7 @@ but what they do is fixed by the language.
 
 ### 🎯 Chapter 3. Exceptions
 
-### 📌 Item 9: Use destructors to prevent resource leaks
+### 📌 Item 9: Use RAII objects to prevent resource leaks
 
 Say goodbye to built-in pointers that are used to manipulate local resources.
 Suppose you’re writing software to read daily logs and do the appropriate processing. 
