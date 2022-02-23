@@ -10248,8 +10248,8 @@ std::map<std::string, int>::mapped_type v5;  // int
           - [`std::allocator_traits`](https://en.cppreference.com/w/cpp/memory/allocator_traits)'s static methods 
             - [`std::allocator_traits::allocate`](https://en.cppreference.com/w/cpp/memory/allocator_traits/allocate)
             - [`std::allocator_traits::deallocate`](https://en.cppreference.com/w/cpp/memory/allocator_traits/deallocate)
-            - [`td::allocator_traits::construct`](https://en.cppreference.com/w/cpp/memory/allocator_traits/construct)
-            - [`td::allocator_traits::destory`](https://en.cppreference.com/w/cpp/memory/allocator_traits/destory)
+            - [`std::allocator_traits::construct`](https://en.cppreference.com/w/cpp/memory/allocator_traits/construct)
+            - [`std::allocator_traits::destory`](https://en.cppreference.com/w/cpp/memory/allocator_traits/destory)
           - Member functions:
             - `a.allocate(n)`：分配一段能保存`n`个`T`类对象的 *未构造的内存* ，返回`T *`.
                 - Calls `::operator new(n)` (which in turn calls `std::malloc(std::size_t)`), but how and when to call is unspecified
