@@ -1380,7 +1380,7 @@ void processAdoptions(std::istream & sin)
 
 ### 📌 Item 10: Prevent resource leaks in constructors
 
-- Destructor is **never** called in the constructor throws an exception. 
+- The destructor is **never** called if the constructor throws an exception. 
   Use RAII objects like smart pointers to manage members on heap. 
 - To handle exceptions in the constructor body, use `try` blocks. 
 - To handle exceptions in the member initializer list,
