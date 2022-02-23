@@ -876,7 +876,7 @@ Similarly, given
 ```c++
 std::size_t rangeCheck(std::size_t index)
 {
-    if ((index < lowerBound) || (index > upperBound)) ...
+    if ((index < lowerBound) || (upperBound < index)) ...
 }
 ```
 `index` will never be compared to `upperBound` if it’s less than `lowerBound`.
@@ -1009,6 +1009,85 @@ you can’t make them behave the way they’re supposed to.
 
 
 ### 📌 Item 8: Understand the different meanings of `new` and `delete`
+
+
+_`new` operator_ (more-usually called [_`new` expression_](https://en.cppreference.com/w/cpp/language/new)) 
+is different from [_`operator new`_](https://en.cppreference.com/w/cpp/memory/new/operator_new). 
+When you write code like this,
+```c++
+std::string * ps = new std::string("Memory Management");
+```
+the `new` you are using is the `new` operator. 
+This operator is built into the language and, like `sizeof`, 
+you **can’t** change its meaning: It always does the same thing. 
+
+1. It allocates enough memory to hold an object of the type requested. 
+   In the example above, it allocates enough memory to hold a string object. 
+2. It calls a constructor to initialize an object in the memory that was allocated. 
+
+The `new` operator always does those two things; 
+you can’t change its behavior in any way.
+
+
+What you can change is how the memory for an object is allocated. 
+The `new` operator calls a function `operator new` to perform the requisite memory allocation,
+and you can rewrite or overload `operator new` to change its behavior.
+
+
+The `operator new` function is usually declared like this:
+```c++
+void * operator new(std::size_t count);
+```
+The return type is `void *`, because this function returns a pointer to raw, uninitialized memory. 
+(If you like, you can write a version of `operator new` that initializes the memory to some value 
+before returning a pointer to it, but this is not commonly done.) 
+The `size_t` parameter specifies how much memory to allocate. 
+You can overload `operator new` by adding additional parameters, 
+but the first parameter must always be of type `std::size_t`. 
+
+
+You’ll probably **never** want to call `operator new` directly, 
+but on the off chance you do, you’ll call it just like any other function:
+```c++
+void * ptr = operator new(sizeof(std::string));
+```
+Here `operator new` will return a pointer to a chunk of memory large enough to hold a `std::string` object.
+
+
+Like `std::malloc`, `operator new`’s only responsibility is to allocate memory. 
+It knows **nothing** about constructors. 
+All `operator new` understands is memory allocation. 
+It is the job of the `new` operator to take the raw memory that `operator new` returns and transform it into an object.
+When your compilers see a statement like
+```c++
+std::string * ps = new std::string("Memory Management");
+```
+they must generate code that more or less corresponds to this:
+```c++
+void * ptr = operator new(sizeof(std::string));  // memory allocation
+new (ptr) std::string("Memory Management");      // placement new
+auto ps = reinterpret_cast<std::string *>(ptr);  // pointer-to-object
+```
+Notice that the second step above involves calling a constructor, 
+something you, a mere programmer, are **prohibited** from doing. 
+Your compilers are unconstrained by mortal limits, however, 
+and they can do whatever they like. 
+That’s why you must use the `new` operator if you want to conjure up a heap-based object: 
+you can’t directly call the constructor necessary to initialize the object 
+(including such crucial components as its virtual table — see Item 24).
+
+#### Placement `new`
+
+There are times when you really want to call a constructor directly. 
+Invoking a constructor on an existing object makes no sense,
+because constructors initialize objects, and an object can only be initialized once. 
+But occasionally you have some raw memory that’s already been allocated but not yet initialized, 
+and you need to construct an object in the memory you have. 
+A special version of operator `new` called placement `new` allows you to do it.
+```c++
+
+```
+
 
 
 
