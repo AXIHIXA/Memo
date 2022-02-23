@@ -1961,11 +1961,9 @@ We thus find ourselves with two good reasons for keeping exceptions from propaga
 
 ### 📌 Item 12: Understand how throwing an exception differs from passing a parameter or calling a virtual function
 
-- An object thrown as an exception is _always_ copied with its static type, 
+- An object thrown as an exception is always _copied with its static type_, **not** its dynamic type, 
   no matter it is declared as normal object, as a reference, or as a pointer. 
-- Exception objects are **not** polymorphic 
-  because they are copied with their static type, **not** dynamic type. 
-  Never call virtual functions on caught exception objects. 
+  Exception objects are **not** polymorphic when being `throw`n. 
 - `throw;` rethrows the current exception object _as-is_ (keeping its dynamic type) without copying; 
   `throw w;` always makes a copy of `w`. 
   Use the `throw;` syntax to rethrow the current exception. 
@@ -2335,6 +2333,162 @@ differs from throwing the object as an exception.
 
 ### 📌 Item 13: Catch exceptions by reference
 
+- **Never** `catch` exceptions by pointer. 
+  The `catch` clause **never** know whether to `delete` the exception object, 
+  and this violates the language exception hierarchy (standard exceptions are thrown-by-value). 
+- **Never** `catch` exceptions by value. 
+  Copying an exception object that is always a temporary is unnecessary, 
+  and it may also slice-off the derived-ness of the exception object. 
+- Catch exceptions by reference. 
+
+
+When you write a `catch` clause, you must specify how exception objects are to be passed to that clause. 
+You have three choices, just as when specifying how parameters should be passed to functions: 
+- By pointer; 
+- By value; 
+- By reference.
+
+Let us consider first catch by pointer.
+In theory, this should be the least inefficient way to implement the invariably slow process 
+of moving an exception from throw site to `catch` clause (see Item 15). 
+That’s because `throw` by pointer is the only way of moving exception information
+**without** copying an object. 
+For example:
+```c++
+void someFunction()
+{
+    static std::exception ex;
+    throw &ex;
+}
+
+void doSomething()
+{
+    try 
+    {
+        someFunction();
+    } 
+    catch (std::exception * ex) 
+    {
+        // no object is copied
+        ... 
+    }
+}
+```
+For this to work, programmers must define exception objects in a way
+that guarantees the objects exist after control leaves the functions throwing pointers to them. 
+Global and `static` objects work fine, but it’s easy for programmers to forget the constraint. 
+If they do, they typically end up writing code like this:
+```c++
+// WRONG IMPLEMENTATION! DANGLING POINTER!
+void someFunction()
+{
+    // Local exception object will be destroyed 
+    // when this function’s scope is exited
+    std::exception ex;
+    // Throw a pointer to an object 
+    // that’s about to be destroyed
+    throw &ex;
+}
+```
+An alternative is to throw a pointer to a `new` heap object:
+```c++
+void someFunction()
+{
+    // Throw a pointer to a new heap-based object.  
+    // Hope that operator new doesn’t itself throw an exception!
+    throw new std::exception;
+}
+```
+This avoids the dangling-pointer-to-exception problem,
+but now authors of `catch` clauses confront a nasty question: 
+Should they `delete` the pointer they receive? 
+- If the exception object was allocated on the heap, they _must_; 
+  otherwise, they suffer a resource leak. 
+- If the exception object was not allocated on the heap, they _must not_; 
+  otherwise, they suffer undefined program behavior. 
+
+
+It’s impossible to know. 
+You’re best off ducking it.
+
+
+Furthermore, catch-by-pointer runs contrary to the convention established by the language itself. 
+The four standard exceptions 
+`std::bad_alloc` (thrown when `operator new` (see Item 8) can’t satisfy a memory request), 
+`std::bad_cast` (thrown when a `dynamic_cast` to a reference fails, see Item 2), 
+`std::bad_typeid` (thrown when `typeid` is applied to a dereferenced null pointer), 
+and `std::bad_exception` (available for unexpected exceptions; see Item 14)
+are all _objects_, **not** pointers to objects, so you have to catch them by value or by reference, anyway. 
+
+
+Catch-by-value eliminates questions about exception deletion 
+and works with the standard exception types. 
+However, it requires that exception objects be copied _twice_ each time they’re thrown (see Item 12). 
+It also gives rise to the specter of the slicing problem, 
+whereby derived class exception objects caught as base class exceptions have their derived-ness “sliced off.” 
+Such “sliced” objects are base class objects. 
+They lack derived class data members, and when virtual functions are called on them, 
+they resolve to virtual functions of the base class.
+(Exactly the same thing happens when an object is passed to a function by value.) 
+For example, consider an application employing an exception class hierarchy that extends the standard one:
+```c++
+class ValidationError : public std::runtime_error 
+{
+public:
+    [[nodiscard]] const char * what() const noexcept override;
+};
+
+
+void someFunction()
+{
+    throw ValidationError();
+}
+
+void doSomething()
+{
+    try 
+    {
+        someFunction();
+    }
+    catch (std::exception ex) 
+    {
+        // Calls exception::what(),
+        // never ValidationError::what()
+        std::cerr << ex.what() << '\n';
+    }
+}
+```
+The version of `what` that is called is that of the base class, 
+even though the thrown exception is of type `ValidationError` 
+and `ValidationError` redefines that `virtual` function. 
+This kind of slicing behavior is almost never what you want. 
+
+
+That leaves only catch-by-reference. 
+Catch-by-reference suffers from **none** of the problems we have discussed. 
+Unlike catch-by-pointer, the question of object deletion fails to arise, 
+and there is no difficulty in `catch`ing the standard exception types. 
+Unlike catch-by-value, there is no slicing problem, 
+and exception objects are copied only once.
+If we rewrite the last example using catch-by-reference, it looks like this:
+```c++
+void doSomething()
+{
+    try 
+    {
+        someFunction();
+    }
+    catch (std::exception & ex) 
+    {
+        // Now calls ValidationError::what(),
+        // instead of exception::what()
+        std::cerr << ex.what() << '\n';
+    }
+}
+```
+Of course, if there is no need to modify the exception object in the handler, 
+you would `catch` not only by reference, but also by reference-to-`const`.
+
 
 
 
@@ -2342,12 +2496,137 @@ differs from throwing the object as an exception.
 
 ### 📌 Item 14: Use exception specifications judiciously
 
+- Exception specifications `throw()` `throw(T)` is deprecated. 
+  Refer to [Notes on _Effective Modern C++_](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md) 
+  Item 14 for `noexcept`. 
+
 
 
 
 
 
 ### 📌 Item 15: Understand the costs of exception handling
+
+- Exception handling is expensive. 
+  - Compile without support for exceptions when feasible; 
+  - **Avoid** unnecessary `try` blocks 
+    because they bloat executable size and lower runtime performance 
+    even if no exception is actually thrown; 
+  - Throw exceptions only under exceptional conditions 
+    as handling an exception makes the program magnitude slower; 
+  - Switch to compilers with better exception efficiency 
+    when exception handling is the bottleneck on runtime performance. 
+
+
+To handle exceptions at runtime, programs must do a fair amount of bookkeeping. 
+At each point during execution, 
+they must be able to identify the objects that require destruction if an exception is thrown;
+they must make note of each entry to and exit from a `try` block; 
+and for each `try` block, 
+they must keep track of the associated catch clauses and the types of exceptions those clauses can handle. 
+This bookkeeping is **not** for free. 
+Nor are the runtime comparisons necessary to ensure that exception specifications are satisfied. 
+Nor is the work expended to destroy the appropriate objects 
+and find the correct `catch` clause when an exception is thrown. 
+Exception handling has costs, and you pay at least some of them 
+even if you never use the keywords `try`, `throw`, or `catch`. 
+
+
+Let us begin with the things you pay for even if you never use any exception-handling features. 
+You pay for the space used by the data structures needed to keep track of which objects are fully constructed, 
+and you pay for the time needed to keep these data structures up to date. 
+These costs are typically quite modest. 
+Nevertheless, programs compiled without support for exceptions are typically
+both faster and smaller than their counterparts compiled with support for exceptions.
+
+
+In theory, you have no choice about these costs: 
+Exceptions are part of C++, compilers have to support them, and that’s that. 
+You can’t even expect compiler vendors to eliminate the costs if you use no exception-handling features, 
+because programs are typically composed of multiple independently generated object files, 
+and just because one object file doesn’t do anything with exceptions doesn’t mean others don’t. 
+Furthermore, even if none of the object files linked to form an executable use exceptions, 
+what about the libraries they’re linked with? 
+If _any part_ of a program uses exceptions, the rest of the program must support them, too. 
+Otherwise it may not be possible to provide correct exception-handling behavior at runtime. 
+
+
+That’s the theory. 
+In practice, most vendors who support exception handling allow you to 
+control whether support for exceptions is included in the code they generate. 
+If you know that no part of your program uses `try`, `throw`, or `catch`,
+and you also know that no library with which you’ll link uses `try`, `throw`, or `catch`, 
+you might as well compile without exception-handling support and save yourself 
+the size and speed penalty you’d otherwise probably be assessed for a feature you’re not using. 
+As time goes on and libraries employing exceptions become more common, this strategy will become less tenable, 
+but given the current state of C++ software development, 
+compiling without support for exceptions is a reasonable performance optimization 
+if you have already decided not to use exceptions. 
+It may also be an attractive optimization for libraries that eschew exceptions, 
+provided they can guarantee that exceptions thrown from client code never propagate into the library. 
+This is a difficult guarantee to make, 
+as it precludes client redefinitions of library-declared virtual functions; 
+it also rules out client-defined callback functions.
+
+
+A second cost of exception-handling arises from `try` blocks,
+and you pay it whenever you use one, 
+i.e., whenever you decide you want to be able to `catch` exceptions. 
+Different compilers implement `try` blocks in different ways,
+so the cost varies from compiler to compiler. 
+As a rough estimate, expect your overall code size to increase by 5%-10% 
+and your runtime to go up by a similar amount if you use `try` blocks. 
+This assumes no exceptions are thrown; 
+what we’re discussing here is just the cost of _having_ try blocks in your programs. 
+To minimize this cost, you should avoid unnecessary `try` blocks.
+
+
+Compilers tend to generate code for exception specifications `throw()` `throw(T)` much as they do for `try` blocks, 
+so an exception specification generally incurs about the same cost as a `try` block. 
+Excuse me? You say you thought exception specifications were just specifications, 
+you didn’t think they generated code? 
+Well, now you have something new to think about.
+Which brings us to the heart of the matter, the cost of throwing an exception.
+In truth, this shouldn’t be much of a concern, because exceptions should be rare. 
+After all, they indicate the occurrence of events that are _exceptional_. 
+The 80-20 rule (see Item 16) tells us that such events should 
+almost never have much impact on a program’s overall performance. 
+However, when you throw an exception, it will hit the performance greatly. 
+Compared to a normal function return, 
+returning from a function by throwing an exception may be as much as three orders of _magnitude_ slower. 
+That’s quite a hit. 
+But you’ll take it only if you throw an exception, and that should be almost never. 
+If, however, you’ve been thinking of using exceptions to indicate relatively common conditions
+like the completion of a data structure traversal or the termination of a loop, 
+now would be an excellent time to think again.
+
+
+Given that different compilers implement their support in different ways, 
+how can I say that a program’s size will generally grow by about 5-10%, 
+its speed will decrease by a similar amount, 
+and it may run orders of magnitude slower if lots of exceptions are thrown? 
+The answer is frightening: 
+A little rumor and a handful of benchmarks (see Item 23). 
+The fact is that most people (including most compiler vendors)
+have little experience with exceptions, 
+so though we know there are costs associated with them, 
+it is difficult to predict those costs accurately. 
+
+
+The prudent course of action is to be aware of the costs described in this item, 
+but not to take the numbers very seriously. 
+Whatever the cost of exception handling, 
+you don’t want to pay any more than you have to.
+To minimize your exception-related costs, 
+compile without support for exceptions when that is feasible; 
+limit your use of try blocks and exception specifications 
+to those locations where you honestly need them; 
+and throw exceptions only under conditions that are truly exceptional. 
+If you still have performance problems, profile your software (see Item 16) 
+to determine if exception support is a contributing factor. 
+If it is, consider switching to different compilers, 
+ones that provide more efficient implementations of C++’s exception-handling features.
+
 
 
 
