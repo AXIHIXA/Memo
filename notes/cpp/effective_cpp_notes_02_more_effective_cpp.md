@@ -3908,7 +3908,7 @@ It seems a little strange to place the base class data members at the end of the
 but that’s often how it’s done. 
 One implementation of virtual base class is that
 `B` and `C` reserve a pointer to `A`', 
-and let the most derived constructor (`D::D` in this example) construct `A` and link the pointers.
+and let the most derived constructor (`D::D` in this example) construct `A` and link the pointers. 
 (If a `B` object is constructed, then `B::B` is for constructing `A` and link the pointer.)
 Of course, implementations are free to organize memory any way they like, 
 so you should never rely on this picture for anything 
@@ -3919,7 +3919,7 @@ Some implementations add fewer pointers, and some find ways to add none at all.
 If we combine this picture with the earlier 
 one showing how virtual table pointers are added to objects, 
 we realize that if the base class `A` in the hierarchy on has any virtual functions, 
-the memory layout for an object of type `D` could look like this:
+the memory layout for an object of type `D` could look like this: 
 ```
                  D Object
     ┌─────────────────────────────────┐
@@ -4001,11 +4001,11 @@ The following table summarizes the primary costs of
 virtual functions, multiple inheritance, virtual base classes, and RTTI:
 
 |       Feature        | Increases Size of Objects | Increases Per-class Data | Reduces `Inline`ing |
-|----------------------|---------------------------|--------------------------|---------------------|
-| Virtual Functions    | Yes                       | Yes                      | Yes                 |
-| Multiple Inheritance | Yes                       | Yes                      | **No**              |
-| Virtual Base Classes | Often                     | Sometimes                | **No**              |
-| RTTI                 | **No**                    | Yes                      | **No**              |
+|----------------------|--------------------------:|-------------------------:|--------------------:|
+| Virtual Functions    |                       Yes |                      Yes |                 Yes |
+| Multiple Inheritance |                       Yes |                      Yes |              **No** |
+| Virtual Base Classes |                     Often |                Sometimes |              **No** |
+| RTTI                 |                    **No** |                      Yes |              **No** |
 
 
 Each of these features offers functionality you’d otherwise have to code by hand. 
@@ -4038,7 +4038,268 @@ you are unlikely to do better than the compiler-generated implementations by cod
 
 ### 📌 Item 25: Virtualizing constructors and non-member functions
 
+- **Never** call virtual functions inside constructors. 
+  Constructors can **not** be virtual and are **not** polymorphic inside. 
+- If a `Base` virtual function returns pointer or reference to `Base`,
+  a `Derived` override can return pointer or reference to `Derived`.
+- A _virtual constructor_ is a function that creates
+  different types of objects depending on the input it is given.
+- A _virtual copy constructor_ is a virtual function that returns 
+  a pointer to a new copy of the object invoking the function.
 
+
+On the face of it, it maks **no** sense to talk about "virtual constructors". 
+You call a virtual function to achieve type-specific behavior
+when you have a pointer or reference to an object,
+but you **don’t** know what the real type of the object is. 
+You call a constructor only when you don’t yet have an object 
+but you know exactly what type you’d like to have. 
+
+
+A _virtual constructor_ is a function that creates 
+different types of objects depending on the input it is given.
+For example, suppose you write applications for working with newsletters,
+where a newsletter consists of components that are either textual or graphical. 
+```c++
+// Abstract base class for newsletter components. 
+// Contains at least one pure virtual function. 
+class NLComponent
+{
+public:
+    ... 
+};
+
+// Contains no pure virtual functions
+class TextBlock : public NLComponent
+{
+public:
+    ...
+};
+
+// Contains no pure virtual functions
+class Graphic : public NLComponent
+{
+public:
+    ... 
+};
+
+class NewsLetter
+{
+private:
+    // Read the data for the next NLComponent from sin, 
+    // create the component and return a pointer to it
+    static NLComponent * readComponent(std::istream & sin);
+
+public:
+    NewsLetter(std::istream & sin);
+    ...
+    
+private:
+    std::list<NLComponent *> components;
+};
+
+NewsLetter::NewsLetter(std::istream & sin)
+{
+    while (sin)
+    {
+        components.emplace_back(readComponent(sin));
+    }
+}
+```
+Consider what `NewsLetter::readComponent` does. 
+It creates a new object, either a `TextBlock` or a `Graphic`, depending on the data it reads. 
+Because it creates new objects, it acts much like a constructor, 
+but because it can create different types of objects, we call it a _virtual constructor_.
+A _virtual constructor_ is a function that creates
+different types of objects depending on the input it is given. 
+Virtual constructors are useful in many contexts, 
+only one of which is reading object information from disk 
+(or off a network connection or from a tape, etc.).
+
+
+_Virtual copy constructors_ are also widely useful. 
+A virtual copy constructor returns a pointer to 
+a new copy of the object invoking the function. 
+Because of this behavior,
+virtual copy constructors are typically given names like `copy` or `clone`. 
+Few functions are implemented in a more straightforward manner:
+```c++
+class NLComponent
+{
+public:
+    // declaration of virtual copy constructor
+    virtual NLComponent * clone() const = 0;
+    
+    ...
+};
+
+class TextBlock : public NLComponent
+{
+public:
+    // virtual copy constructor
+    virtual TextBlock * clone() const
+    {
+        return new TextBlock(*this);
+    }
+    
+    ...
+};
+
+class Graphic : public NLComponent
+{
+public:
+    // virtual copy constructor
+    virtual Graphic * clone() const
+    {
+        return new Graphic(*this);
+    }
+    
+    ...
+};
+```
+As you can see, a class’s virtual copy constructor just calls its real copy constructor. 
+The meaning of “copy” is hence the consistent for both functions. 
+- If the real copy constructor performs a shallow copy, so does the virtual copy constructor. 
+- If the real copy constructor performs a deep copy, so does the virtual copy constructor. 
+- If the real copy constructor does something fancy like reference counting or copy-on-write (see Item 29), 
+  so does the virtual copy constructor. 
+
+
+Notice that the above implementation takes advantage of a relaxation
+in the rules for virtual function return types that was adopted relatively recently. 
+**No longer** must a derived class’s redefinition of a base
+class’s virtual function declare the same return type. 
+Instead, if the function’s return type is a pointer (or a reference) to a base class, 
+the derived class’s function may return a pointer (or reference) to a class derived from that base class. 
+This opens no holes in C++’s type system,
+and it makes it possible to accurately declare functions such as virtual copy constructors. 
+That’s why `TextBlock::clone` can return a `TextBlock * `and `Graphic::clone` can return a `Graphic *`, 
+even though the return type of `NLComponent::clone` is `NLComponent *`. 
+The existence of a virtual copy constructor in `NLComponent` 
+makes it easy to implement a (normal) copy constructor for `NewsLetter`:
+```c++
+class NewsLetter
+{
+public:
+    NewsLetter(const NewsLetter & rhs);
+    ...
+    
+private:
+    std::list<NLComponent *> components;
+};
+
+NewsLetter::NewsLetter(const NewsLetter & rhs)
+{
+    for (const auto e : rhs.components)
+    {
+        components.emplace_back(e->clone());
+    }
+}
+```
+
+Just as constructors can’t really be virtual, 
+neither can non-member functions. 
+However, just as it makes sense to conceive of functions
+that construct new objects of different types, 
+it makes sense to conceive of non-member functions 
+whose behavior depends on the dynamic types of their parameters. 
+For example, suppose you’d like to implement `operator<<` for `TextBlock` and `Graphic`.
+The obvious approach to this problem is to make the output operator virtual. 
+However, the output operator is `operator<<`, 
+and that function takes an `std::ostream &` as its left-hand argument; 
+that effectively rules out the possibility of making it a member function 
+of the `TextBlock` or `Graphic` classes.
+
+
+(It can be done, but then look what happens:
+```c++
+class NLComponent
+{
+public:
+    // unconventional declaration of output operator
+    virtual std::ostream & operator<<(std::ostream & cout) const = 0;
+    ...
+};
+
+class TextBlock : public NLComponent
+{
+public:
+    // virtual output operator (also unconventional)
+    virtual std::ostream & operator<<(std::ostream & cout) const;
+};
+
+class Graphic : public NLComponent
+{
+public:
+    // virtual output operator (still unconventional)
+    virtual std::ostream & operator<<(std::ostream & cout) const;
+};
+
+TextBlock t;
+Graphic g;
+
+// Print t on std::cout via virtual operator<<. 
+// Note the unconventional syntax. 
+t << std::cout;
+
+// Print g on std::cout via virtual operator<<. 
+// Note the unconventional syntax. 
+g << std::cout;
+```
+Clients must place the stream object on the right-hand side of the `<<` symbol, 
+and that’s contrary to the convention for output operators. 
+To get back to the normal syntax, we must move `operator<<` out of the `TextBlock` and `Graphic` classes, 
+but if we do that, we can no longer declare it virtual.)
+
+
+An alternate approach is to declare a virtual function for printing (e.g., `print`)
+and define it for the `TextBlock` and `Graphic` classes. 
+But if we do that, the syntax for printing `TextBlock` and `Graphic` objects is inconsistent
+with that for the other types in the language, all of which rely on `operator<<` as their output operator.
+
+
+Neither of these solutions is very satisfying. 
+What we want is a nonmember function called `operator<<` 
+that exhibits the behavior of a virtual function like `print`. 
+This description of what we want is in fact very close to a description of how to get it. 
+We define both `operator<<` and `print` and have the former call the latter!
+```c++
+class NLComponent
+{
+public:
+    virtual std::ostream & print(std::ostream & s) const = 0;
+    ...
+};
+
+class TextBlock : public NLComponent
+{
+public:
+    virtual std::ostream & print(std::ostream & s) const;
+    ...
+};
+
+class Graphic : public NLComponent
+{
+public:
+    virtual std::ostream & print(std::ostream & s) const;
+    ...
+};
+
+inline std::ostream & operator<<(std::ostream & s, const NLComponent & c)
+{
+    return c.print(s);
+}
+```
+Virtual-acting non-member functions, then, are easy. 
+You write virtual functions to do the work, 
+then write a non-virtual function that does nothing but call the virtual function. 
+To avoid incurring the cost of a function call for this syntactic sleight-of-hand, 
+of course, you `inline` the non-virtual function.
+
+
+Now that you know how to make non-member functions act virtually on one of their arguments, 
+you may wonder if it’s possible to make them act virtually on more than one of their arguments. 
+Turn to Item 31, it’s devoted to that question.
 
 
 
