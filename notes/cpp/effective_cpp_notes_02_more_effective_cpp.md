@@ -3906,6 +3906,10 @@ the layout for an object of type `D` is likely to look like this:
 ```
 It seems a little strange to place the base class data members at the end of the object, 
 but that’s often how it’s done. 
+One implementation of virtual base class is that
+`B` and `C` reserve a pointer to `A`', 
+and let the most derived constructor (`D::D` in this example) construct `A` and link the pointers.
+(If a `B` object is constructed, then `B::B` is for constructing `A` and link the pointer.)
 Of course, implementations are free to organize memory any way they like, 
 so you should never rely on this picture for anything 
 more than a conceptual overview of how virtual base classes may lead to 
@@ -4033,6 +4037,8 @@ you are unlikely to do better than the compiler-generated implementations by cod
 ### 🎯 Chapter 5. Techniques
 
 ### 📌 Item 25: Virtualizing constructors and non-member functions
+
+
 
 
 
