@@ -2639,6 +2639,8 @@ ones that provide more efficient implementations of C++’s exception-handling f
 
 ### 📌 Item 17: Lazy evaluation: Postpone and perhaps bypass non-emergency computations
 
+- Lazy evaluation is a technique for improving the efficiency of programs
+  when you must support operations whose results are _not always needed_.
 - Lazy evaluation: 
   to avoid unnecessary copying of objects, 
   to distinguish reads from writes using `operator[]`, 
@@ -2982,8 +2984,6 @@ and in many applications, that’s a payoff that easily justifies the significan
 
 ### 📌 Item 18: Over-eager evaluation: Amortize the cost of expected computations
 
-- Lazy evaluation is a technique for improving the efficiency of programs
-  when you must support operations whose results are _not always needed_.
 - Over-eager evaluation is a technique for improving the efficiency of programs
   when you must support operations whose results are _almost always needed or whose results are often needed more than once_.
 - Over-eager evaluation trades time with space.
@@ -3160,7 +3160,147 @@ whose behavioral characteristics justify the extra programming effort.
 
 
 
+
+
+
 ### 📌 Item 19: Understand the origin of temporary objects
+
+- C++ temporary objects are anonymous non-heap objects created usually in the following situations: 
+  1. When implicit type conversions are applied on function arguments passed by value or reference-to-`const`;
+  2. When functions return objects.
+- The construction and destruction of temporary objects hits performance. 
+  Temporary objects can be bypassed via: 
+  1. Implicit conversions: Do not provide user-defined conversions or overload functions inducing implicit conversions;
+  2. Function return value: Facilitate _Return Value Optimization (RVO)_. 
+
+
+When programmers often refer to variables that are needed for only a short while as _temporaries_. 
+```c++
+template <typename T>
+void swap(T & object1, T & object2)
+{
+    T temp = object1;
+    object1 = object2;
+    object2 = temp;
+}
+```
+it’s common to call `temp` a temporary. 
+As far as C++ is concerned, however, `temp` is not a temporary at all. 
+It’s simply an object local to a function. 
+
+
+True temporary objects in C++ are invisible. 
+They don’t appear in your source code. 
+They arise whenever a non-heap object is created but not named. 
+Such unnamed objects usually arise in one of two situations: 
+1. When implicit type conversions are applied to make function calls succeed; 
+2. When functions return objects. 
+
+It’s important to understand how and why these temporary objects are created and destroyed, 
+because the attendant costs of their construction and destruction 
+can have a noticeable impact on the performance of your programs. 
+
+
+Consider first the case in which temporary objects are created to make function calls succeed. 
+This happens when the type of object passed to a function 
+is not the same as the type of the parameter to which it is being bound. 
+For example, consider a function that counts the number of occurrences of a character in a `std::string`:
+```c++
+// returns the number of occurrences of ch in str
+size_t countChar(const std::string & str, char ch);
+
+char buffer[MAX_STRING_LEN];
+char c;
+
+std::cin >> c >> std::setw(MAX_STRING_LEN) >> buffer;
+
+std::cout << "There are " << countChar(buffer, c)
+          << " occurrences of the character " << c
+          << " in " << buffer << std::endl;
+```
+Look at the call to `countChar`. 
+The first argument passed is a `char` array, 
+but the corresponding function parameter is of type `const std::string &`. 
+This call can succeed only if the type mismatch can be eliminated, 
+and your compilers will be happy to eliminate it by creating a temporary object of type `std::string`. 
+That temporary object is initialized by calling the `std::string` constructor with `buffer` as its argument. 
+The `str` parameter of `countChar` is then bound to this temporary `std::string` object. 
+When the statement containing the call to `countChar` finishes executing, 
+the temporary object is automatically destroyed.
+
+
+Conversions such as these are convenient, but from an efficiency point of view, 
+the construction and destruction of a temporary `std::string` object is an unnecessary expense. 
+There are two general ways to eliminate it. 
+1. To redesign your code so implicit conversions like these can’t take place. (See Item 5.) 
+2. To modify your software so that the conversions are unnecessary. (See Item 21.)
+
+
+These conversions occur only when passing objects by value or when passing to a reference-to-`const` parameter. 
+They do not occur when passing an object to a reference-to-non-`const` parameter. 
+Consider this function:
+```c++
+// changes all chars in str to upper case
+void uppercasify(std::string & str);
+```
+In the character-counting example, a `char` array could be successfully passed to `countChar`, 
+but here, trying to call `uppercasify` with a `char` array fails:
+```c++
+char subtleBookPlug[] = "Effective C++";
+uppercasify(subtleBookPlug);  // error!
+```
+No temporary is created to make the call succeed. Why not?
+
+
+Suppose a temporary were created. 
+Then the temporary would be passed to `uppercasify`, 
+which would modify the temporary so its characters were in upper case.
+But the actual argument to the function call, `subtleBookPlug`, would **not** be affected; 
+only the temporary `std::string` object generated from `subtleBookPlug` would be changed. 
+Surely this is not what the programmer intended. 
+That programmer passed `subtleBookPlug` to `uppercasify`, 
+and that programmer expected `subtleBookPlug` to be modified. 
+Implicit type conversion for references-to-non-`const` objects, 
+then, would allow temporary objects to be changed 
+when programmers expected non-temporary objects to be modified. 
+That’s why the language prohibits the generation of temporaries 
+for non-`const` reference parameters.
+Reference-to-`const` parameters don’t suffer from this problem, 
+because such parameters, by virtue of being `const`, can’t be changed.
+
+
+The second set of circumstances under which temporary objects are created 
+is when a function returns an object. 
+For instance, `operator+` must return an object that represents the sum of its operands. 
+Given a type `Number`, for example, `operator+` for that type would be declared like this:
+```c++
+const Number operator+(const Number & lhs, const Number & rhs);
+```
+The return value of this function is a temporary, because it has no name: 
+it’s just the function’s return value. 
+You must pay to construct and destruct this object each time you call `operator+`.
+
+
+As usual, you don’t want to incur this cost. 
+For this particular function, 
+you can avoid paying by switching to a similar function `operator+=` (see Item 22).
+However, for most functions that return objects, 
+switching to a different function is not an option 
+and there is no way to avoid the construction and destruction of the return value _conceptually_.
+In reality, sometimes you can write your object-returning functions 
+in a way that allows your compilers to optimize temporary objects out of existence. 
+Of these optimizations, the most common and useful is the _Return Value Optimization (RVO)_ (see Item 20).
+
+
+The bottom line is that temporary objects can be costly, 
+so you want to eliminate them whenever you can. 
+More important than this, however, 
+is to train yourself to look for places where temporary objects may be created. 
+Anytime you see a reference-to-`const` parameter, 
+the possibility exists that a temporary will be created to bind to that parameter. 
+Anytime you see a function returning an object, a temporary will be created (and later destroyed). 
+Learn to look for such constructs, 
+and your insight into the cost of “behind the scenes” compiler actions will markedly improve.
 
 
 
@@ -3168,6 +3308,126 @@ whose behavioral characteristics justify the extra programming effort.
 
 
 ### 📌 Item 20: Facilitate the return value optimization
+
+- **Never** return pointers or references (lvalue or rvalue, to-`const` or non-`const`) to local objects. 
+  These returns are all dangling. 
+
+
+A function either has to return an object in order to offer correct behavior, or it does not. 
+If it does, there’s no way to get rid of the temporary object being returned. 
+```c++
+class Rational
+{
+public:
+    Rational(int numerator = 0, int denominator = 1);
+    int numerator() const;
+    int denominator() const;
+    ...
+};
+
+const Rational operator*(const Rational & lhs, const Rational & rhs);
+```
+We know this `operator*` must return an object
+because it returns the product of two arbitrary numbers. 
+C++ programmers have nevertheless expended Herculean efforts 
+in a search for the legendary elimination of the by-value return.
+Sometimes people return pointers, which leads to this syntactic travesty:
+```c++
+// an unreasonable way to avoid returning an object
+const Rational * operator*(const Rational & lhs, const Rational & rhs);
+Rational a = 10;
+Rational b(1, 2);
+Rational c = *(a * b);  // Does this look "natural" to you?
+```
+It also raises a question. 
+Should the caller `delete` the pointer returned by the function? 
+The answer is usually yes, and that usually leads to resource leaks.
+
+
+Other developers return references. That yields an acceptable syntax,
+```c++
+// a dangerous (and incorrect) way to avoid returning an object
+const Rational & operator*(const Rational & lhs, const Rational & rhs);
+Rational a = 10;
+Rational b(1, 2);
+Rational c = a * b;  // looks perfectly reasonable
+```
+but such functions can’t be implemented in a way that behaves correctly.
+A common attempt looks like this:
+```c++
+// another dangerous (and incorrect) way to avoid returning an object
+const Rational & operator*(const Rational & lhs, const Rational & rhs)
+{
+    Rational result(lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator());
+    return result;
+}
+```
+This function returns a reference to an object that no longer exists. 
+In particular, it returns a reference to the local object result, 
+but result is automatically destroyed when `operator*` is exited. 
+Returning a _dangling reference_ to an object that’s been destroyed is harmful.
+
+
+Some functions (`operator*` among them) just _have to_ return objects.
+That’s the way it is. 
+
+
+That is, you can’t win in your effort to eliminate by-value returns from functions that require them. 
+But that’s the wrong war to wage.
+From an efficiency point of view, you shouldn’t care that a function returns an object, 
+you should only care about the cost of that object.
+What you need to do is channel your efforts into finding a way to reduce the cost of returned objects, 
+not to eliminate the objects themselves (which we now recognize is a futile quest). 
+If no cost is associated with such objects, who cares how many get created?
+
+
+It is frequently possible to write functions that return objects 
+in such a way that compilers can eliminate the cost of the temporaries. 
+The trick is to return _constructor arguments_ instead of objects, 
+and you can do it like this (invoking RVO. But NRVO might also apply):
+```c++
+// an efficient and correct way to implement a function that returns an object
+const Rational operator*(const Rational & lhs, const Rational & rhs)
+{
+    return {lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator()};
+}
+```
+This business of returning constructor arguments instead of local objects
+doesn’t appear to have bought you a lot, 
+because you still have to pay for 
+the construction and destruction of the temporary created inside the function, 
+and you still have to pay for 
+the construction and destruction of the object the function returns. 
+But you have gained something. 
+The rules for C++ allow compilers to optimize temporary objects out of existence. 
+As a result, if you call `operator*` in a context like this,
+```c++
+Rational a = 10;
+Rational b(1, 2);
+Rational c = a * b;  // operator* is called here
+```
+your compilers are allowed to eliminate 
+both the temporary inside `operator*`and the temporary returned by `operator*`. 
+They can construct the object defined by the return expression
+inside the memory allotted for the object `c`. 
+If your compilers do this, the total cost of temporary objects 
+as a result of your calling `operator*` is zero: no temporaries are created. 
+Instead, you pay for only one constructor call (the one to create `c`).
+
+
+You can eliminate the overhead of the call to `operator*` 
+by declaring that function `inline`:
+```c++
+// the most efficient way to write a function returning an object
+inline const Rational operator*(const Rational & lhs, const Rational & rhs)
+{
+    return {lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator()};
+}
+```
+_Return Value Optimization (RVO)_ is the optimization of 
+a local temporary by using a function’s return location 
+(and possibly replacing that with an object at the function’s call site) 
+is both well-known and commonly implemented. 
 
 
 
