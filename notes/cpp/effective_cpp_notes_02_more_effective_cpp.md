@@ -3607,10 +3607,20 @@ because `<cstdio>` usually generates smaller and faster executables than those a
 
 ### 📌 Item 24: Understand the costs of virtual functions, multiple inheritance, virtual base classes, and RTTI
 
-- Two costs of virtual functions
-  1. One virtual table for each polymorphic class
-  2. One virtual table pointer for each polymorphic object
-- **Avoid** declaring virtual functions `inline` to avoid virtual table bloats. 
+- Space cost of virtual functions (inheritance further bloats the exact numbers): 
+  1. One virtual table for each polymorphic class; 
+  2. One virtual table pointer for each polymorphic object. 
+- Speed cost of virtual functions:
+  - Cost is almost identical to calling a function pointer; 
+  - You effectively give up `inline`ing virtual functions.
+- Virtual functions can be `inline`d when invoked through objects, 
+  but most virtual function calls are made through pointers or references, 
+  and such calls could **not** be `inline`d. 
+- Declaring all virtual functions `inline` might bloat the virtual table everywhere. 
+- `Runtime Type Identification (RTTI)` is accurate on a dynamic type 
+  only if that type has at least one virtual function. 
+  RTTI was designed to be implementable in terms of a class’s virtual table 
+  (e.g., to add one more element as this class's `std::type_info` objecy). 
 
 
 Many implementation details of C++ language features are compiler-dependent. 
@@ -3744,7 +3754,7 @@ Compiler vendors tend to fall into two camps.
      hundreds or thousands of copies of a class’s virtual table! 
      Most compilers following this heuristic give you some way to control virtual table generation manually, 
      but a better solution to this problem is to avoid declaring virtual functions `inline`. 
-     As a result, present compilers typically ignore the `inline` directive for virtual functions. 
+     Present compilers typically ignore the `inline` directive for virtual functions. 
 
 
 Virtual tables are half the implementation machinery for virtual functions,
@@ -3788,6 +3798,232 @@ and that means your paging activity will probably increase.
 Suppose we have a program with several objects of types `C1` and `C2`.
 We can envision the objects in our program like this:
 ![Sample Layout](./vptr_to_vtbl.gif)
+Now consider this program fragment:
+```c++
+void foo(C1 * p)
+{
+    p->f1();
+}
+```
+This is a call to the virtual function `f1` through a polymorphic pointer `p`. 
+By looking only at this code, there is no way to know which `f1` (`C1::f1` or `C2::f1`) should be invoked, 
+because `p` might point to a `C1` object or to a `C2` object. 
+Compilers invoke the correct virtual function by generating code to do the following: 
+1. Follow the object’s `vptr` to its virtual table. 
+   This costs only an offset adjustment (to get to the `vptr`) 
+   and a pointer indirection (to get to the virtual table). 
+2. Find the pointer in the virtual table that corresponds to the function being called (`f1` in this example). 
+   As compilers assign each virtual function a unique index within the table,  
+   the cost of is just an offset into the virtual table array. 
+3. Invoke the function pointed to by the pointer.
+
+If we imagine that each object has a hidden member called `vptr` and 
+that the virtual table index of function `f1` is `i`: 
+```c++
+p->f1();
+```
+is equivalent to:
+```c++
+// Call the function pointed to by the i-th entry 
+// in the virtual table pointed to by p->vptr.  
+// p is passed to the function as the "this" pointer. 
+(*p->vptr[i])(p);
+```
+This is almost as efficient as a non-virtual function call: 
+On most machines, it executes only a few more instructions. 
+The cost of calling a virtual function is thus basically the same 
+as that of calling a function through a function pointer. 
+Virtual functions per se are not usually a performance bottleneck.
+
+
+The real runtime cost of virtual functions has to do with their interaction with `inline`ing. 
+For all practical purposes, virtual functions aren’t `inline`d. 
+That’s because `inline` means 
+“during compilation, replace the call site with the body of the called function,” 
+but `virtual` means “wait until runtime to see which function is called.” 
+If your compilers don’t know which function will be called at a particular call site, 
+you can understand why they **won’t** `inline` that function call. 
+This is the third cost of virtual functions: 
+You effectively give up `inline`ing. 
+(Virtual functions can be inlined when invoked through objects, 
+but most virtual function calls are made through pointers or references to objects, 
+and such calls are `not` inlined. 
+Because such calls are the norm, virtual functions are effectively **not** `inline`d.)
+
+
+Everything we’ve seen so far applies to both single and multiple inheritance,
+but when multiple inheritance enters the picture, things get more complex. 
+With multiple inheritance, offset calculations to find `vptr`s within objects become more complicated;
+There are multiple `vptr`s within a single object (one per base class); 
+and special virtual tables must be generated for base classes 
+in addition to the stand-alone virtual tables we have discussed. 
+As a result, both the per-class and the per-object space overhead for virtual functions increases, 
+and the runtime invocation cost grows slightly, too. 
+
+
+Multiple inheritance often leads to the need for virtual base classes.
+Without virtual base classes, 
+if a derived class has more than one inheritance path to a base class, 
+the data members of that base class are replicated within each derived class object, 
+one copy for each path between the derived class and the base class. 
+Such replication is almost **never** what programmers want, 
+and making base classes virtual eliminates the replication.
+However, virtual base classes may incur a cost of their own, 
+because implementations of virtual base classes often use 
+pointers to virtual base class parts 
+as the means for avoiding the replication, 
+and one or more of those pointers may be stored inside your objects.
+
+
+For example, consider this: 
+```c++
+// A <--v-- B <--┐
+// A <--v-- C <--┴-- D
+
+class A { ... };
+class B : virtual public A { ... };
+class C : virtual public A { ... };
+class D : public B, public C { ... };
+```
+Here `A` is a virtual base class because `B` and `C` virtually inherit from it.
+With some compilers (especially older compilers), 
+the layout for an object of type `D` is likely to look like this:
+```
+                 D Object
+    ┌─────────────────────────────────┐
+    │         B's Data Member         │
+    ├─────────────────────────────────┤
+    │   ptr to virtual base class A ──┼─┐
+    ├─────────────────────────────────┤ │
+    │         C's Data Member         │ │
+    ├─────────────────────────────────┤ │
+  ┌─┼── ptr to virtual base class A   │ │
+  │ ├─────────────────────────────────┤ │
+  │ │         D's Data Member         │ │
+  │ ├─────────────────────────────────┤ │
+  └─┼──────→  A's Data Member  ←──────┼─┘
+    └─────────────────────────────────┘
+```
+It seems a little strange to place the base class data members at the end of the object, 
+but that’s often how it’s done. 
+Of course, implementations are free to organize memory any way they like, 
+so you should never rely on this picture for anything 
+more than a conceptual overview of how virtual base classes may lead to 
+the addition of hidden pointers to your objects. 
+Some implementations add fewer pointers, and some find ways to add none at all. 
+(Such implementations make the `vptr` and virtual table serve double duty). 
+If we combine this picture with the earlier 
+one showing how virtual table pointers are added to objects, 
+we realize that if the base class `A` in the hierarchy on has any virtual functions, 
+the memory layout for an object of type `D` could look like this:
+```
+                 D Object
+    ┌─────────────────────────────────┐
+    │         B's Data Member         │
+    ├─────────────────────────────────┤
+    │              vptr               │
+    ├─────────────────────────────────┤
+    │   ptr to virtual base class A ──┼─┐
+    ├─────────────────────────────────┤ │
+    │         C's Data Member         │ │
+    ├─────────────────────────────────┤ │
+    │              vptr               │ │
+    ├─────────────────────────────────┤ │
+  ┌─┼── ptr to virtual base class A   │ │
+  │ ├─────────────────────────────────┤ │
+  │ │         D's Data Member         │ │
+  │ ├─────────────────────────────────┤ │
+  └─┼──────→  A's Data Member  ←──────┼─┘
+    ├─────────────────────────────────┤
+    │              vptr               │
+    └─────────────────────────────────┘
+```
+An oddity in the above diagram is that there are only three `vptr`s even though four classes are involved. 
+Implementations are free to generate four `vptr`s if they like, 
+but three suffice (it turns out that `B` and `D` can share one `vptr`), 
+and most implementations take advantage of this opportunity to reduce the compiler-generated overhead.
+
+
+We’ve now seen how virtual functions make objects larger and preclude `inline`ing, 
+and we’ve examined how multiple inheritance and virtual base classes can also increase the size of objects. 
+Let us therefore turn to our final topic, the cost of _Runtime Type Identification (RTTI)_.
+
+
+RTTI lets us discover information about objects and classes at runtime,
+so there has to be a place to store the information we’re allowed to query. 
+That information is stored in an object of type `std::type_info`,
+and you can access the `std::type_info` object for a class by using the `typeid` operator.
+
+
+There only needs to be a single copy of the RTTI information for each class, 
+but there must be a way to get to that information for any object.
+Actually, that’s not quite true. 
+The language specification states that 
+we’re guaranteed accurate information on an object’s dynamic type
+only if that type has at least one virtual function. 
+This makes RTTI data sound a lot like a virtual function table. 
+We need only one copy of the information per class, 
+and we need a way to get to the appropriate information 
+from any object containing a virtual function. 
+This parallel between RTTI and virtual function tables is no accident: 
+RTTI was designed to be implementable in terms of a class’s virtual table.
+
+
+For example, index `0` of a virtual table array might contain 
+a pointer to the `std::type_info` object for the class corresponding to that virtual table. 
+The virtual table for class `C1` would then look like this:
+```
+C1's vtbl
+  ┌──┐
+  │ ─┼──→ C1's std::type_info object
+  ├──┤
+  │ ─┼──→ Implementation of C1::f1
+  ├──┤
+  │ ─┼──→ Implementation of C1::f1
+  ├──┤
+  │ ─┼──→ Implementation of C1::f2
+  ├──┤
+  │ ─┼──→ Implementation of C1::f3
+  └──┘
+```
+With this implementation, the space cost of RTTI is 
+an additional entry in each class virtual table 
+plus the cost of the storage for the `std::type_info` object for each class. 
+Just as the memory for virtual tables is unlikely to be noticeable for most applications, 
+you’re unlikely to run into problems due to the size of `std::type_info` objects.
+
+
+The following table summarizes the primary costs of 
+virtual functions, multiple inheritance, virtual base classes, and RTTI:
+
+|       Feature        | Increases Size of Objects | Increases Per-class Data | Reduces `Inline`ing |
+|----------------------|---------------------------|--------------------------|---------------------|
+| Virtual Functions    | Yes                       | Yes                      | Yes                 |
+| Multiple Inheritance | Yes                       | Yes                      | **No**              |
+| Virtual Base Classes | Often                     | Sometimes                | **No**              |
+| RTTI                 | **No**                    | Yes                      | **No**              |
+
+
+Each of these features offers functionality you’d otherwise have to code by hand. 
+In most cases, your manual approximation would probably be 
+less efficient and less robust than the compiler-generated code. 
+E.g., using nested `switch` statements or cascading `if-else`s to emulate virtual function calls 
+yields more code than virtual function calls do, and the code runs more slowly. 
+Furthermore, you must manually track object types yourself, 
+which means your objects carry around type tags of their own; 
+you thus often fail to gain even the benefit of smaller objects.
+
+
+It is important to understand the costs of 
+virtual functions, multiple inheritance, virtual base classes, and RTTI, 
+but it is equally important to understand that if you need the functionality these features offer,
+you _will_ pay for it, one way or another. 
+Sometimes you have legitimate reasons for bypassing the compiler-generated services. 
+E.g., hidden `vptr`s and pointers to virtual base classes can make it difficult
+to store C++ objects in databases or to move them across process boundaries, 
+so you may wish to emulate these features in a way that makes it easier to accomplish these other tasks. 
+However, from the point of view of efficiency, 
+you are unlikely to do better than the compiler-generated implementations by coding these features yourself.
 
 
 
