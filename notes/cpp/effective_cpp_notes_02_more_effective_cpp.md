@@ -792,7 +792,8 @@ C++ also allows you to _omit names for parameters you don’t plan to use_;
 that’s what’s been done above.
 
 
-It’s clear why postfix increment must return an object (it’s returning an old value), but why a const object? 
+It’s clear why postfix increment must return an object (it’s returning an old value), 
+but why a `const` object? 
 Imagine that it did not. Then the following would be legal:
 ```c++
 UPInt i;
@@ -3437,11 +3438,146 @@ is both well-known and commonly implemented.
 ### 📌 Item 21: Overload to avoid implicit type conversions
 
 
+It is convenient to have compilers perform implicit conversions on function arguments,
+but the temporary objects created to make the conversions work are a cost we may not wish to bear. 
+Just as most people want government benefits without having to pay for them, 
+most C++ programmers want implicit type conversions without incurring any cost for temporaries. 
+```c++
+class UPInt
+{
+public:
+    UPInt();
+    UPInt(int value);
+    ...
+};
+
+const UPInt operator+(const UPInt & lhs, const UPInt & rhs);
+
+UPInt upi1, upi2;
+UPInt upi3 = upi1 + upi2;
+
+// Implicit conversions from int 10 to UPInt
+upi3 = upi1 + 10;
+upi3 = 10 + upi2;
+```
 
 
 
 
 ### 📌 Item 22: Consider using `op=` instead of stand-alone `op`
+
+- Implement `op` base on `op=`. 
+- `op=` is more efficient than `op`, as it saves the construction of a temporary. 
+
+
+As far as C++ is concerned, there is `no` relationship between **operator+**, **operator=**, and **operator+=**, 
+so if you want all three operators to exist and to have the expected relationship, 
+you must implement that yourself. 
+Ditto for the operators `-`, `*`, `/`, etc.
+
+
+A good way to ensure that the natural relationship 
+between the assignment version of an operator (e.g., `operator+=`) and the stand-alone version (e.g., `operator+`) exists 
+is to implement the latter in terms of the former. 
+```c++
+class Rational
+{
+public:
+    ...
+    Rational & operator+=(const Rational & rhs);
+    Rational & operator-=(const Rational & rhs);
+};
+
+// operator+ implemented in terms of operator+=
+const Rational operator+(const Rational & lhs, const Rational & rhs)
+{
+    return Rational(lhs) += rhs;
+}
+
+// operator- implemented in terms of operator-=
+const Rational operator-(const Rational & lhs, const Rational & rhs)
+{
+    return Rational(lhs) -= rhs;
+}
+```
+In this example, `Rational::operator+=` and `Rational::operator-=` are implemented (elsewhere) from scratch, 
+and `operator+` and `operator-` call them to provide their own functionality. 
+With this design, only the assignment versions of these operators need to be maintained. 
+Furthermore, assuming the assignment versions of the operators are in the class’s public interface,
+there is never a need for the stand-alone operators to be friends of the class.
+
+
+If you don’t mind putting all stand-alone operators at global scope, 
+you can use templates to eliminate the need to write the stand-alone functions:
+```c++
+template <typename T>
+const T operator+(const T & lhs, const T & rhs)
+{
+    return T {lhs} += rhs;
+}
+
+template <typename T>
+const T operator-(const T & lhs, const T & rhs)
+{
+    return T {lhs} -= rhs;
+}
+
+...
+```
+With these templates, as long as an assignment version of an operator is defined for some type `T`, 
+the corresponding stand-alone operator will automatically be generated if it’s needed.
+
+
+All this is well and good, but so far we have failed to consider the issue of efficiency. 
+Three aspects of efficiency are worth noting here. 
+1. In general, assignment versions of operators are more efficient than stand-alone versions, 
+   because stand-alone versions must typically return a new object, 
+   and that costs us the construction and destruction of a temporary. 
+   Assignment versions of operators write to their left-hand argument, 
+   so there is no need to generate a temporary to hold the operator’s return value.
+2. By offering assignment versions of operators as well as stand-alone versions, 
+   you allow _clients_ of your classes to make the difficult trade-off between efficiency and convenience. 
+   That is, your clients can decide whether to write their code like this,
+   ```c++
+   Rational a, b, c, d, result;
+   
+   // probably uses 3 temporary objects, 
+   // one for each call to operator+
+   result = a + b + c + d;
+   ```
+   or like this:
+   ```c++
+   result = a;   // no temporary needed
+   result += b;  // no temporary needed
+   result += c;  // no temporary needed
+   result += d;  // no temporary needed
+   ```
+   The former is easier to write, debug, and maintain. 
+   The latter is more efficient, and more intuitive for assembly language programmers. 
+   By offering both options, you let clients develop and debug code using the easier-to-read stand-alone operators 
+   while still reserving the right to replace them with the more efficient assignment versions of the operators. 
+   Furthermore, by implementing the stand-alones in terms of the assignment versions, 
+   you ensure that when clients switch from one to the other, the semantics of the operations remain constant.
+3. Let the standalone operators to return an anonymous is guaranteed to invoke RVO. 
+   If writing it this way, we have to hope the compiler invokes NRVO (which is not decreed by the standard). 
+   ```c++
+   template <typename T>
+   const T operator+(const T & lhs, const T & rhs)
+   {
+       T res {lhs};
+       return res += rhs;
+   }
+   ``` 
+4. The reason for uniform initialization is that A some compilers treat `T(lhs)` 
+   as a _cast_ to remove `lhs`’s `const`ness, 
+   then add `rhs` to `lhs` and return a reference to the modified `lhs`! 
+
+The big picture is that assignment versions of operators (such as `operator+=`)
+tend to be more efficient than stand-alone versions of those operators (e.g. `operator+`). 
+As a library designer, you should offer both, 
+and as an application developer, 
+you should consider using assignment versions of operators instead of stand-alone versions 
+whenever performance is at a premium. 
 
 
 
@@ -3451,11 +3587,207 @@ is both well-known and commonly implemented.
 ### 📌 Item 23: Consider alternative libraries
 
 
+Different designers assign different priorities to these criteria. 
+They thus sacrifice different things in their designs. 
+As a result, it is common for two libraries offering similar functionality 
+to have quite different performance profiles.
+
+
+As an example, consider `<iostream>` and `<cstdio>`. 
+Both of which should be available to every C++ programmer.
+`<iostream>` has several advantages over its C counterpart. 
+E.g., it’s type-safe and extensible.
+However, in terms of efficiency, the `<iostream>` generally suffers in comparison with `<cstdio>`,
+because `<cstdio>` usually generates smaller and faster executables than those arising from `<iostream>`.
+
+
 
 
 
 
 ### 📌 Item 24: Understand the costs of virtual functions, multiple inheritance, virtual base classes, and RTTI
+
+- Two costs of virtual functions
+  1. One virtual table for each polymorphic class
+  2. One virtual table pointer for each polymorphic object
+- **Avoid** declaring virtual functions `inline` to avoid virtual table bloats. 
+
+
+Many implementation details of C++ language features are compiler-dependent. 
+Different compilers implement language features in different ways.
+However, the implementation of some features can have a noticeable impact 
+on the size of objects and the speed at which member functions execute, 
+so for those features, it’s important to have a basic understanding of 
+what compilers are likely to be doing under the hood.
+The foremost example of such a feature is virtual functions.
+
+
+When a virtual function is called, 
+the code executed must correspond to the dynamic type of the object on which the function is invoked; 
+the type of the pointer or reference to the object is immaterial. 
+How can compilers provide this behavior efficiently? 
+Most implementations use _virtual tables_ and _virtual table pointers_. 
+Virtual tables and virtual table pointers are commonly referred to as `vtbls` and `vptrs`, respectively. 
+
+
+A virtual table is usually an array of pointers to functions. 
+(Some compilers use a form of linked list instead of an array, 
+but the fundamental strategy is the same.) 
+Each class in a program that declares or inherits virtual functions has its own virtual table, 
+and the entries in a class’s virtual table are 
+pointers to the implementations of the virtual functions for that class. 
+For example, given a class definition like this,
+```c++
+class C1
+{
+public:
+    C1();
+    virtual ~C1();
+    
+    virtual void f1();
+    virtual int f2(char c) const;
+    virtual void f3(const std::string & s);
+    void f4() const;
+    
+    ...
+};
+```
+`C1`’s virtual table array will look something like this:
+```
+C1's vtbl
+  ┌──┐
+  │ ─┼──→ Implementation of C1::~C1
+  ├──┤
+  │ ─┼──→ Implementation of C1::f1
+  ├──┤
+  │ ─┼──→ Implementation of C1::f2
+  ├──┤
+  │ ─┼──→ Implementation of C1::f3
+  └──┘
+```
+Note that the non-virtual function `f4` is not in the table, nor is `C1`’s constructor.
+Non-virtual functions (including constructors, which are by definition nonvirtual) 
+are implemented just like ordinary C functions,
+so there are no special performance considerations surrounding their use.
+
+
+If a class `C2` inherits from `C1`, redefines some virtual functions it inherits, and adds some new ones of its own, 
+```c++
+class C2 : public C1 
+{
+public:
+    C2();                       // non-virtual function
+    ~C2() override;             // redefined function
+    
+    void f1() override;         // redefined function
+    virtual void f5(char * s);  // new virtual function
+    
+    ...
+};
+```
+its virtual table entries point to the functions that are appropriate for objects of its type. 
+These entries include pointers to the `C1` virtual functions that `C2` chose not to redefine:
+```
+C2's vtbl
+  ┌──┐
+  │ ─┼──→ Implementation of C2::~C2
+  ├──┤
+  │ ─┼──→ Implementation of C2::f1
+  ├──┤
+  │ ─┼──→ Implementation of C1::f2
+  ├──┤
+  │ ─┼──→ Implementation of C1::f3
+  ├──┤
+  │ ─┼──→ Implementation of C2::f5
+  └──┘
+```
+This discussion brings out the first cost of virtual functions: 
+You have to set aside space for a virtual table for each class that contains virtual functions. 
+The size of a class’s virtual table is proportional to the number of virtual functions declared for that class 
+(including those it inherits from its base classes). 
+There should be only one virtual table per class, 
+so the total amount of space required for virtual tables is not usually significant,
+but if you have a large number of classes or a large number of virtual functions in each class, 
+you may find that the virtual tables take a significant bite out of your address space.
+
+
+Because you need only one copy of a class’s virtual table in your programs,
+compilers must address a tricky problem that where to put it. 
+Most programs and libraries are created by linking together many object files,
+but each object file is generated independently of the others. 
+Which object file should contain the virtual table for any given class? 
+
+
+The object file containing `main` is **not** an option, 
+because libraries have no `main`,
+and at any rate the source file containing `main` may make no mention 
+of many of the classes requiring virtual tables.
+
+
+Compiler vendors tend to fall into two camps. 
+1. **Brute-force Strategy**:
+   Generate a copy of the virtual table in each object file that might need it.
+   The linker then strips out duplicate copies, 
+   leaving only a single instance of each virtual table in the final executable or library.
+3. **Heuristic Strategy**: 
+   A class’s virtual table is generated in the object file 
+   containing the definition (i.e., the body) of the first 
+   non-`inline` non-pure virtual function in that class. 
+   - Thus, the virtual table for class `C1` above would be placed in the object file 
+     containing the definition of `C1::~C1` (provided that function wasn’t `inline`), 
+     and the virtual table for class `C2` would be placed in the object file 
+     containing the definition of `C2::~C2` (again, provided that function wasn’t `inline`).
+   - If all virtual functions in a class are declared `inline`, the heuristic fails, 
+     and most heuristic-based implementations then generate a copy of the class’s virtual 
+     in _every object file_ that uses it. 
+     In large systems, this can lead to programs containing 
+     hundreds or thousands of copies of a class’s virtual table! 
+     Most compilers following this heuristic give you some way to control virtual table generation manually, 
+     but a better solution to this problem is to avoid declaring virtual functions `inline`. 
+     As a result, present compilers typically ignore the `inline` directive for virtual functions. 
+
+
+Virtual tables are half the implementation machinery for virtual functions,
+but by themselves they are useless. 
+They become useful only when there is some way of indicating 
+which virtual table corresponds to each object, 
+and it is the job of the _virtual table pointer_ to establish that correspondence. 
+
+
+Each object whose class declares virtual functions carries with it 
+a hidden data member that points to the virtual table for that class. 
+This hidden data member (the virtual table pointer `vptr`) 
+is added by compilers at a location in the object known only to the compilers. 
+Conceptually, we can think of the layout of an object that has virtual functions as looking like this:
+```
+┌───────────────────────┐
+│      Data Member      │
+├───────────────────────┤
+│ Virtual table Pointer │
+└───────────────────────┘
+```
+This picture shows the `vptr` at the end of the object, 
+but actually, different compilers put them in different places. 
+In the presence of inheritance, an object’s `vptr` is often surrounded by data members. 
+Multiple inheritance complicates this picture, 
+but we’ll deal with that a bit later. 
+At this point, simply note the second cost of virtual functions:
+you have to pay for an extra pointer inside each object that is of a class containing virtual functions. 
+
+
+If your objects are small, this can be a significant cost. 
+If your objects contain on average four Bytes of member data, 
+the addition of a `vptr` can triple their size on a 64bit platform. 
+On systems with limited memory, this means the number of objects you can create is reduced. 
+Even on systems with unconstrained memory, 
+you may find that the performance of your software decreases, 
+because larger objects mean fewer fit on each cache or virtual memory page, 
+and that means your paging activity will probably increase.
+
+
+Suppose we have a program with several objects of types `C1` and `C2`.
+We can envision the objects in our program like this:
+![Sample Layout](./vptr_to_vtbl.gif)
 
 
 
