@@ -2458,10 +2458,282 @@ __DATE__
 ````
 
 
-### 🌱 `C++17`引入的语法糖大宝贝
+### 🌱 [`C++17`引入的大宝贝](https://en.cppreference.com/w/cpp/17)
 
-- [Structured Bindings](https://skebanga.github.io/structured-bindings/)
-- [`if`, `switch` with initializer](https://skebanga.github.io/if-with-initializer/)
+#### [Fold Expression](https://en.cppreference.com/w/cpp/language/fold)
+
+- Syntax
+  - `( pack op ... )`: unary right fold
+  - `( ... op pack )`: unary left fold
+  - `( pack op ... op init )`: binary right fold
+  - `( init op ... op pack )`: binary left fold
+  - `op`: any of the following 32 binary operators. In a binary fold, both ops must be the same.
+  - `pack`: an expression that contains an unexpanded parameter pack and does not contain a cast-expression. 
+  - `init`:	an expression that does not contain an unexpanded parameter pack and does not contain a cast-expression.
+  - Note that the opening and closing parentheses are a required part of the fold expression. 
+- Explanation
+  1. Unary right fold `(E op ...)` becomes `(E_1 op (... op (E_{N-1} op E_N)))`
+  2. Unary left fold `(... op E)` becomes `(((E_1 op E_2) op ...) op E_N)`
+  3. Binary right fold `(E op ... op I)` becomes `(E_1 op (... op (E_{N−1} op (E_N op I))))`
+  4. Binary left fold `(I op ... op E)` becomes `((((I op E_1) op E_2) op ...) op E_N)`
+- When a unary fold is used with a pack expansion of length zero, only the following operators are allowed:
+  1. Logical AND (`&&`). The value for the empty pack is `true`
+  2. Logical OR (`||`). The value for the empty pack is `false`
+  3. The comma operator (`,`). The value for the empty pack is `void()`
+- Note: 
+  - If the expression used as init or as pack has an operator with precedence below cast at the top level, 
+    it must be parenthesized:
+  ```c++
+  template <typename ... Args>
+  int sum(Args ... args)
+  {
+      // return (args + ... + 1 * 2);  // Error: operator with precedence below cast
+      return (args + ... + (1 * 2));   // OK
+  }
+  ```
+- Example
+```c++
+#include <iostream>
+#include <vector>
+#include <climits>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+ 
+template <typename ... Args>
+void printer(Args && ... args)
+{
+    (std::cout << ... << args) << '\n';
+}
+ 
+template <typename T, typename ... Args>
+void push_back_vec(std::vector<T> & v, Args && ... args)
+{
+    static_assert((std::is_constructible_v<T, Args &&> && ...));
+    (v.push_back(std::forward<Args>(args)), ...);
+}
+ 
+// compile-time endianness swap based on http://stackoverflow.com/a/36937049 
+template <class T, std::size_t ... N>
+constexpr T bswap_impl(T i, std::index_sequence<N...>)
+{
+    return (((i >> N * CHAR_BIT & std::uint8_t(-1)) << (sizeof(T) - 1 - N) * CHAR_BIT) | ...);
+}
+ 
+template <class T, class U = std::make_unsigned_t<T>>
+constexpr U bswap(T i)
+{
+    return bswap_impl<U>(i, std::make_index_sequence<sizeof(T)>{});
+}
+ 
+int main()
+{
+    printer(1, 2, 3, "abc");
+ 
+    std::vector<int> v;
+    push_back_vec(v, 6, 2, 45, 12);
+    push_back_vec(v, 1, 2, 9);
+    for (const auto i : v) std::cout << i << ' ';
+ 
+    static_assert(bswap<std::uint16_t>(0x1234u) == 0x3412u);
+    static_assert(bswap<std::uint64_t>(0x0123456789abcdefULL) == 0xefcdab8967452301ULL);
+    
+    return EXIT_SUCCESS;
+}
+
+// Output: 
+// 123abc
+// 6 2 45 12 1 2 9
+```
+
+#### [`if`](https://en.cppreference.com/w/cpp/language/if)
+
+- `if` syntax
+```
+attr(optional) if constexpr(optional) ( init-statement(optional) condition )
+    statement-true 
+else 
+    statement-false
+```
+- `if` statements with initializer (also for [`switch`](https://en.cppreference.com/w/cpp/language/switch))
+  - If `init-statement` is used, the `if` statement is equivalent to
+  ```c++
+  {
+      init_statement
+      attr(optional) if constexpr(optional) ( condition )
+          statement-true
+      else
+          statement-false
+  }
+  ```
+  - Except that names declared by the `init-statement` or `condition` 
+    are in the same scope of `statement-true` and `statement-false`.
+```c++
+std::map<int, std::string> m;
+std::mutex mx;
+extern bool shared_flag;  // guarded by mx
+
+if (auto it = m.find(10); it != m.end()) { return it->second.size(); }
+if (char buf[10]; std::fgets(buf, 10, stdin)) { m[0] += buf; }
+if (std::lock_guard lock(mx); shared_flag) { unsafe_ping(); shared_flag = false; }
+if (int s; int count = ReadBytesWithSignal(&s)) { publish(count); raise(s); }
+
+if (const auto keywords = {"if", "for", "while"};
+    std::ranges::any_of(keywords, [&tok](const char* kw) { return tok == kw; })) 
+{
+    std::cerr << "Token must not be a keyword\n";
+}
+```
+- `constexpr if`
+  - The statement that begins with `if constexpr` is known as the `constexpr if` statement.
+  - In a `constexpr if` statement, the value of `condition` must be 
+    an expression contextually converted to `bool`, where the conversion is a constant expression `(since C++23)`. 
+    If the `value` is `true`, then `statement-false` is discarded (if present), 
+    otherwise, `statement-true` is discarded.
+  - The `return` statements in a discarded `statement` 
+    do **not** participate in function return type deduction:
+  ```c++
+  // Something non-achievable without dispatchers previously
+  template <typename T>
+  auto get_value(T t) 
+  {
+      if constexpr (std::is_pointer_v<T>)
+          return *t;  // deduces return type to int for T = int*
+      else
+          return t;   // deduces return type to int for T = int
+  }
+  ```
+  - The discarded statement can [odr-use](https://en.cppreference.com/w/cpp/language/definition#One_Definition_Rule) 
+    a variable that is `not` defined
+  ```c++
+  extern int x; // no definition of x required
+  int f() 
+  {
+      if constexpr (true)
+          return 0;
+      else if (x)
+          return x;
+      else
+          return -x;
+  }
+  ```
+
+#### [Structured Bindings](https://en.cppreference.com/w/cpp/language/structured_binding)
+
+- Binding to arrays, tuple-like types and class data members
+```c++
+int a[2] = {1, 2};
+ 
+auto [x, y] = a;      // creates e[2], copies a into e, then x refers to e[0], y refers to e[1]
+auto & [xr, yr] = a;  // xr refers to a[0], yr refers to a[1]
+
+float x{};
+char  y{};
+int   z{};
+ 
+std::tuple<float &, char &&, int> tup(x, std::move(y), z);
+
+// a names a structured binding that refers to x; decltype(a) is float &
+// b names a structured binding that refers to y; decltype(b) is char &&
+// c names a structured binding that refers to the 3rd element of tup; decltype(c) is const int
+const auto & [a, b, c] = tup;
+
+struct S 
+{
+    mutable int x1 : 2;
+    volatile double y1;
+};
+
+S f() { return S{1, 2.3}; }
+
+const auto [x, y] = f();             // x is an int lvalue identifying the 2-bit bit field
+                                     // y is a const volatile double lvalue
+std::cout << x << ' ' << y << '\n';  // 1 2.3
+x = -2;                              // OK
+//  y = -2.;                         // Error: y is const-qualified
+std::cout << x << ' ' << y << '\n';  // -2 2.3
+```
+
+#### [`inline` Specifier](https://en.cppreference.com/w/cpp/language/inline)
+
+- Inline Functions
+  - The `inline` specifier, when used in a function's `decl-specifier-seq`, 
+    declares the function to be an `inline` function.
+  - A function defined entirely inside a `class`/`struct`/`union` definition, 
+    whether it's a member function or a non-member friend function, 
+    is implicitly an `inline` function if it is attached to the global module `(since C++20)`.
+  - A function declared `constexpr` is implicitly an `inline` function.
+  - A `delete`d function is implicitly an `inline` function: 
+    its (`delete`d) definition can appear in more than one translation unit. 
+- Inline Variables
+  - The `inline` specifier, when used in a `decl-specifier-seq` of a variable with `static` storage duration 
+    (`static` `class` member or namespace-scope variable), 
+    declares the variable to be an `inline` variable.
+  - A static member variable (but **not** a namespace-scope variable) declared `constexpr` 
+    is implicitly an `inline` variable.
+- Explanation
+  - An `inline` function or variable has the following properties:
+    1. The definition of an `inline` function or variable must be reachable 
+       in the translation unit where it is accessed (not necessarily before the point of access). 
+    2. An `inline` function or variable with `external` linkage (e.g. **not** `static`) 
+       has the following additional properties:
+       1. There may be more than one definition of an `inline` function or variable in the program 
+          as long as each definition appears in a different translation unit, 
+          and for non-`static` inline functions and variables, all definitions are identical. 
+          For example, an `inline` function or variable 
+          may be defined in a header file that is `#include`'d in multiple source files. 
+       2. It must be declared `inline` in every translation unit. 
+       3. It has the same address in every translation unit. 
+  - In an `inline` function,
+    - Function-local `static` objects in all function definitions 
+      are shared across all translation units 
+      (they all refer to the same object defined in one translation unit); 
+    - Types defined in all function definitions are also the same in all translation units.
+  - `inline` `const` variables at namespace scope have external linkage by default 
+    (unlike the non-`inline` non-`cv`-qualified variables). 
+  - `inline` variables eliminate the main obstacle to packaging C++ code as header-only libraries. 
+```c++
+/// "example.h"
+#ifndef EXAMPLE_H
+#define EXAMPLE_H
+ 
+#include <atomic>
+ 
+// function included in multiple source files must be inline
+inline int sum(int a, int b)
+{
+    return a + b;
+}
+ 
+// variable with external linkage included in multiple source files must be inline
+inline std::atomic<int> counter(0);
+ 
+#endif
+
+/// "1.cpp"
+#include "example.h"
+
+int a()
+{
+    ++counter;
+    return sum(1, 2);
+}
+
+/// "2.cpp"
+#include "example.h"
+
+int a() // yet another function with name `a`
+{
+    ++counter;
+    return sum(3, 4);
+}
+
+int b()
+{
+    ++counter;
+    return sum(5, 6);
+}
+```
 
 
 
@@ -5947,8 +6219,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
 ```
 auto f1 = [capture_list] (paramater_list) -> return_type { function_body; };
 
-// type casts
-// do NOT use these!!!
+// type casts, do NOT use these!!!
 std::function<return_type (paramater_list)> f2                  = f1;
 return_type                               (*f3)(paramater_list) = f1;
 ```
@@ -5994,7 +6265,23 @@ bool (*)(int, int)
 
 #### 内容物
 
-- 捕获列表
+- Capture List `[capture_list]`: 
+    - The capture list is a comma-separated list of zero or more `capture`s, optionally beginning with the `capture-default`. 
+    - The capture list defines the outside variables that are accessible from within the lambda function body. 
+    - Possible `capture-default`s (**not** recommended to use): 
+      1. `&` (implicitly capture the used automatic variables by reference)
+      2. `=` (implicitly capture the used automatic variables by copy).
+    - Possible `capture`s:
+      1. `identifier`: simple by-copy capture
+      2. `identifier ...`: simple by-copy capture that is a pack expansion
+      3. `identifier initializer`: by-copy capture with an initializer
+      4. `& identifier`: simple by-reference capture
+      5. `& identifier ...`: simple by-reference capture that is a pack expansion
+      6. `& identifier initializer`: by-reference capture with an initializer
+      7. `this`: simple by-reference capture of the current object
+      8. `* this`: simple by-copy capture of the current object
+      9. `... identifier initializer`: by-copy capture with an initializer that is a pack expansion
+      10. `& ... identifier initializer`:  by-reference capture with an initializer that is a pack expansion
     - 把`lambda`表达式 *所在的函数中的局部非静态变量* 声明在捕获列表里，就可以在`lambda`表达式函数体使用该变量
     - 对于局部静态变量或者全局变量，则**不需捕获**即可使用
     - 捕获方式：与参数传递方式类似，可以是
@@ -6038,7 +6325,8 @@ bool (*)(int, int)
         - `[=]`： 隐式值捕获列表。编译器自动值捕获`lambda`函数体中使用的局部变量
         - `[&, identifier_list]`：混合式引用捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，变量名前**不能**有`&`。这些变量采用值捕获方式，而其他被隐式捕获的变量则一律采用引用捕获
         - `[=, identifier_list]`：混合式值捕获列表。`identifier_list`是一个逗号分隔的名字列表，包含0至多个变量，**不能**包含`this`，变量名前 *必须* 有`&`。这些变量采用引用捕获方式，而其他被隐式捕获的变量则一律采用值捕获
-- 参数列表
+- 参数列表 Parameter List `(params)`
+    - The list of parameters, as in named functions. `auto` type parameter is accepted `(since C++17)`. 
     - 对于非可变`lambda`，可以连同括号一起忽略。如忽略，则等价于指定 *空的* 参数列表
     - **不能**有 *默认参数*
 - 返回值类型
