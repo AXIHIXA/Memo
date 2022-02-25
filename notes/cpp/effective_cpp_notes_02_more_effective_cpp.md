@@ -4308,6 +4308,540 @@ Turn to Item 31, it’s devoted to that question.
 
 ### 📌 Item 26: Limiting the number of objects of a class
 
+- Including Meyers singleton and object counting. 
+
+
+#### Allowing Zero or One Objects
+
+
+Each time an object is instantiated, we know one thing for sure: 
+A constructor will be called. 
+That being the case, the easiest way to prevent objects of a particular class from being created 
+is to declare the constructors of that class `private`. 
+```c++
+class CantBeInstantiated
+{
+private:
+    CantBeInstantiated();
+    CantBeInstantiated(const CantBeInstantiated &);
+    ...
+};
+```
+Having thus removed everybody’s right to create objects, 
+we can selectively loosen the restriction. 
+If we want to create a singleton class for printers, 
+we can encapsulate the printer object inside a getter function so that everybody has access to the printer, 
+but only a single printer object is created:
+```c++
+class PrintJob;
+class Printer 
+{
+public:
+    static Printer & thePrinter();
+    
+public:
+    void submitJob(const PrintJob & job);
+    void reset();
+    void performSelfTest();
+    ...
+    
+private:
+    Printer();
+    Printer(const Printer& rhs);
+    ...
+};
+
+Printer & Printer::thePrinter()
+{
+    static Printer p;
+    return p;
+}
+```
+There are two separate components to this design. 
+1. The constructors of the `Printer` class are `private`. 
+   That suppresses object creation.
+2. `thePrinter` contains a `static` `Printer` object. 
+   That means only a single object will be created.
+
+Client code refers to `thePrinter` whenever it wishes to interact with the system’s lone printer. 
+By returning a reference to a `Printer` object, 
+`thePrinter` can be used in any context where a `Printer` object itself could be:
+```c++
+class PrintJob 
+{
+public:
+    PrintJob(const std::string & whatToPrint);
+    ...
+};
+
+std::string buffer;
+
+Printer::thePrinter().reset();
+Printer::thePrinter().submitJob(buffer);
+```
+Another option is to declare `Printer` and `thePrinter` 
+still out of the global scope and into a _namespace_. 
+```c++
+namespace PrintingStuff 
+{
+
+class Printer 
+{
+public:
+    friend Printer & thePrinter();
+    
+public:
+    void submitJob(const PrintJob & job);
+    void reset();
+    void performSelfTest();
+    ...
+    
+private:
+    Printer();
+    Printer(const Printer & rhs);
+    ...
+};
+
+Printer & thePrinter()
+{
+    static Printer p;
+    return p;
+}
+
+}  // namespace PrintingStuff
+
+PrintingStuff::thePrinter().reset();
+PrintingStuff::thePrinter().submitJob(buffer);
+```
+It’s important that the single `Printer` object be `static` in a function and **not** in a class. 
+We have two reasons: 
+1. **Eliminating useless constructions**. 
+   An object that’s `static` in a class is always constructed (and destructed), even if it’s never used. 
+   In contrast, an object that’s `static` in a function is created the first time through the function, 
+   so if the function is never called, the object is never created.
+   (You do, however, pay for a check each time the function is called 
+   to see whether the object needs to be created.) 
+   One of the philosophical pillars on which C++ was built is the idea 
+   that you shouldn’t pay for things you don’t use, 
+   and defining an object like our printer as a `static` object in a function 
+   is one way of adhering to this philosophy. 
+   It’s a philosophy you should adhere to whenever you can.
+2. **Ensuring The Time of Initialization**. 
+   There is another drawback to making the printer a class `static` versus a function `static`,
+   and that has to do with its time of initialization.
+   We know exactly when a function `static` is initialized:
+   The first time through the function at the point where the `static` is defined.
+   The situation with a class or a global `static` is less well-defined.
+   C++ offers certain guarantees regarding the order of initialization of `static`s
+   within a particular translation unit
+   (i.e., a body of source code that yields a single object file),
+   but it says **nothing** about the initialization order of `static` objects
+   in different translation units.
+   In practice, this turns out to be a source of countless headaches.
+   Function `static`s, when they can be made to suffice, allow us to avoid these headaches.
+
+
+#### Contexts for Object Construction
+
+
+```c++
+class TooManyObjects : public std::logic_error { ... }; 
+
+class Printer 
+{
+public:
+    // there is a limit of 1 printer, so never allow copying
+    Printer(const Printer & rhs) = delete;
+    
+public:
+    Printer();
+    ~Printer();
+    ...
+    
+private:
+    static std::size_t numObjects;
+};
+
+Printer::Printer()
+{
+    if (numObjects >= 1) 
+    {
+        throw TooManyObjects();
+    }
+    
+    // proceed with normal construction here
+    
+    ++numObjects;
+}
+
+Printer::~Printer()
+{
+    // perform normal destruction here
+    
+    --numObjects;
+}
+
+// Obligatory definition of the class static
+std::size_t Printer::numObjects = 0;
+```
+This approach to limiting object creation is attractive for a couple of reasons: 
+1. It’s straightforward, everybody understands what’s going on. 
+2. It’s easy to generalize so that the maximum number of objects is some number other than one. 
+
+
+There is also a problem with this strategy. 
+Suppose we have a special kind of printer, `ColorPrinter`. 
+The class for such printers would have much in common with our generic printer class, 
+so of course we’d inherit from it: 
+```c++
+class ColorPrinter : public Printer 
+{
+    ...
+};
+
+Printer p;
+ColorPrinter cp;  // TooManyObjects thrown for cp's Printer part
+```
+How many `Printer` objects result from these object definitions? 
+The answer is two: one for `p` and one for the `Printer` part of `cp`. 
+At runtime, a `TooManyObjects` exception will be thrown 
+during the construction of the base class part of `cp`. 
+For many programmers, this is neither what they want nor what they expect. 
+(Designs that avoid having concrete classes inherit from other concrete classes 
+do not suffer from this problem. See Item 33.)
+
+
+A similar problem occurs when `Printer` objects are contained inside other objects: 
+```c++
+// machines that can copy, print, and fax
+class CPFMachine
+{ 
+private:
+    Printer p;      // for printing capabilities
+    FaxMachine f;   // for faxing capabilities
+    CopyMachine c;  // for copying capabilities
+    ...
+};
+
+CPFMachine m1;  // fine
+CPFMachine m2;  // throws TooManyObjects exception
+```
+The problem is that `Printer` objects can exist in three different contexts:
+1. On their own; 
+2. As base class parts of more derived objects;
+3. Embedded inside larger objects. 
+
+
+The presence of these different contexts significantly muddies the waters
+regarding what it means to keep track of the “number of objects in existence,” 
+because what you consider to be the existence of an object may not jibe with your compilers’. 
+
+
+Often you will be interested only in allowing objects to exist on their own, 
+and you will wish to limit the number of those kinds of instantiations.
+That restriction is easy to satisfy if you adopt the strategy exemplified by our original `Printer` class, 
+because the `Printer`constructors are `private`, 
+and classes with `private` constructors can’t be used as base classes (without friend declarations), 
+nor can they be embedded inside other objects.
+
+
+The fact that you can’t derive from classes with `private` constructors
+leads to a general scheme for preventing derivation, 
+one that does not necessarily have to be coupled with limiting object instantiations. 
+Suppose, you have a class `FSA` for representing finite state automata. 
+Further suppose you’d like to allow any number of `FSA` objects to be created,
+but you’d also like to ensure that no class ever inherits from `FSA`. 
+(One reason for doing this might be to justify the presence of a non-`virtual` destructor in `FSA`. 
+As Item 24 explains, classes without virtual functions yield smaller objects 
+than do equivalent classes with `virtual` functions.) 
+Here’s how you can design `FSA` to satisfy both criteria:
+```c++
+// 233
+class FSA final { ... };
+```
+```c++
+class FSA
+{
+public:
+    // pseudo-constructors
+    static FSA * makeFSA();
+    static FSA * makeFSA(const FSA & rhs);
+    ...
+    
+private:
+    FSA();
+    FSA(const FSA & rhs);
+    ...
+};
+
+FSA * FSA::makeFSA()
+{
+    return new FSA();
+}
+
+FSA * FSA::makeFSA(const FSA & rhs)
+{
+    return new FSA(rhs);
+}
+```
+Unlike the `thePrinter` function that always returned a reference to a single object, 
+each `makeFSA` pseudo-constructor returns a pointer to a unique object. 
+That’s what allows an unlimited number of `FSA` objects to be created.
+
+
+This is nice, but the fact that each pseudo-constructor calls `new` 
+implies that callers will have to remember to call `delete`.
+(We need smart pointers. 
+C++ has neither `std::shared_ptr`, `std::unique_ptr`, 
+nor `std::weak_ptr` when Meyers wrote this. 
+~~`std::auto_ptr`~~ is nothing more than a joke.)
+
+
+#### Allowing Objects to Come and Go
+
+
+We now know how to design a class that allows only a single instantiation,
+we know that keeping track of the number of objects of a particular class 
+is complicated by the fact that object constructors are called in three different contexts, 
+and we know that we can eliminate the confusion surrounding object counts
+by making constructors `private`. 
+
+
+It is worthwhile to make one final observation. 
+Our use of the `thePrinter` function to encapsulate access to a single object 
+limits the number of `Printer` objects to one,
+but it also limits us to a single `Printer` object for each run of the program. 
+As a result, it’s impossible to write code like this:
+```c++
+create Printer object p1;
+use p1;
+destroy p1;
+create Printer object p2;
+use p2;
+destroy p2;
+...
+```
+This design never instantiates more than a single `Printer` object at a time, 
+but it does use different `Printer` objects in different parts of the program. 
+
+
+To allow such usage, 
+we combine the object-counting code we used earlier 
+with the pseudo-constructors we just saw:
+```c++
+class TooManyObjects : public std::logic_error { ... };
+
+class Printer
+{
+public:
+    Printer(const Printer & rhs) = delete;
+    
+public:
+    static Printer * makePrinter();
+    static Printer * makePrinter(const Printer & rhs);
+
+public:
+    ~Printer();
+    
+    void submitJob(const PrintJob & job);
+    void reset();
+    void performSelfTest();
+    
+private:
+    static std::size_t numObjects;
+    static constexpr std::size_t MAX_NUM_OBJECTS {1};
+    
+private:
+    Printer();
+};
+
+Printer * Printer::makePrinter()
+{
+    return new Printer;
+}
+
+Printer * Printer::makePrinter(const Printer & rhs)
+{
+    return new Printer {rhs};
+}
+
+Printer::~Printer()
+{
+    // perform normal destruction here
+
+    --numObjects;
+}
+
+std::size_t Printer::numObjects = 0;
+
+Printer::Printer()
+{
+    if (numObjects >= MAX_NUM_OBJECTS)
+    {
+        throw TooManyObjects();
+    }
+
+    // proceed with normal construction here
+
+    ++numObjects;
+}
+```
+If the notion of throwing an exception when too many objects are requested
+strikes you as unreasonably harsh, 
+you could have the pseudo-constructor return a null pointer instead. 
+Clients would then have to check for this before doing anything with it.
+
+
+Clients use this `Printer` class just as they would any other class, 
+except they must call the pseudo-constructor function instead of the real constructor:
+```c++
+// error! default constructor is private
+Printer p1; 
+
+// fine, indirectly calls default constructor
+Printer * p2 = Printer::makePrinter();
+
+// error! copy constructor is deleted
+Printer p3 = *p2;
+
+// all other functions are called as usual
+p2->performSelfTest(); 
+p2->reset(); 
+
+delete p2;
+```
+This technique is easily generalized to any number of objects. 
+All we have to do is update `Printer::MAX_NUM_OBJECTS`. 
+
+
+#### An Object-Counting Base Class
+
+```c++
+template <typename BeingCounted, std::size_t maxObjectCount>
+class Counted
+{
+public:
+    class TooManyObjects;
+    
+public:
+    static std::size_t objectCount()
+    {
+        return numObjects;
+    }
+
+protected:
+    Counted();
+
+    Counted(const Counted & rhs);
+
+    ~Counted()
+    {
+        --numObjects;
+    }
+
+private:
+    static std::size_t numObjects;
+    static constexpr std::size_t MAX_OBJECT_COUNT {maxObjectCount};
+};
+
+template <typename BeingCounted>
+static std::size_t Counted<BeingCounted>::numObjects {0};
+
+template <typename BeingCounted>
+class Counted<BeingCounted>::TooManyObjects : public std::logic_error 
+{ 
+    ... 
+};
+
+template <typename BeingCounted>
+Counted<BeingCounted>::Counted()
+{
+    if (numObjects >= MAX_OBJECT_COUNT)
+    {
+        throw TooManyObjects();
+    }
+    
+    ++numObjects;
+}
+
+template <typename BeingCounted>
+Counted<BeingCounted>::Counted(const Counted<BeingCounted> &) 
+        : Counted()
+{
+
+}
+```
+```c++
+constexpr std::size_t MAX_NUM_PRINTERS {10};
+
+class Printer : private Counted<Printer, MAX_NUM_PRINTERS>
+{
+public:
+    using Counted<Printer>::objectCount;
+    using Counted<Printer>::TooManyObjects;
+
+    Printer(const Printer & rhs) = delete;
+
+    static Printer * makePrinter();
+    static Printer * makePrinter(const Printer & rhs);
+
+public:  
+    ~Printer();
+
+    void submitJob(const PrintJob & job);
+    void reset();
+    void performSelfTest();
+
+    ...
+
+private:
+    Printer();
+};
+```
+The fact that `Printer` uses the `Counted` template to keep track of how many `Printer` objects exist
+is nobody’s business but the author of `Printer`’s. 
+Such implementation details are best kept `private`, and that’s why `private` inheritance is used here. 
+The alternative would be to use `public` inheritance between `Printer` and `Counted<Printer>`, 
+but then we’d be obliged to give the `Counted` classes a `virtual` destructor. 
+Otherwise, we may risk incorrect behavior 
+if somebody `delete`d a `Printer` object through a `Counted<Printer> *` pointer.
+The presence of a `virtual` function in `Counted` would almost certainly 
+affect the size and layout of objects of classes inheriting from `Counted`.
+We don’t want to absorb that overhead, and the use of `private` inheritance lets us avoid it.
+
+
+Quite properly, most of what `Counted` does is hidden from `Printer`’s clients, 
+but those clients might reasonably want to find out how many `Printer` objects exist. 
+The `Counted` template offers the `objectCount` function to provide this information, 
+but that function becomes `private` in `Printer` due to our use of `private` inheritance. 
+To restore the public accessibility of that function, we employ a _`using` declaration_:
+```c++
+using Counted<Printer>::objectCount;
+```
+The class `TooManyObjects` is handled in the same fashion as `objectCount`,
+because clients of `Printer` must have access to `TooManyObjects` 
+if they are to be able to catch exceptions of that type.
+
+
+When `Printer` inherits from `Counted<Printer>`, it can forget about counting objects. 
+The class can be written as if somebody else were doing the counting for it, 
+because somebody else (`Counted<Printer>`)is. 
+A Printer constructor now looks like this:
+```c++
+Printer::Printer()
+{
+    // proceed with normal object construction
+}
+```
+What’s interesting here is not what you see, it’s what you don’t. 
+No checking of the number of objects to see if the limit is about to be exceeded,
+no incrementing the number of objects in existence once the constructor is done. 
+All that is now handled by the `Counted<Printer>` constructors, 
+and because `Counted<Printer>` is a base class of `Printer`, 
+we know that a `Counted<Printer>` constructor will always be called _before_ a `Printer` constructor. 
+If too many objects are created, a `Counted<Printer>` constructor throws an exception, 
+and the `Printer` constructor won’t even be invoked. 
+
 
 
 
