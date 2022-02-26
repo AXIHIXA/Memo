@@ -4817,7 +4817,8 @@ The `Counted` template offers the `objectCount` function to provide this informa
 but that function becomes `private` in `Printer` due to our use of `private` inheritance. 
 To restore the public accessibility of that function, we employ a _`using` declaration_:
 ```c++
-using Counted<Printer>::objectCount;
+public: 
+    using Counted<Printer>::objectCount;
 ```
 The class `TooManyObjects` is handled in the same fashion as `objectCount`,
 because clients of `Printer` must have access to `TooManyObjects` 
@@ -5620,12 +5621,868 @@ there is no portable way to determine that it is not on the heap, so we’re out
 
 ### 📌 Item 29: Reference counting
 
+- Read and write operations are in-differentiable without _Proxy Classes_ (see Item 30). 
+- Contents become unsharable once the user invokes non-`const` `operator[]` of reference-counting objects. 
+  A new copy need to be made for unsharable contents. 
+
+
+#### Implementing Reference Counting
+
+_Reference Counting_ is a technique that allows multiple objects with the same value 
+to share a single representation of that value. 
+There are two common motivations for the technique.
+1. **To simplify the bookkeeping surrounding heap objects**. 
+   Once an object is allocated by calling `new`, 
+   it’s crucial to keep track of who owns that object, 
+   because the owner and only the owner is responsible for calling `delete` on it. 
+   But ownership can be transferred from object to object as a program runs, 
+   so keeping track of an object’s ownership is hard work. 
+   Classes like _smart pointers_ can help with this task, 
+   but experience has shown that most programs still fail to get it right. 
+   Reference counting eliminates the burden of tracking object ownership, 
+  because when an object employs reference counting, it owns itself. 
+   When nobody is using it any longer, it destroys itself automatically. 
+   Thus, reference counting constitutes a simple form of garbage collection.
+2. **Sharing and reusing rather than duplicating**.
+   If many objects have the same value, 
+   it’s silly to store that value more than once. 
+   Instead, it’s better to let all the objects with that value share its representation. 
+   Doing so not only saves memory, it also leads to faster-running programs, 
+   because there’s no need to construct and destruct redundant copies of the same object value.
+
+
+**Implementing a Reference-Counting String**. 
+It’s important to recognize that we need a place to 
+store the reference count for each `String` value. 
+That place can **not** be in a `String` object, 
+because we need one reference count per string value,
+not one reference count per string object. 
+That implies a coupling between values and reference counts, 
+so we’ll create a class to store reference counts and the values they track. 
+We’ll call this class `StringValue` and nest it inside `String`’s private section. 
+Furthermore, it will be convenient to give all the member functions of `String`
+full access to the `StringValue` data structure, 
+so we’ll declare `StringValue` to be a `struct`. 
+This is a trick worth knowing: 
+Nesting a `struct` in the `private` part of a class is a convenient way 
+to give access to the `struct` to all the members of the class,
+but to deny access to everybody else (except, of course, friends of the class). 
+```c++
+class String 
+{
+public:
+    // the usual String member functions go here
+    String(const char * initValue = "");
+    String(const String & rhs);
+    ~String();
+    String & operator=(const String & rhs);
+    ... 
+    
+private:
+    // holds a reference count and a string value
+    struct StringValue
+    {
+        StringValue(const char * initValue);
+        ~StringValue();
+        
+        std::size_t refCount;
+        char * data;
+    };
+    
+    // value of this String
+    StringValue * value; 
+};
+
+String::String(const char * initValue)
+    : value(new StringValue(initValue))
+{
+    
+}
+
+String::String(const String & rhs)
+    : value(rhs.value)
+{
+    ++value->refCount;
+}
+
+String::~String()
+{
+    if (!--value->refCount) 
+    {
+        delete value;
+    }
+}
+
+String & String::operator=(const String & rhs)
+{
+    if (value != rhs.value) 
+    {
+        if (!value->refCount) 
+        {
+            delete value; 
+        }
+        
+        value = rhs.value; 
+        ++value->refCount;
+    }
+    
+    return *this;
+}
+
+String::StringValue::StringValue(const char * initValue)
+        : refCount(1)
+{
+    data = new char[std::strlen(initValue) + 1];
+    std::strcpy(data, initValue);
+}
+
+String::StringValue::~StringValue()
+{
+    delete [] data;
+}
+```
+For one thing, `String::StringValuye` has **neither** copy constructor, copy assignment operator, 
+**nor** manipulation of the `refCount` field. 
+The missing functionality will be provided by the `String` class. 
+The primary purpose of `StringValue` is to give us a place 
+to associate a particular value with a count of the number of `String` objects sharing that value. 
+```c++
+String s("More Effective C++");
+```
+```
+ ╭───╮      ╭───╮      ┌──────────────────────┐
+ │ s │ ───→ │ 1 │ ───→ │ "More Effective C++" │
+ ╰───╯      ╰───╯      └──────────────────────┘
+```
+```c++
+String s1("More Effective C++");
+String s2("More Effective C++");
+```
+```
+╭────╮      ╭───╮      ┌──────────────────────┐
+│ s1 │ ───→ │ 1 │ ───→ │ "More Effective C++" │
+╰────╯      ╰───╯      └──────────────────────┘
+╭────╮      ╭───╮      ┌──────────────────────┐
+│ s2 │ ───→ │ 1 │ ───→ │ "More Effective C++" │
+╰────╯      ╰───╯      └──────────────────────┘
+```
+```c++
+String s1("More Effective C++");
+String s2 = s1;
+```
+```
+╭────╮      ╭───╮      ┌──────────────────────┐
+│ s1 │ ───→ │ 2 │ ───→ │ "More Effective C++" │
+╰────╯      ╰───╯      └──────────────────────┘
+╭────╮        ↑
+│ s2 │ ───────┘
+╰────╯      
+```
+
+
+#### Copy-on-Write
+
+
+To round out our examination of reference-counted strings, 
+consider an array-bracket operator (`[]`), 
+which allows individual characters within strings to be read and written:
+```c++
+class String 
+{
+public:
+    const char & operator[](std::size_t index) const;
+    char & operator[](std::size_t index);
+    ...
+};
+
+const char & String::operator[](std::size_t index) const
+{
+    return value->data[index];
+}
+```
+The non-`const` version of `operator[]` is a completely different story.
+This function may be called to read a character, but it might also be called to write one.
+When we modify a `String`’s value, 
+we have to be careful to avoid modifying the value of other `String` objects 
+that happen to be sharing the same `StringValue` object. 
+Unfortunately, there is no way for C++ compilers to tell us 
+whether a particular use of `operator[]` is for a read or a write, 
+so we must be pessimistic and assume that all calls to
+the non-`const`` operator[]` are for writes. 
+(_Proxy classes_ can help us differentiate reads from writes, see Item 30.)
+
+
+To implement the non-`const` `operator[]` safely, 
+we must ensure that no other `String` object shares the `StringValue` 
+to be modified by the presumed write. 
+In short, we must ensure that the reference count for a `String`’s `StringValue` object 
+is exactly one any time we return a reference to a character inside that `StringValue` object: 
+```c++
+char & String::operator[](std::size_t index)
+{
+    // If we’re sharing a value with other String objects,
+    // break off a separate copy of the value for ourselves
+    if (value->refCount > 1)
+    {
+        // Decrement current value’s refCount, 
+        // because we won’t be using that value anymore. 
+        --value->refCount;
+
+        // Make a copy of the value for ourselves
+        value = new StringValue(value->data);
+    }
+    
+    // Return a reference to a character
+    // inside our unshared StringValue object
+    return value->data[index];
+}
+```
+The idea that of sharing a value with other objects until we have to write on our own copy of the value 
+has a long and distinguished history in Computer Science, 
+especially in Operating Systems, 
+where processes are routinely allowed to share pages until they want to modify data on their own copy of a page. 
+The technique is common enough to have a name: _copy-on-write_. 
+It’s a specific example of a more general approach to efficiency, that of _lazy evaluation_ (see Item 17).
+
+#### Pointers, References, and Copy-on-Write
+
+There is one lingering problem. Consider this code:
+```c++
+String s1 = "Hello";
+char * p = &s1[1];
+```
+```
+╭────╮      ╭───╮      ┌─────────┐
+│ s1 │ ───→ │ 1 │ ───→ │ "Hello" │
+╰────╯      ╰───╯      └─────────┘
+                            ↑
+                            p
+```
+```c++
+String s2 = s1;
+```
+```
+╭────╮      ╭───╮      ┌─────────┐
+│ s1 │ ───→ │ 2 │ ───→ │ "Hello" │
+╰────╯      ╰───╯      └─────────┘
+╭────╮        ↑             ↑               
+│ s2 │ ───────┘             p
+╰────╯      
+```
+```c++
+*p = 'x';  // modifies both s1 and s2!
+```
+There is no way the `String` copy constructor can detect this problem,
+because it has no way to know that a pointer into `s1`’s `StringValue` object exists. 
+And this problem isn’t limited to pointers: 
+it would exist if someone had saved a reference to the result 
+of a call to `String`’s non-`const` `operator[]`.
+
+
+There are at least three ways of dealing with this problem.
+1. **Ignore it**. 
+   This approach turns out to be distressingly common in class libraries 
+   that implement reference-counted strings.
+2. **Declare it undefined behavior**. 
+   Such implementations are often efficient,
+   but they leave much to be desired in the usability department.
+3. **Eliminate it at the cost of reduced amount of value sharing between objects**.
+   Add a flag to each `StringValue` object indicating whether that object is shareable. 
+   Turn the flag on initially (the object is shareable), 
+   but turn it off whenever the non-`const` `operator[]` is invoked on the value represented by that object. 
+   Once the flag is set to `false`, it stays `false` forever.
+
+
+`std::string` uses a combination of solutions two and three. 
+The reference returned from the non-`const` `operator[]` is guaranteed to be valid 
+until the next function call that might modify the string. 
+After that, use of the reference (or the character to which it refers) is _undefined behavior_.
+This allows `std::string`’s shareability flag to be reset to `true` 
+whenever a function is called that might modify the `std::string`.
+
+
+Here’s a modified version of `StringValue` that includes a shareability flag:
+```c++
+class String 
+{
+private:
+    struct StringValue 
+    {
+        StringValue(const char * initValue);
+        ~StringValue();
+        
+        std::size_t refCount;
+        bool shareable;        // add this
+        char * data;
+    };
+
+String::StringValue::StringValue(const char * initValue)
+        : refCount(1), shareable(true)  // add this
+{
+    data = new char[std::strlen(initValue) + 1];
+    std::strcpy(data, initValue);
+}
+
+// All the other String member functions 
+// check the shareable field in an analogous fashion
+String::String(const String & rhs)
+{
+    if (rhs.value->shareable) 
+    {
+        value = rhs.value;
+        ++value->refCount;
+    }
+    else 
+    {
+        value = new StringValue(rhs.value->data);
+    }
+}
+
+char & String::operator[](std::size_t index)
+{
+    if (value->refCount > 1) 
+    {
+        --value->refCount;
+        value = new StringValue(value->data);
+    }
+    
+    value->shareable = false;   // add this
+    
+    return value->data[index];
+}
+```
+If you use the proxy class technique of Item 30 to 
+distinguish read usage from write usage in `operator[]`, 
+you can usually reduce the number of `StringValue` objects 
+that must be marked unshareable. 
+
+
+#### Evaluation
+
+Reference counting is most useful for improving efficiency under the following conditions:
+- **Relatively few values are shared by relatively many objects**.
+  Such sharing typically arises through calls to copy constructors and copy assignment operators. 
+  The higher the objects/values ratio, the better the case for reference counting.
+- **Object values are expensive to create or destroy, or they use lots of memory**. 
+  Even when this is the case, reference counting still buys you nothing 
+  unless these values can be shared by multiple objects.
+
 
 
 
 
 
 ### 📌 Item 30: Proxy classes
+
+- Proxy classes allow you to achieve some types of behavior
+  that are otherwise difficult or impossible to implement, such as: 
+  - Multidimensional arrays ("`operator[][]`"-like usage); 
+  - `lvalue`/`rvalue` differentiation; 
+  - Suppression of implicit conversions (see Item 5). 
+- Proxy classes fails to replace real objects under the following circumstances (thus its limitations):
+  - Solvable: 
+    - You can **not** invoke functions requiring `(g)lvalues` to work with `operator[]`s returning proxies. 
+      You have to overload all of them manually (e.g., `operator`s, `std::swap`, etc.); 
+    - You can **not** invoke member functions on real objects through proxies. 
+      You also have to overload all of them manually. 
+  - Not solvable: 
+    - `auto` type deduction can **not** deduct the real object under proxy, 
+      thus leading to the pitfalls as specified in 
+      [Effective Modern C++](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md) 
+      Item 6. 
+    - Implicit conversion of proxy objects to `rvalue` objects requires one user-defined conversion operator, 
+      which blocks further implicit conversion sequences involving other user-defined conversions. 
+      As a result, it is possible for function calls that succeed when passed real objects 
+      to **fail** when passed proxies. 
+
+      
+#### Implementing Two-Dimensional Arrays
+
+There is no `operator[][]`, so how to implement double-brackets to index 2D arrays?
+```c++
+template <typename T>
+class Array2D 
+{
+public:
+    Array2D(std::size_t dim1, std::size_t dim2);
+    ...
+};
+
+Array2D<int> data(10, 20);                           // fine
+Array2D<float> * data = new Array2D<float>(10, 20);  // fine
+
+void processInput(std::size_t dim1, std::size_t dim2)
+{
+    Array2D<int> data(dim1, dim2);                   // fine
+    ...
+}
+
+std::cout << data[3][6] << '\n';                     // how?
+```
+If you can stomach the syntax, 
+you might follow the lead of the many programming languages 
+that use parentheses to index into arrays. 
+To use parentheses, you just overload `operator()`:
+```c++
+template <typename T>
+class Array2D
+{
+public:
+    // declarations that will compile
+    T & operator()(std::size_t index1, std::size_t index2);
+    const T & operator()(std::size_t index1, std::size_t index2) const;
+    ...
+};
+
+std::cout << data(3, 6) << '\n';
+```
+You might turn again to the notion of using brackets as the indexing operator. 
+Although there is no such thing as `operator[][]`,
+it is nonetheless legal to write code that appears to use it:
+```c++
+int data[10][20];
+std::cout << data[3][6] << '\n';  // fine
+```
+What gives is that the variable `data` is not really a two-dimensional array at all, 
+it’s a `10`-element one-dimensional array. 
+Each of those `10` elements is itself a `20`-element array, 
+so the expression `data[3][6]` really means `(data[3])[6]`, 
+i.e., the seventh element of the array that is the fourth element of data. 
+In short, the value yielded by the first application of the brackets is another array, 
+so the second application of the brackets gets an element from that secondary array.
+
+
+We can play the same game with our `Array2D` class by 
+overloading `Array2D::operator[]` to return an object of a new proxy class `Array1D`. 
+We can then overload `Array1D::operator[]` to return an element in our original two-dimensional array:
+```c++
+template <typename T>
+class Array2D
+{
+public:
+    class Array1D
+    {
+    public:
+        T & operator[](int index);
+        const T & operator[](int index) const;
+        ...
+    };
+
+    Array1D operator[](int index);
+    const Array1D operator[](int index) const;
+    ...
+};
+
+Array2D<float> data(10, 20);
+std::cout << data[3][6] << '\n';  // fine
+```
+Clients of the `Array2D` class need not be aware of the presence of the `Array1D` class. 
+Objects of this latter class stand for one-dimensional array objects 
+that, conceptually, do not exist for clients of `Array2D`. 
+Such clients program as if they were using real two-dimensional arrays. 
+It is of no concern to `Array2D` clients that those objects must, 
+in order to satisfy the vagaries of C++, 
+be syntactically compatible with one-dimensional arrays of other one-dimensional arrays.
+
+
+Each `Array1D` object stands for a one-dimensional array 
+that is absent from the conceptual model used by clients of `Array2D`. 
+Objects that stand for other objects are often called _proxy objects_, 
+and the classes that give rise to proxy objects are often called _proxy classes_. 
+In this example, `Array1D` is a proxy class. 
+Its instances stand for one-dimensional arrays that, conceptually, do not exist. 
+(The terminology for proxy objects and classes is far from universal;
+objects of such classes are also sometimes known as _surrogates_.)
+
+
+#### Distinguishing Reads from Writes via `operator[]`
+
+But proxy classes are flexible.
+For example, Item 5 shows how proxy classes can be employed 
+to prevent single-argument constructors from 
+being used to perform unwanted type conversions. 
+Proxy classes may also help distinguish reads from writes through `operator[]`. 
+
+
+Consider a reference-counted string type that supports `operator[]`.
+Such a type is examined in detail in Item 29.
+`operator[]` can be called in two different contexts: 
+to read a character or to write a character. 
+Reads are known as _rvalue usages_;
+writes are known as _lvalue usages_. 
+In general, using an object as an lvalue means using it such that it might be modified, 
+and using it as an rvalue means using it such that it can not be modified
+
+
+We’d like to distinguish between lvalue and rvalue usage of `operator[]` because, 
+especially for reference-counted data structures, 
+reads can be much less expensive to implement than writes.
+Writes of reference-counted objects may involve copying an entire data structure,
+but reads never require more than the simple returning of a value. 
+Unfortunately, it is impossible to distinguish lvalue usage from rvalue usage within `operator[]`. 
+
+
+Overloading `operator[]` on `const`ness does **not** solve this problem.
+Compilers choose between `const` and non`const` member functions 
+by looking only at whether the _object_ invoking a function is `const`. 
+No consideration is given to the context in which a call is made.
+```c++
+class String
+{
+public:
+    // Too young too simple, sometimes naive
+    const char & operator[](std::size_t index) const;  // for reads
+    char & operator[](std::size_t index);              // for writes
+    ...
+};
+
+String s1, s2;
+
+// Calls non-const operator[],
+// because s1 is NOT const
+std::cout << s1[5] << '\n'; 
+
+// Also calls non-const operator[], 
+// because s2 is NOT const
+s2[5] = 'x';
+
+// Both calls are to non-const operator[], 
+// because both s1 and s2 are non-const objects
+s1[3] = s2[8]; 
+```
+Our approach is based on the fact that though it may be impossible to tell 
+whether `operator[]` is being invoked in an lvalue or an rvalue context from within `operator[],` 
+we can still treat reads differently from writes 
+if we delay our lvalue-versus-rvalue actions until we see how the result of `operator[]` is used. 
+All we need is a way to postpone our decision on whether our object is being read or written 
+until after `operator[] `has returned. (This is an example of _lazy evaluation_. See Item 17.)
+
+
+A proxy class allows us to buy the time we need, 
+because we can modify `operator[]` to return a proxy for a string character 
+instead of a string character itself. 
+We can then wait to see how the proxy is used.
+If it’s read, we can belatedly treat the call to `operator[]` as a read.
+If it’s written, we must treat the call to `operator[]` as a write.
+
+
+We will see the code for this in a moment, 
+but first it is important to understand the proxies we’ll be using. 
+There are only three things you can do with a proxy:
+- Create it, i.e., specify which string character it stands for; 
+- Use it as the target of an assignment, 
+  in which case you are really making an assignment to the string character it stands for.
+  When used in this way, 
+  a proxy represents an lvalue use of the string on which `operator[]` was invoked.
+- Use it in any other way. 
+  When used like this, a proxy represents an rvalue use 
+  of the string on which `operator[]` was invoked.
+```c++
+class String
+{ 
+public:
+    friend class CharProxy;
+    
+    class CharProxy
+    { 
+    public:
+        // creation
+        CharProxy(String & str, std::size_t index);
+
+        // lvalue uses
+        CharProxy & operator=(const CharProxy & rhs); 
+        CharProxy & operator=(char c);
+
+        // rvalue use
+        operator char() const;
+    
+    private:
+        String & theString;     // string this proxy pertains to
+        std::size_t charIndex;  // char within that string this proxy stands for
+    };
+    
+    const CharProxy operator[](std::size_t index) const;
+    CharProxy operator[](std::size_t index); 
+    ...
+    
+private:
+    std::shared_ptr<StringValue> value;
+};
+
+String::CharProxy::CharProxy(String & str, std::size_t index)
+        : theString(str), charIndex(index) 
+{
+    
+}
+
+String::CharProxy::operator char() const
+{
+    return theString.value->data[charIndex];
+}
+
+const String::CharProxy String::operator[](std::size_t index) const
+{
+    return CharProxy(const_cast<String &>(*this), index);
+}
+
+String::CharProxy String::operator[](std::size_t index)
+{
+    return CharProxy(*this, index);
+}
+```
+Each `String::operator[]` function just creates and returns a proxy for the requested character.
+No action is taken on the character itself:
+we defer such action until we know whether the access is for a read or a write.
+
+
+Note that the `const` version of `operator[]` returns a `const` proxy. 
+Because `CharProxy::operator=` **isn’t** a `const` member function,
+such proxies can’t be used as the target of assignments.
+Hence neither the proxy returned from the `const` version of `operator[]` 
+nor the character for which it stands may be used as an lvalue. 
+Conveniently enough,
+that’s exactly the behavior we want for the `const` version of `operator[]`.
+
+
+Note also the use of a `const_cast` on `*this` when 
+creating the `CharProxy` object that the `const` `operator[]` returns. 
+That’s necessary to satisfy the constraints of the `CharProxy` constructor, 
+which accepts only a non-`const` String. 
+Casts are usually worrisome, 
+but in this case the `CharProxy` object returned by `operator[]` is itself `const`, 
+so there is no risk the `String` containing the character to which the proxy refers will be modified.
+
+
+We thus turn to implementation of `CharProxy`’s copy assignment operators,
+which is where we must deal with the fact that a character represented by a proxy 
+is being used as the target of an assignment, 
+i.e., as an lvalue. 
+We can implement `CharProxy`’s conventional copy assignment operator as follows:
+```c++
+String::CharProxy & String::CharProxy::operator=(const CharProxy & rhs)
+{
+    // If the string is sharing a value with other String objects,
+    // break off a separate copy of the value for this string only
+    if (theString.value->isShared())
+    {
+        theString.value = std::make_shared<StringValue>(theString.value->data);
+    }
+    
+    // Now make the assignment: 
+    // Assign the value of the char represented by rhs 
+    // to the char represented by *this
+    theString.value->data[charIndex] = rhs.theString.value->data[rhs.charIndex];
+    return *this;
+}
+
+String::CharProxy & String::CharProxy::operator=(char c)
+{
+    if (theString.value->isShared()) 
+    {
+        theString.value = std::make_shared<StringValue>(theString.value->data);
+    }
+    
+    theString.value->data[charIndex] = c;
+    return *this;
+}
+```
+As an accomplished software engineer, you would, of course, 
+banish the code duplication present in these two assignment operators 
+to a `private` `CharProxy` member function that both would call.
+
+
+#### Limitations
+
+
+The use of a proxy class is a nice way to distinguish lvalue and rvalue usage of `operator[]`, 
+but the technique is not without its drawbacks.
+We’d like proxy objects to seamlessly replace the objects they stand for,
+but this ideal is difficult to achieve. 
+That’s because objects are used as lvalues in contexts other than just assignment, 
+and using proxies in such contexts usually yields behavior different from using real objects.
+
+
+If `String::operator[]` returns a `CharProxy` instead of a `char &`, the following code will no longer compile:
+```c++
+String s1 = "Hello";
+char * p = &s1[1];    // Error! No conversion from String::CharProxy * to char *
+char & r = s1[1];     // Error! Can not bind rvalue char(s1[1]) to lvalue reference
+```
+The expression `s1[1]` returns a `CharProxy`, so `&s1[1]` is `CharProxy *`. 
+There is no conversion from a `CharProxy *` to a `char *`,
+so the initialization of `p` fails to compile.
+In general, taking the address of a proxy yields a different type of pointer 
+than does taking the address of a real object.
+To eliminate this difficulty, you’ll need to overload `CharProxy::operator&`:
+```c++
+class String 
+{
+public:
+    class CharProxy 
+    {
+    public:
+        ...
+        char * operator&();
+        const char * operator&() const;
+        ...
+    };
+    
+    ...
+};
+
+const char * String::CharProxy::operator&() const
+{
+    return &(theString.value->data[charIndex]);
+}
+```
+The non-`const` function is a bit more work, 
+because it returns a pointer to a character that may be modified. 
+```c++
+char * String::CharProxy::operator&()
+{
+    // Make sure the character to which this function returns
+    // a pointer isn’t shared by any other String objects. 
+    if (theString.value->isShared()) 
+    {
+        theString.value = std::make_shared<StringValue>(theString.value->data);
+    }
+    
+    // We don’t know how long the pointer this function returns will be kept by clients, 
+    // so the StringValue object can never be shared. 
+    theString.value->markUnshareable();
+    return &(theString.value->data[charIndex]);
+}
+```
+Much of this code is common to other `CharProxy` member functions,
+so I know you’d encapsulate it in a `private` member function that all would call.
+
+
+A second difference between `char`s and the `CharProxy`s is when we have a template for 
+reference-counted arrays that use proxy classes to distinguish lvalue and rvalue invocations of `operator[]`:
+```c++
+// reference-counted array using proxies
+template <typename T>
+class Array
+{ 
+public:
+    class Proxy
+    {
+    public:
+        Proxy(Array<T> & array, std::size_t index);
+        Proxy & operator=(const T & rhs);
+        operator T() const;
+        ...
+    };
+
+    const Proxy operator[](std::size_t index) const;
+    Proxy operator[](std::size_t index);
+    ...
+};
+
+Array<int> intArray;
+intArray[5] = 22;     // fine
+intArray[5] += 5;     // error!
+++intArray[5];        // error!
+```
+As expected, use of `operator[]` as the target of a simple assignment succeeds, 
+but use of `operator[]` on the left-hand side of a call to `operator+=` or `operator++` fails. 
+That’s because `operator[]` returns a proxy, 
+and there is no `operator+=` or `operator++` for `Array<T>::Proxy` objects.
+A similar situation exists for other operators that require lvalues, 
+including `operator*=`, `operator<<=`, `operator--`, etc.
+If you want these operators to work with `operator[]` functions that return proxies, 
+you must define each of these functions for the `Array<T>::Proxy` class. 
+That’s a lot of work, and you probably don’t want to do it. 
+Unfortunately, you either do the work or you do without. 
+
+
+A related problem is that you can **not** invoke member functions on real objects through proxies. 
+To be blunt about it, you can’t. 
+For example, suppose we’d like to work with reference-counted arrays of rational numbers. 
+We could define a class `Rational` and then use the `Array` template we just saw:
+```c++
+class Rational 
+{
+public:
+    Rational(int numerator = 0, int denominator = 1);
+    int numerator() const;
+    int denominator() const;
+    ...
+};
+
+Array<Rational> array;
+std::cout << array[4].numerator() << '\n';  // error!
+int denom = array[22].denominator();        // error!
+```
+By now the difficulty is predictable: 
+`operator[]` returns a proxy for a rational number, not an actual `Rational` object. 
+But the `numerator` and `denominator` member functions exist only for `Rational`s, not their proxies. 
+Hence the complaints by your compilers. 
+To make proxies behave like the objects they stand for, 
+you must overload each function applicable to the real objects so it applies to proxies, too.
+
+
+Yet another situation in which proxies fail to replace real objects 
+is when being passed to functions that take references to non-`const` objects:
+```c++
+void swap(char & a, char & b);
+String s = "+C+"; 
+swap(s[0], s[1]);
+```
+`String::operator[]` returns a `CharProxy`, 
+but `swap` demands that its arguments be of type `char &`. 
+A `CharProxy` may be implicitly converted into a `char`, 
+but there is no conversion function to a `char &`. 
+Furthermore, the `char` to which it may be converted can’t be bound to `swap`’s `char &` parameters, 
+because that char is a temporary object (it’s `operator char`’s return value). 
+As Item 19 explains, there are good reasons for refusing to 
+bind temporary objects to non-`const` reference parameters.
+
+
+A final way in which proxies fail to seamlessly replace real objects 
+has to do with implicit type conversions. 
+When a proxy object is implicitly converted into the real object it stands for, 
+a user-defined conversion function is invoked. 
+For instance, a `CharProxy` can be converted into the `char` it stands for by calling operator `char`. 
+As Item 5 explains, compilers may use only one user-defined conversion function 
+when converting a parameter at a call site into the type needed 
+by the corresponding function parameter. 
+As a result, it is possible for function calls that succeed when passed real objects 
+to fail when passed proxies.
+
+
+#### Evaluation
+
+
+Proxy classes allow you to achieve some types of behavior 
+that are otherwise difficult or impossible to implement. 
+Multidimensional arrays are one example, 
+lvalue/rvalue differentiation is a second, 
+suppression of implicit conversions (see Item 5) is a third.
+
+
+At the same time, proxy classes have disadvantages. 
+As function return values, proxy objects are temporaries (see Item 19), 
+so they must be created and destroyed. 
+That’s not free, though the cost may be more than recouped 
+through their ability to distinguish write operations from read operations. 
+The very existence of proxy classes increases the complexity of software systems that employ them, 
+because additional classes make things harder to design, implement, understand, and maintain, not easier.
+
+
+Finally, shifting from a class that works with real objects 
+to a class that works with proxies often changes the semantics of the class,
+because proxy objects usually exhibit behavior that 
+is subtly different from that of the real objects they represent. 
+Sometimes this makes proxies a poor choice when designing a system, 
+but in many cases there is little need for the operations 
+that would make the presence of proxies apparent to clients. 
+For instance, few clients will want to take the address of an `Array1D` object
+in the two-dimensional array example we saw at the beginning of this Item, 
+and there isn’t much chance that an `ArraySize` object (see Item 5) 
+would be passed to a function expecting a different type. 
+In many cases, proxies can stand in for real objects perfectly acceptably. 
+When they can, it is often the case that nothing else will do.
 
 
 
