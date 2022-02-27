@@ -7250,11 +7250,20 @@ struct SpaceShip : public GameObject
 namespace
 {
 
-void shipAsteroid(GameObject & spaceShip, GameObject & asteroid);
+void shipAsteroid(GameObject & spaceShip, GameObject & asteroid)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
 
-void shipStation(GameObject & spaceShip, GameObject & spaceStation);
+void shipStation(GameObject & spaceShip, GameObject & spaceStation)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
 
-void asteroidStation(GameObject & asteroid, GameObject & spaceStation);
+void asteroidStation(GameObject & asteroid, GameObject & spaceStation)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
 
 void asteroidShip(GameObject & asteroid, GameObject & spaceShip)
 {
