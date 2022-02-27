@@ -5456,8 +5456,9 @@ std::cout << sizeof(A) << ' '
           << sizeof(D) << '\n';
 
 // Hacked G++ Memory Layout of Classes Involving Multiple Virtual Inheritance. 
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
 // The exact layout varies from implementations and relying on that is undefined behavior! 
-// Address Low -> High. 
+// Address (Byte) Low -> High. 
 // 0      7 8     15 16    23 24    31 32    39 40    47 48    55
 // [      ] [ B::b ] [      ] [ C::c ] [ D::d ] [      ] [ A::a ]
 // |<----- B ----->| |<----- C ----->|          |<----- A ----->|

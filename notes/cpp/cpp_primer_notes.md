@@ -1300,9 +1300,9 @@ struct C
 
 C c;
  
-int * px = &c.x;                        // px  的值为 指向 c.x 的指针
-int * pxe= px + 1;                      // pxe 的值为  c.x 的尾后指针
-int * py = &c.y;                        // py  的值为 指向 c.y 的指针
+int * px  = &c.x;                       // px  的值为 指向 c.x 的指针
+int * pxe = px + 1;                     // pxe 的值为  c.x 的尾后指针
+int * py  = &c.y;                       // py  的值为 指向 c.y 的指针
 
 assert(pxe == py);                      // 测试两个指针是否表示相同地址
                                         // 这条 assert 可能被触发，也可能不被触发
@@ -1349,9 +1349,10 @@ std::cout << sizeof(A) << ' '
           << sizeof(C) << ' '
           << sizeof(D) << '\n';
 
-// Hacked G++ Memory Layout of Classes Involving Multiple Virtual Inheritance. 
+// Hacked G++ Memory Layout of Classes Involving Multiple Virtual Inheritance.
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0 
 // The exact layout varies from implementations and relying on that is undefined behavior! 
-// Address Low -> High. 
+// Address (Byte) Low -> High. 
 // 0      7 8     15 16    23 24    31 32    39 40    47 48    55
 // [      ] [ B::b ] [      ] [ C::c ] [ D::d ] [      ] [ A::a ]
 // |<----- B ----->| |<----- C ----->|          |<----- A ----->|
@@ -1527,7 +1528,7 @@ double (*pf4)(int*) = ff;              // error: return type of ff and pf4 don't
 ```
 - *相等比较* 运算符对于函数指针有定义（若指向同一函数则它们比较相等）  
 
-#### （类的）数据成员指针
+#### （类的）数据成员指针 (Class Data Member Pointer)
 
 - `*`表示普通指针，而`Class::*`表示 *成员指针* 
     - 至于是数据成员指针，还是成员函数指针，那就跟普通函数指针与普通对象指针的区别一样，只看括号了
@@ -1598,7 +1599,7 @@ int A::* const* p2 = &a.p;
 std::cout << a.**p2 << 'std::endl;     // prints 1
 ```
 
-#### （类的）成员函数指针
+#### （类的）成员函数指针 (Class Member Function Pointer)
 
 - 指向类`C`的 *非静态成员函数* `f`的指针，以`&C::f`初始化
     - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
