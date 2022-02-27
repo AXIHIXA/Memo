@@ -1215,7 +1215,7 @@ new T                                                         (2)
         - 可重载
         - 类内定义：`R & T::operator[](S b);`
         - **不可**类外定义
-    - *间接寻址* （indirection）：提供对其指针操作数所指向的对象或函数的访问 
+    - *间接寻址* （indirection），又称 *解引用* （dereference）：提供对其指针操作数所指向的对象或函数的访问 
         - 语法：`*a`
         - 可重载
         - 类内定义：`R & T::operator*();`
@@ -1282,7 +1282,7 @@ decl-specifier-seq nested-name-specifier * attr(optional) cv(optional) declarato
     - 指向 *对象* 或 *函数* 的指针
         - 该情况下说该指针指向函数或对象
         - 对象的地址为内存中对象所 *占用的首字节* 的地址
-    - 对象 *尾后* 指针
+    - 对象 *尾后* (off-the-end) 指针
         - 为内存中对象所 *占用的存储之后的首字节* 的地址
     - 某类型的 *空* 指针值 
         - `NULL`（就是`0`）或`nullptr`
@@ -1309,6 +1309,68 @@ assert(pxe == py);                      // 测试两个指针是否表示相同�
                                         // 至少 gcc version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04) 上实测没有触发
  
 *pxe = 1;                               // 即使上面的 assert 未被触发，亦为未定义行为
+```
+- **注意**：理论上指向同一对象的两个多态指针也可能有不同的值
+    - 一般发生于指向 *虚多重继承* （multiple virtual inheritence）的类的多态指针上
+    - 和虚多重继承的类内部的结构有关，按标准属于 *未定义行为* 
+```c++
+struct A
+{
+    virtual void foo() {}
+    unsigned long long a {0x1112131415161718};
+};
+
+struct B : virtual public A
+{
+    void foo() override {}
+    unsigned long long b {0x2122232425262728};
+};
+
+struct C : virtual public A
+{
+    void foo() override {}
+    unsigned long long c {0x3132333435363738};
+};
+
+struct D : public B, public C
+{
+    void foo() override {}
+    unsigned long long d {0x4142434445464748};
+};
+
+std::shared_ptr<D> pd(new D);
+A * pa = pd.get();
+B * pb = pd.get();
+C * pc = pd.get();
+
+// 16 32 32 56
+std::cout << sizeof(A) << ' '
+          << sizeof(B) << ' '
+          << sizeof(C) << ' '
+          << sizeof(D) << '\n';
+
+// Hacked G++ Memory Layout of Classes Involving Multiple Virtual Inheritance. 
+// The exact layout varies from implementations and relying on that is undefined behavior! 
+// Address Low -> High. 
+// 0      7 8     15 16    23 24    31 32    39 40    47 48    55
+// [      ] [ B::b ] [      ] [ C::c ] [ D::d ] [      ] [ A::a ]
+// |<----- B ----->| |<----- C ----->|          |<----- A ----->|
+// |<--------------------------- D ---------------------------->|
+auto p = reinterpret_cast<unsigned char *>(pd.get());
+
+for (std::size_t i = 0; i != sizeof(D); ++i)
+{
+    std::printf("%p 0x%02x\n", p + i, *(p + i));
+}
+
+// 0x5612b6d78ed8 0x5612b6d78eb0
+// 0x5612b6d78eb0 0x5612b6d78eb0
+// 0x5612b6d78ec0 0x5612b6d78eb0
+// 0x5612b6d78eb0 0x5612b6d78eb0
+std::cout << pa << ' ' << dynamic_cast<const void *>(pa) << '\n'
+          << pb << ' ' << dynamic_cast<const void *>(pb) << '\n'
+          << pc << ' ' << dynamic_cast<const void *>(pc) << '\n'
+          << pd << ' ' << dynamic_cast<const void *>(pd.get()) << '\n';
 ```
 
 #### 对象指针

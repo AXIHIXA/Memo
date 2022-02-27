@@ -5456,6 +5456,7 @@ std::cout << sizeof(A) << ' '
           << sizeof(D) << '\n';
 
 // Hacked G++ Memory Layout of Classes Involving Multiple Virtual Inheritance. 
+// The exact layout varies from implementations and relying on that is undefined behavior! 
 // Address Low -> High. 
 // 0      7 8     15 16    23 24    31 32    39 40    47 48    55
 // [      ] [ B::b ] [      ] [ C::c ] [ D::d ] [      ] [ A::a ]
@@ -5982,11 +5983,11 @@ Reference counting is most useful for improving efficiency under the following c
 - Proxy classes fails to replace real objects under the following circumstances (thus its limitations):
   - Solvable: 
     - You can **not** invoke functions requiring `(g)lvalues` to work with `operator[]`s returning proxies. 
-      You have to overload all of them manually (e.g., `operator`s, `std::swap`, etc.); 
+      You have to overload all of them manually (.g., `operator&`, `operator+=`, `operator++`, `std::swap`, etc.); 
     - You can **not** invoke member functions on real objects through proxies. 
       You also have to overload all of them manually. 
   - Not solvable: 
-    - `auto` type deduction can **not** deduct the real object under proxy, 
+    - `auto` type deduction can **not** deduct the reeal object under proxy, 
       thus leading to the pitfalls as specified in 
       [Effective Modern C++](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md) 
       Item 6. 
@@ -6490,6 +6491,479 @@ When they can, it is often the case that nothing else will do.
 
 
 ### 📌 Item 31: Making functions virtual with respect to more than one object
+
+- Virtual functions implement a _single dispatch_ (virtual on its caller object). 
+- C++ has no direct support on _multiple-dispatching_ 
+  (making a function virtual on both its caller object and its parameters). 
+  All methods to implement multiple-dispatching in C++ come with major flaws. 
+  Your best recourse is to _modify your design to eliminate the need_.
+- Multiple dispatching can be implemented via the following ways (all come with major flaws!):
+  - Using virtual functions and RTTI: 
+    yields type-based function calls that are hard to maintain and to extend. 
+  - Using virtual functions only: 
+    implement double-dispatching as two single dispatches, 
+    the first virtual function call determines the dynamic type of `object1`, 
+    and the latter decide that of `object2`. 
+    All classes have to be modified and recompiled for new-typed object extension. 
+  - Manually emulate virtual function tables: 
+
+
+As the spaceships, space stations, and asteroids whiz around in your artificial world, 
+they naturally run the risk of colliding with one another. 
+Let’s assume the rules for such collisions are as follows:
+- If a ship and a station collide at low velocity, 
+  the ship docks at the station. 
+  Otherwise, the ship and the station sustain damage 
+  that’s proportional to the speed at which they collide.
+- If a ship and a ship or a station and a station collide, 
+  both participants in the collision sustain damage 
+  that’s proportional to the speed at which they hit.
+- If a small asteroid collides with a ship or a station, 
+  the asteroid is destroyed. 
+  If it’s a big asteroid, 
+  the ship or the station is destroyed.
+- If an asteroid collides with another asteroid, 
+  both break into pieces and scatter little baby asteroids in all directions.
+
+We begin by noting that ships, stations, and asteroids share some common features. 
+If nothing else, they’re all in motion, so they all have a velocity that describes that motion. 
+Given this commonality, it is natural to define a base class from which they all inherit. 
+In practice, such a class is almost invariably an abstract base class, 
+and base classes are non-leaf and thus should always be abstract (see Item 33).
+```
+                  ╭────────────╮ 
+      ┌──────────→│ GameObject │←───────────┐
+      │           ╰────────────╯            │
+      │                 ↑                   │
+      │                 │                   │
+      │                 │                   │
+╭───────────╮    ╭──────────────╮      ╭──────────╮
+│ SpaceShip │    │ SpaceStation │      │ Asteroid │
+╰───────────╯    ╰──────────────╯      ╰──────────╯
+```
+```c++
+class GameObject { ... };
+class SpaceShip : public GameObject { ... };
+class SpaceStation : public GameObject { ... };
+class Asteroid : public GameObject { ... };
+```
+Now, suppose you’re writing the code to check for and handle object collisions. 
+You might come up with a function that looks something like this:
+```c++
+void checkForCollision(GameObject & object1, GameObject & object2)
+{
+    if (theyJustCollided(object1, object2))
+    {
+        processCollision(object1, object2);
+    }
+    else
+    {
+        ...
+    }
+}
+```
+This is where the programming challenge becomes apparent. 
+When you call `processCollision`, 
+you know that `object1` and `object2`just collided, 
+and you know that what happens in that collision 
+depends on what `object1` really is and what `object2` really is, 
+but you **don’t** know what kinds of objects they really are; 
+all you know is that they’re both `GameObjects`. 
+If the collision processing depended only on the dynamic type of `object1`, 
+you could make `processCollision` virtual in `GameObject` and call `object1.processCollision(object2)`. 
+You could do the same thing with `object2` if the details of the collision depended only on its dynamic type. 
+What happens in the collision, however, depends on both their dynamic types. 
+A function call that’s _virtual on only one object_, you see, is **not** enough.
+
+
+What you need is a kind of function whose behavior is 
+somehow virtual on the types of more than one object. 
+C++ offers **no** such function.
+Then, you must come up with your own way of implementing 
+what is commonly referred to as _double-dispatching_. 
+
+
+The name comes from the object-oriented programming community, 
+where what C++ programmers know as a virtual function call is termed a _message dispatch_.
+A call that’s virtual on two parameters is implemented through a _double dispatch_. 
+The generalization of this, a function acting virtual on several parameters, is called _multiple dispatch_.
+
+
+There are several approaches you might consider. 
+None is without its disadvantages, but that shouldn’t surprise you. 
+C++ offers no direct support for double-dispatching, 
+so you must yourself do the work compilers do
+when they implement virtual functions (see Item 24). 
+If that were easy to do, 
+we’d probably all be doing it ourselves and simply programming in C. 
+We aren’t and we don’t. 
+So fasten your seat belts, it’s going to be a bumpy ride.
+
+
+Let's first recognize that the following wrong implementation will **not** compile: 
+```c++
+class Collider
+{
+public:
+    static void collide(GameObject & o1, GameObject & o2)
+    {
+        // Error: No viable functions. Can not cast void * to GameObject & or Spaceship *. 
+        collide(dynamic_cast<void *>(&o1), dynamic_cast<void *>(&o2));
+    }
+    
+private:
+    static void collide(SpaceShip *, SpaceShip *)
+    {
+        std::cout << "SpaceShip-SpaceShip Collision\n";
+    }
+    
+    ...
+};
+
+SpaceShip s1, s2;
+Collider::collide(s1, s2);
+```
+The same way will work in C# as it supports multiple dispatching. 
+But in C++, function overloading resolution is done at compile time with the _static types_ of their arguments. 
+Dynamic type is active only at runtime. 
+A `dynamic_cast<void *>` to cast `GameObject *` all the way to the bottom at runtime will not help. 
+
+
+#### Using Virtual Functions and RTTI
+
+
+Virtual functions implement a single dispatch, which is half of what we need. 
+Compilers do virtual functions for us, so we begin by declaring a virtual function `GameObject::collide`. 
+This function is overridden in the derived classes in the usual manner: 
+```c++
+class GameObject 
+{
+public:
+    virtual void collide(GameObject & otherObject) = 0;
+    ...
+};
+
+class SpaceShip: public GameObject 
+{
+public:
+    void collide(GameObject & otherObject) override;
+    ...
+};
+
+// Similar for SpaceStation and Asteroid
+```
+The most common approach to double-dispatching returns us 
+to the unforgiving world of virtual function emulation via chains of `if-else`s. 
+In this harsh world, we first discover the real type of `otherObject`,
+then we test it against all the possibilities:
+```c++
+class CollisionWithUnknownObject : std::logic_error
+{
+public:
+    CollisionWithUnknownObject(GameObject & whatWeHit);
+    ...
+};
+
+void SpaceShip::collide(GameObject & otherObject)
+{
+    const std::type_info & objectType = typeid(otherObject);
+    
+    if (objectType == typeid(SpaceShip))
+    {
+        SpaceShip & ss = static_cast<SpaceShip &>(otherObject);
+        // process a SpaceShip - SpaceShip collision
+    }
+    else if (objectType == typeid(SpaceStation))
+    {
+        SpaceStation & ss = static_cast<SpaceStation &>(otherObject);
+        // process a SpaceShip - SpaceStation collision
+    }
+    else if (objectType == typeid(Asteroid))
+    {
+        Asteroid & a = static_cast<Asteroid &>(otherObject);
+        // process a SpaceShip - Asteroid collision
+    }
+    else
+    {
+        throw CollisionWithUnknownObject(otherObject);
+    }
+}
+```
+Notice how we need to determine the type of only one of the objects involved in the collision. 
+The other object is `*this`, and its type is determined by the virtual function mechanism. 
+We’re inside a `SpaceShip` member function, so `*this` must be a `SpaceShip` object. 
+Thus we only have to figure out the real type of `otherObject`. 
+There’s nothing complicated about this code. 
+It’s easy to write. It’s even easy to make work. 
+That’s one of the reasons RTTI is worrisome: it _looks_ harmless. 
+The true danger in this code is hinted at only 
+by the final `else` clause and the exception that’s thrown there.
+
+
+We’ve pretty much bidden _adios_ to encapsulation, 
+because each `collide` function must be aware of each of its sibling classes, 
+i.e., those classes that inherit from `GameObject`. 
+In particular, if a new type of object is added to the game, 
+we must update each RTTI-based `if-else` chain in the program 
+that might encounter the new object type. 
+If we forget even a single one, the program will have a bug that will **not** be obvious. 
+Furthermore, compilers are in no position to help us detect such an oversight, 
+because they have no idea what we’re doing.
+
+
+This kind of type-based programming has a long history in C, 
+and one of the things we know about it is that it yields programs 
+that are essentially unmaintainable. 
+This is the primary reason why virtual functions were invented in the first place: 
+to shift the burden of generating and maintaining type-based function calls from programmers to compilers.
+When we employ RTTI to implement double-dispatching, we are harking
+back to the bad old days.
+
+
+The techniques of the bad old days led to errors in C, 
+and they’ll lead to errors in C++, too. 
+In recognition of our human frailty, 
+we’ve included a final `else` clause in the `collide` function, 
+a clause where control winds up if we hit an object we don’t know about. 
+Such a situation is, in principle, impossible, 
+but where were our principles when we decided to use RTTI? 
+There are various ways to handle such unanticipated interactions, 
+but none is very satisfying. 
+In this case, we’ve chosen to throw an exception, 
+but it’s not clear how our callers can hope to handle the error any better than we can, 
+since we’ve just run into something we didn’t know existed.
+
+
+#### Using Virtual Functions Only
+
+
+There is a way to minimize the risks inherent in an RTTI approach to implementing double-dispatching, 
+but before we look at that, 
+it’s convenient to see how to attack the problem using nothing but virtual functions. 
+That strategy begins with the same basic structure as the RTTI approach. 
+The `collide` function is declared virtual in `GameObject` and is redefined in each derived class.
+In addition, `collide` is override in each class, 
+one override for each derived class in the hierarchy:
+```c++
+class SpaceShip;
+class SpaceStation;
+class Asteroid;
+
+class GameObject
+{
+public:
+    virtual void collide(GameObject & otherObject) = 0;
+    virtual void collide(SpaceShip & otherObject) = 0;
+    virtual void collide(SpaceStation & otherObject) = 0;
+    virtual void collide(Asteroid & otherobject) = 0;
+    ...
+};
+
+class SpaceShip : public GameObject
+{
+public:
+    void collide(GameObject & otherObject) override;
+    void collide(SpaceShip & otherObject) override;
+    void collide(SpaceStation & otherObject) override;
+    void collide(Asteroid & otherobject) override;
+    ...
+};
+
+void SpaceShip::collide(GameObject & otherObject)
+{
+    otherObject.collide(*this);
+}
+
+void SpaceShip::collide(SpaceShip & otherObject)
+{
+    // process a SpaceShip-SpaceShip collision
+}
+
+void SpaceShip::collide(SpaceStation & otherObject)
+{
+    // process a SpaceShip-SpaceStation collision
+}
+
+void SpaceShip::collide(Asteroid & otherObject)
+{
+    // process a SpaceShip-Asteroid collision
+}
+```
+The basic idea is to implement double-dispatching as two single dispatches, 
+i.e., as two separate virtual function calls: 
+the first determines the dynamic type of the first object, 
+the second determines that of the second object. 
+As before, the first virtual call is to the `collide` function taking a `GameObject &` parameter. 
+
+
+At first glance, `SpaceShip::collide(GameObject &)` 
+appears to be nothing more than a recursive call to
+`collide` with the order of the parameters reversed,
+i.e., with `otherObject` becoming the object calling the member function 
+and `*this`becoming the function’s parameter. 
+Glance again, however, because this is **not** a recursive call. 
+As you know, compilers figure out which of a set of functions to call 
+on the basis of the _static types_ of the arguments passed to the function. 
+In this case, four different `collide` functions could be called, 
+but the one chosen is based on the static type of `*this`. 
+What is that static type? 
+Being inside a member function of the class `SpaceShip`, `*this` must be of type `SpaceShip`. 
+The call is therefore to the `collide` function taking a `SpaceShip &`, 
+`not` the collide function taking a `GameObject &`.
+
+
+All the `collide` functions are virtual, 
+so the call inside `SpaceShip::collide` resolves to the implementation of `collide` 
+corresponding to the real type of `otherObject`. 
+Inside that implementation of `collide`, the real types of both objects are known, 
+because the left-hand object is `*this` 
+(and therefore has as its type the class implementing the member function) 
+and the right-hand object’s real type is `SpaceShip`, 
+the same as the declared type of the parameter. 
+
+
+The flaw is one it shares with the RTTI approach we saw earlier: 
+each class must know about its siblings. 
+As new classes are added, the code must be updated. 
+However, the _way_ in which the code must be updated is different in this case. 
+True, there are no `if-else`s to modify, 
+but there is something that is often worse: 
+each class definition must be amended to include a new virtual function. 
+If, for example, you decide to add a new class `Satellite` (inheriting from `GameObject`) to your game, 
+you’d have to add a new `collide` function to each of the existing classes in the program. 
+
+
+Modifying existing classes is something you are frequently in no position to do. 
+If, instead of writing the entire video game yourself, 
+you started with an off-the-shelf class library comprising a video game application framework, 
+you might not have write access to the `GameObject` class or the framework classes derived from it. 
+In that case, adding new member functions, virtual or otherwise, is not an option. 
+Alternatively, you may have _physical access_ to the classes requiring modification, 
+but you may not have _practical access_. 
+For example, suppose You were hired by Nintendo and were put to work on programs
+using a library containing `GameObject` and other useful classes. 
+Surely you wouldn’t be the only one using that library, 
+and Nintendo would probably be less than thrilled about 
+recompiling every application using that library 
+each time you decided to add a new type of object to your program. 
+In practice, libraries in wide use are modified only rarely, 
+because the cost of recompiling everything using those libraries is too great. 
+
+
+The long and short of it is if you need to implement double-dispatching in your program, 
+your best recourse is to _modify your design to eliminate the need_. 
+Failing that, the virtual function approach is safer than the RTTI strategy, 
+but it constrains the extensibility of your system to match that of your ability to edit header files. 
+The RTTI approach, on the other hand, makes no recompilation demands,
+but, if implemented as shown above, it generally leads to software that is unmaintainable.
+You pays your money and you takes your chances. 
+
+
+#### Emulating Virtual Function Tables
+
+
+There is a way to improve those chances. 
+You may recall from Item 24 that compilers typically implement virtual functions 
+by creating an array of function pointers (the _virtual table_) 
+and then indexing into that array when a virtual function is called. 
+Using a virtual table eliminates the need for compilers to perform chains of `if-else`-like computations, 
+and it allows compilers to generate the same code at all virtual function call
+sites: determine the correct vtbl index, then call the function pointed
+to at that position in the vtbl.
+
+
+There is no reason you can’t do this yourself. 
+If you do, you not only make your RTTI-based code more efficient 
+(indexing into an array and following a function pointer is almost always 
+more efficient than running through a series of `if-else` tests, 
+and it generates less code, too), 
+you also isolate the use of RTTI to a single location: 
+the place where your array of function pointers is initialized.
+We begin by making some modifications to the functions in the `GameObject` hierarchy:
+```c++
+class GameObject 
+{
+public:
+    virtual void collide(GameObject & otherObject) = 0;
+    ...
+};
+
+class SpaceShip : public GameObject 
+{
+public:
+    void collide(GameObject & otherObject) override;
+    virtual void hitSpaceShip(SpaceShip & otherObject);
+    virtual void hitSpaceStation(SpaceStation & otherObject);
+    virtual void hitAsteroid(Asteroid & otherobject);
+    ...
+    
+private:
+    using HitFunction = void (SpaceShip::*)(GameObject &);
+    static HitFunction lookup(const GameObject & whatWeHit) const;
+    ...
+};
+
+void SpaceShip::collide(GameObject & otherObject)
+{
+    // find the function to call
+    HitFunction hf = lookup(otherObject); 
+    
+    if (hf) 
+    { 
+        // if a function was found, call it
+        (this->*hf)(otherObject);
+    } 
+    else
+    {
+        throw CollisionWithUnknownObject(otherObject);
+    }
+}
+
+void SpaceShip::hitSpaceShip(SpaceShip & otherObject)
+{
+    // process a SpaceShip-SpaceShip collision
+}
+
+void SpaceShip::hitSpaceStation(SpaceStation & otherObject)
+{
+    // process a SpaceShip-SpaceStation collision
+}
+
+void SpaceShip::hitAsteroid(Asteroid & otherObject)
+{
+    // process a SpaceShip-Asteroid collision
+}
+```
+Like the virtual function-based hierarchy we just saw in the previous section, 
+each kind of interaction is encapsulated in a separate function, 
+though in this case the functions have different names instead of sharing the name `collide`. 
+There is a reason for this abandonment of overloading, and we shall see it soon. 
+
+
+Inside `SpaceShip::collide`, 
+we need a way to map the dynamic type of the parameter `otherObject` 
+to a member function pointer that points to the appropriate collision-handling function. 
+An easy way to do this is to create an associative array that, 
+given a class name, yields the appropriate member function pointer. 
+It’s possible to implement `collide` using such an associative array directly, 
+but it’s a bit easier to understand what’s going on if we add an intervening function `lookup` 
+that takes a `GameObject` and returns the appropriate _member function pointer_. 
+That is, you pass `lookup` a `GameObject`, and it returns a pointer to 
+the member function to call when you collide with something of that `GameObject`’s type. 
+
+
+Provided we’ve kept the contents of our associative array in sync with
+the class hierarchy under GameObject, lookup must always find a
+valid function pointer for the object we pass it. People are people, however,
+and mistakes have been known to creep into even the most carefully
+crafted software systems. That’s why we still check to make sure
+a valid pointer was returned from lookup, and that’s why we still
+throw an exception if the impossible occurs and the lookup fails.
+All that remains now is the implementation of lookup. Given an associative
+array that maps from object types to member function pointers,
+the lookup itself is easy, but creating, initializing, and destroying the
+associative array is an interesting problem of its own.
+
 
 
 
