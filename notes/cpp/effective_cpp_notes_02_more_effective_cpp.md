@@ -3040,8 +3040,9 @@ can then be satisfied by consulting the cache instead of querying the database.
 int findCubicleNumber(const std::string & employeeName)
 {
     static std::map<std::string, int> cubes;
+    auto it = cubes.find(employeeName);
     
-    if (cubes.contains(empolyeeName)) 
+    if (it != cubes.end())
     {
         return it->second;
     } 
@@ -6496,17 +6497,20 @@ When they can, it is often the case that nothing else will do.
 - Virtual functions implement a _single dispatch_ (virtual on its caller object). 
 - C++ has no direct support on _multiple-dispatching_ 
   (making a function virtual on both its caller object and its parameters). 
-  All methods to implement multiple-dispatching in C++ come with major flaws. 
-  Your best recourse is to _modify your design to eliminate the need_.
+- There is **no** perfect way to implement multiple-dispatching. 
+  All possible implementations come major flaws. 
+  Your best recourse is to _modify your design to **eliminate the need**_. 
 - Multiple dispatching can be implemented via the following ways (all come with major flaws!):
-  - Using virtual functions and RTTI: 
-    yields type-based function calls that are hard to maintain and to extend. 
-  - Using virtual functions only: 
-    implement double-dispatching as two single dispatches, 
-    the first virtual function call determines the dynamic type of `object1`, 
-    and the latter decide that of `object2`. 
+  - **Using virtual functions and RTTI**. 
+    This yields type-based function calls that are hard to maintain and to extend. 
+  - **Using virtual functions only**. 
+    To implement double-dispatching as two single dispatches. 
     All classes have to be modified and recompiled for new-typed object extension. 
-  - Manually emulate virtual function tables: 
+  - **Manually implement virtual table to non-member functions**.
+    If the virtual table pointed to member functions, 
+    adding new-typed objects would still lead to recompiling. 
+    Reusing old functions on new objects derived from old classes still require recompiling, 
+    so either give up reusing old functions, or recompile. 
 
 
 As the spaceships, space stations, and asteroids whiz around in your artificial world, 
@@ -6532,15 +6536,15 @@ Given this commonality, it is natural to define a base class from which they all
 In practice, such a class is almost invariably an abstract base class, 
 and base classes are non-leaf and thus should always be abstract (see Item 33).
 ```
-                  ╭────────────╮ 
-      ┌──────────→│ GameObject │←───────────┐
-      │           ╰────────────╯            │
-      │                 ↑                   │
-      │                 │                   │
-      │                 │                   │
-╭───────────╮    ╭──────────────╮      ╭──────────╮
-│ SpaceShip │    │ SpaceStation │      │ Asteroid │
-╰───────────╯    ╰──────────────╯      ╰──────────╯
+                    ╭────────────╮ 
+                    │ GameObject │
+                    ╰────────────╯
+                       ↑  ↑  ↑
+       ┌───────────────┘  │  └────────────┐
+       │                  │               │
+╭──────────────╮    ╭───────────╮    ╭──────────╮
+│ SpaceStation │    │ SpaceShip │    │ Asteroid │
+╰──────────────╯    ╰───────────╯    ╰──────────╯
 ```
 ```c++
 class GameObject { ... };
@@ -6900,24 +6904,15 @@ public:
     
 private:
     using HitFunction = void (SpaceShip::*)(GameObject &);
+    using HitMap = std::map<std::string, HitFunction>;
     static HitFunction lookup(const GameObject & whatWeHit) const;
     ...
 };
 
 void SpaceShip::collide(GameObject & otherObject)
 {
-    // find the function to call
-    HitFunction hf = lookup(otherObject); 
-    
-    if (hf) 
-    { 
-        // if a function was found, call it
-        (this->*hf)(otherObject);
-    } 
-    else
-    {
-        throw CollisionWithUnknownObject(otherObject);
-    }
+    HitFunction hf = lookup(otherObject);
+    hf ? (this->*hf)(otherObject) : throw CollisionWithUnknownObject(otherObject);
 }
 
 void SpaceShip::hitSpaceShip(SpaceShip & otherObject)
@@ -6934,6 +6929,16 @@ void SpaceShip::hitAsteroid(Asteroid & otherObject)
 {
     // process a SpaceShip-Asteroid collision
 }
+
+void SpaceShip::HitFunction 
+SpaceShip::lookup(const GameObject & whatWeHit)
+{
+    // Needs some uniform initialization code of collisionMap here   
+    static HitMap collisionMap;
+    
+    auto it = collisionMap.find(typeid(whatWeHit).name());
+    return it == collisionMap.end() ? nullptr : it->second;
+}
 ```
 Like the virtual function-based hierarchy we just saw in the previous section, 
 each kind of interaction is encapsulated in a separate function, 
@@ -6944,27 +6949,604 @@ There is a reason for this abandonment of overloading, and we shall see it soon.
 Inside `SpaceShip::collide`, 
 we need a way to map the dynamic type of the parameter `otherObject` 
 to a member function pointer that points to the appropriate collision-handling function. 
-An easy way to do this is to create an associative array that, 
+An easy way to do this is to create an dictionary that, 
 given a class name, yields the appropriate member function pointer. 
-It’s possible to implement `collide` using such an associative array directly, 
+It’s possible to implement `collide` using such an dictionary directly, 
 but it’s a bit easier to understand what’s going on if we add an intervening function `lookup` 
 that takes a `GameObject` and returns the appropriate _member function pointer_. 
 That is, you pass `lookup` a `GameObject`, and it returns a pointer to 
 the member function to call when you collide with something of that `GameObject`’s type. 
 
 
-Provided we’ve kept the contents of our associative array in sync with
-the class hierarchy under GameObject, lookup must always find a
-valid function pointer for the object we pass it. People are people, however,
-and mistakes have been known to creep into even the most carefully
-crafted software systems. That’s why we still check to make sure
-a valid pointer was returned from lookup, and that’s why we still
-throw an exception if the impossible occurs and the lookup fails.
-All that remains now is the implementation of lookup. Given an associative
-array that maps from object types to member function pointers,
-the lookup itself is easy, but creating, initializing, and destroying the
-associative array is an interesting problem of its own.
+Provided we’ve kept the contents of our dictionary 
+in sync with the class hierarchy under `GameObject`, 
+`lookup` must always find a valid function pointer for the object we pass it. 
+However, people are people, and mistakes have been known
+to creep into even the most carefully crafted software systems. 
+That’s why we still check to make sure a valid pointer was returned from `lookup`, 
+and that’s why we still throw an exception if the impossible occurs and the `lookup` fails. 
+All that remains now is the implementation of `lookup`. 
+Given an dictionary that maps from object types to member function pointers, 
+the lookup itself is easy, 
+but creating, initializing, and destroying the dictionary 
+is an interesting problem of its own.
 
+
+Such an array should be created and initialized before it’s used, 
+and it should be destroyed when it’s no longer needed. 
+We could use `new` and `delete` to create and destroy the array manually,
+but that would be error-prone: 
+how could we guarantee the array wasn’t used before we got around to initializing it? 
+A better solution is to have compilers automate the process, 
+and we can do that by making the dictionary `static` in `lookup`. 
+That way it will be created and initialized the first time `lookup` is called, 
+and it will be automatically destroyed sometime after main is exited.
+
+
+#### Initializing Emulated Virtual Function Tables
+
+
+Which brings us to the initialization of `collisionMap`. 
+We’d like to say something like this,
+```c++
+// An incorrect implementation
+SpaceShip::HitFunction
+SpaceShip::lookup(const GameObject & whatWeHit)
+{
+    static HitMap collisionMap;
+    collisionMap["SpaceShip"] = &hitSpaceShip;
+    collisionMap["SpaceStation"] = &hitSpaceStation;
+    collisionMap["Asteroid"] = &hitAsteroid;
+    ...
+}
+```
+but this inserts the member function pointers into `collisionMap` _each time_ `lookup` is called, 
+and that’s needlessly inefficient. 
+In addition, this **won’t** compile, but that’s a secondary problem we’ll address shortly. 
+
+
+What we need now is a way to put the member function pointers into `collisionMap` only once, 
+when `collisionMap` is created. 
+That’s easy enough to accomplish. 
+We just write a `private` `static` member function called `initializeCollisionMap` to create and initialize our map,
+then we initialize `collisionMap` with `initializeCollisionMap`’s return value:
+```c++
+class SpaceShip : public GameObject 
+{
+private:
+    static HitMap initializeCollisionMap();
+    ...
+};
+
+SpaceShip::HitFunction
+SpaceShip::lookup(const GameObject & whatWeHit)
+{
+    static HitMap collisionMap = initializeCollisionMap();
+    ...
+}
+```
+But this means we may have to pay the cost of copying the `std::map` object
+returned from `initializeCollisionMap` into `collisionMap`. 
+We’d prefer not to do that. 
+We have two options: 
+1. _Move_ the result into `collisionMap`, 
+   which might also be unnecessary as this may obstruct compiler's copy elimination. 
+   Just add `-Wpessimizing-move` `-Wredundant-move` flags to `gcc` to see whether this `std::move` is really needed. 
+2. Turn `collisionMap`into a smart pointer, and turn copying of `std::map` into copying of pointers.
+   (Manually implementing the move semantics in the old days prior to C++11, sadly.)
+3. Uniform initialization. (Makes old C++ programmer cry this time, lol.)
+
+
+So let us do uniform initialization this time. 
+The other two old ways are left for exercise. 
+```c++
+SpaceShip::HitFunction
+SpaceShip::lookup(const GameObject & whatWeHit)
+{
+    static HitMap collisionMap 
+            {
+                {"SpaceShip", &hitSpaceShip}, 
+                {"SpaceStation", &hitSpaceStation}, 
+                {"Asteroid", &hitAsteroid}
+            };
+    
+    ...
+}
+```
+This won’t compile. 
+That’s because a `HitMap` is declared to hold pointers to member functions
+that all take the same type of argument, namely `GameObject`. 
+But `hitSpaceShip` takes a `SpaceShip`, `hitSpaceStation` takes a `SpaceStation`, 
+and `hitAsteroid` takes an `Asteroid`. 
+Even though `SpaceShip`, `SpaceStation` and `Asteroid` can all be implicitly converted to `GameObject`, 
+there is no such conversion for pointers to functions taking these argument types. 
+
+
+To placate your compilers, you might be tempted to employ `reinterpret_casts`: 
+```c++
+// A bad idea...
+SpaceShip::HitMap * SpaceShip::initializeCollisionMap()
+{
+    HitMap *hm = new HitMap;
+    (*phm)["SpaceShip"] = reinterpret_cast<HitFunction>(&hitSpaceShip);
+    (*phm)["SpaceStation"] = reinterpret_cast<HitFunction>(&hitSpaceStation);
+    (*phm)["Asteroid"] = reinterpret_cast<HitFunction>(&hitAsteroid);
+    return hm;
+}
+```
+This will compile, but it’s a **bad** idea. 
+It entails doing something you should never do: lying to your compilers. 
+Telling them that `hitSpaceShip`, `hitSpaceStation`, and `hitAsteroid` 
+are functions expecting a `GameObject` argument is simply not true.
+
+
+Compilers don’t like to be lied to, 
+and they often find a way to exact revenge when they discover they’ve been deceived. 
+In this case, they’re likely to get back at you by generating _bad code_ 
+for functions you call through `*phm` in cases where `GameObject`’s derived classes 
+employ multiple inheritance or have virtual base classes. 
+In other words, if `SpaceStation`, `SpaceShip`, or `Asteroid` had other base classes (in addition to `GameObject`),
+you’d probably find that your calls to collision-processing functions in collide would behave quite rudely.
+
+
+Consider again the `A-B-C-D` diamond inheritance hierarchy 
+and the possible object layout for a D object that is described in Item 24: 
+```
+                 D Object
+    ┌─────────────────────────────────┐
+    │         B's Data Member         │
+    ├─────────────────────────────────┤
+    │              vptr               │
+    ├─────────────────────────────────┤
+    │   ptr to virtual base class A ──┼─┐
+    ├─────────────────────────────────┤ │
+    │         C's Data Member         │ │
+    ├─────────────────────────────────┤ │
+    │              vptr               │ │
+    ├─────────────────────────────────┤ │
+  ┌─┼── ptr to virtual base class A   │ │
+  │ ├─────────────────────────────────┤ │
+  │ │         D's Data Member         │ │
+  │ ├─────────────────────────────────┤ │
+  └─┼──────→  A's Data Member  ←──────┼─┘
+    ├─────────────────────────────────┤
+    │              vptr               │
+    └─────────────────────────────────┘
+```
+Each of the four class parts in a `D` object has a different address. 
+This is important, because even though pointers and references behave differently, 
+compilers typically implement references by using pointers in the generated code. 
+Thus, pass-by-reference is typically implemented by passing a pointer to an object. 
+When an object with multiple base classes (such as a `D` object) is passed by reference, 
+it is crucial that compilers pass the correct address:
+the one corresponding to the declared type of the parameter in the function being called.
+
+
+But what if you’ve lied to your compilers and told them your function expects a `GameObject` 
+when it really expects a `SpaceShip` or a `SpaceStation`? 
+Then they’ll pass the **wrong** address when you call the function, 
+and the resulting runtime carnage will probably be gruesome. 
+It will also be **very difficult** to determine the cause of the problem. 
+There are good reasons why casting is discouraged. This is one of them. 
+
+
+Okay, so casting is out. 
+But the type mismatch between the function pointers a `HitMap` is willing to contain 
+and the pointers to the `hitSpaceShip`, `hitSpaceStation`, and `hitAsteroid` functions remains.
+There is only one way to resolve the conflict: 
+change the types of the functions so they all take `GameObject` arguments: 
+```c++
+class GameObject
+{
+public:
+    virtual void collide(GameObject & otherObject) = 0;
+    ...
+};
+
+class SpaceShip : public GameObject
+{
+public:
+    virtual void collide(GameObject & otherObject);
+
+    // these functions now all take a GameObject parameter
+    virtual void hitSpaceShip(GameObject & spaceShip);
+    virtual void hitSpaceStation(GameObject & spaceStation);
+    virtual void hitAsteroid(GameObject & asteroid);
+
+    ...
+};
+```
+Our solution to the double-dispatching problem that was based on virtual functions 
+overloaded the function name `collide`. 
+Now we are in a position to understand why we didn’t follow suit here:
+why we decided to use a dictionary of member function pointers instead.
+All the hit functions take the _same parameter type_, so we must give them _different names_.
+
+
+Regrettably, our `hit` functions now get a general `GameObject` parameter 
+instead of the derived class parameters they expect. 
+To bring reality into accord with expectation, 
+we must resort to a `dynamic_cast` at the top of each function:
+```c++
+void SpaceShip::hitSpaceShip(GameObject& spaceShip)
+{
+    SpaceShip & otherShip= dynamic_cast<SpaceShip &>(spaceShip);
+    // process a SpaceShip-SpaceShip collision
+}
+
+void SpaceShip::hitSpaceStation(GameObject& spaceStation)
+{
+    SpaceStation & station= dynamic_cast<SpaceStation &>(spaceStation);
+    // process a SpaceShip-SpaceStation collision
+}
+
+void SpaceShip::hitAsteroid(GameObject & asteroid)
+{
+    Asteroid & theAsteroid = dynamic_cast<Asteroid&>(asteroid);
+    // process a SpaceShip-Asteroid collision
+}
+```
+Each of the `dynamic_cast`s will throw a `std::bad_cast` exception if the cast fails. 
+They should never fail, of course, because the `hit` functions should never be called with incorrect parameter types. 
+Still, we’re better off safe than sorry. 
+
+
+#### Using Non-Member Collision-Processing Functions
+
+
+We now know how to build a virtual-table-like dictionary 
+that lets us implement the second half of a double-dispatch, 
+and we know how to encapsulate the details of the dictionary inside a `lookup` function.
+Because this array contains pointers to member functions, however,
+we still have to modify class definitions if a new type of `GameObject` is added to the game, 
+and that means everybody has to recompile, even people who don’t care about the new type of object. 
+For example, if `Satellite` were added to our game, 
+we’d have to augment the `SpaceShip` class with a declaration of 
+a function to handle collisions between satellites and spaceships. 
+All `SpaceShip` clients would then have to recompile,
+even if they couldn’t care less about the existence of satellites. 
+This is the problem that led us to reject the implementation of double-dispatching
+based purely on virtual functions, 
+and that solution was a lot less work than the one we’ve just seen.
+
+
+The recompilation problem would go away if our dictionary contained pointers to non-member functions. 
+Furthermore, switching to non-member collision-processing functions 
+would let us address a design question we have so far ignored, namely, 
+in which class should collisions between objects of different types be handled? 
+With the implementation we just developed, 
+if `object1` and `object2` collide and `object1` happens to be the left-hand argument to `processCollision`,
+the collision will be handled inside the class for `object1`. 
+If `object2` happens to be the left-hand argument to `processCollision`, however,
+the collision will be handled inside the class for `object2`. 
+It would be better to design things so that collisions between objects of types `A` and `B` 
+are handled by neither `A` nor `B` but instead in some neutral location outside both classes.
+```c++
+namespace
+{
+
+void shipAsteroid(GameObject & spaceShip, GameObject & asteroid);
+
+void shipStation(GameObject & spaceShip, GameObject & spaceStation);
+
+void asteroidStation(GameObject & asteroid, GameObject & spaceStation);
+
+void asteroidShip(GameObject & asteroid, GameObject & spaceShip)
+{
+    shipAsteroid(spaceShip, asteroid);
+}
+
+void stationShip(GameObject & spaceStation, GameObject & spaceShip)
+{
+    shipStation(spaceShip, spaceStation);
+}
+
+void stationAsteroid(GameObject & spaceStation, GameObject & asteroid)
+{
+    asteroidStation(asteroid, spaceStation);
+}
+
+using HitFunction = void (*)(GameObject &, GameObject &);
+
+using HitMap = std::map<std::pair<std::string, std::string>, HitFunction>;
+
+HitFunction lookup(const std::string & class1, const std::string & class2)
+{
+    static HitMap collisionMap
+            {
+                {{"SpaceShip", "Asteroid"}, &shipAsteroid},
+                {{"SpaceShip", "SpaceStation"}, &shipStation},
+                ...
+            };
+    
+    auto it = collisionMap.find({class1, class2});
+    return it == collisionMap.end() ? nullptr : it->second;
+}
+
+}  // namespace anonymous
+
+void processCollision(GameObject & object1, GameObject & object2)
+{
+    HitFunction hf = lookup(typeid(object1).name(), typeid(object2).name());
+    hf ? hf(object1, object2) : throw UnknownCollision(object1, object2);
+}
+```
+We have finally achieved our goals. 
+If new subclasses of `GameObject` are added to our hierarchy, 
+existing classes need **not** recompile (unless they wish to use the new classes). 
+We have **neither** tangle of RTTI-based switch **nor** `if-else` conditionals to maintain. 
+The addition of new classes to the hierarchy requires only well-defined and localized changes to our system: 
+the addition of one or more map insertions in `initializeCollisionMap` 
+and the declarations of the new collision-processing functions 
+in the unnamed namespace associated with the implementation of `processCollision`. 
+
+
+#### Inheritance and Emulated Virtual Function Tables
+
+
+There is one final problem we must confront. 
+(If, at this point, you are wondering if there will always be one final problem to confront, 
+you have truly come to appreciate the difficulty of designing an implementation mechanism for virtual functions.) 
+Everything we’ve done will work fine as long as we never need to allow 
+inheritance-based type conversions when calling collision-processing functions. 
+But suppose we develop a game in which we must sometimes distinguish between
+commercial space ships and military space ships.
+We could modify our hierarchy as follows, 
+where we’ve heeded the guidance of Item 33 and 
+made the concrete classes CommercialShip and `MilitaryShip` 
+inherit from the newly abstract class `SpaceShip`:
+```
+                    ╭────────────╮
+                    │ GameObject │
+                    ╰────────────╯
+                       ↑  ↑  ↑
+       ┌───────────────┘  │  └────────────┐
+       │                  │               │
+╭──────────────╮    ╭───────────╮    ╭──────────╮
+│ SpaceStation │    │ SpaceShip │    │ Asteroid │
+╰──────────────╯    ╰───────────╯    ╰──────────╯
+                        ↑   ↑
+                 ┌──────┘   └─────┐
+                 │                │
+          ╭────────────╮    ╭───────────╮
+          │ Commerical │    │ Military  │
+          │ SpaceShip  │    │ SpaceShip │
+          ╰────────────╯    ╰───────────╯
+```
+Suppose commercial and military ships behave identically when they collide with something. 
+Then we’d expect to be able to use the same collision-processing functions 
+we had before `CommercialShip` and `MilitaryShip` were added. 
+In particular, if a `MilitaryShip` object and an `Asteroid` collided, we’d expect
+```c++
+void shipAsteroid(GameObject & spaceShip, GameObject & asteroid);
+```
+to be called. 
+It would **not** be. 
+Instead, an `UnknownCollision` exception would be thrown. 
+That’s because `lookup` would be asked to find a function 
+corresponding to the type names `MilitaryShip` and `Asteroid`,
+and no such function would be found in `collisionMap`. 
+Even though a `MilitaryShip` can be treated like a `SpaceShip`, 
+`lookup` has no way of knowing that.
+```c++
+struct GameObject
+{
+    virtual ~GameObject() noexcept = 0;
+};
+
+GameObject::~GameObject() noexcept = default;
+
+struct SpaceStation : public GameObject
+{
+    ~SpaceStation() noexcept override = default;
+};
+
+struct Asteroid : public GameObject
+{
+    ~Asteroid() noexcept override = default;
+};
+
+struct SpaceShip : public GameObject
+{
+    ~SpaceShip() noexcept override = 0;
+};
+
+SpaceShip::~SpaceShip() noexcept = default;
+
+struct CommercialSpaceShip : public SpaceShip
+{
+    ~CommercialSpaceShip() noexcept override = default;
+};
+
+struct MilitarySpaceShip : public SpaceShip
+{
+    ~MilitarySpaceShip() noexcept override = default;
+};
+
+namespace
+{
+
+void shipAsteroid(GameObject & spaceShip, GameObject & asteroid)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+void shipStation(GameObject & spaceShip, GameObject & spaceStation)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+void asteroidStation(GameObject & asteroid, GameObject & spaceStation)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+void asteroidShip(GameObject & asteroid, GameObject & spaceShip)
+{
+    shipAsteroid(spaceShip, asteroid);
+}
+
+void stationShip(GameObject & spaceStation, GameObject & spaceShip)
+{
+    shipStation(spaceShip, spaceStation);
+}
+
+void stationAsteroid(GameObject & spaceStation, GameObject & asteroid)
+{
+    asteroidStation(asteroid, spaceStation);
+}
+
+using HitFunction = void (*)(GameObject &, GameObject &);
+
+using HitMap = std::map<std::pair<std::string, std::string>, HitFunction>;
+
+HitFunction lookup(const std::string & class1, const std::string & class2)
+{
+    static HitMap collisionMap
+            {
+                    {{"SpaceShip", "Asteroid"}, &shipAsteroid},
+                    {{"SpaceShip", "SpaceStation"}, &shipStation},
+            };
+
+    auto it = collisionMap.find({class1, class2});
+    return it == collisionMap.end() ? nullptr : it->second;
+}
+
+}  // namespace anonymous
+
+void processCollision(GameObject & object1, GameObject & object2)
+{
+    HitFunction hf = lookup(typeid(object1).name(), typeid(object2).name());
+    hf ? hf(object1, object2) : throw std::logic_error("wtf");
+}
+
+CommercialSpaceShip ship;
+Asteroid ast;
+processCollision(ship, ast);  // std::logic_error("wtf") thrown
+```
+Furthermore, there is **no** easy way of telling it. 
+If you need to implement double-dispatching 
+and you need to support inheritance-based parameter conversions such as these, 
+your _only_ practical recourse is to fall back on the 
+double-virtual-function-call mechanism we examined earlier. 
+That implies you’ll also have to put up with everybody recompiling
+when you add to your inheritance hierarchy,
+but that’s just the way life is sometimes. 
+
+
+#### Initializing Emulated Virtual Function Tables (Reprise)
+
+
+That’s really all there is to say about double-dispatching, 
+but it would be unpleasant to end the discussion on such a downbeat note, 
+and unpleasantness is, well, unpleasant. 
+Instead, let’s conclude by outlining an alternative approach to initializing `collisionMap`.
+
+
+As things stand now, our design is entirely static. 
+Once we’ve registered a function for processing collisions between two types of objects,
+that’s it; we’re stuck with that function forever. 
+What if we’d like to add, remove, or change collision-processing functions as the game proceeds? 
+There’s no way to do it. 
+
+
+But there can be. 
+We can turn the concept of a `std::map` for storing collision-processing functions 
+into a class that offers member functions allowing us to modify the contents of the map dynamically.
+```c++
+class CollisionMap
+{
+public:
+    using HitFunction = void (*)(GameObject &, GameObject &);
+
+    CollisionMap(const CollisionMap &) = delete;
+    CollisionMap(CollisionMap &&) = delete;
+    
+    CollisionMap & operator=(const CollisionMap &) = delete;
+    CollisionMap & operator=(CollisionMap &&) = delete;
+    
+public:
+    static CollisionMap & theCollisionMap()
+    {
+        static CollisionMap map;
+        return map;
+    }
+
+public:
+    void addEntry(const std::string & type1, const std::string & type2,
+                  HitFunction collisionFunction, bool symmetric = true);
+    
+    void removeEntry(const std::string & type1, const std::string & type2);
+
+    HitFunction lookup(const std::string & type1, const std::string & type2);
+    
+private:
+    CollisionMap() 
+    { 
+        ... 
+    };
+};
+```
+With the `CollisionMap` class, each client wishing to add an entry to the map does so directly:
+```c++
+void shipAsteroid(GameObject & spaceShip, GameObject & asteroid);
+CollisionMap::theCollisionMap().addEntry("SpaceShip", "Asteroid", &shipAsteroid);
+
+void shipStation(GameObject & spaceShip, GameObject & spaceStation);
+CollisionMap::theCollisionMap().addEntry("SpaceShip", "SpaceStation", &shipStation);
+
+void asteroidStation(GameObject & asteroid, GameObject & spaceStation);
+CollisionMap::theCollisionMap().addEntry("Asteroid", "SpaceStation", &asteroidStation);
+
+...
+```
+Care must be taken to ensure that these map entries are added to the map 
+_before_ any collisions occur that would call the associated functions. 
+One way to do this would be to have constructors in `GameObject`'s 
+subclasses check to make sure the appropriate mappings had been added 
+each time an object was created.
+Such an approach would exact a small performance penalty at runtime. 
+An alternative would be to create a `RegisterCollisionFunction` class:
+```c++
+class RegisterCollisionFunction
+{
+public:
+    RegisterCollisionFunction(const std::string & type1,
+                              const std::string & type2,
+                              CollisionMap::HitFunction collisionFunction, 
+                              bool symmetric = true)
+    {
+        CollisionMap::theCollisionMap().addEntry(type1, type2, collisionFunction, symmetric);
+    }
+};
+```
+Clients could then use global objects of this type to automatically register the functions they need:
+```c++
+RegisterCollisionFunction cf1("SpaceShip", "Asteroid", &shipAsteroid);
+RegisterCollisionFunction cf2("SpaceShip", "SpaceStation", &shipStation);
+RegisterCollisionFunction cf3("Asteroid", "SpaceStation", &asteroidStation);
+...
+
+int main(int argc, char * argv[])
+{
+    ...
+}
+```
+Because these objects are created before `main` is invoked, 
+the functions their constructors register are also added to the map before `main`is called. 
+If, later, a new derived class is added
+```c++
+class Satellite : public GameObject { ... };
+
+void satelliteShip(GameObject & satellite, GameObject & spaceShip);
+void satelliteAsteroid(GameObject & satellite, GameObject & asteroid);
+
+RegisterCollisionFunction cf4("Satellite", "SpaceShip", &satelliteShip);
+RegisterCollisionFunction cf5("Satellite", "Asteroid", &satelliteAsteroid);
+```
+This doesn’t change the fact that there’s **no** perfect way to implement multiple dispatch, 
+but it does make it easy to provide data for a map-based implementation 
+if we decide such an approach is the best match for our needs.
 
 
 
