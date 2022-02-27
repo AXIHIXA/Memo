@@ -6513,6 +6513,9 @@ When they can, it is often the case that nothing else will do.
     so either give up reusing old functions, or recompile. 
 
 
+#### Problem Statement
+
+
 As the spaceships, space stations, and asteroids whiz around in your artificial world, 
 they naturally run the risk of colliding with one another. 
 Let’s assume the rules for such collisions are as follows:
@@ -7222,6 +7225,28 @@ the collision will be handled inside the class for `object2`.
 It would be better to design things so that collisions between objects of types `A` and `B` 
 are handled by neither `A` nor `B` but instead in some neutral location outside both classes.
 ```c++
+struct GameObject
+{
+    virtual ~GameObject() noexcept = 0;
+};
+
+GameObject::~GameObject() noexcept = default;
+
+struct SpaceStation : public GameObject
+{
+    ~SpaceStation() noexcept override = default;
+};
+
+struct Asteroid : public GameObject
+{
+    ~Asteroid() noexcept override = default;
+};
+
+struct SpaceShip : public GameObject
+{
+    ~SpaceShip() noexcept override = default;
+};
+
 namespace
 {
 
@@ -7268,7 +7293,7 @@ HitFunction lookup(const std::string & class1, const std::string & class2)
 void processCollision(GameObject & object1, GameObject & object2)
 {
     HitFunction hf = lookup(typeid(object1).name(), typeid(object2).name());
-    hf ? hf(object1, object2) : throw UnknownCollision(object1, object2);
+    hf ? hf(object1, object2) : throw std::logic_error("wtf");
 }
 ```
 We have finally achieved our goals. 
