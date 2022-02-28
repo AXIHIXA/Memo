@@ -255,7 +255,9 @@ that’s unambiguous to both compilers and the humans who have to work with them
 
 
 
-### 📌 Item 7: When using containers of newed pointers, remember to delete the pointers before the container is destroyed
+### 📌 Item 7: When using containers of `new`ed pointers, remember to `delete` the pointers before the container is destroyed
+
+- Let containers contain smart pointers to eliminate resource leaks and keep exception safety. 
 
 
 
@@ -264,14 +266,31 @@ that’s unambiguous to both compilers and the humans who have to work with them
 
 ### 📌 Item 8: Never create containers of `std::auto_ptr`s
 
-- `std::auto_ptr` itself is already deprecated since C++11, so this item is also outdated. 
-
+- `std::auto_ptr` itself is already deprecated since C++11. 
 
 
 
 
 
 ### 📌 Item 9: Choose carefully among erasing options
+
+- **To eliminate all objects in a container that have a particular value**:
+  - If the container is a `std::vector`, `std::string`, or `std::deque`, use the `erase-remove` idiom.
+  - If the container is a `std::list`, use `std::list::remove`.
+  - If the container is a standard associative container, use its `erase` member function.
+- **To eliminate all objects in a container that satisfy a particular predicate**:
+  - If the container is a `std::vector`, `std::string`, or `std::deque`, use the `erase-remove_if` idiom.
+  - If the container is a `std::list`, use `std::list::remove_if`.
+  - If the container is a standard associative container, use `std::remove_copy_if` and `std::swap`, 
+    or write a loop to walk the container elements, 
+    being sure to postincrement your iterator when you pass it to `erase`. 
+- **To do something inside the loop (in addition to erasing objects)**:
+  - If the container is a standard sequence container, 
+    write a loop to walk the container elements, 
+    being sure to update your iterator with `erase`’s return value each time you call it.
+  - If the container is a standard associative container, 
+    write a loop to walk the container elements, 
+    being sure to postincrement your iterator when you pass it to `erase`.
 
 
 
@@ -280,8 +299,63 @@ that’s unambiguous to both compilers and the humans who have to work with them
 
 ### 📌 Item 10: Be aware of allocator conventions and restrictions
 
+- Things you need to remember if you ever want to write a custom allocator.
+- Make your allocator a template, 
+  with the template parameter T representing the type of objects for which you are allocating memory. 
+- Provide the `typedef`s of `pointer` and `reference`, 
+  but always have pointer be `T *` and reference be `T &`.
+- **Never** give your allocators per-object state. 
+  In general, allocators should have **no** non`static` data members.
+- Remember that an allocator’s `allocate` member functions 
+  are passed the number of objects for which memory is required, 
+  not the number of Bytes needed. 
+  Also remember that these functions return `T *` pointers (via the `pointer` `typedef`), 
+  even though no `T` objects have yet been constructed. 
+- Be sure to provide the nested `rebind` template on which standard containers depend. 
 
 
+#### What allocators are not good for
+
+
+The list of restrictions on allocators begins with 
+their vestigial `typedef`s for `pointer`s and `reference`s. 
+Allocators were originally conceived of as abstractions for memory models, 
+and as such it made sense for allocators to provide `typedef`s 
+for `pointer`s and `reference`s in the memory model they defined. 
+In the C++ standard, the default allocator for objects of type `T` (`std::allocator<T>`) 
+offers the `typedef`s `std::allocator<T>::pointer` and `std::allocator<T>::reference`, 
+and it is expected that user-defined allocators will provide these `typedef`s, too. 
+
+
+Old C++ hands immediately recognize that this is suspect, because there’s no
+way to fake a reference in C++. Doing so would require the ability to
+overload operator. (“operator dot”), and that’s not permitted. In addition,
+creating objects that act like references is an example of the use of proxy
+objects, and proxy objects lead to a number of problems. (One such problem
+motivates Item 18. For a comprehensive discussion of proxy objects, turn to
+Item 30 of More Effective C++, where you can read about when they work as
+well as when they do not.)
+
+
+In the case of allocators in the STL, it’s not any technical shortcomings of
+proxy objects that render the pointer and reference typedefs impotent, it’s the
+fact that the Standard explicitly allows library implementers to assume that
+every allocator’s pointer typedef is a synonym for T* and every allocator’s
+reference typedef is the same as T&. That’s right, library implementers may
+ignore the typedefs and use raw pointers and references directly! So even if
+you could somehow find a way to write an allocator that successfully
+provided new pointer and reference types, it wouldn’t do any good, because
+the STL implementations you were using would be free to ignore your
+typedefs. Neat, huh?
+
+
+While you’re admiring that quirk of standardization, I’ll introduce another.
+Allocators are objects, and that means they may have member functions,
+nested types and typedefs (such as pointer and reference), etc., but the
+Standard says that an implementation of the STL is permitted to assume that
+all allocator objects of the same type are equivalent and always compare
+equal. Offhand, that doesn’t sound so awful, and there’s certainly good
+motivation for it. Consider this code:
 
 
 
