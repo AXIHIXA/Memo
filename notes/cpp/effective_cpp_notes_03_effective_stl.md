@@ -299,22 +299,22 @@ that’s unambiguous to both compilers and the humans who have to work with them
 
 ### 📌 Item 10: Be aware of allocator conventions and restrictions
 
-- Things you need to remember if you ever want to write a custom allocator.
-- Make your allocator a template, 
-  with the template parameter T representing the type of objects for which you are allocating memory. 
-- Provide the `typedef`s of `pointer` and `reference`, 
-  but always have pointer be `T *` and reference be `T &`.
-- **Never** give your allocators per-object state. 
-  In general, allocators should have **no** non`static` data members.
-- Remember that an allocator’s `allocate` member functions 
-  are passed the number of objects for which memory is required, 
-  not the number of Bytes needed. 
-  Also remember that these functions return `T *` pointers (via the `pointer` `typedef`), 
-  even though no `T` objects have yet been constructed. 
-- Be sure to provide the nested `rebind` template on which standard containers depend. 
-
-
-#### What allocators are not good for
+- Things you need to remember if you ever want to write a custom allocator: 
+  - Make your allocator a template, with the template parameter `T` 
+    representing the type of objects for which you are allocating memory. 
+  - Provide the `typedef`s of `pointer` and `reference`, 
+    but always have pointer be `T *` and reference be `T &`.
+  - **Never** give your allocators per-object state. 
+    The standard requires allocators with same `T` be identical with good reasons. 
+    That means that allocators should have **no** non`static` data member. 
+  - Remember that an allocator’s `allocate` member functions 
+    are passed the number of objects for which memory is required, 
+    not the number of Bytes needed. 
+    Also remember that these functions return `T *` pointers (via the `pointer` `typedef`), 
+    even though no `T` objects have yet been constructed. 
+  - Allocators for `std::list` and all STL ordered associative containers 
+    are **never** asked to allocate memory. 
+  - Be sure to provide the nested `rebind` template on which standard containers depend. 
 
 
 The list of restrictions on allocators begins with 
@@ -327,35 +327,257 @@ offers the `typedef`s `std::allocator<T>::pointer` and `std::allocator<T>::refer
 and it is expected that user-defined allocators will provide these `typedef`s, too. 
 
 
-Old C++ hands immediately recognize that this is suspect, because there’s no
-way to fake a reference in C++. Doing so would require the ability to
-overload operator. (“operator dot”), and that’s not permitted. In addition,
-creating objects that act like references is an example of the use of proxy
-objects, and proxy objects lead to a number of problems. (One such problem
-motivates Item 18. For a comprehensive discussion of proxy objects, turn to
-Item 30 of More Effective C++, where you can read about when they work as
-well as when they do not.)
+Old C++ hands immediately recognize that this is suspect, 
+because there’s **no** way to fake a reference in C++. 
+Doing so would require the ability to "overload" `operator.`, 
+which is actually **not** permitted. 
+In addition, creating objects that act like references 
+is an example of the use of proxy objects, 
+and proxy objects lead to a number of problems. 
+(One such problem motivates Item 18. Also refer to More Effective C++ Item 30.)
 
 
-In the case of allocators in the STL, it’s not any technical shortcomings of
-proxy objects that render the pointer and reference typedefs impotent, it’s the
-fact that the Standard explicitly allows library implementers to assume that
-every allocator’s pointer typedef is a synonym for T* and every allocator’s
-reference typedef is the same as T&. That’s right, library implementers may
-ignore the typedefs and use raw pointers and references directly! So even if
-you could somehow find a way to write an allocator that successfully
-provided new pointer and reference types, it wouldn’t do any good, because
-the STL implementations you were using would be free to ignore your
-typedefs. Neat, huh?
+In the case of allocators in the STL, 
+it’s not any technical shortcomings of proxy objects 
+that render the `pointer` and `reference` `typedef`s impotent, 
+it’s the fact that the Standard explicitly allows library implementers 
+to assume that every allocator’s `pointer` `typedef` is a synonym for `T *` 
+and every allocator’s `reference` `typedef` is the same as `T &`. 
+That’s right, library implementers may ignore the `typedef`s and use raw pointers and references directly! 
+So even if you could somehow find a way to write an allocator 
+that successfully provided new pointer and reference types, it **wouldn’t** do any good, 
+because the STL implementations you were using would be free to ignore your `typedef`s. 
 
 
 While you’re admiring that quirk of standardization, I’ll introduce another.
 Allocators are objects, and that means they may have member functions,
-nested types and typedefs (such as pointer and reference), etc., but the
-Standard says that an implementation of the STL is permitted to assume that
-all allocator objects of the same type are equivalent and always compare
-equal. Offhand, that doesn’t sound so awful, and there’s certainly good
-motivation for it. Consider this code:
+nested types and `typedef`s (such as `pointer` and `reference`), etc., 
+but the Standard says that an implementation of the STL is permitted to assume that
+all allocator objects of the same type are equivalent and always compare equal. 
+Offhand, that doesn’t sound so awful, and there’s certainly good motivation for it. 
+Consider this code:
+```c++
+class Widget { /* ... */ };
+
+template <typename T>
+class SpecialAllocator { /* ... */ };
+
+using SpecialWidgetAllocator = SpecialAllocator<Widget>; 
+
+std::list<Widget, SpecialWidgetAllocator> L1;
+std::list<Widget, SpecialWidgetAllocator> L2;
+L1.splice(L1.begin(), L2);
+```
+Recall that when `std::list` elements are `splice`d from one `std::list` to another, 
+nothing is copied. 
+Instead, a few pointers are adjusted, 
+and the `std::list` nodes that used to be in one list find themselves in another. 
+This makes splicing operations both fast and exception-safe. 
+In the example above, the nodes that were in `L2` prior to the `splice` are in `L1` after the `splice`.
+
+
+When `L1` is destroyed, of course, it must destroy all its nodes (and deallocate their memory), 
+and because it now contains nodes that were originally part of `L2`, 
+`L1`’s allocator must deallocate the nodes that were originally allocated by `L2`’s allocator. 
+Now it should be clear why the Standard permits implementers of the STL to assume that 
+allocators of the same type are equivalent. 
+It’s so memory allocated by one allocator object (such as `L2`’s) 
+may be safely deallocated by another allocator object (such as `L1`’s). 
+Without being able to make such an assumption, 
+`splice` operations would be more difficult to implement. 
+Certainly they wouldn’t be as efficient as they can be now.
+
+
+That’s all well and good, but the more you think about it, 
+the more you’ll realize just how draconian a restriction it is 
+that STL implementations may assume that allocators of the same type are equivalent. 
+It means that portable allocator objects 
+(allocators that will function correctly under different STL implementations) may **not** have state. 
+
+
+Let’s be explicit about this: 
+it means that _portable_ allocators may **not** have any non`static` data members, 
+at least not any that affect their behavior. 
+That means, for example, you can’t have one `SpecialAllocator<int>` that allocates from one heap 
+and a different `SpecialAllocator<int>` that allocates from a different heap. 
+Such allocators **wouldn’t** be equivalent, 
+and STL implementations exist where attempts to use both allocators 
+could lead to corrupt runtime data structures. 
+
+
+
+Notice that this is a runtime issue. 
+Allocators with state will compile just fine.
+They just may not run the way you expect them to. 
+The responsibility for ensuring that all allocators of a given type are equivalent is yours. 
+**Don’t** expect compilers to issue a warning if you violate this constraint.
+The C++ standard (It might be C++03 when Meyers wrote this book?) put the following statement immediately after 
+the text that permits STL implementers to assume that allocators of the same type are equivalent:
+
+
+> Implementors are encouraged to supply libraries that ... support non-equal instances. 
+> In such implementations, ... the semantics of containers and algorithms 
+> when allocator instances compare non-equal are implementation-defined.
+
+
+This is a lovely sentiment, 
+but as a user of the STL who is considering the development of a custom allocator with state, 
+it offers you next to nothing.
+You can take advantage of this statement only if:
+1. You know that the STL implementations you are using support inequivalent allocators;
+2. You are willing to delve into their documentation to determine 
+   whether the implementation-defined behavior of “non-equal” allocators is acceptable to you;
+3. You are not concerned about porting your code to STL implementations 
+   that may take advantage of the latitude expressly extended to them by the Standard. 
+
+
+I remarked earlier that allocators are like `operator new` in that they allocate raw memory, 
+but their interface is different. 
+This becomes apparent if you look at the declaration 
+of the most common forms of `operator new` and `std::allocator<T>::allocate`:
+```c++
+void * operator new (std::size_t count);
+
+template <typename T>
+[[nodiscard]] constexpr T * std::allocator<T>::allocate(std::size_t n);
+```
+Both take a parameter specifying how much memory to allocate, 
+but in the case of `operator new`, this parameter specifies a certain number of Bytes, 
+while in the case of `std::allocator<T>::allocate`, 
+it specifies how many `T` objects are to fit in the memory. 
+On a platform where `sizeof(long) == 8`, 
+you pass `8` to `operator new` if you wanted enough memory to hold an `long`, 
+but you pass `1` to `std::allocator<long>::allocate`. 
+
+
+`operator new` and `std::allocator<T>::allocate` differ in return types, too. 
+`operator new` returns a `void *`, 
+which is the traditional C++ way of representing a pointer to uninitialized memory. 
+`std::allocator<T>::allocate` returns a `T *`, 
+which is not only untraditional, but also premeditated fraud. 
+The pointer returned from `std::allocator<T>::allocate` doesn’t point to a `T` object, 
+because no `T` has yet been constructed! 
+Implicit in the STL is the expectation that `std::allocator<T>::allocate`’s caller 
+will eventually construct one or more `T` objects in the memory it returns 
+(possibly via `std::allocator_traits<std::allocator<T>>::construct`, 
+`std::uninitialized_fill`, or some application of `std::raw_storage_iterator`s),
+though in the case of `std::vector::reserve` or `std::string::reserve`, that may never happen. 
+
+
+That brings us to the final curiosity of STL allocators, 
+that most of the standard containers never make a single call 
+to the allocators with which they are instantiated:
+```c++
+// Same as std::list<int, std::allocator<int>>. 
+// std::allocator<int> is never asked to allocate memory!
+std::list<int> L;
+
+class Widget { /* ... */ };
+
+template <typename T>
+class SpecialAllocator { /* ... */ };
+
+using SpecialWidgetAllocator = SpecialAllocator<Widget>;
+
+// SpecialWidgetAllocator will never allocate memory! 
+std::set<Widget, SpecialWidgetAllocator> s;
+```
+This oddity is true for list and all STL ordered associative containers. 
+That’s because these are _node-based containers_,
+i.e., containers based on data structures 
+in which a new node is dynamically allocated each time a value is to be stored. 
+In the case of `std::list`, the nodes are list nodes. 
+In the case of the STL ordered associative containers, 
+the nodes are usually tree nodes, 
+because the standard associative containers are typically
+implemented as red-black trees. 
+
+
+Think for a moment about how a `std::list<T>` is likely to be implemented.
+The list itself will be made up of nodes,
+each of which holds a `T` object as well as pointers to the next and previous nodes in the list:
+```c++
+namespace std
+{
+
+template <typename T, typename Allocator = std::allocator<T>>
+class list
+{
+private:
+    struct Node
+    {
+        T data;
+        Node * pred;
+        Node * succ;
+    };
+    
+    Allocator alloc;
+    
+    ...
+};
+
+}  // namespace std
+```
+When a new node is added to the list, 
+we need to get memory for it from an allocator, 
+but we **don’t** need memory for a `T`, 
+we need memory for a `std::list::Node` that contains a `T`. 
+That makes our allocator object all but useless, 
+because it doesn’t allocate memory for `std::list::Node`s, it allocates memory for `T`s. 
+Now you understand why `std::list` never asks its allocator to do any allocation: 
+the allocator **can’t** provide what `std::list` needs. 
+
+
+What `std::list` needs is a way to get from the allocator type it has 
+to the corresponding allocator for `std::list::Node`s. 
+By convention, allocators provide a `typedef` `std::allocator<T>::template rebind<U>::other`that does the job.
+```c++
+namespace std
+{
+
+template <typename T>
+class allocator
+{
+public:
+    template <typename U>
+    struct rebind
+    {
+        typedef allocator<U> other;
+    };
+    
+    ...
+};
+
+}  // namespace std
+```
+In the code implementing `std::list<T>`, 
+there is a need to determine the type of the allocator for `std::list::Node`s 
+that corresponds to the allocator we have for `T`s. 
+The type of the allocator we have for `T`s is the template parameter `Allocator`. 
+That being the case, the type of the corresponding allocator for `std::list::Node`s is this:
+```c++
+Allocator::rebind<Node>::other
+```
+Every allocator template `A` (e.g., `std::allocator`) is expected to have 
+a nested struct template called `rebind`. 
+`rebind` takes a single type parameter `U`, and defines nothing but a `typedef` `other`. 
+`other` is simply a name for `A<U>`. 
+As a result, `std::list<T>` can get from its allocator for `T` objects (called `Allocator`) 
+to the corresponding allocator for `std::list<T>::Node` objects 
+by referring to `Allocator::rebind<std::list<T>::Node>::other`. 
+
+
+As a user of the STL who may want to write a custom allocator, 
+you don’t really need to know how it works. 
+What you do need to know is that if you choose to write allocators 
+and use them with the standard containers, 
+your allocators must provide the `rebind` template, 
+because standard containers assume it will be there. 
+(For debugging purposes, it’s also helpful to know why node-based containers of `T` objects 
+never ask for memory from the allocators for `T` objects.)
+
+
+
 
 
 
