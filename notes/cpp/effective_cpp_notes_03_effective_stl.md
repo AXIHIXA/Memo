@@ -830,7 +830,137 @@ std::mutex vecMutex;
 
 ### 🎯 Chapter 2. `std::vector` and `std::string`
 
+
+All the STL containers are useful, 
+but you’ll likely find yourself reaching for `std::vector` and `std::string` more often than their compatriots.
+`std::vector` and `std::string` are designed to replace most applications of arrays. 
+The Items in this chapter cover `std::vector`s and `std::string`s from a number of perspectives. 
+We begin with a discussion of why the switch from arrays is worthwhile, 
+then look at ways to improve `std::vector` and `std::string` performance,
+identify important variations in `std::string` implementations, 
+examine how to pass `std::vector` and `std::string` data to APIs that understand only C, 
+and learn how to eliminate excess memory allocation. 
+We conclude with an examination of an instructive anomaly, `std::vector<bool>`.
+
+
 ### 📌 Item 13: Prefer `std::vector` and `std::string` to dynamically allocated arrays
+
+- Just use them. 
+  They save you from manual memory management, 
+  offer you with full STL generic algorithms,
+  and has C API compatability. 
+- One concern involved referenced-counted `std::string`s 
+  under multi-threading environments, 
+  where reference-counting can hit performance. 
+
+
+The minute you decide to use `new` for a dynamic allocation, you adopt the following responsibilities:
+1. You must make sure that somebody will later `delete` the allocation.
+   Without a subsequent `delete`, your new will yield a resource leak.
+2. You must ensure that the correct form of `delete` is used. 
+   For an allocation of a single object from `new`, `delete` must be used. 
+   For an array allocation from `new []`, `delete []` is required. 
+   If the wrong form of `delete` is used, results will be undefined. 
+   On some platforms, the program will crash at runtime.
+   On others, it will silently blunder forward, 
+   sometimes leaking resources and corrupting memory as it goes.
+3. You must make sure that `delete` is used exactly once. 
+   If an allocation is `delete`d more than once, results are again undefined.
+
+
+That’s quite a set of responsibilities. 
+Thanks to `std::vector` and `std::string`, 
+it is no longer necessary as often as it used to be. 
+
+
+Any time you find yourself getting ready to dynamically allocate an array 
+(i.e., plotting to write `new T[...]`), 
+you should consider using a `std::vector` or a `std::string` instead. 
+(In general, use `std::string` when `T` is a character type and use `std::vector` when it’s not, 
+though later in this Item, 
+we’ll encounter a scenario where a `std::vector<char>` may be a reasonable design choice.)
+`std::vector` and `std::string` eliminate the burdens above, because they manage their own memory. 
+Their memory grows as elements are added to these containers, 
+and when a `std::vector` or `std::string` is destroyed, 
+its destructor automatically destroys the elements in the container 
+and deallocates the memory holding those elements.
+
+
+In addition, `std::vector` and `std::string` are full-fledged STL sequence containers, 
+so they put at your disposal the complete arsenal of STL algorithms that work on such containers. 
+True, arrays can be used with STL algorithms, too,
+but arrays **don’t** offer member functions like `begin`, `end`, and `size`, 
+**nor** do they have nested `typedef`s like `iterator`, `reverse_iterator`, or `value_type`. 
+And of course `char *` pointers can hardly compete with 
+the scores of specialized member functions proffered by `std::string`. 
+The more you work with the STL, 
+the more jaundiced the eye with which you’ll come to view built-in arrays.
+
+
+If you’re concerned about the legacy code you must continue to support, 
+all of which is based on arrays, relax and use `std::vector` and `std::string` anyway. 
+Item 16 shows how easy it is to pass the data in `std::vector` and `std::string` to APIs that expect arrays, 
+so integration with legacy code is generally not a problem.
+
+
+There is one legitimate cause for concern in 
+replacing dynamically allocated arrays with `std::vector` and `std::string`, 
+and it applies only to `std::string`s. 
+Many `std::string` implementations employ reference counting behind the scenes (see Item 15), 
+a strategy that eliminates some unnecessary memory allocations and copying of characters 
+and that can improve performance for many applications. 
+In fact, the ability to optimize `std::string` via reference counting was considered so important, 
+the C++ Standardization Committee took specific steps to make sure it was a valid implementation. 
+
+
+Unfortunately, if you use reference-counted `std::string` in a multi-threading environment, 
+you may find that the time saved by avoiding allocations and copying 
+is dwarfed by the time spent on behind-the-scenes concurrency control. 
+If you’re using reference-counted `std::string`s in a multi-threading environment, 
+then it makes sense to keep an eye out for performance problems 
+arising from their support for thread safety.
+
+
+To determine whether you’re using a reference-counting implementation for `std::string`, 
+it’s often easiest to consult the documentation for your library.
+Because reference counting is considered an optimization, 
+vendors generally tout it as a feature. 
+An alternative is to look at the source code for your libraries’ implementations of `std::string`. 
+I don’t generally recommend trying to figure things out from library source code, 
+but sometimes it’s the only way to find out what you need to know. 
+If you choose this approach, remember that `std::string` is a `typedef` for `std::basic_string<char>` 
+(and `std::wstring` is a `typedef` for `std::basic_string<wchar_t>`), 
+so what you really want to look at is the template `std::basic_string`. 
+The easiest thing to check is probably the class’s _copy constructor_. 
+Look to see if it increments a reference count somewhere. 
+If it does, `std::string` is reference counted. 
+If it does not, either `std::string` isn’t reference counted or you misread the code. 
+
+
+If the `std::string` implementations available to you are reference counted, 
+and you are running in a multi-threading environment 
+where you’ve determined that `std::string`’s reference counting support is a performance problem, 
+you have at least three reasonable choices, **none** of which involves abandoning the STL. 
+Check to see if your library implementation is one
+that makes it possible to disable reference counting, 
+often by changing the value of a preprocessor variable. 
+This won’t be portable, but given the amount of work involved, it’s worth investigating. 
+
+Find or develop an alternative `std::string` implementation (or partial implementation) 
+that doesn’t use reference counting. 
+
+Consider using a `std::vector<char>` instead of a `std::string`. 
+`std::vector` implementations are **not** allowed to be reference counted, 
+so hidden multi-threading performance issues fail to arise. 
+Of course, you forgo `std::string`’s fancy member functions if you switch to `std::vector<char>`, 
+but most of that functionality is available through STL algorithms anyway, 
+so you’re not so much giving up functionality as you are trading one syntax for another. 
+
+
+The upshot of all this is simple. 
+If you’re dynamically allocating arrays, 
+you’re probably taking on more work than you need to. 
+To lighten your load, use `std::vector`s or `std::string`s instead.
 
 
 
