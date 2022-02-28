@@ -583,12 +583,245 @@ never ask for memory from the allocators for `T` objects.)
 
 ### 📌 Item 11: Understand the legitimate uses of custom allocators
 
+- Allocators are used to customize STL container's memory management. 
+
+
+So you’ve benchmarked, profiled, and experimented your way to the conclusion
+that the default STL memory manager (i.e., `std::allocator<T>`) is too slow, wastes memory, 
+or suffers excessive fragmentation for your STL needs,
+and you’re certain you can do a better job yourself. 
+Or you discover that `std::allocator<T>` takes precautions to be thread-safe, 
+but you’re interested only in single-threaded execution, 
+and you don’t want to pay for the synchronization overhead you don’t need. 
+Or you know that objects in certain containers are typically used together, 
+so you’d like to place them near one another in a special heap to maximize locality of reference. 
+Or you’d like to set up a unique heap that corresponds to shared memory, 
+then put one or more containers in that memory, so they can be shared by other processes. 
+Each of these scenarios corresponds to a situation 
+where custom allocators are well suited to the problem.
+
+
+For example, suppose you have special routines modeled after `std::malloc` and `std::free`
+for managing a heap of shared memory,
+and you’d like to make it possible to put the contents of STL containers in that shared memory: 
+```c++
+[[nodiscard]] void * mallocShared(std::size_t bytesNeeded);
+void freeShared(void * ptr) noexcept;
+
+template <typename T>
+class SharedMemoryAllocator 
+{
+public:
+    ...
+    
+    pointer allocate(size_type numObjects, const void * localityHint = 0)
+    {
+        return static_cast<pointer>(mallocShared(numObjects * sizeof(T)));
+    }
+    
+    void deallocate(pointer ptrToMemory, size_type numObjects)
+    {
+        freeShared(ptrToMemory);
+    }
+    
+    ...
+};
+```
+You could use `SharedMemoryAllocator` like this:
+```c++
+using SharedDoubleVec = std::vector<double, SharedMemoryAllocator<double>>;
+
+{
+    ...
+    // create a vector whose elements are in shared memory
+    SharedDoubleVec v;  
+    ...
+}
+```
+The wording in the comment next to `v`’s definition is important. 
+`v` is using a `SharedMemoryAllocator`, 
+so the memory `v` allocates to hold its elements will come from shared memory.
+However, `v` itself (including all its data members) will almost certainly **not** be placed in shared memory. 
+`v` is just a normal stack-based object, 
+so it will be located in whatever memory the runtime system uses for all normal stack-based objects. 
+That’s almost never shared memory. 
+To put both `v`’s contents and `v` itself into shared memory, you’d have to do something like this:
+```c++
+// allocate enough shared memory to hold a SharedDoubleVec object
+void * pVectorMemory = mallocShared(sizeof(SharedDoubleVec));
+
+// use "placement new" to construct a SharedDoubleVec object in the memory
+SharedDoubleVec * pv = new (pVectorMemory) SharedDoubleVec;
+
+// use the object (via pv)
+// ...
+
+// destruct the object in the shared memory
+pv->~SharedDoubleVec();
+
+// deallocate the initial chunk of shared  memory
+freeShared(pVectorMemory);
+```
+Fundamentally, you acquire some shared memory, 
+then construct a `std::vector` in it that uses shared memory for its own internal allocations. 
+When you’re done with the vector, you invoke its destructor, 
+then release the memory the vector occupied. 
+The code isn’t terribly complicated, 
+but it’s a lot more demanding than just declaring a local variable as we did above. 
+Unless you really need a container (as opposed to its elements) to be in shared memory, 
+I encourage you to avoid this manual four-step allocate/construct/destroy/deallocate process.
+
+
+In this example, you’ve doubtless noticed that the code ignores the possibility
+that `mallocShared` might return a null pointer. 
+Obviously, production code would have to take such a possibility into account. 
+Also, construction of the vector in the shared memory is accomplished by _placement `new`_.
+
+
+As a second example of the utility of allocators, 
+suppose you have two heaps, identified by the classes `Heap1` and `Heap2`. 
+Each heap class has `static` member functions for performing allocation and deallocation:
+```c++
+class Heap1 
+{
+public:
+    ...
+    static void * alloc(std::size_t numBytes, const void *memoryBlockToBeNear);
+    static void dealloc(void * ptr);
+    ...
+};
+
+// has the same interface
+class Heap2 { ... }; 
+```
+Further, suppose you’d like to co-locate the contents of some STL containers in different heaps. 
+First you write an allocator designed to use classes like `Heap1` and `Heap2` for the actual memory management:
+```c++
+template <typename T, typename Heap>
+class SpecificHeapAllocator
+{
+public:
+    ...
+
+    pointer allocate(size_type numObjects, const void * localityHint = 0)
+    {
+        return static_cast<pointer>(Heap::alloc(numObjects * sizeof(T), localityHint));
+    }
+
+    void deallocate(pointer ptrToMemory, size_type numObjects)
+    {
+        Heap::dealloc(ptrToMemory);
+    }
+
+    ...
+};
+```
+Then you use `SpecificHeapAllocator` to cluster containers’ elements together:
+```c++
+// put both v's and s's elements in Heap1
+std::vector<int, SpecificHeapAllocator<int, Heap1>> v; 
+std::set<int, SpecificHeapAllocator<int, Heap1>> s;
+
+// put both L's and m's elements in Heap2
+std::list<Widget, SpecificHeapAllocator<Widget, Heap2>> L; 
+std::map<int, std::string, 
+         std::less<int>, 
+         SpecificHeapAllocator<std::pair<const int, std::string>, Heap2>> m;
+```
+In this example, it’s quite important that `Heap1` and `Heap2` be types and not objects. 
+The STL offers a syntax for initializing different STL containers with different allocator objects of the same type, 
+but I’m not going to show you what it is. 
+That’s because if `Heap1` and `Heap2` were objects instead of types,
+they’d be inequivalent allocators, 
+and that would violate the equivalence constraint on allocators that is detailed in Item 10.
+
+
+As these examples demonstrate, 
+allocators are useful in a number of contexts.
+As long as you obey the constraint that 
+all allocators of the same type must be equivalent, 
+you’ll have no trouble employing custom allocators 
+to control general memory management strategies, 
+clustering relationships, and use of shared memory and other special heaps.
+
 
 
 
 
 
 ### 📌 Item 12: Have realistic expectations about the thread safety of STL containers
+
+- STL has **no** thread-safety guarantees on its algorithms and containers. 
+- Use `std::lock_guard` to manage `std::mutex`es when accessing STL containers. 
+
+
+**None** of the following locking policies on STL containers are thread-safe:
+- Lock a container for the duration of each call to its member functions. 
+- Lock a container for the lifetime of each iterator it returns (via, e.g., calls to `begin` or `end`).
+- Lock a container for the duration of each algorithm invoked on that container.
+  (This actually makes no sense, because, as Item 32 explains, 
+  algorithms have no way to identify the container on which they are operating. 
+  Nevertheless, we’ll examine this option here, because it’s instructive to see 
+  why it wouldn’t work even if it were possible.)
+
+
+Now consider the following code. 
+It searches a `std::vector<int>` for the first occurrence of the value `5` and changes that value to `0`.
+```c++
+std::vector<int> v;
+auto it = std::find(v.begin(), v.end(), 5);  // Line 1
+if (it != v.end())                           // Line 2
+{ 
+    *it = 0;                                 // Line 3
+}
+```
+In a multithreaded environment, 
+it’s possible that a different thread will modify the data in `v` 
+immediately after completion of Line 1. 
+If that were to happen, the test of `it` against `v.end` on Line 2 would be meaningless, 
+because `v`’s values would be different from what they were at the end of Line 1. 
+
+In fact, such a test could yield undefined results, 
+because another thread could have intervened between Lines 1 and 2 and invalidated `it`, 
+perhaps by performing an insertion that caused the vector to reallocate its underlying memory. 
+(That would invalidate all the vector’s iterators. 
+For details on this reallocation behavior, turn to Item 14.) 
+Similarly, the assignment to `*it` on Line 3 is unsafe,
+because another thread might execute between Lines 2 and 3 in such a way as to invalidate `it`, 
+perhaps by erasing the element it points to (or at least used to point to).
+
+
+**None** of the approaches to locking listed above would prevent these problems. 
+The calls to `begin` and `end` in Line 1 both return too quickly to offer any help, 
+the iterators they generate last only until the end of that line, 
+and `std::find` also returns at the end of that line.
+
+
+For the code above to be thread safe, 
+`v` must remain locked from Line 1 through Line 3, 
+and it’s difficult to imagine how an STL implementation could deduce that automatically. 
+Bearing in mind the typically high cost of synchronization primitives 
+(e.g., semaphores, mutexes, etc.), 
+it’s even more difficult to imagine how an implementation could do it 
+without imposing a significant performance penalty on programs that knew a priori, 
+that were designed in such a way that 
+no more than one thread had access to `v` during the course of Lines 1-3.
+
+
+Such considerations explain why you **can’t** expect 
+any STL implementation to make your threading woes disappear. 
+Instead, you’ll have to manually take charge of synchronization control in these kinds of scenarios. 
+In this example, you might do it like this:
+```c++
+std::vector<int> vec {0, 1, 2, 3, 4, 5};
+std::mutex vecMutex;
+
+{
+    std::lock_guard g(vecMutex);
+    auto it = std::find(vec.begin(), vec.end(), 5);
+    if (it != vec.end())  *it = 0;
+}
+```
 
 
 

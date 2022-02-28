@@ -4856,12 +4856,13 @@ and the `Printer` constructor won’t even be invoked.
   to forbid non-heap allocation while keeping its inheritability. 
   However, classes inheriting such a class may be allocated on somewhere else, 
   which might be considered a **violation** of the non-heap allocation rule with their base class part.
-- Declare class-specific `operator new` and `operator delete` `private` 
+- Inherit classes like `HeapTracked` to test whether a object is `new`ed (i.e., whether it is safe to `delete this`). 
+- Declare class-specific `operator new` and `operator delete` `private` or `delete` them 
   to forbid heap allocation of the base class and all derived classes. 
   This method has **no** effect if the derived class declare its own `operator new` and `operator delete`, 
-  `nor` on attempts to allocate objects containing base class objects as members. 
+  **nor** on attempts to allocate objects containing base class objects as members. 
   These cases simply bypass calls to the base versions. 
-- Inherit classes like `HeapTracked` to test whether it is safe to `delete this`.
+
 
 
 #### Requiring Heap-Based Objects
