@@ -967,7 +967,13 @@ To lighten your load, use `std::vector`s or `std::string`s instead.
 
 
 
-### 📌 Item 14: Use `reserve()` to avoid unnecessary reallocations
+### 📌 Item 14: Use `reserve` to avoid unnecessary re-allocations
+
+- There are two common ways to use `reserve` to avoid unneeded re-allocations: 
+1. `reserve` the appropriate amount of space in advance 
+   if you know exactly or approximately how many elements will ultimately end up in your container.
+2. `reserve` the maximum space you could ever need, 
+   then trim off any excess capacity once you’ve added all your data (see Item 17).
 
 
 
@@ -976,6 +982,122 @@ To lighten your load, use `std::vector`s or `std::string`s instead.
 
 ### 📌 Item 15: Be aware of variations in `std::string` implementations
 
+- There are multiple viable `std::string` implementations. 
+
+
+What is the size of a `std::string `object? 
+In other words, what value does `sizeof(std::string)` return? 
+This could be an important question if you’re keeping a close eye on memory consumption, 
+and you’re thinking of replacing a raw `char *` pointer with a `std::string` object.
+
+
+The news about `sizeof(std::string)` is “interesting,”
+which is almost certainly what you do not want to hear if you’re concerned about space. 
+While it’s not uncommon to find `std::string` implementations 
+in which `std::string`s are the same size as `char *` pointers, 
+it’s also easy to find `std::string` implementations 
+where each `std::string` is seven times that size. 
+
+
+Why the difference? 
+To understand that, we have to know what data a `std::string` is likely to store
+as well as where it might decide to store it.
+
+
+Virtually every `std::string` implementation holds the following information:
+- The **size** of the string, i.e., the number of characters it contains.
+- The **capacity** of the memory holding the string’s characters. 
+- The **value** of the string, i.e., the characters making up the string.
+- A copy of its **allocator**. 
+- The **reference count** for the value.
+
+
+In implementation A, each `std::string` object contains a copy of its allocator, 
+the string’s size, its capacity, and a pointer to a dynamically allocated buffer 
+containing both the reference count and the string’s value. 
+In this implementation, a `std::string` object using the default allocator 
+is four times the size of a pointer. 
+With a custom allocator, the `std::string` object would be bigger 
+by about the size of the allocator object:
+```
+  std::string Object (Implementation A)
+┌───────────┐
+│ Allocator │
+├───────────┤         ┌────────┬───────┐
+│   Size    │         │ RefCnt │ Value │
+├───────────┤         └────────┴───────┘
+│ Capacity  │                  ↑
+├───────────┤                  │
+│  Pointer  ├──────────────────┘
+└───────────┘
+```
+Implementation B’s `std::string` objects are the same size as a pointer, 
+because they contain nothing but a pointer to a struct. 
+Again, this assumes that the default allocator is used. 
+If a custom allocator is used, the `std::string` object’s size will increase
+by about the size of the allocator object.
+The object pointed to by B’s `std::string` contains 
+the string’s size, capacity, and reference count, 
+as well as a pointer to a dynamically allocated buffer holding the string’s value. 
+The object also contains some additional data related to concurrency control in multi-threading systems. 
+Such data is labeled as "Other". 
+```
+          std::string Object (Implementation B)
+┌─────────┐       ┌──────────┐         
+│ Pointer ├──────→│   Size   │
+└─────────┘       ├──────────┤  
+                  │ Capacity │
+                  ├──────────┤       ┌────────┬───────┐
+                  │ Pointer  ├──────→│ RefCnt │ Value │
+                  ├──────────┤       └────────┴───────┘
+                  │  Other   │
+                  └──────────┘
+```
+`std::string` objects under Implementation C are always the size of a pointer, 
+but this pointer points to a dynamically allocated buffer 
+containing everything related to the string: 
+its size, capacity, reference count, and value. 
+There is **no** per-object allocator support. 
+The buffer also holds some data concerning the _shareability_ of the value 
+(see More Effective C++ Item 29). 
+```
+          std::string Object (Implementation C)
+┌─────────┐       ┌──────────────┐         
+│ Pointer ├──────→│     Size     │
+└─────────┘       ├──────────────┤  
+                  │   Capacity   │
+                  ├──────────────┤       ┌────────┬───────┐
+                  │    RefCnt    ├──────→│ RefCnt │ Value │
+                  ├──────────────┤       └────────┴───────┘
+                  │ Shareability │
+                  └──────────────┘
+```
+Implementation D’s `std::string` objects are seven times the size of a pointer 
+(still assuming use of the default allocator). 
+This implementation employs **no** reference counting, 
+but each `std::string` contains an internal buffer 
+large enough to represent string values of up to 15 characters. 
+Small strings can thus be stored entirely within the `std::string` object, 
+a feature sometimes known as the _small string optimization_. 
+When a string ’s capacity exceeds 15, 
+the first part of the buffer is used as a pointer to dynamically allocated memory, 
+and the `std::string`’s value resides in that memory:
+```
+         std::string Object (Implementation D)
+ Size <= 15                15 < Capacity       
+┌───────────┐              ┌───────────┐
+│ Allocator │              │ Allocator │
+├───────────┤              ├───────────┤       ┌───────┐
+│   Small   │              │  Pointer  ├──────→│ Value │
+│   Value   │              ├───────────┤       └───────┘
+│  Buffer   │              │  Unused   │     
+├───────────┤              ├───────────┤         
+│   Size    │              │   Size    │                  
+├───────────┤              ├───────────┤                  
+│ Capacity  │              │ Capacity  │
+└───────────┘              └───────────┘
+```
+
 
 
 
@@ -983,12 +1105,27 @@ To lighten your load, use `std::vector`s or `std::string`s instead.
 
 ### 📌 Item 16: Know how to pass `std::vector` and `std::string` data to legacy APIs
 
+- `std::vector<T>::data` does **not** handle zero-sized vectors (may or may **not** return a null pointer). 
+- `std::string::c_str` properly returns a null pointer for zero-sized strings. 
 
 
 
 
 
-### 📌 Item 17: Use “the `swap` trick” to trim excess capacity
+
+### 📌 Item 17: Know the outdated `swap` trick to trim excess capacity
+
+This is how you trim the excess capacity from a `std::vector` prior to C++11:
+```c++
+std::vector<Contestant> contestants { /* ... */ };
+std::vector<Contestant>(contestants.begin(), contestants.end()).swap(contestants);
+```
+Also applies to `std::string`s:
+```c++
+std::string s = "...";
+std::string(s.begin(), s.end()).swap(s);
+```
+In C++11, just call `shrick_to_fit` function. 
 
 
 
@@ -996,6 +1133,10 @@ To lighten your load, use `std::vector`s or `std::string`s instead.
 
 
 ### 📌 Item 18: Avoid using `std::vector<bool>`
+
+- `std::vector<bool>` uses proxy classes as return values of `operator[]` 
+  and does **not** follow the STL routines. 
+- Consider `std::deque<bool>` (that really contain `bool`s) or `std::bitset<N>` as an alternative. 
 
 
 
@@ -1006,19 +1147,134 @@ To lighten your load, use `std::vector`s or `std::string`s instead.
 
 ### 📌 Item 19: Understand the difference between equality and equivalence
 
+- _Equality_ is based on `operator==`, while _equivalence_ is usually based on `operator<`. 
+
+
+The `std::find` algorithm and `std::set`'s `insert` member function
+are representative of many functions that must determine whether two values are the same.
+Yet they do it in different ways.
+`std::find`’s definition of "the same" is _equality_, which is based on `operator==`. 
+`std::set<T>::insert`’s definition of "the same" is _equivalence_, which is usually based on `operator<`.
+Because these are different definitions,
+it’s possible for one definition to dictate that two objects have the same value
+while the other definition decrees that they do not. 
+As a result, you must understand the difference between equality and equivalence 
+if you are to make effective use of the STL. 
+
+#### Equality
+
+Operationally, the notion of equality is based on `operator==`. 
+If the expression `x == y` returns `true`, `x` and `y` have equal values, otherwise they don’t. 
+That’s pretty straightforward, though it’s useful to bear in mind that 
+just because `x` and `y` have equal values does **not** necessarily imply that 
+all of their data members have equal values. 
+Recall the famous interview joke (originally in JavaScript): 
+```c++
+// Is it possible that (a == 1 && a == 2 && a == 3) == true? 
+
+struct S
+{
+    S() : v(1) {}
+    explicit S(int i) : v(i) {}
+    int v;
+};
+
+inline bool operator==(S & a, int b)
+{
+    return a.v++ == b;
+}
+
+S a(1);
+
+if (a == 1 && a == 2 && a == 3)
+{
+    std::cout << "wtf\n";
+}
+```
+Or, consider files with `lastAccessed` timestamps. 
+Two files are considered the same if they have same content, 
+while their timestamp could be different. 
+
+
+#### Equivalence
+
+
+_Equivalence_ is based on the relative ordering of object values in a sorted range. 
+Equivalence makes the most sense if you think about it 
+in terms of the sort order that is part of ordered associative containers. 
+Two objects `x` and `y` have equivalent values with respect to 
+the sort order used by an associative container `c` 
+if neither precedes the other in `c`’s sort order. 
+```c++
+!(w1 < x2) && !(w2 < w1)
+```
+Two values are equivalent (with respect to some ordering criterion) 
+if neither precedes the other (according to that criterion). 
+
+In the general case, 
+the comparison function for an associative container isn’t `operator<` or even `std::less`, 
+it’s a user-defined predicate. 
+Every standard associative container makes its sorting predicate available 
+through its `key_comp` member function, 
+so two objects `x` and `y` have equivalent values
+with respect to an associative container c’s sorting criterion 
+if the following evaluates to `true`:
+```c++
+!c.key_comp()(x, y) && !c.key_comp()(y, x)
+```
 
 
 
 
 
-### 📌 Item 20: Specify comparison types for associative containers of pointers
+
+### 📌 Item 20: Specify comparison types for ordered associative containers of pointers
+
+- Pointers are sorted with their addresses, **not** their underlying values-pointed-to. 
+- Ordered associative containers want a type of the `Compare` predicate to instantiate a functor,
+  **not** an exact function. 
+
+
+`std::set<std::string *>` is a short for 
+```c++
+std::set<std::string *, 
+         std::less<std::string *>, 
+         std::allocator<std::string *>>
+```
 
 
 
 
 
 
-### 📌 Item 21: Always have comparison functions return `false` for equal values
+### 📌 Item 21: Always have comparison predicates return `false` for equal values
+
+- Just a convention that comparison predicates should represent strict weak ordering. 
+  Failure to comply will result in undefined behavior. 
+
+
+E.g., `std::sort` swaps the underlying values of two adjacent iterators 
+if `comp(it + 1, it) == true`. 
+If `comp` is not a strict weak ordering, 
+e.g., returns `true` for two identical values, 
+`std::sort` will fall into infinite loops. 
+
+
+E.g., for `std::multiset`s:
+```c++
+std::multiset<int, std::less_equal<int>> s;  // s is ssorted by "<="
+s.insert(10);                                // insert 10A
+s.insert(10);                                // insert 10B
+```
+`s` now has two copies of `10` in it, 
+so we’d expect that if we do an `std::equal_range`on it, 
+we’ll get back a pair of iterators 
+that define a range containing both copies. 
+But that’s **not** possible. 
+`std::equal_range` doesn’t identify a range of equal values. 
+It identifies a range of _equivalent_ values instead. 
+In this example, `s`’s comparison function says that `10A` and `10B` are not equivalent, 
+so there’s no way that both can be in the range identified by `std::equal_range`.
 
 
 
@@ -1027,8 +1283,46 @@ To lighten your load, use `std::vector`s or `std::string`s instead.
 
 ### 📌 Item 22: Avoid in-place key modification in `std::set` and `std::multiset`
 
+- Avoid in-place key modification in `std::set` and `std::multiset`. 
 
 
+Like other ordered associative containers, 
+`std::set` and `std::multiset` keep their elements in sorted order,
+and the proper behavior of these containers is dependent on their remaining sorted. 
+If you change the value of an element in an associative container (e.g., change a `10` to a `1000`), 
+the new value might **not** be in the correct location,
+and that would break the sorted-ness of the container. 
+
+
+It’s especially simple for `std::map` and `std::multimap`, 
+because programs that attempt to change the value of a key in these containers won’t compile:
+```c++
+// error! map keys can't be changed
+std::map<int, std::string> m;
+m.begin()->first = 10;
+
+// error! multimap keys can't be changed, either
+std::multimap<int, std::string> mm;
+mm.begin()->first = 20;
+```
+That’s because the elements in an object of type `std::map<K, V>` or `std::multimap<K, V>`
+are of type `std::pair<const K, V>`. 
+Because the type of the key is `const K`, it **can’t** be changed.
+(Well, you can probably change it if you employ a `const_cast`.)
+
+
+But notice that the title of this Item doesn’t mention map or multimap. There’s a
+reason for that. As the example above demonstrates, in-place key
+modification is impossible for map and multimap (unless you use a cast), but it
+may be possible for set and multiset. For objects of type set<T> or multiset<T>,
+the type of the elements stored in the container is simply T, not const T.
+Hence, the elements in a set or multiset may be changed anytime you want to.
+No cast is required. (Actually, things aren’t quite that straightforward, but
+we’ll come to that presently. There’s no reason to get ahead of ourselves.
+First we crawl. Later we crawl on broken glass.)
+
+
+Let us begin with an understanding of why the elements in a set or multiset
 
 
 
@@ -1059,17 +1353,9 @@ To lighten your load, use `std::vector`s or `std::string`s instead.
 
 - Deprecated. Refer to _Effective Modern C++_ Item 13 for details. 
 
+### 📌 Item 27: Use `distance` and `advance` to convert a container’s `const_iterator`s to `iterator`s
 
-
-
-
-
-### 📌 Item 27: Use `distance()` and `advance()` to convert a container’s `const_iterator`s to `iterator`s
-
-
-
-
-
+- Deprecated. Refer to _Effective Modern C++_ Item 13 for details. 
 
 ### 📌 Item 28: Understand how to use a `reverse_iterator`’s base `iterator`
 
@@ -1231,7 +1517,7 @@ To lighten your load, use `std::vector`s or `std::string`s instead.
 
 
 
-### 📌 Item 50: Familiarize yourself with STL-related web sites
+### 📌 Item 50: Familiarize yourself with STL-related websites
 
 
 
