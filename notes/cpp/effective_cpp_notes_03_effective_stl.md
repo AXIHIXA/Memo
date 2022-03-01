@@ -1283,7 +1283,26 @@ so there’s no way that both can be in the range identified by `std::equal_rang
 
 ### 📌 Item 22: Avoid in-place key modification in `std::set` and `std::multiset`
 
-- Avoid in-place key modification in `std::set` and `std::multiset`. 
+- Elements are `const` in `std::set`s and `std::multiset`s, 
+  even when de-referencing their non-`const` iterators. 
+- Key types in `std::map`s and `std::multimap`s are `const`. 
+- Code modifying set elements might or might not compile on different platforms, 
+  so such code is **not** portable.
+- If you want to change an element in a `std::set`, `std::multiset`, `std::map`, or `std::multimap`
+  in a way that always works and is always safe, do it in five simple steps:
+1. Locate the container element you want to change.
+2. Make a copy of the element to be modified.
+   In the case of a `std::map` or `std::multimap`,
+   be sure **not** to declare the first component of the copy const.
+   After all, you want to change it!
+3. Modify the copy so it has the value you want to be in the container.
+4. Remove the element from the container, typically via a call to `erase`.
+5. Insert the new value into the container.
+   If the location of the new element in the container’s sort order
+   is likely to be the same or adjacent to that of the removed element,
+   use the `hint` form of `insert` to improve the efficiency of the insertion
+   from logarithmic-time to amortized constant-time.
+   Use the iterator you got from Step 1 as the `hint`.
 
 
 Like other ordered associative containers, 
@@ -1311,18 +1330,86 @@ Because the type of the key is `const K`, it **can’t** be changed.
 (Well, you can probably change it if you employ a `const_cast`.)
 
 
-But notice that the title of this Item doesn’t mention map or multimap. There’s a
-reason for that. As the example above demonstrates, in-place key
-modification is impossible for map and multimap (unless you use a cast), but it
-may be possible for set and multiset. For objects of type set<T> or multiset<T>,
-the type of the elements stored in the container is simply T, not const T.
-Hence, the elements in a set or multiset may be changed anytime you want to.
-No cast is required. (Actually, things aren’t quite that straightforward, but
-we’ll come to that presently. There’s no reason to get ahead of ourselves.
-First we crawl. Later we crawl on broken glass.)
+But notice that the title of this Item **doesn’t** mention `std::map` or `std::multimap`, 
+because it's already **impossible** to modify keys for `std::map`s and `std::multimap`s (unless you use a cast), 
+but it may be possible for `std::set` and `std::multiset`. 
+For objects of type `std::set<T>` or `std::multiset<T>`,
+the type of the elements stored in the container is simply `T`, not `const T`. 
+Hence, the elements in a `std::set` or `std::multiset` may be changed anytime you want to. 
+No cast is required.
 
 
-Let us begin with an understanding of why the elements in a set or multiset
+The reason why the elements in a `std::set` or `std::multiset` **aren’t** `const`
+is that set elements might have non-`const` member functions to call.
+Though the same reason also applies to `std::map`s and `std::multimap`s, 
+that is, there may be non-`const` member functions of map key types that
+won't break the sorted-ness of the map. 
+But the Standardization Committee simply set that rule, so just follow it. 
+
+
+Even if `std::set` and `std::multiset` elements aren’t `const`,
+there are ways for implementations to keep them from being modified. 
+For example, an implementation could have `operator*` for a `set<T>::iterator` return a `const T &`.
+That is, it could have the result of de-referencing a set iterator be a reference-to-const `element` of the set. 
+Under such an implementation, there would be no way to modify `std::set` or `std::multiset` elements, 
+because all the ways of accessing the elements would add a `const` before letting you at them.
+
+
+Still, the Standardization Committee has since clarified that elements in a `set` or `map` 
+should **not** be modifiable without a `const_cast`. 
+However, versions of the STL implemented prior to this clarification continue to be used. 
+So, the following might or might not compile.
+Code that attempts to modify elements in a `std::set` or `std::multiset` **isn’t** portable. 
+```c++
+std::set<int> set {1, 2, 3};
+auto it = set.begin();
+it->v = 10;  // might or might not compile
+```
+For casts. 
+You should use `const_cast` to cast-away `const`ness and modify a value. 
+If you try to cast-away `const`ness with a `static_cast` or C-style/function-style cast, 
+the code will compile but will not work. 
+This is because these casts will actually return a new temporary!
+```c++
+std::set<Widget> set;
+... 
+
+auto it = set.begin();
+const_cast<Widget &>(*it).nonConstMemberFunction();  // good
+static_cast<Widget>(*it).nonConstMemberFunction();   // wrong!
+((Widget)(*it)).nonConstMemberFunction();            // wrong!
+
+std::map<int, BigWidget> map;
+...
+
+// good (tuple unpacking valid since C++17)
+for (const auto & [k, v] : map) ...
+
+// correct but why bother?
+for (const std::pair<const int, BigWidget> & e : map) ... 
+
+// WRONG! TEMPORARIES ARE CREATED AND BOUNDED TO THE REFERENCE!
+for (const std::pair<int, BigWidget> & e : map) ...
+```
+If you want to change an element in a `std::set`, `std::multiset`, `std::map`, or `std::multimap` 
+in a way that always works and is always safe, do it in five simple steps:
+1. Locate the container element you want to change.
+2. Make a copy of the element to be modified. 
+   In the case of a `std::map` or `std::multimap`, 
+   be sure **not** to declare the first component of the copy const.
+   After all, you want to change it!
+3. Modify the copy so it has the value you want to be in the container. 
+4. Remove the element from the container, typically via a call to `erase`. 
+5. Insert the new value into the container. 
+   If the location of the new element in the container’s sort order 
+   is likely to be the same or adjacent to that of the removed element, 
+   use the `hint` form of `insert` to improve the efficiency of the insertion 
+   from logarithmic-time to amortized constant-time. 
+   Use the iterator you got from Step 1 as the `hint`.
+
+
+
+
 
 
 
