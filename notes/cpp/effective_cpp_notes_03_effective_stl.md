@@ -1601,6 +1601,99 @@ using unordered_set = std::unordered_set<Key, Hash, Pred, std::pmr::polymorphic_
 
 ### 📌 Item 28: Understand how to use a `reverse_iterator`’s base `iterator`
 
+- To emulate **insertion** at a position specified by a `reverse_iterator` `rit`,
+  insert at the position `rit.base()` instead.
+  For purposes of insertion, `rit` and `rit.base()` are equivalent,
+  and `rit.base()` is truly the `iterator` corresponding to `rit`.
+- To emulate **erasure** at a position specified by a `reverse_iterator` `rit`,
+  erase at the position _preceding_ `ri.base()` instead.
+  For purposes of erasure, `rit` and `ri.base()` are **not** equivalent,
+  and `rit.base()` is **not** the `iterator` corresponding to `rit`.
+
+
+Invoking the `base` member function on a `reverse_iterator` yields the "corresponding" `iterator`, 
+but it’s not really clear what that means. 
+```c++
+std::vector<int> v {1, 2, 3, 4, 5};
+
+// rit is of type std::vector<int>::reverse_iterator
+auto rit = std::find(v.rbegin(), v.rend(), 3);
+
+// it is of type std::vector<int>::iterator
+auto it(rit.base());
+```
+```
+v.rend()      rit  v.rbegin()
+   ↓           ↓       ↓  
+ ┌───┬───┬───┬───┬───┬───┬───┐
+ │   │ 1 │ 2 │ 3 │ 4 │ 5 │   │
+ └───┴───┴───┴───┴───┴───┴───┘
+       ↑           ↑       ↑
+   v.begin()      it    v.end()
+             (rit.base())
+```
+`std::vector<int>::insert` accepts only `std::vector<int>:iterator`s or `std::vector<int>::const_iterator`s, 
+so, you **can't** directly insert a new element at the location identified by `rit`. 
+You will have a similar problem if you wanted to `erase` the element pointed to by `rit`. 
+The `erase` member functions reject `reverse_iterator`s. 
+To perform insertions or erasures, 
+you must convert `reverse_iterator`s into `iterator`s via `base`, 
+then use the `iterator`s to get the jobs done. 
+
+
+So let’s suppose you _do_ want to insert a new element into `v` at the position indicated by `rit`. 
+In particular, let’s assume you want to insert the value `99`.
+Bearing in mind that `rit` is part of a traversal from right to left in the picture above 
+and that insertion takes place _in front of_ the element 
+indicated by the iterator used to specify the insertion position, 
+we’d expect the `99` to end up in front of the `3` with respect to a reverse traversal.
+After the insertion, then, `v` would look like this: 
+```
+┌───┬───┬───┬────┬───┬───┐
+│ 1 │ 2 │ 3 │ 99 │ 4 │ 5 │
+└───┴───┴───┴────┴───┴───┘
+```
+Of course, we can’t use `rit` to indicate where to insert something, 
+because it’s **not** an iterator. 
+We must use `it` instead. 
+As noted above, when `rit` points at `3`, `it` (which is `rit.base()`) points at `4`.
+- To emulate **insertion** at a position specified by a `reverse_iterator` `rit`, 
+  insert at the position `rit.base()` instead. 
+  For purposes of insertion, `rit` and `rit.base()` are equivalent, 
+  and `rit.base()` is truly the `iterator` corresponding to `rit`. 
+
+
+Let us now consider erasing an element. 
+Look again at the relationship between `rit` and `it` in the original vector:
+```
+v.rend()      rit  v.rbegin()
+   ↓           ↓       ↓  
+ ┌───┬───┬───┬───┬───┬───┬───┐
+ │   │ 1 │ 2 │ 3 │ 4 │ 5 │   │
+ └───┴───┴───┴───┴───┴───┴───┘
+       ↑           ↑       ↑
+   v.begin()      it    v.end()
+             (rit.base())
+```
+If we want to erase the element pointed to by `rit`, 
+we **can’t** just use `it`, 
+because `it` doesn’t point to the same element as `rit`. 
+Instead, we must erase the element _preceding_ `it`. 
+- To emulate **erasure** at a position specified by a `reverse_iterator` `rit`, 
+  erase at the position _preceding_ `ri.base()` instead. 
+  For purposes of erasure, `rit` and `ri.base()` are **not** equivalent, 
+  and `rit.base()` is **not** the `iterator` corresponding to `rit`.
+```c++
+std::vector<int> v {1, 2, 3, 4, 5};
+auto rit = std::find(v.rbegin(), v.rend(), 3);
+
+// one possible implementation
+v.erase(--rit.base());
+
+// another possible implementation
+v.erase((++rit).base());
+```
+
 
 
 
