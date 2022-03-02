@@ -118,9 +118,9 @@ v1.assign(v2.vbegin() + v2.size() / 2, v2.cend());
 
 - Notice the difference between parentheses:
   - **Around a parameter name**:
-    Are ignored;
+    Are ignored, e.g., `void foo(int (param))`;
   - **Standing by themselves**:
-    Indicate the existence of a _parameter list_.
+    Indicate the existence of a _parameter list_, e.g., `void foo(int ())`. 
     They announce the presence of a parameter that is itself a pointer to a function.
 - To fight C++'s most vexing parse:
   - Pass named arguments instead of anonymous objects; 
