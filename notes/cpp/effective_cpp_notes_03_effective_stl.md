@@ -291,7 +291,7 @@ that’s unambiguous to both compilers and the humans who have to work with them
   - If the container is a standard associative container, 
     write a loop to walk the container elements, 
     being sure to postincrement your iterator when you pass it to `erase`.
-
+- [Iterator Invalidation](https://en.cppreference.com/w/cpp/container#Iterator_invalidation)
 
 
 
@@ -403,7 +403,6 @@ and a different `SpecialAllocator<int>` that allocates from a different heap.
 Such allocators **wouldn’t** be equivalent, 
 and STL implementations exist where attempts to use both allocators 
 could lead to corrupt runtime data structures. 
-
 
 
 Notice that this is a runtime issue. 
@@ -1413,7 +1412,131 @@ in a way that always works and is always safe, do it in five simple steps:
 
 
 
-### 📌 Item 23: Consider replacing associative containers with sorted `std::vector`s
+### 📌 Item 23: Consider replacing ordered associative containers with unordered associative containers or sorted `std::vector`s
+
+- Sorted `std::vector`s has smaller space overhead than tree-based ordered associative containers. 
+- Hashmap-based unordered associative containers has faster lookup speed than ordered associative containers. 
+- Mimicking maps with vectors gives up the `const`ness of key types in the map entries. 
+
+
+If lookup speed is really important, it’s worthwhile to consider the unordered (hashed) containers 
+like `std::unordered_set`, `std::unordered_multiset`, `std::unordered_map`, `std::unordered_multimap`. 
+With suitable hashing functions, hashed containers can be expected to offer constant-time lookups. 
+(With poorly chosen hashing functions or with table sizes that are too small,
+the performance of hash table lookups may degrade significantly,
+but this is relatively uncommon in practice.) 
+For many applications, the expected constant-time lookups of hashed containers 
+are preferable to the guaranteed logarithmic-time lookups 
+that are the hallmark of `std::set`, `std::map` and their `multi` companions. 
+
+
+Even if logarithmic-time lookup is what you want, 
+the associative containers may not be your best bet. 
+Counterintuitively, it's common for the associative containers 
+to offer performance that is **inferior** to that of the lowly `std::vector`. 
+If you want to make effective use of the STL, 
+you need to understand when and how a `std::vector` can
+offer faster lookups than an associative container.
+
+
+The standard ordered associative containers are typically implemented as balanced binary search trees, 
+many implementation pick red-black trees. 
+In general, there’s no way to predict what the next operation on the binary search tree will be.
+
+
+Many applications use their data structures in a less chaotic manner. 
+Their use of data structures fall into three distinct phases, which can be summarized like this:
+1. **Setup**. 
+   Create a new data structure by inserting lots of elements into it.
+   During this phase, almost all operations are insertions and erasures.
+   Lookups are rare or nonexistent.
+2. **Lookup**. 
+   Consult the data structure to find specific pieces of information. 
+   During this phase, almost all operations are lookups.
+   Insertions and erasures are rare or nonexistent. 
+   There are so many lookups, the performance of this phase
+   makes the performance of the other phases incidental.
+3. **Reorganize**. 
+   Modify the contents of the data structure, 
+   perhaps by erasing all the current data and inserting new data in its place. 
+   Behaviorally, this phase is equivalent to phase 1. 
+   Once this phase is completed, the application returns to phase 2. 
+
+
+For applications that use their data structures in this way, 
+a `std::vector` is likely to offer better performance (in both time and space) 
+than an associative container. 
+But not just any `std::vector` will do. 
+It has to be a _sorted_ `std::vector`, 
+because only sorted containers work correctly with the lookup algorithms
+`std::binary_search`, `std::lower_bound`, `std::equal_range`, etc. (see Item 34). 
+But why should a binary search through a (sorted) vector offer better performance 
+than a binary search through a binary search tree? 
+
+
+The answer is size overhead and locality. 
+Suppose we need a container to hold `Widget`objects. 
+Because lookup speed is important to us, 
+we are considering both an associative container of `Widget`s and a sorted `std::vector<Widget>`. 
+If we choose an associative container, 
+we’ll almost certainly be using a balanced binary search tree. 
+Such a tree would be made up of tree nodes, 
+each holding not only a `Widget`, but also a pointer to the node’s left child, 
+a pointer to its right child, and (typically) a pointer to its parent. 
+That means that the space overhead for storing a `Widget` in an associative container 
+would be at least three pointers.
+
+
+In contrast, there is no overhead when we store a `Widget` in a `std::vector`. 
+We simply store a `Widget`. 
+The `std::vector` itself has overhead, of course, 
+and there may be empty (reserved) space at the end of the vector, 
+but the per-vector overhead is typically insignificant 
+(usually three _machine words_, e.g., three pointers or two pointers and an `int`), 
+and the empty space at the end can be `shrink_to_fit`ed if necessary. 
+Even if the extra space is not eliminated, 
+it’s unimportant for the analysis below, 
+because that memory won’t be referenced when doing a lookup.
+
+
+Assuming our data structures are big enough, 
+they’ll be split across multiple memory pages, 
+but the `std::vector` will require fewer pages than the associative container. 
+That’s because the `std::vector` requires no per-`Widget` overhead,
+while the associative container exacts three pointers per `Widget`.
+To see why this is important, suppose you’re working on a system 
+where a `Widget` is 12 Bytes in size, pointers are 4 Bytes, and a memory page holds 4096 (4K) Bytes.
+Ignoring the per-container overhead, 
+you can fit 341 `Widgets` on a page when they are stored in a `std::vector`, 
+but you can fit at most 170 when they are stored in an associative container 
+(still being over-optimistic that all nodes are closely clustered). 
+You’ll thus use about twice as much memory for the associative container as you would for the `std::vector`. 
+If you’re working in an environment where virtual memory is available, 
+it’s easy to see how that can translate into a lot more page faults, 
+therefore a system that is significantly slower for large sets of data.
+
+
+Things get a bit more interesting 
+when you decide to replace a `std::map` or `std::multimap` with a `std::vector`, 
+because the `std::vector` must hold `std::pair` objects. 
+After all, that’s what `std::map`s and `std::multimap`s hold. 
+Recall, however, that if you declare an object of type `std::map<K, V>`, 
+the type of elements stored in the map is `std::pair<const K, V>`. 
+To emulate a `std::map` or `std::multimap` using a `std::vector`, 
+you must omit the const, because when you sort the vector, 
+the values of its elements will get moved around via assignment,
+and that means that both components of the pair must be assignable. 
+When using a vector to emulate a `std::map<K, V>`, then,
+the type of the data stored in the `std::vector` will be `std::pair<K, V>`, 
+not `std::pair<const K, V>`.
+
+
+`std::map`s and `std::multimap`s keep their elements in sorted order, 
+but they look only at the key part of the element 
+(_the first_ component of the `std::pair`) for sorting purposes, 
+and you must do the same when sorting a `std::vector`. 
+You’ll need to write a custom comparison predicate for your `std::pair`s, 
+because `std::pair`’s default `operator<` looks at _both_ components of the `std::pair`.
 
 
 
@@ -1422,6 +1545,20 @@ in a way that always works and is always safe, do it in five simple steps:
 
 ### 📌 Item 24: Choose carefully between `std::map::operator[]` and `std::map::insert` when efficiency is important
 
+- The call to `std::map::operator[]` performs lookup first, 
+  and performs insertion of a default-constructed entry when lookup fails.
+  Inserting new values via `operator[]` degrades performance 
+  as it default-constructs a temporary and then assigns it. 
+- The call to `std::map::insert` requires an argument of type `std::map::value_type` 
+  (i.e., `pair<const key_type, mapped_type>`), 
+  so we must construct and destruct an object of that type.
+- Efficiency dictate that `insert` is preferable 
+  when adding an element to a `std::map`. 
+  Both efficiency and aesthetics dictate that `operator[]` is preferable 
+  when updating the value of an element that’s already in the map. 
+- Use `std::lower_bound` to manually implement the efficient insert-or-assign functionality.
+  Consider `std::map<Key, T, Compare, Allocator>::insert_or_assign` `(since C++17)`. 
+
 
 
 
@@ -1429,8 +1566,26 @@ in a way that always works and is always safe, do it in five simple steps:
 
 ### 📌 Item 25: Familiarize yourself with the nonstandard hashed containers
 
+- Hashmap-based unordered associative containers are already available in STL. 
 
 
+```c++
+template <class Key,
+          class Hash = std::hash<Key>,
+          class KeyEqual = std::equal_to<Key>,
+          class Allocator = std::allocator<Key>> 
+class unordered_set;
+
+namespace pmr 
+{
+
+template <class Key,
+          class Hash = std::hash<Key>,
+          class Pred = std::equal_to<Key>>
+using unordered_set = std::unordered_set<Key, Hash, Pred, std::pmr::polymorphic_allocator<Key>>;
+
+}  // namespace std::pmr
+```
 
 
 
