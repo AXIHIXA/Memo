@@ -6769,7 +6769,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
         - [`std::istreambuf_iterator`](https://en.cppreference.com/w/cpp/iterator/istreambuf_iterator)
         - [`std::ostreambuf_iterator`](https://en.cppreference.com/w/cpp/iterator/ostreambuf_iterator)
     - Refer to 
-      [Effective STL Notes](../effective_cpp_notes_03_effective_stl.md) 
+      [Effective STL Notes](./effective_cpp_notes_03_effective_stl.md) 
       Item 29 for details on stream buffer iterators.
         - They are more efficient than regular stream itertors when dealing non-formatted raw character input.  
     - 这些迭代器将它们对应的流当做一个特定类型的元素序列来处理
