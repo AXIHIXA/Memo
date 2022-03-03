@@ -3,20 +3,20 @@
 ### 🌱 Notes
 
 - `C/C++`
-    - *[`C++ Primer`](./blob/master/notes/cpp/cpp_primer_notes.md)*
+    - *[`C++ Primer`](./notes/cpp/cpp_primer_notes.md)*
     - *Effective C++*
-        1. *[`Effective C++`](./blob/master/notes/cpp/effective_cpp_notes_01_effective_cpp.md)*
-        2. *[`More Effective C++`](./blob/master/notes/cpp/effective_cpp_notes_02_more_effective_cpp.md)*
-        3. *[`Effective STL`](./blob/master/notes/cpp/effective_cpp_notes_03_effective_stl.md)*
-        4. *[`Effective Modern C++`](./blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
-    - *[`CPP Concurrency In Action`](./blob/master/notes/cpp/cpp_concurrency_in_action_notes.md)*
+        1. *[`Effective C++`](./notes/cpp/effective_cpp_notes_01_effective_cpp.md)*
+        2. *[`More Effective C++`](./notes/cpp/effective_cpp_notes_02_more_effective_cpp.md)*
+        3. *[`Effective STL`](./notes/cpp/effective_cpp_notes_03_effective_stl.md)*
+        4. *[`Effective Modern C++`](./notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
+    - *[`CPP Concurrency In Action`](./notes/cpp/cpp_concurrency_in_action_notes.md)*
 
 - `Python`
-    - [`Python` Offical Tutorial Notes](./blob/master/notes/py/py.md)
-    - [`NumPy` Tutorial Notes](./blob/master/notes/py/numpy.md)
-    - [`PyTorch` Tutorial Notes](./blob/master/notes/py/pytorch.md)
-    - [`matplotlib` Offical Tutorial](./blob/master/notes/py/matplotlib.md)
-    - [`SymPy` Offical Tutorial](./blob/master/notes/py/sympy/sympy.md)
+    - [`Python` Offical Tutorial Notes](./notes/py/py.md)
+    - [`NumPy` Tutorial Notes](./notes/py/numpy.md)
+    - [`PyTorch` Tutorial Notes](./notes/py/pytorch.md)
+    - [`matplotlib` Offical Tutorial](./notes/py/matplotlib.md)
+    - [`SymPy` Offical Tutorial](./notes/py/sympy/sympy.md)
     
 - `ubuntu` Management
     1. [System Installation](./notes/ubuntu/01-system-installation.md)
