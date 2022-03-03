@@ -19,35 +19,35 @@
     - [`SymPy` Offical Tutorial](./blob/master/notes/py/sympy/sympy.md)
     
 - `ubuntu` Management
-    1. [System Installation](./blob/master/notes/ubuntu/01-system-installation.md)
-    2. [System Configuration](./blob/master/notes/ubuntu/02-system-configuration.md)
-    3. [Environment Configuration](./blob/master/notes/ubuntu/03-environment-configuration.md)
-    4. [System Management](./blob/master/notes/ubuntu/04-system-management.md)
-    5. [WSL 2](./blob/master/notes/ubuntu/05-wsl-2.md)
+    1. [System Installation](./notes/ubuntu/01-system-installation.md)
+    2. [System Configuration](./notes/ubuntu/02-system-configuration.md)
+    3. [Environment Configuration](./notes/ubuntu/03-environment-configuration.md)
+    4. [System Management](./notes/ubuntu/04-system-management.md)
+    5. [WSL 2](./notes/ubuntu/05-wsl-2.md)
     
 ### 🌱 Sample Code
 
 - `CMakeLists`
-    - [Boost](./blob/master/code/CMakeLists/Boost/CMakeLists.txt)
-    - [CppDemo](./blob/master/code/CMakeLists/CppDemo/CMakeLists.txt)
-    - [Criterion](./blob/master/code/CMakeLists/Criterion/CMakeLists.txt)
-    - [OpenCV](./blob/master/code/CMakeLists/OpenCV/CMakeLists.txt)
-    - [OpenGL](./blob/master/code/CMakeLists/OpenGL/CMakeLists.txt)
-    - [OpenMesh + TBB](./blob/master/code/CMakeLists/OpenMesh+TBB/CMakeLists.txt)
-    - [Qt5](./blob/master/code/CMakeLists/Qt5/CMakeLists.txt)
-    - [Torch](./blob/master/code/CMakeLists/Torch/CMakeLists.txt)
+    - [Boost](./code/CMakeLists/Boost/CMakeLists.txt)
+    - [CppDemo](./code/CMakeLists/CppDemo/CMakeLists.txt)
+    - [Criterion](./code/CMakeLists/Criterion/CMakeLists.txt)
+    - [OpenCV](./code/CMakeLists/OpenCV/CMakeLists.txt)
+    - [OpenGL](./code/CMakeLists/OpenGL/CMakeLists.txt)
+    - [OpenMesh + TBB](./code/CMakeLists/OpenMesh+TBB/CMakeLists.txt)
+    - [Qt5](./code/CMakeLists/Qt5/CMakeLists.txt)
+    - [Torch](./code/CMakeLists/Torch/CMakeLists.txt)
 
 - `C/C++` Code
-    - [debug.h](./blob/master/code/debug.h)
-    - [pipe_demo.c](./blob/master/code/pipe_demo.c)
-    - [Shader.h](./blob/master/code/Shader.h)
-    - [variadic.cpp](./blob/master/code/variadic.cpp)
+    - [debug.h](./code/debug.h)
+    - [pipe_demo.c](./code/pipe_demo.c)
+    - [Shader.h](./code/Shader.h)
+    - [variadic.cpp](./code/variadic.cpp)
 
 - `Python` Code
-    - [python codes](./blob/master/code/python_code.md)
+    - [python codes](./code/python_code.md)
 
 - IDE Preferences
-    - [Code Styles](./tree/master/code/ide%20preferences)
+    - [Code Styles](./code/ide%20preferences)
 
 - Windows Terminal config
-    - [settings.json](./tree/master/code/Windows%20Terminal)
+    - [settings.json](./code/Windows%20Terminal)
