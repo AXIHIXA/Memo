@@ -1,10 +1,10 @@
 # _Effective C++_ Notes
 
 - Notes of reading <u>Scott Meyers</u>'s _Effective C++_ series:
-    1. *[`Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_01_effective_cpp.md)*
-    2. *[`More Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_02_more_effective_cpp.md)*
-    3. *[`Effective STL`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_03_effective_stl.md)*
-    4. ***[`Effective Modern C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)***
+    1. *[`Effective C++`](./effective_cpp_notes_01_effective_cpp.md)*
+    2. *[`More Effective C++`](./effective_cpp_notes_02_more_effective_cpp.md)*
+    3. *[`Effective STL`](./effective_cpp_notes_03_effective_stl.md)*
+    4. ***[`Effective Modern C++`](./effective_cpp_notes_04_effective_modern_cpp.md)***
 
 
 

@@ -1,10 +1,10 @@
 # _Effective C++_ Notes
 
 - Notes of reading <u>Scott Meyers</u>'s _Effective C++_ series:
-    1. ***[`Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_01_effective_cpp.md)***
-    2. *[`More Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_02_more_effective_cpp.md)*
-    3. *[`Effective STL`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_03_effective_stl.md)*
-    4. *[`Effective Modern C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
+    1. ***[`Effective C++`](./effective_cpp_notes_01_effective_cpp.md)***
+    2. *[`More Effective C++`](./effective_cpp_notes_02_more_effective_cpp.md)*
+    3. *[`Effective STL`](./effective_cpp_notes_03_effective_stl.md)*
+    4. *[`Effective Modern C++`](./effective_cpp_notes_04_effective_modern_cpp.md)*
 
 
 
@@ -606,7 +606,7 @@ That thing is the order of initialization of non-local `static` objects defined 
 
 
 A <u>_static object_</u> is one that has 
-[static storage duration](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_primer_notes.md#-%E5%AD%98%E5%82%A8%E6%9C%9F%E5%92%8C%E9%93%BE%E6%8E%A5storage-duration-and-linkage) 
+[static storage duration](./cpp_primer_notes.md#-%E5%AD%98%E5%82%A8%E6%9C%9F%E5%92%8C%E9%93%BE%E6%8E%A5storage-duration-and-linkage) 
 (i.e. exists from the time it’s constructed until the end of the program). 
 Stack-based objects (auto storage duration) and heap-based objects (dynamic storage duration) are thus excluded.
 Included are global objects, objects defined at namespace scope, objects declared static inside classes, 

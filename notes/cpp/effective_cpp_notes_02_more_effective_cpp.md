@@ -1,10 +1,10 @@
 # _Effective C++_ Notes
 
 - Notes of reading <u>Scott Meyers</u>'s _Effective C++_ series:
-    1. *[`Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_01_effective_cpp.md)*
-    2. ***[`More Effective C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_02_more_effective_cpp.md)***
-    3. *[`Effective STL`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_03_effective_stl.md)*
-    4. *[`Effective Modern C++`](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
+    1. *[`Effective C++`](./effective_cpp_notes_01_effective_cpp.md)*
+    2. ***[`More Effective C++`](./effective_cpp_notes_02_more_effective_cpp.md)***
+    3. *[`Effective STL`](./effective_cpp_notes_03_effective_stl.md)*
+    4. *[`Effective Modern C++`](./effective_cpp_notes_04_effective_modern_cpp.md)*
 
 
 
@@ -2498,7 +2498,7 @@ you would `catch` not only by reference, but also by reference-to-`const`.
 ### 📌 Item 14: Use exception specifications judiciously
 
 - Exception specifications `throw()` `throw(T)` is deprecated. 
-  Refer to [Notes on _Effective Modern C++_](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md) 
+  Refer to [Notes on _Effective Modern C++_](./effective_cpp_notes_04_effective_modern_cpp.md) 
   Item 14 for `noexcept`. 
 
 
@@ -5992,7 +5992,7 @@ Reference counting is most useful for improving efficiency under the following c
   - Not solvable: 
     - `auto` type deduction can **not** deduct the reeal object under proxy, 
       thus leading to the pitfalls as specified in 
-      [Effective Modern C++](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md) 
+      [Effective Modern C++](./effective_cpp_notes_04_effective_modern_cpp.md) 
       Item 6. 
     - Implicit conversion of proxy objects to `rvalue` objects requires one user-defined conversion operator, 
       which blocks further implicit conversion sequences involving other user-defined conversions. 
