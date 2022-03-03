@@ -6701,7 +6701,7 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
 
 #### 迭代器适配器（Iterator Adaptors）
 
-- *插入迭代器* （insert iterator）
+- *插入迭代器* （insert iterators）
     - 通过插入器进行赋值时，插入器调用容器操作向指定容器的指定位置插入元素
     - 支持操作
         - `it = t`：在`it`所指位置 *之前* 插入值元素`t`
@@ -6766,6 +6766,12 @@ std::for_each(ptr_beg, iter_end, [] (const int & n) { printf("%d ", i); });
     - 虽然`std::iostream`类型不是容器，但标准库定义了可以用于这些`I/O`类型对象的迭代器
         - [`std::istream_iterator`](https://en.cppreference.com/w/cpp/iterator/istream_iterator)：读取输入流
         - [`std::ostream_iterator`](https://en.cppreference.com/w/cpp/iterator/ostream_iterator)：向输出流写数据
+        - [`std::istreambuf_iterator`](https://en.cppreference.com/w/cpp/iterator/istreambuf_iterator)
+        - [`std::ostreambuf_iterator`](https://en.cppreference.com/w/cpp/iterator/ostreambuf_iterator)
+    - Refer to 
+      [Effective STL Notes](../effective_cpp_notes_03_effective_stl.md) 
+      Item 29 for details on stream buffer iterators.
+        - They are more efficient than regular stream itertors when dealing non-formatted raw character input.  
     - 这些迭代器将它们对应的流当做一个特定类型的元素序列来处理
         - 通过使用 *流迭代器* ，我们可以使用泛型算法从流对象读取数据或向其写入数据
     - `std::istream_iterator`操作

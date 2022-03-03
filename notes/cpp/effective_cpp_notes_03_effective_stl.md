@@ -1289,19 +1289,19 @@ so there’s no way that both can be in the range identified by `std::equal_rang
   so such code is **not** portable.
 - If you want to change an element in a `std::set`, `std::multiset`, `std::map`, or `std::multimap`
   in a way that always works and is always safe, do it in five simple steps:
-1. Locate the container element you want to change.
-2. Make a copy of the element to be modified.
-   In the case of a `std::map` or `std::multimap`,
-   be sure **not** to declare the first component of the copy const.
-   After all, you want to change it!
-3. Modify the copy so it has the value you want to be in the container.
-4. Remove the element from the container, typically via a call to `erase`.
-5. Insert the new value into the container.
-   If the location of the new element in the container’s sort order
-   is likely to be the same or adjacent to that of the removed element,
-   use the `hint` form of `insert` to improve the efficiency of the insertion
-   from logarithmic-time to amortized constant-time.
-   Use the iterator you got from Step 1 as the `hint`.
+  1. Locate the container element you want to change.
+  2. Make a copy of the element to be modified.
+     In the case of a `std::map` or `std::multimap`,
+     be sure **not** to declare the first component of the copy const.
+     After all, you want to change it!
+  3. Modify the copy, so it has the value you want to be in the container.
+  4. Remove the element from the container, typically via a call to `erase`.
+  5. Insert the new value into the container.
+     If the location of the new element in the container’s sort order
+     is likely to be the same or adjacent to that of the removed element,
+     use the `hint` form of `insert` to improve the efficiency of the insertion
+     from logarithmic-time to amortized constant-time.
+     Use the iterator you got from Step 1 as the `hint`.
 
 
 Like other ordered associative containers, 
@@ -1699,9 +1699,82 @@ v.erase((++rit).base());
 
 
 
-### 📌 Item 29: Consider `std::istreambuf_iterator`s for character-by-character input
+### 📌 Item 29: Consider Un-formatted `std::istreambuf_iterator`s over formatted `std::istream_iterator`s for character-by-character input
+
+- For raw character-by-character input tasks, 
+  un-formatted `std::istreambuf_iterator`s has better performance than formatted `std::istream_iterator`s. 
 
 
+Let’s suppose you would like to copy a text file into a `std::string` object: 
+```c++
+std::ifstream fin {"interestingData.txt"};
+std::string fileData((std::istream_iterator<char>(fin)), std::istream_iterator<char>());
+```
+It wouldn’t take long before you notice that 
+this approach fails to copy _whitespace_ in the file into the `std::string`. 
+That’s because `std::istream_iterator`s use `operator>>` to do the actual reading, 
+and `operator>>` skips whitespace by default. 
+Assuming you’d like to retain the whitespace, 
+all you need to do is override the default. 
+Just clear the `std::ios::skipws` flag for the input stream: 
+```c++
+std::ifstream fin {"interestingData.txt"};
+fin.unsetf(std::ios::skipws);
+std::string fileData((std::istream_iterator<char>(fin)), std::istream_iterator<char>());
+```
+Now all the characters in `interestingData.txt` are copied into `fileData`.
+
+
+Alas, you may discover that they **aren’t** copied as quickly as you’d like. 
+The `operator>>` functions on which `std::istream_iterator`s depend 
+perform _formatted input_, 
+and that means they must undertake a fair amount of work on your behalf each time you call one. 
+They have to create and destroy _sentry objects_ 
+(special `std::iostream` objects that perform setup and cleanup activities 
+for each call to `operator>>`), 
+they have to check stream flags that might affect their behavior (e.g., `std::ios::skipws`), 
+they have to perform comprehensive checking for read errors, 
+and, if they encounter a problem, they have to check the stream’s exception mask 
+to determine whether an exception should be thrown. 
+Those are all important activities if you’re performing formatted input, 
+but if all you want to do is grab the next character from the input stream, it’s overkill. 
+
+
+A more efficient approach is to use one of the STL’s best kept secrets: `std::istreambuf_iterator`s. 
+You use `std::istreambuf_iterator`s like `std::istream_iterator`s, 
+but where `std::istream_iterator<char>` objects use `operator>>` 
+to read individual characters from an input stream, 
+`std::istreambuf_iterator<char>` objects go straight to the stream’s buffer 
+and read the next character directly. 
+(More specifically, an `std::istreambuf_iterator<char>` object reading from an `std::istream`s 
+will call `s.rdbuf()->sgetc()` to read `s`’s next character.)
+```c++
+std::ifstream fin {"interestingData.txt"};
+std::string fileData((std::istreambuf_iterator<char>(fin)), std::istreambuf_iterator<char>());
+```
+Notice how there’s **no** need to `unsetf` the `std::ios::skipws` flag here.
+`std::istreambuf_iterator`s **never** skip any characters. 
+Whatever’s next in the stream buffer, that’s what they grab.
+
+`std::istreambuf_iterator`s grab raw characters up to 40% faster than `std::istream_iterator`s. 
+Don’t be surprised if the speed advantage increases over time, too,
+because `std::istreambuf_iterator`s inhabit a seldom-visited corner of the STL 
+where implementers haven’t yet spent a lot of time on optimizations. 
+
+
+If you need to read the characters in a stream one by one,
+you **don’t** need the power of formatted input, 
+and you care about how long it takes to read the stream, 
+typing three extra characters per iterator is a small price to pay 
+for what is often a significant increase in performance. 
+For unformatted character-by-character input, 
+you should always consider `std::istreambuf_iterator`s.
+
+
+While you’re at it, you should also consider ostreambuf_iterator s for the
+corresponding unformatted character-by-character output operations. They
+avoid the overhead (and flexibility) of their ostream_iterator cousins, so they
+generally outperform them, too.
 
 
 
@@ -1710,7 +1783,10 @@ v.erase((++rit).base());
 
 ### 📌 Item 30: Make sure destination ranges are big enough
 
-
+- Insert iterators can expand destination container while writing new values. 
+  - [`std::back_inserter`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
+  - [`std::front_inserter`](https://en.cppreference.com/w/cpp/iterator/front_inserter)
+  - [`std::inserter`](https://en.cppreference.com/w/cpp/iterator/inserter)
 
 
 
