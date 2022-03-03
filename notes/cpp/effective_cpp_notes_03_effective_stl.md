@@ -1787,11 +1787,81 @@ generally outperform them, too.
   - [`std::back_inserter`](https://en.cppreference.com/w/cpp/iterator/back_inserter)
   - [`std::front_inserter`](https://en.cppreference.com/w/cpp/iterator/front_inserter)
   - [`std::inserter`](https://en.cppreference.com/w/cpp/iterator/inserter)
+- Call `reserve` to minimize the expense for re-allocation for `std::vector`s and `std::string`s. 
+  - `reserve` increases only capacity; the container’s size remains unchanged. 
+    Even after calling `reserve`, you still use insert iterators to insert new elements. 
+
+
 
 
 
 
 ### 📌 Item 31: Know your sorting options
+
+- Possible sorting options (performance from best to worst):
+  - [`std::partition`](https://en.cppreference.com/w/cpp/algorithm/partition):
+    - Un-sorted yes-no routine. 
+    - Unstable.
+    - Requires bidirectional iterators and applies to all standard sequence containers. 
+  - [`std::stable_partition`](https://en.cppreference.com/w/cpp/algorithm/stable_partition):
+    - Un-sorted yes-no routine. 
+    - Stable.
+    - Requires bidirectional iterators and applies to all standard sequence containers. 
+  - [`std::nth_element`](https://en.cppreference.com/w/cpp/algorithm/nth_element):
+    - Un-sorted smallest-n routine. 
+    - Unstable. 
+    - Requires random access iterators
+      (thus only applies to `std::vector`s, `std::string`s, `std::deque`s, and `std::array`s). 
+  - [`std::partial_sort`](https://en.cppreference.com/w/cpp/algorithm/partial_sort): 
+    - Sorted smallest-n routine. 
+    - Unstable. 
+    - Requires random access iterators
+      (thus only applies to `std::vector`s, `std::string`s, `std::deque`s, and `std::array`s). 
+  - [`std::sort`](https://en.cppreference.com/w/cpp/algorithm/sort):
+    - Full sort. 
+    - Unstable. 
+    - Requires random access iterators
+      (thus only applies to `std::vector`s, `std::string`s, `std::deque`s, and `std::array`s). 
+  - [`std::stable_sort`](https://en.cppreference.com/w/cpp/algorithm/stable_sort): 
+    - Full sort. 
+    - Stable. 
+    - Requires random access iterators
+      (thus only applies to `std::vector`s, `std::string`s, `std::deque`s, and `std::array`s). 
+- Eliminate the sorting requirements: 
+  - [Standard ordered associative containers](https://en.cppreference.com/w/cpp/container#Associative_containers). 
+  - [`std::priority_queue`](https://en.cppreference.com/w/cpp/container/priority_queue). 
+- Let’s summarize your sorting options.
+  - If you need to perform a full sort on a `std::vector`, `std::string`, `std::deque`, or `std::array`,
+    you can use sort or `std::stable_sort` .
+  - If you have a `std::vector` , `std::string` , `std::deque` , or `std::array`, 
+    and you need to put only the top n elements in order, `std::partial_sort` is available.
+  - If you have a `std::vector`, `std::string`, `std::deque`, or `std::array`,
+    and you need to identify the element at position `n`, 
+    or you need to identify the top `n` elements 
+    **without** putting them in order, 
+    `std::nth_element` is at your beck and call. 
+  - If you need to separate the elements of a standard sequence container or an `std::array` 
+    into those that do and do not satisfy some criterion, 
+    you’re probably looking for `std::partition` or `std::stable_partition`.
+  - If your data is in a `std::list`, 
+    you can use `std::partition` and `std::stable_partition` directly, 
+    and you can use `std::list::sort` in place of `std::stable_sort`. 
+    If you need the effects offered by `std::partial_sort` or `std::nth_element`, 
+    you’ll have to approach the task indirectly. 
+
+
+If you want to sort a `std::list`, then, you can, 
+but if you want to use `std::partial_sort` or `std::nth_element` on a `std::list`, 
+you have to do it indirectly.
+1. Copy the elements into a container with random access iterators, 
+   then apply the desired algorithm to that.
+2. Create a container of `std::list::iterator`s, 
+   use the algorithm on that container,
+   then access the `std::list` elements via the iterators.
+3. Use the information in an ordered container of iterators 
+   to iteratively splice the `std::list`’s elements 
+   into the positions you’d like them to be in.
+As you can see, there are lots of options.
 
 
 
@@ -1900,7 +1970,7 @@ generally outperform them, too.
 
 
 
-### 📌 Item 46: Consider function objects instead of functions as algorithm parameters
+### 📌 Item 46: Consider predicates instead of functions as algorithm parameters
 
 
 
