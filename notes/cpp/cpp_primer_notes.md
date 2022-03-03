@@ -2521,7 +2521,7 @@ __DATE__
 ````
 
 
-### 🌱 [`C++17`引入的大宝贝](https://en.cppreference.com/w/cpp/17)
+### 🌱 [`C++17`引入的大宝贝](https://en.cppreference.com/w/cpp/17) (C++17 New Stuff)
 
 #### [Fold Expression](https://en.cppreference.com/w/cpp/language/fold)
 
@@ -2796,6 +2796,32 @@ int b()
     ++counter;
     return sum(5, 6);
 }
+```
+
+- [Execution Policies](https://en.cppreference.com/w/cpp/algorithm/execution_policy_tag_t)
+
+Tested on ubuntu 20.04 with gcc9. Needs TBB to work. 
+```c++
+#include <execution>
+
+std::vector<int> v;
+v.reserve(1000);
+for (int i = 0; i != 1000; ++i) v.emplace_back(i);
+std::mutex mutex;
+
+std::for_each(std::execution::par, v.begin(), v.end(), [&mutex = mutex](int & i)
+{
+    i += 1000;
+    std::lock_guard g(mutex);
+    std::cout << i << '\n';
+});
+
+tbb::parallel_for(v.begin(), v.end(), [&mutex = mutex](int & i)
+{
+    i += 1000;
+    std::lock_guard g(mutex);
+    std::cout << i << '\n';
+});
 ```
 
 

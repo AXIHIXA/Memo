@@ -1868,14 +1868,26 @@ As you can see, there are lots of options.
 
 
 
-### 📌 Item 32: Follow `remove`-like algorithms by erase if you really want to remove something
+### 📌 Item 32: Follow `remove`-like algorithms by `erase` if you really want to remove something
+
+- `std::remove` does **not** remove elements as that invalidates iterators. 
+- `std::remove` is actually "sorting" algorithm. 
+- Follow `std::remove` or `remove_if` with container's `erase` member function. 
+- `std::list::remove` and `std::list::unique` really removes elements. 
 
 
 
 
 
 
-### 📌 Item 33: Be wary of `remove`-like algorithms on containers of pointers
+### 📌 Item 33: Do not call `remove`-like algorithms on containers of raw pointers
+
+- Do **not** call `remove`-like algorithms on containers of pointers.
+  `remove`-like invalidates all elements after its return value. 
+  Calling `remove`-like algorithms on containers of pointers will result in resource leak.
+- If you have to call `remove`-like algorithms on containers of raw pointers,  
+  call `delete` on all elements-to-be-removed manually prior to `remove`. 
+- `remove`-like algorithms are safe on containers of smart pointers. 
 
 
 
@@ -1884,12 +1896,34 @@ As you can see, there are lots of options.
 
 ### 📌 Item 34: Note which algorithms expect sorted ranges
 
+- STL generic algorithms requiring sorted ranges: 
+  - Binary search algorithms
+    - [`std::binary_search`](https://en.cppreference.com/w/cpp/algorithm/binary_search)
+    - [`std::lower_bound`](https://en.cppreference.com/w/cpp/algorithm/lower_bound)
+    - [`std::upper_bound`](https://en.cppreference.com/w/cpp/algorithm/upper_bound)
+    - [`std::equal_range`](https://en.cppreference.com/w/cpp/algorithm/equal_range)
+  - Set algorithms
+    - [`std::includes`](https://en.cppreference.com/w/cpp/algorithm/includes)
+    - [`std::set_union`](https://en.cppreference.com/w/cpp/algorithm/set_union)
+    - [`std::set_intersection`](https://en.cppreference.com/w/cpp/algorithm/set_intersection)
+    - [`std::set_difference`](https://en.cppreference.com/w/cpp/algorithm/set_difference)
+    - [`std::set_symmetric_difference`](https://en.cppreference.com/w/cpp/algorithm/set_symmetric_difference)
+  - Merge algorithms
+    - [`std::merge`](https://en.cppreference.com/w/cpp/algorithm/merge)
+    - [`std::inplace_merge`](https://en.cppreference.com/w/cpp/algorithm/inplace_merge)
+- STL generic algorithms typically used on sorted ranges but don't require sorted ranges: 
+  - [`std::unique`](https://en.cppreference.com/w/cpp/algorithm/unique)
+  - [`std::unique_copy`](https://en.cppreference.com/w/cpp/algorithm/unique_copy)
 
 
 
 
 
-### 📌 Item 35: Implement simple case-insensitive string comparisons via `mismatch` or `lexicographical_compare`
+
+### 📌 Item 35: Implement simple case-insensitive string comparisons via `std::mismatch` or `std::lexicographical_compare`
+
+- [`std::mismatch`](https://en.cppreference.com/w/cpp/algorithm/mismatch)
+- [`std::lexicographical_compare`](https://en.cppreference.com/w/cpp/algorithm/lexicographical_compare)
 
 
 
@@ -1898,12 +1932,18 @@ As you can see, there are lots of options.
 
 ### 📌 Item 36: Understand the proper implementation of `std::copy_if`
 
+- [`std::copy`, `std::copy_if`](https://en.cppreference.com/w/cpp/algorithm/copy)
+- See the [C++ Primer Notes](./cpp_primer_notes.md) for a copy of cppreference manual page. 
+
 
 
 
 
 
 ### 📌 Item 37: Use `std::accumulate` or `std::for_each` to summarize ranges
+
+- [`std::accumulate`](https://en.cppreference.com/w/cpp/algorithm/accumulate)
+- [`std::for_each`](https://en.cppreference.com/w/cpp/algorithm/for_each)
 
 
 
@@ -1914,12 +1954,104 @@ As you can see, there are lots of options.
 
 ### 📌 Item 38: Design functor classes for pass-by-value
 
+- Just telling you how to design polymorphic function objects with the Pimpl Idiom. 
+- Predicates are passed-by-value into STL generic algorithms, so they should be cheap-copyable. 
+
 
 
 
 
 
 ### 📌 Item 39: Make predicates pure functions
+
+- A _pure function_ is a function whose return value depends _only_ on its parameters. 
+  If `f` is a pure function and `x` and `y` are its arguments, 
+  the return value of `f(x, y)` can change only if the value of `x` or `y` changes. 
+- C++ standard requires predicates to be pure functions, otherwise the result is undefined. 
+  - [A predicate function object should not apply any non-constant function through the de-referenced iterator](https://en.cppreference.com/w/cpp/named_req/Predicate).
+  - STL generic algorithms might make _multiple copies_ of the predicate! 
+
+
+In C++, all data consulted by _pure functions_ are 
+either passed in as parameters or are constant for the life of the function. 
+(Naturally, such constant data should be declared `const`.) 
+If a pure function consulted data that might change between calls, 
+invoking the function at different times with the same parameters might yield different results, 
+and that would be contrary to the definition of a pure function. 
+
+
+Function objects are passed by value, so you should design function objects to be copied.
+For function objects that are predicates,
+there is another reason to design them to behave well when they are copied. 
+Algorithms may make copies of functors and hold on to them a while before using them, 
+and some algorithm implementations take advantage of this freedom. 
+A critical repercussion of this observation is that predicate functions must be pure functions.
+To appreciate why this is the case, 
+let’s suppose you were to violate this constraint.
+Consider the following (badly designed) predicate class.
+Regardless of the arguments that are passed, 
+it returns `true` exactly once: the third time it is called. 
+The rest of the time it returns `false`.
+```c++
+class BadPredicate
+{
+public:
+    BadPredicate() : timesCalled(0) {}
+    ~BadPredicate() = default;
+    
+    bool operator()(const Widgert &)
+    {
+        return ++timesCalled == 3;
+    }
+    
+private:
+    std::size_t timesCalled;
+};
+
+class BadPredicate
+{
+public:
+    BadPredicate() : timesCalled(0) {}
+    ~BadPredicate() = default;
+    
+    bool operator()(const Widgert &) const
+    {
+        // error: modifying non-mutable data members in const member functions
+        return ++timesCalled == 3;
+    }
+    
+private:
+    std::size_t timesCalled;
+};
+```
+Consider the following code:
+```c++
+std::vector<Widget> vec;
+...
+vec.erase(std::remove_if(vec.begin(), vec.end(), BadPredicate()), vec.end());
+```
+This code _looks_ quite reasonable, but with many STL implementations,
+it will eliminate not just the third element from `vec`, it will also eliminate the sixth!
+To understand how this can happen, 
+it’s helpful to see how `remove_if` is often implemented. 
+Bear in mind that `remove_if` does not have to be implemented this way.
+```c++
+template <typename ForwardIterator, typename Predicate>
+ForwardIteratorIterator remove_if(ForwardIterator begin, FwdIterator end, Predicate p)
+{
+    begin = find_if(begin, end, p);
+    
+    if (begin == end)
+    {
+        return begin;
+    }
+    else 
+    {
+        FwdIterator next = begin;
+        return remove_copy_if(++next, end, begin, p);
+    }
+}
+```
 
 
 
@@ -1928,6 +2060,9 @@ As you can see, there are lots of options.
 
 ### 📌 Item 40: Make functor classes adaptable
 
+- More and more functor classes are being deprecated since C++17. 
+  Just use lambdas instead. 
+
 
 
 
@@ -1935,12 +2070,16 @@ As you can see, there are lots of options.
 
 ### 📌 Item 41: Understand the reasons for `std::ptr_fun`, `std::mem_fun`, and `std::mem_fun_ref`
 
-
+- More and more functor classes are being deprecated since C++17. 
+  Just use lambdas instead. 
 
 
 
 
 ### 📌 Item 42: Make sure `std::less<T>` means `operator<`
+
+- NO ZUO NO DIE. Don't play with fire. 
+- **Never** overload/define anything with name opposite to its functionality. 
 
 
 
@@ -1951,12 +2090,23 @@ As you can see, there are lots of options.
 
 ### 📌 Item 43: Prefer algorithm calls to hand-written loops
 
+- There are three reasons to prefer algorithm calls to hand-written loops: 
+  - **Efficiency**: 
+    Algorithms are often more efficient than the loops programmers produce.
+  - **Correctness**: 
+    Writing loops is more subject to errors than is calling algorithms.
+  - **Maintainability**: 
+    Algorithm calls often yield code that is clearer and more straightforward
+    than the corresponding explicit loops.
+
 
 
 
 
 
 ### 📌 Item 44: Prefer member functions to algorithms with the same names
+
+- Member functions are more specified and thus much more efficient than the generic non-member alternatives. 
 
 
 
@@ -1965,12 +2115,27 @@ As you can see, there are lots of options.
 
 ### 📌 Item 45: Distinguish among `std::count`, `std::find`, `std::binary_search`, `std::lower_bound`, `std::upper_bound`, and `std::equal_range`
 
+- Non-modifying sequence operations
+  - [`std::count`](https://en.cppreference.com/w/cpp/algorithm/count)
+  - [`std::find`](https://en.cppreference.com/w/cpp/algorithm/find)
+- Binary search operations (on sorted ranges)
+  - [`std::binary_search`](https://en.cppreference.com/w/cpp/algorithm/binary_search)
+  - [`std::lower_bound`](https://en.cppreference.com/w/cpp/algorithm/lower_bound)
+  - [`std::upper_bound`](https://en.cppreference.com/w/cpp/algorithm/upper_bound)
+  - [`std::equal_range`](https://en.cppreference.com/w/cpp/algorithm/equal_range)
+- Algorithm Or Member Function to Use
+  - ![Algorithm Or Member Function to Use](./effective_stl_search_algo_to_use.jpg)
 
 
 
 
 
-### 📌 Item 46: Consider predicates instead of functions as algorithm parameters
+
+### 📌 Item 46: Consider Inline Function Objects instead of functions as algorithm predicates
+
+- Functions passed into STL generic algorithms as function pointers
+  That blocks auto `inline`ing and could hit performance badly (by 50%). 
+- Prefer inline function objects (**not** `std::function` objects) or lambdas as predicates. 
 
 
 
@@ -1979,12 +2144,44 @@ As you can see, there are lots of options.
 
 ### 📌 Item 47: Avoid producing write-only code
 
+- Use STL but **don't** play with it. 
+
+
+Suppose you have a `std::vector<int>`, 
+and you’d like to get rid of all the elements in the vector 
+whose value is less than `x` 
+and that occur after the last value at least as big as `y`. 
+Does the following instantly spring to mind? 
+```c++
+std::vector<int> v;
+int x, y;
+...
+// "F U N C T I O N A L    P R O G R A M M I N G"
+v.erase(std::remove_if(std::find_if(v.rbegin(), 
+                                    v.rend(), 
+                                    std::bind2nd(std::greater_equal<int>(), y)).base(), 
+                       v.end(),
+                       std::bind2nd(std::less<int>(), x)),
+        v.end());
+```
+One statement, and the job is done. Clear and straightforward. 
+But _does_ this strike you as reasonable, maintainable code? 
+The s**t above is identical to something like this:
+```c++
+v.f1(f2(f3(v.f4(), v.f5(), f6(f7(), y)).f8(), v.f9(), f6(f10(), x)), v.f9());
+```
+
 
 
 
 
 
 ### 📌 Item 48: Always `#include` the proper headers
+
+- Always `#include` the proper headers, 
+  even if your development platform lets you get away without it.
+  This will pay off in reduced stress 
+  when you find yourself porting to a different platform.
 
 
 
@@ -1993,12 +2190,17 @@ As you can see, there are lots of options.
 
 ### 📌 Item 49: Learn to decipher STL-related compiler diagnostics
 
+- This must be a duplicate to another Item in another book among the Effective C++ series. 
+
 
 
 
 
 
 ### 📌 Item 50: Familiarize yourself with STL-related websites
+
+- [cppreference.com](https://en.cppreference.com/w/)
+
 
 
 
