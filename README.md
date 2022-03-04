@@ -9,6 +9,7 @@
         2. *[`More Effective C++`](./notes/cpp/effective_cpp_notes_02_more_effective_cpp.md)*
         3. *[`Effective STL`](./notes/cpp/effective_cpp_notes_03_effective_stl.md)*
         4. *[`Effective Modern C++`](./notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
+    - *[C++ Templates: The Complete Guide]*(./notes/cpp/cpp_templates_the_complete_guide_notes.md)
     - *[`CPP Concurrency In Action`](./notes/cpp/cpp_concurrency_in_action_notes.md)*
 
 - `Python`
@@ -17,14 +18,14 @@
     - [`PyTorch` Tutorial Notes](./notes/py/pytorch.md)
     - [`matplotlib` Offical Tutorial](./notes/py/matplotlib.md)
     - [`SymPy` Offical Tutorial](./notes/py/sympy/sympy.md)
-    
+
 - `ubuntu` Management
     1. [System Installation](./notes/ubuntu/01-system-installation.md)
     2. [System Configuration](./notes/ubuntu/02-system-configuration.md)
     3. [Environment Configuration](./notes/ubuntu/03-environment-configuration.md)
     4. [System Management](./notes/ubuntu/04-system-management.md)
     5. [WSL 2](./notes/ubuntu/05-wsl-2.md)
-    
+
 ### 🌱 Sample Code
 
 - `CMakeLists`

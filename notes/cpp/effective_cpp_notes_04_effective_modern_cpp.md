@@ -19,9 +19,25 @@
 
 ### 📌 Item 1: Understand template type deduction
 
-- During template type deduction, arguments' reference-ness and top-level cv-constraints are ignored.
-- When deducing types for universal reference parameters, reference collapse may occur. 
-- During template type deduction, arguments that are array or function names decay to pointers, unless they’re used to initialize references. 
+- During template type deduction, 
+  arguments' reference-ness and top-level cv-constraints are ignored.
+- When deducing types for universal reference parameters, 
+  reference collapse may occur. 
+- During template type deduction, 
+  arguments that are array or function names decay to pointers, 
+  unless they’re used to initialize references. 
+- **Type Conversions During Type Deduction**. 
+  Note that automatic type conversions are limited during type deduction: 
+  - When declaring call parameters by reference, 
+    even trivial conversions do not apply to type deduction. 
+    Two arguments declared with the same template parameter `T` must match exactly.
+  - When declaring call parameters by value, 
+    only trivial conversions that decay are supported: 
+    Qualifications with const or volatile are ignored, 
+    references convert to the referenced type, 
+    and raw arrays or functions convert to the corresponding pointer type. 
+    For two arguments declared with the same template parameter `T`, 
+    the decayed types must match.
 
 
 If you’re willing to overlook a pinch of pseudocode, we can think of a function template as looking like this:
