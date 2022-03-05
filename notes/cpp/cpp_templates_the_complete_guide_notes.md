@@ -668,7 +668,7 @@ an object that uses a vector of `std::string`s as elements is created,
 and for all member functions that are called, code for this type is instantiated.
 
 
-Note that code is instantiated _only for template (member) functions that are called_. 
+Note that **code is instantiated _only for template (member) functions that are called_**. 
 For class templates, member functions are instantiated only if they are used. 
 This, of course, saves time and space and allows use of class templates only partially, 
 which we will discuss in Section 2.3. 
@@ -710,6 +710,217 @@ was removed with the “angle bracket hack” (see Section 13.3).
 
 
 ### 📌 2.3 Partial Usage of Class Templates
+
+
+A class template usually applies multiple operations 
+on the template arguments it is instantiated for (including construction and destruction). 
+This might lead to the impression that these template arguments 
+have to provide all operations necessary for all member functions of a class template. 
+But this is **not** the case: 
+Template arguments only have to provide all necessary operations that are needed 
+(instead of that could be needed).
+If, for example, class `Stack<>` would provide a member function `printOn` to print the whole stack content, 
+which calls `operator<<` for each element:
+```c++
+template <typename T>
+class Stack 
+{
+    ...
+    
+    void printOn() (std::ostream & cout) const 
+    {
+        for (T const & elem : elems) 
+        {
+            cout << elem << ' ';
+        }
+    }
+};
+```
+You can still use this class for elements that **don’t** have `operator<<` defined:
+```c++
+// note: std::pair<> has no operator<< defined
+Stack<std::pair<int, int>> ps; 
+ps.push({4, 5});                       // OK
+ps.push({6, 7});                       // OK
+std::cout << ps.top().first << '\n';   // OK
+std::cout << ps.top().second << '\n';  // OK
+```
+Only if you call `printOn` for such a stack, the code will produce an error, 
+because it can’t instantiate the call of `operator<<` for this specific element type:
+```c++
+// ERROR: operator<< not supported for element type
+ps.printOn(std::cout);
+```
+
+#### Concepts
+
+This raises the question: 
+How do we know which operations are required for a template to be able to get instantiated? 
+The term _concept_ is often used to denote a set of constraints that is repeatedly required in a template library. 
+For example, the C++ standard library relies on such concepts 
+as _random access iterator_ and _default constructible_. 
+
+
+As of C++17, concepts can more or less only be expressed in the documentation (e.g., code comments). 
+This can become a significant problem because failures to follow constraints 
+can lead to terrible error messages (see Section 9.4).
+For years, there have also been approaches and trials 
+to support the definition and validation of concepts as a language feature. 
+However, up to C++17 no such approach was standardized yet.
+C++20 standard introduced concepts,
+yet many compilers lack good support on C++20 (as of March 2022). 
+
+
+Since C++11, you can at least check for some basic constraints 
+by using the `static_assert` keyword and some predefined type traits. 
+For example:
+```c++
+template <typename T>
+class C
+{
+    static_assert(std::is_default_constructible<T>::value,
+                  "Class C requires default-constructible elements");
+    ...
+};
+```
+Without this assertion the compilation will still fail, 
+if the default constructor is required. 
+However, the error message then might contain the entire template instantiation history 
+from the initial cause of the instantiation 
+down to the actual template definition in which the error was detected (see Section 9.4).
+
+
+However, more complicated code is necessary to check,
+for example, objects of type `T` provide a specific member function 
+or that they can be compared using `operator<`. 
+See Section 19.6 for a detailed example of such code.
+
+
+See Appendix E for a detailed discussion of concepts for C++. 
+
+
+### 📌 2.4 Friends
+
+
+Instead of printing the stack contents with `printOn`, 
+it is better to implement `operator<<` for the stack.
+However, as usual `operator<<` has to be implemented as nonmember function, 
+which then could call `printOn` inline. 
+Note that this means that `operator<<` for class `Stack` is **not** a function template, 
+but an “ordinary” function instantiated with the class template if needed.
+It is a _templated entity_, see Section 12.1. 
+
+If we could accept to _declare and define_ friend `operator<<` 
+_together_ inside the `Stack` body, thing are simple: 
+```c++
+template <typename T>
+class Stack
+{
+    ...
+
+    void printOn()(std::ostream & cout) const
+    {
+        ...
+    }
+
+    friend std::ostream & operator<<(std::ostream & cout, Stack const & s)
+    {
+        s.printOn(cout);
+        return cout;
+    }
+};
+```
+However, when trying to _declare_ the friend function and _define_ it afterwards,
+things become more complicated. 
+In fact, we have two options:
+1. We can implicitly declare a new function template, 
+   which must use a different template parameter, such as `U`:
+   ```c++
+   template <typename T>
+   class Stack
+   {
+       ...
+   
+       template <typename U>
+       friend std::ostream & operator<<(std::ostream &, Stack<U> const &);
+   };
+   ```
+   Neither using `T` again nor skipping the template parameter declaration would work
+   (either the inner `T` hides the outer `T` or we declare a non-template function in namespace scope).
+2. We can forward declare the output operator for a `Stack<T>` to be a template,
+   which, however, means that we first have to forward declare `Stack<T>`. 
+   Then, we can declare this function as friend:
+   ```c++
+   template <typename T>
+   class Stack;
+   
+   template <typename T>
+   std::ostream & operator<<(std::ostream &, Stack<T> const &);
+
+   template <typename T>
+   class Stack
+   {
+       ...
+       
+       friend std::ostream & operator<<<T>(std::ostream &, Stack<T> const &);
+   };
+   ```
+   Note the `<T>` behind the “function name” `operator<<`. 
+   Thus, we declare a specialization of the non-member function template as friend. 
+   Without `<T>` we would declare a new non-template function. 
+   See Section 12.5 for details.
+
+
+In any case, you can still use this class for elements that don’t have `operator<<` defined. 
+Only calling `operator<<` for this stack results in an error:
+```c++
+// std::pair<> has no operator<< defined
+Stack<std::pair<int, int>> ps;
+
+// OK
+ps.push({4, 5});
+ps.push({6, 7});
+std::cout << ps.top().first << '\n';
+std::cout << ps.top().second << '\n';
+
+// ERROR: operator<< not supported for element type
+std::cout << ps << '\n'; 
+```
+
+
+### 📌 2.5 Specializations of Class Templates
+
+
+You can specialize a class template for certain template arguments. 
+Similar to the overloading of function templates (see Section 1.5), 
+specializing class templates allows you to optimize implementations for certain types 
+or to fix a misbehavior of certain types for an instantiation of the class template. 
+However, if you specialize a class template, you must also specialize all member functions. 
+Although it is possible to specialize a single member function of a class template, 
+once you have done so, 
+you can **no longer** specialize the whole class template instance 
+that the specialized member belongs to. 
+
+
+To specialize a class template,
+you have to declare the class with a leading `template<>` 
+and a specification of the types for which the class template is specialized. 
+The types are used as a template argument and must be specified directly following the name of the class:
+```c++
+template<>
+class Stack<std::string> 
+{
+    // ...
+};
+```
+For these specializations, any definition of a member function must be defined as an “ordinary” member function, 
+with each occurrence of `T` being replaced by the specialized type:
+```c++
+void Stack<std::string>::push(std::string const & elem)
+{
+    elems.push_back(elem);  // append copy of passed elem
+}
+```
 
 
 
