@@ -66,27 +66,28 @@ Implement each template inside a header file.
 
 ### 📌 1.2 Template Argument Deduction
 
-- During template type deduction, 
-  arguments' reference-ness and top-level cv-constraints are ignored.
-- When deducing types for universal reference parameters, 
-  reference collapse may occur. 
-- During template type deduction, 
-  arguments that are array or function names decay to pointers, 
-  unless they are used to initialize references.
-
 #### Type Conversions During Type Deduction
 
-Note that automatic type conversions are limited during type deduction: 
-- When declaring call parameters by reference, 
-  even trivial conversions do not apply to type deduction. 
-  Two arguments declared with the same template parameter `T` must match exactly.
-- When declaring call parameters by value, 
-  only trivial conversions that decay are supported: 
-  Qualifications with `const` or `volatile` are ignored, 
-  references convert to the referenced type, 
-  and raw arrays or functions convert to the corresponding pointer type. 
-  For two arguments declared with the same template parameter `T`, 
-  the _decayed_ types must match.
+- During template type deduction,
+  arguments' reference-ness and top-level cv-constraints are ignored.
+    - Note only pointers and references have top-level cv-constraints.
+      A raw type like `const int` is considered bottom-level cv-constraint.
+- When deducing types for universal reference parameters,
+  reference collapse may occur.
+- During template type deduction,
+  arguments that are array or function names decay to pointers,
+  unless they’re used to initialize references.
+- Automatic type conversions are limited during type deduction:
+  - When declaring call parameters by reference,
+    even trivial conversions do not apply to type deduction.
+    Two arguments declared with the same template parameter `T` must match exactly.
+  - When declaring call parameters by value,
+    only trivial conversions that decay are supported:
+    Qualifications with `const` or `volatile` are ignored,
+    references convert to the referenced type,
+    and raw arrays or functions convert to the corresponding pointer type.
+    For two arguments declared with the same template parameter `T`,
+    the _decayed_ types must match.
 
 
 Three ways to handle type deduction failures dur to argument type mismatch:
@@ -905,32 +906,537 @@ that the specialized member belongs to.
 To specialize a class template,
 you have to declare the class with a leading `template<>` 
 and a specification of the types for which the class template is specialized. 
-The types are used as a template argument and must be specified directly following the name of the class:
+The types are used as a template argument and must be specified directly following the name of the class.
+For these specializations, any definition of a member function must be defined as an “ordinary” member function,
+with each occurrence of `T` being replaced by the specialized type.
 ```c++
 template <>
-class Stack<std::string> 
+class Stack<std::string>
 {
-    // ...
+public:
+    void push(std::string const &);
+
+    void pop();
+
+    [[nodiscard]] std::string const & top() const;
+
+    [[nodiscard]] bool empty() const
+    {
+        return elems.empty();
+    }
+
+private:
+    std::deque<std::string> elems;
 };
-```
-For these specializations, any definition of a member function must be defined as an “ordinary” member function, 
-with each occurrence of `T` being replaced by the specialized type:
-```c++
+
 void Stack<std::string>::push(std::string const & elem)
 {
-    elems.push_back(elem);  // append copy of passed elem
+    elems.push_back(elem);
 }
+
+void Stack<std::string>::pop()
+{
+    assert(!elems.empty());
+    elems.pop_back();
+}
+
+std::string const & Stack<std::string>::top() const
+{
+    assert(!elems.empty());
+    return elems.back();
+}
+```
+In this example, the specialization uses reference semantics to pass the `std::string` argument to `push`, 
+which makes more sense for this specific type 
+(we should even better pass a forwarding reference, though, 
+which is discussed in Section 6.1). 
+
+
+Another difference is to use a `std::deque` instead of a `std::vector` to manage the elements inside the stack. 
+Although this has no particular benefit here,
+it does demonstrate that the implementation of a specialization
+might look very different from the implementation of the primary template.
+
+
+### 📌 2.6 Partial Specialization
+
+
+Class templates can be partially specialized. 
+You can provide special implementations for particular circumstances, 
+but some template parameters must still be defined by the user. 
+For example, we can define a special implementation of class `Stack` for pointers:
+```c++
+// partial specialization of class Stack<> for pointers:
+template <typename T>
+class Stack<T *>
+{
+public:
+    void push(T *);
+
+    T * pop();
+
+    T * top() const;
+
+    [[nodiscard]] bool empty() const
+    {
+        return elems.empty();
+    }
+
+private:
+    std::vector<T *> elems;
+};
+
+template <typename T>
+void Stack<T *>::push(T * elem)
+{
+    elems.push_back(elem);
+}
+
+template <typename T>
+T * Stack<T *>::pop()
+{
+    assert(!elems.empty());
+    T * p = elems.back();
+    elems.pop_back();
+    return p;
+}
+
+template <typename T>
+T * Stack<T *>::top() const
+{
+    assert(!elems.empty());
+    return elems.back();
+}
+```
+with `template <typename T> Stack<T *>`, we define a class template, 
+still parameterized for `T` but specialized for a pointer. 
+
+
+Note again that the specialization might provide a (slightly) different interface.
+Here, for example, `pop` returns the stored pointer, 
+so that a user of the class template can call `delete` for the removed value, 
+when it was created with `new`:
+```c++
+Stack<int *> ptrStack;
+ptrStack.push(new int {42});
+std::cout << *ptrStack.top() << '\n';
+delete ptrStack.pop();
+```
+
+#### Partial Specialization with Multiple Parameters
+
+Class templates might also specialize the relationship between multiple template parameters.
+```c++
+template <typename T1, typename T2>
+class MyClass
+{
+    ...
+};
+
+// Partial specialization: 
+// Both template parameters have same type
+template <typename T>
+class MyClass<T, T>
+{
+    ...
+};
+
+// Partial specialization: 
+// Second type is int
+template <typename T>
+class MyClass<T, int>
+{
+    ...
+};
+
+// Partial specialization: 
+// Both template parameters are pointer types
+template <typename T1, typename T2>
+class MyClass<T1 *, T2 *>
+{
+    ...
+};
+
+MyClass<int, float> mif;     // uses MyClass<T1, T2>
+MyClass<float, float> mff;   // uses MyClass<T, T>
+MyClass<float, int> mfi;     // uses MyClass<T, int>
+MyClass<int *, float *> mp;  // uses MyClass<T1 *, T2 *>
+
+// ERROR: Matches both MyClass<T, T> and MyClass<T, int>
+MyClass<int, int> m;  
+
+// ERROR: Matches both MyClass<T, T> and MyClass<T1 *, T2 *>
+MyClass<int *, int *> m;
+```
+To resolve the second ambiguity, 
+you could provide an additional partial specialization for pointers of the same type:
+```c++
+template <typename T>
+class MyClass<T *, T *> 
+{
+    ...
+};
+```
+For details of partial specialization, see Section 16.4. 
+
+
+### 📌 2.7 Default Class Template Arguments
+
+
+As for function templates, 
+you can define default values for class template parameters. 
+For example, in class `Stack` you can define the container 
+that is used to manage the elements as a second template parameter, 
+using `std::vector` as the default value.
+Note that we now have two template parameters,
+so each definition of a member function must be defined with these two parameters. 
+```c++
+template <typename T, typename Cont = std::vector<T>>
+class Stack
+{
+public:
+    void push(T const & elem);
+
+    void pop();
+
+    T const & top() const;
+
+    [[nodiscard]] bool empty() const
+    {
+        elems.empty();
+    }
+
+private:
+    Cont elems;
+};
+
+template <typename T, typename Cont>
+void Stack<T, Cont>::push(T const & elem)
+{
+    elems.push_back(elem);
+}
+
+template <typename T, typename Cont>
+void Stack<T, Cont>::pop()
+{
+    assert(!elems.empty());
+    elems.pop_back();
+}
+
+template <typename T, typename Cont>
+T const & Stack<T, Cont>::top() const
+{
+    assert(!elems.empty());
+    return elems.back();
+}
+
+// Stack<int, std::vector<int>>
+Stack<int> intStack;
+
+// Stack<double, std::deque<double>>
+Stack<double, std::deque<double>> doubleStack;
 ```
 
 
+### 📌 2.8 Type Aliases
+
+#### Typedefs and Alias Declarations
+
+```c++
+// Typedef
+typedef Stack<int> intStack;
+
+// Type alias
+using IntStack = Stack<int>;
+```
+
+#### Alias Templates
+
+Unlike a `typedef`, an alias declaration can be templated 
+to provide a convenient name for a family of types. 
+This is also available since C++11 and is called an _alias template_. 
 
 
+Alias templates are sometimes (incorrectly) referred to as _typedef templates_
+because they fulfill the same role that a `typedef` would 
+if it could be made into a template.
 
 
+The following alias template `DequeStack`, 
+parameterized over the element type `T`,
+expands to a `Stack` that stores its elements in a `std::deque`:
+```c++
+template <typename T>
+using DequeStack = Stack<T, std::deque<T>>;
+```
+Thus, both class templates and alias templates can be used as a parameterized type.
+But again, an alias template simply gives a new name to an existing type, 
+which can still be used. 
+Both `DequeStack<int>` and `Stack<int, std::deque<int>>` represent the same type.
 
 
+Note again that, in general, templates can only be declared and defined in
+namespace scope (including global namespace scope) or inside class declarations.
+
+#### Alias Templates for Member Types
+
+Alias templates are especially helpful to define shortcuts for types 
+that are members of class templates. 
+```c++
+template <typename T>
+struct C
+{
+    typedef ... iterator;
+    ...
+};
+
+template <typename T>
+struct MyType
+{
+    using iterator = ...;
+    ...
+};
+
+template <typename T>
+using MyTypeIterator = typename MyType<T>::iterator;
+```
+
+#### Type Traits Suffix_t
+
+Since C++14, the standard library uses this technique to define shortcuts 
+for all type traits in the standard library that yield a type. 
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+namespace std
+{
+
+template <typename T>
+using add_const_t = typename add_const<T>::type;
+
+}  // namespace std
+```
 
 
+### 📌 2.9 Class Template Argument Deduction
+
+
+Prior to C++17, 
+you _always_ had to pass _all_ template parameter types to class templates, 
+unless they have default values. 
+Since C++17, the constraint was relaxed. 
+Instead, you can skip to define the templates arguments explicitly, 
+if the _constructor_ is able to deduce all template parameters (that don’t have a default value).
+(If there is no constructor, then class template argument deduction fails.)
+
+
+For example, in all previous code examples, 
+you can use a copy constructor **without** specifying the template arguments:
+```c++
+Stack<int> intStack1;
+Stack<int> intStack2 = intStack1;
+Stack intStack3 = intStack1;
+```
+By providing constructors that pass some initial arguments, 
+you can support deduction of the element type of a stack. 
+For example, we could provide a stack that can be initialized by a single element:
+```c++
+template <typename T>
+class Stack
+{
+public:
+    Stack() = default;
+    Stack(T const & elem) : elems {elem} {}
+    
+    // ...
+
+private:
+    std::vector<T> elems;
+};
+
+Stack intStack = 0;  // Stack<int> deduced since C++17
+```
+By initializing the stack with the integer `0`, 
+the template parameter `T` is deduced to be `int`, 
+so that a `Stack<int>` is instantiated.
+
+
+Note the following:
+- Due to the definition of the `int` constructor, 
+  you have to request the compiler-generated default constructors manually, 
+  because the default constructor is available only if there is no other user-defined constructor. 
+- The argument `elem` is passed to `elems` with braces around 
+  to initialize the vector elems with an initializer list with `elem` as the only argument.
+  There is no constructor for a vector that is able to 
+  take a single parameter as initial element directly. 
+
+
+Note that, unlike for function templates, 
+class template arguments may **not** be deduced only partially 
+(by explicitly specifying only some of the template arguments). 
+See Section 15.12 for details.
+
+#### Class Template Arguments Deduction with String Literals
+
+In principle, you can even initialize the stack with a string literal:
+```c++
+Stack stringStack = "bottom";  // Stack<char const[7]> deduced since C++17
+```
+**BUT** this causes a lot of trouble: 
+In general, when passing arguments of a template type `T` _by reference_, 
+the parameter **doesn’t** _decay_ (low-level `const`-ness is kept).  
+This means that we really initialize a `Stack<char const[7]>` 
+and use type `char const [7]` wherever `T` is used. 
+For example, we may **not** push a string of different size, because it has a different type. 
+For a detailed discussion see Section 7.4. 
+
+
+However, when passing arguments of a template type `T` _by value_, the parameter _decays_. 
+That is, the call parameter `T` of the constructor is deduced to be `char const *` 
+so that the whole class is deduced to be a `Stack<char const*>`. 
+
+
+For this reason, it might be worthwhile to declare the constructor so that the
+argument is passed by value:
+```c++
+template <typename T>
+class Stack
+{
+public:
+    Stack(T elem) : elems {std::move(elem)} {}
+    
+    // ...
+
+private:
+    std::vector<T> elems;
+};
+
+Stack stringStack = "bottom";  // Stack<const char *> deduced
+```
+
+#### Deduction Guides
+
+
+Instead of declaring the constructor to be called by value, 
+there is a different solution: 
+Because handling raw pointers in containers is a source of trouble, 
+we should disable automatically deducing raw character pointers for container classes.
+
+
+You can define specific _deduction guides_ 
+to provide additional or fix existing class template argument deductions. 
+For example, you can define that whenever a string literal or C string is passed, 
+the stack is instantiated for `std::string`:
+```c++
+Stack(char const *) -> Stack<std::string>;
+```
+This guide has to appear in the same scope (namespace) as the class definition.
+Usually, it follows the class definition. 
+We call the type following the `->` I of the deduction guide. 
+
+
+Now, the declaration with 
+```c++
+Stack stringStack {"bottom"};
+```
+deduces the stack to be a `Stack<std::string>`. 
+However, the following still **doesn't** work:
+```c++
+// Stack<std::string> deduced, but still not valid
+Stack stringStack = "bottom";
+```
+We deduce std::string so that we instantiate a Stack<std::string>:
+```c++
+class Stack
+{
+public:
+    Stack(std::string const & elem) : elems {elem} {}
+    // ...
+
+private:
+    std::vector<std::string> elems;
+};
+```
+However, by language rules, you **can’t** [copy initialize](https://en.cppreference.com/w/cpp/language/copy_initialization) 
+(initialize using `=`) an object by passing a string literal to a constructor expecting a `std::string`.
+Note that if this were possible, 
+there will be an implicit conversion sequence 
+```c++
+const char * -> std::string -> Stack<std::string>
+```
+which involves two user-defined conversions, and that is prohibited. 
+
+
+So you have to initialize the stack as follows:
+```c++
+Stack stringStack{"bottom"};  // Stack<std::string> deduced and valid
+```
+Note that, if in doubt, class template argument deduction copies. 
+After declaring `stringStack` as `Stack<std::string>`, 
+the following initializations declare `Stack<std::string>` (thus, calling the copy constructor) 
+instead of `Stack<Stack<std::string>>`:
+```c++
+// Stack<std::string> deduced
+Stack stack2 {stringStack};
+Stack stack3 (stringStack);
+Stack stack4 = {stringStack};
+```
+See Section 15.12 for more details about class template argument deduction.
+
+
+### 📌 2.10 Templatized Aggregates
+
+
+Aggregate classes (classes/structs with **no** user-provided, explicit, or inherited constructors, 
+**no** private or protected non-static data members, no virtual functions,
+and **no** virtual, private, or protected base classes) 
+can also be templates. 
+For example: 
+```c++
+template <typename T>
+struct ValueWithComment
+{
+    T value;
+    std::string comment;
+};
+```
+defines an aggregate parameterized for the type of the value it holds. 
+You can declare objects as for any other class template and still use it as aggregate:
+```c++
+ValueWithComment<int> vc {1, "a"};
+vc.value = 2;
+vc.comment = "b";
+```
+Since C++17, you can even define _deduction guides_ for aggregate class templates:
+```c++
+ValueWithComment(char const *, char const *) -> ValueWithComment<std::string>;
+ValueWithComment vc2 = {"hello", "initial value"};
+```
+Without the deduction guide, the initialization would **not** be possible, 
+because `ValueWithComment` has no constructor to perform the deduction against. 
+
+
+The standard library class `std::array` is also an aggregate, 
+parameterized for both the element type and the size. 
+The C++17 standard library also defines a deduction guide for it, 
+which we discuss in Section 4.4.
+
+
+### 📌 2.11 Summary
+
+
+- A class template is a class that is implemented with one or more type parameters left open.
+- To use a class template, you pass the open types as template arguments. 
+  The class template is then instantiated (and compiled) for these types.
+- For class templates, only those member functions that are called are instantiated.
+- You can (completely or partially) specialize class templates for certain types.
+- Since C++17, class template arguments can automatically be deduced from constructors.
+  You can also define _deduction guides_ to specialize the deduction result for certain types. 
+- You can define aggregate class templates.
+- Call parameters of a template type decay if declared to be called by value.
+- Templates can only be declared and defined 
+  in namespace scope (including global namespace scope) or inside class declarations.
 
 
 
