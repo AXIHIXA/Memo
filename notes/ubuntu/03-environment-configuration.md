@@ -29,22 +29,22 @@
 
 - Remove PPAs:
     - Use the --remove flag, similar to how the PPA was added:
-    ```
+    ```bash
     sudo add-apt-repository --remove ppa:whatever/ppa
     ```
     - You can also remove PPAs by deleting the `.list` files from `/etc/apt/sources.list.d` directory.
     - As a safer alternative, you can install `ppa-purge`:
-    ```
+    ```bash
     sudo apt-get install ppa-purge
     ```
     - And then remove the PPA, downgrading gracefully packages it provided to packages provided by official repositories:
-    ```
+    ```bash
     sudo ppa-purge ppa:whatever/ppa
     ```
     - Note that this will uninstall packages provided by the PPA, 
       but not those provided by the official repositories. 
       If you want to remove them, you should tell it to `apt`:
-    ```
+    ```bash
     sudo apt-get purge package_name
     ```
 
@@ -94,10 +94,23 @@ https://www.anaconda.com/pycharm
 ```
 - New virtual environment (do NOT use `opencv` package from `conda`. It's bullsh*t):
 ```
-conda create -n py3 python=3.7 numpy scipy sympy matplotlib cython ipykernel
+conda create -n py3 python=3.8 numpy scipy sympy matplotlib cython ipykernel
 conda activate py3
 pip install opencv-python
 python -m ipykernel install --name py3 --user
+```
+- **Never** update anaconda itself as well as the base environment, it is highly likely to downgrade!
+    - **Never** call the following commands:
+    ```
+    conda update anaconda
+    conda update --all
+    ```
+- [Uninstall anaconda](https://docs.anaconda.com/anaconda/install/uninstall/)
+```
+conda install anaconda-clean
+conda-clean --yes
+rm -rf ~/opt/anaconda3
+# Remove Anaconda path from .bash_profile
 ```
     
 #### `.bashrc`
@@ -110,8 +123,8 @@ gedit ~/.bashrc
 # anaconda
 alias c3="conda activate py3"
 alias d3="conda deactivate"
-alias ws="cd /media/ax/DATAIN/workspace"
-alias jl="cd /media/ax/DATAIN/workspace; jupyter lab"
+alias ws="cd /media/ax/DATA/workspace"
+alias jl="cd /media/ax/DATA/workspace; jupyter lab"
 alias cls="reset"
 ```
 
@@ -141,10 +154,10 @@ jupyter server password
 edit `jupyter_server_config.py`:    
 
 ```
-c.ServerApp.ip = '0.0.0.0'         # 272
-c.ServerApp.open_browser = False   # 359
-c.ServerApp.password = 'sha1:...'  # 369
-c.ServerApp.port = 9000            # 382
+c.ServerApp.ip = '0.0.0.0'         # 278
+c.ServerApp.open_browser = False   # 366
+c.ServerApp.password = 'sha1:...'  # 377
+c.ServerApp.port = 9000            # 390
 ```
     
 #### kernel management

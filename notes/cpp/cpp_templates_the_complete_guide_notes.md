@@ -907,7 +907,7 @@ you have to declare the class with a leading `template<>`
 and a specification of the types for which the class template is specialized. 
 The types are used as a template argument and must be specified directly following the name of the class:
 ```c++
-template<>
+template <>
 class Stack<std::string> 
 {
     // ...
