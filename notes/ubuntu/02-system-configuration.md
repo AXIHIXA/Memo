@@ -55,6 +55,12 @@ We may add out own action "Open in xfce4 Terminal" via nautilus-actions.
     - Working directory: `%d`
 3. Use command `nautilus -q` to restart nautilus. 
 
+- [Add New Untitled Document](https://vitux.com/add-new-document-back-to-the-right-click-menu-in-ubuntu-18-04/)
+```
+touch "~/Templates/Untitled Document"
+```
+
+
 
 
 
