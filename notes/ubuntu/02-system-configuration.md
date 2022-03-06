@@ -92,6 +92,21 @@ sudo timedatectl set-local-rtc 1 --adjust-system-clock
 
 
 
+## 🌱 Locale Settings
+
+- [Set Monday as the first day of week](https://askubuntu.com/questions/6016/how-to-set-monday-as-the-first-day-of-the-week-in-gnome-2-calendar-applet)
+```
+sudo gedit /etc/default/profile
+
+LANG="en_US.UTF-8"
+LC_TIME="en_GB.UTF-8"
+```
+Software messages in American, but time in British (weeks starting with Mondays). 
+
+
+
+
+
 
 ## 🌱 VMWare Shared Folder
 
