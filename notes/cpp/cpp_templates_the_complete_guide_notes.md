@@ -616,6 +616,7 @@ we usually will skip `constexpr` when discussing other template features.
 - When you pass arguments to function parameters depending on template parameters, 
   function templates deduce the template parameters 
   to be instantiated for the corresponding parameter types.
+  Template argument deduction only works for immediate calls. 
 - You can explicitly qualify the leading template parameters.
 - You can define default arguments for template parameters. 
   These may refer to previous template parameters 
@@ -1433,10 +1434,184 @@ which we discuss in Section 4.4.
 - You can (completely or partially) specialize class templates for certain types.
 - Since C++17, class template arguments can automatically be deduced from constructors.
   You can also define _deduction guides_ to specialize the deduction result for certain types. 
+  Template argument deduction only works for immediate calls.
 - You can define aggregate class templates.
 - Call parameters of a template type decay if declared to be called by value.
 - Templates can only be declared and defined 
   in namespace scope (including global namespace scope) or inside class declarations.
+
+
+
+
+
+
+### 🎯 Chapter 3 Nontype Template Parameters
+
+
+For function and class templates, template parameters **don’t** have to be types. 
+They can also be ordinary values.
+When using such a template, you have to specify the value template arguments explicitly. 
+The resulting code then gets instantiated.
+
+
+### 📌 3.1 Nontype Class Template Parameters
+
+
+```c++
+template <typename T, std::size_t maxSize>
+class Stack
+{
+public:
+    Stack();
+
+    void push(T const & elem);
+
+    void pop();
+
+    T const & top() const;
+
+    [[nodiscard]] bool empty() const
+    {
+        return numElems == 0;
+    }
+
+    [[nodiscard]] std::size_t size() const
+    {
+        return numElems;
+    }
+
+private:
+    std::array<T, maxSize> elems;
+    std::size_t numElems;
+};
+
+template <typename T, std::size_t maxSize>
+Stack<T, maxSize>::Stack() : numElems(0)
+{
+
+}
+
+template <typename T, std::size_t maxSize>
+void Stack<T, maxSize>::push(T const & elem)
+{
+    assert(numElems < Maxsize);
+    elems[numElems++] = elem;
+}
+
+template <typename T, std::size_t maxSize>
+void Stack<T, maxSize>::pop()
+{
+    assert(!elems.empty());
+    --numElems;
+}
+
+template <typename T, std::size_t maxSize>
+T const & Stack<T, maxSize>::top() const
+{
+    assert(!elems.empty());
+    return elems[numElems - 1];
+}
+
+Stack<int, 20> int20Stack;
+Stack<int, 40> int40Stack;
+Stack<std::string, 40> stringStack;
+
+int20Stack.push(7);
+std::cout << int20Stack.top() << '\n';
+int20Stack.pop();
+
+stringStack.push("hello");
+std::cout << stringStack.top() << '\n';
+stringStack.pop();
+```
+Note that each template instantiation is its own type. 
+Thus, `int20Stack` and `int40Stack` are two different types, 
+and **no** implicit or explicit type conversion between them is defined. 
+Thus, one can **not** be used instead of the other, and you can **not** assign one to the other. 
+Again, default arguments for the template parameters can be specified: 
+```c++
+template <typename T = int, std::size_t maxSize = 100>
+class Stack 
+{
+    ...
+};
+```
+However, from a perspective of good design, this may **not** be appropriate in this example. 
+Default arguments should be intuitively correct. 
+But neither type `int` nor a maximum size of `100` seems intuitive for a general stack type. 
+Thus, it is better when the programmer has to specify both values explicitly 
+so that these two attributes are always documented during a declaration.
+
+
+### 📌 3.2 Nontype Function Template Parameters
+
+
+You can also define nontype parameters for function templates. 
+For example, the following function template defines a group of functions 
+for which a certain value can be added:
+```c++
+template <int val, typename T>
+T addValue(T x)
+{
+    return x + val;
+}
+```
+These kinds of functions can be useful if functions or operations are used as parameters. 
+For example, if you use the C++ standard library, 
+you can pass an instantiation of this function template 
+to add a value to each element of a collection:
+```c++
+std::transform(source.begin(), source.end(), dest.begin(), addValue<5, int>);
+```
+The last argument instantiates the function template `addValue` to add `5` to a passed `int` value. 
+The resulting function is called for each element in the source collection source, 
+while it is translated into the destination collection `dest`.
+
+
+Note that you have to specify the argument `int` for the template parameter `T` of `addValue`. 
+Template argument deduction only works for immediate calls. 
+`std::transform` needs a complete type to deduce the type of its fourth parameter. 
+There is no support to substitute/deduce only some template parameters. 
+Again, you can also specify that a template parameter is deduced from the previous parameter. 
+For example, to derive the return type from the passed nontype:
+```c++
+template <auto val, typename T = decltype(val)>
+T foo();
+```
+or to ensure that the passed value has the same type as the passed type:
+```c++
+template<typename T, T val>
+T bar();
+```
+
+
+### 📌 3.3 Restrictions for Nontype Template Parameters
+
+
+Note that nontype template parameters carry some restrictions. 
+In general, they can be only constant integral values (including enumerations), 
+pointers to objects/functions/members, 
+lvalue references to objects or functions, or `std::nullptr_t`. 
+
+
+Prior to C++20, floating-point numbers and class-type objects 
+are **not** allowed as nontype template parameters:
+```c++
+template <double c>
+double process(double v)
+{
+    return v * c;
+}
+
+template <std::string name>
+class MyClass
+{
+    // ...
+};
+```
+
+
+
 
 
 
