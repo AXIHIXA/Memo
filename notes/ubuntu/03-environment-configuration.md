@@ -108,7 +108,7 @@ python -m ipykernel install --name py3 --user
 - [Uninstall anaconda](https://docs.anaconda.com/anaconda/install/uninstall/)
 ```
 conda install anaconda-clean
-conda-clean --yes
+anaconda-clean --yes
 rm -rf ~/opt/anaconda3
 # Remove Anaconda path from .bash_profile
 ```
