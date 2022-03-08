@@ -1445,7 +1445,7 @@ which we discuss in Section 4.4.
 
 
 
-### 🎯 Chapter 3 Nontype Template Parameters
+### 🎯 Chapter 3 [Nontype Template Parameters]((https://en.cppreference.com/w/cpp/language/template_parameters#Non-type_template_parameter))
 
 
 For function and class templates, template parameters **don’t** have to be types. 
@@ -1585,7 +1585,7 @@ T bar();
 ```
 
 
-### 📌 3.3 Restrictions for Nontype Template Parameters
+### 📌 3.3 [Restrictions for Nontype Template Parameters](https://en.cppreference.com/w/cpp/language/template_parameters#Non-type_template_parameter)
 
 
 Note that nontype template parameters carry some restrictions. 
@@ -1597,18 +1597,215 @@ lvalue references to objects or functions, or `std::nullptr_t`.
 Prior to C++20, floating-point numbers and class-type objects 
 are **not** allowed as nontype template parameters:
 ```c++
+// ERROR: floating-point values are not allowed as template parameters
 template <double c>
 double process(double v)
 {
     return v * c;
 }
 
+// ERROR: floating-point values are not allowed as template parameters
 template <std::string name>
 class MyClass
 {
     // ...
 };
 ```
+When passing template arguments to pointers or references, 
+the objects must **not** be string literals, temporaries, or data members and other sub-objects. 
+
+
+Because these restrictions were relaxed with each and every C++ version before C++17, 
+additional constraints apply:
+- In C++11, the objects also had to have external linkage. 
+- In C++14, the objects also had to have external or internal linkage. 
+Thus, the following is not possible:
+```c++
+// ERROR: string literal "hello" not allowed
+template <char const * name>
+class Message
+{
+    ...
+};
+
+Message<"hello"> x; 
+```
+However, there are workarounds (again depending on the C++ version):
+```c++
+extern char const s03[] = "hi";  // external linkage
+char const s11[] = "hi";         // internal linkage
+
+int main()
+{
+    Message<s03> m03;                // OK (all versions)
+    Message<s11> m11;                // OK since C++11
+    static char const s17[] = "hi";  // no linkage
+    Message<s17> m17;                // OK since C++17
+}
+```
+In all three cases, a constant `char` array is initialized by `"hello"`, 
+and this object is used as a template parameter declared with `char const *`. 
+This is valid in all C++ versions if the object has external linkage (`s03`), 
+in C++11 and C++14 also if it has internal linkage (`s11`), 
+and since C++17 if it has no linkage at all.
+
+
+See Section 12.3 for a detailed discussion 
+and Section 17.2 for a discussion of possible future changes in this area. 
+
+#### Avoiding Invalid Expressions
+
+Arguments for nontype template parameters might be any compile-time expressions.
+For example: 
+```c++
+template<int I, bool B>
+class C { ... };
+C<sizeof(int) + 4, sizeof(int) == 4> c;
+```
+However, note that if `operator>` is used in the expression, 
+you have to put the whole expression into parentheses `()` so that the nested `>` ends the argument list:
+```c++
+C<42, sizeof(int) > 4> c;    // ERROR: the first > ends the template argument list
+C<42, (sizeof(int) > 4)> c;  // OK
+```
+
+
+### 📌 3.4 Template Parameter Type `auto`
+
+
+Since C++17, you can define a nontype template parameter to 
+generically accept any type that is allowed for a nontype parameter. 
+Using this feature, we can provide an even more generic stack class with fixed size. 
+
+By defining by using the placeholder type `auto`, 
+you define `maxSize` to be a value of a type not specified yet. 
+It might be any type that is allowed to be a nontype template parameter type.
+Internally you can use both the value and its type. 
+```c++
+template <typename T, auto maxSize>
+class Stack
+{
+public:
+    using size_type = std::decay_t<decltype(maxSize)>;
+    
+    Stack();
+
+    void push(T const & elem);
+
+    void pop();
+
+    T const & top() const;
+
+    [[nodiscard]] bool empty() const
+    {
+        return numElems == 0;
+    }
+
+    [[nodiscard]] size_type size() const
+    {
+        return numElems;
+    }
+
+private:
+    std::array<T, maxSize> elems;
+    size_type numElems;
+};
+
+template <typename T, auto maxSize>
+Stack<T, maxSize>::Stack() : numElems(0)
+{
+
+}
+
+template <typename T, auto maxSize>
+void Stack<T, maxSize>::push(T const & elem)
+{
+    assert(numElems < Maxsize);
+    elems[numElems++] = elem;
+}
+
+template <typename T, auto maxSize>
+void Stack<T, maxSize>::pop()
+{
+    assert(!elems.empty());
+    --numElems;
+}
+
+template <typename T, auto maxSize>
+T const & Stack<T, maxSize>::top() const
+{
+    assert(!elems.empty());
+    return elems[numElems - 1];
+}
+
+Stack<int, 20U> int20Stack;          // Stack of up to 20 ints
+Stack<std::string, 40> stringStack;  // stack of up to 40 std::strings
+
+int20Stack.push(7);
+std::cout << int20Stack.top() << '\n';
+auto size1 = int20Stack.size();
+
+stringStack.push("hello");
+std::cout << stringStack.top() << '\n';
+auto size2 = stringStack.size();
+
+if constexpr (!std::is_same_v<decltype(size1), decltype(size2)>) 
+{
+    std::cout << "size types differ" << '\n';
+}
+```
+Since C++14, you could `also` just use `auto` as return type 
+to let the compiler find out the return type:
+```c++
+template <typename T, auto maxSize>
+[[nodiscard]] inline auto Stack<T, maxSize>::size() const
+{
+    return numElems;
+}
+```
+because you can also pass strings as constant `char` arrays, the following is possible:
+```c++
+template <auto someValue>
+class Message 
+{
+public:
+    void print() 
+    {
+        std::cout << someValue << '\n';
+    }
+};
+
+Message<42> msg1;          // initialize with int 42
+msg1.print();
+
+char const s[] = "hello";
+Message<s> msg2;           // initialize with char const [6] "hello"
+msg2.print();
+```
+Note also that even `template <decltype(auto) N>` is possible, 
+which allows instantiation of `N` as a reference:
+```c++
+template <decltype(auto) N>
+class C
+{
+    ...
+};
+
+int i;
+C<(i)> x;  // N is int &
+```
+See Section 15.10 for details.
+
+
+### 📌 3.5 Summary
+
+
+- Templates can have template parameters that are values rather than types. 
+- For arguments for nontype template parameters, 
+  you can **not** use floating-point numbers, class-type objects, 
+  or pointers/references to string literals, temporaries, and sub-objects
+- Using `auto` enables templates to have nontype template parameters that are values of generic types.
+
 
 
 
