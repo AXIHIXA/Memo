@@ -154,7 +154,9 @@ jupyter server password
 edit `jupyter_server_config.py`:    
 
 ```
-c.ServerApp.ip = '0.0.0.0'         # 278
+https://jupyter-notebook.readthedocs.io/en/stable/public_server.html?highlight=serverapp%20ip#running-a-public-notebook-server
+# Set ip to '*' to bind on all interfaces (ips) for the public server
+c.ServerApp.ip = '*'               # 278
 c.ServerApp.open_browser = False   # 366
 c.ServerApp.password = 'sha1:...'  # 377
 c.ServerApp.port = 9000            # 390
