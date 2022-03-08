@@ -1811,6 +1811,221 @@ See Section 15.10 for details.
 
 
 
+### 🎯 Chapter 4 [Variadic Templates (Parameter Pack)](https://en.cppreference.com/w/cpp/language/parameter_pack)
+
+
+Since C++11, templates can have parameters that accept a variable number of template arguments. 
+This feature allows the use of templates in places 
+where you have to pass an arbitrary number of arguments of arbitrary types. 
+A typical application is to pass an arbitrary number of parameters of arbitrary type 
+through a class or framework. 
+Another application is to provide generic code to process any number of parameters of any type.
+
+
+### 📌 4.1 Variadic Templates
+
+
+Template parameters can be defined to accept an unbounded number of template arguments. 
+Templates with this ability are called _variadic templates_.
+
+#### Variadic Templates: Function Parameter Pack And Template Parameter Pack
+
+```c++
+void print()
+{
+    
+} 
+
+template <typename T, typename ... Args>
+void print(T firstArg, Args ... args)
+{
+    std::cout << firstArg << '\n';  // print first argument
+    print(args...);                 // call print() for remaining arguments
+}
+```
+If one or more arguments are passed, the function template is used, 
+which by specifying the first argument separately 
+allows printing of the first argument 
+before recursively calling `print` for the remaining arguments. 
+These remaining arguments named `args` are a _function parameter pack_: 
+```c++
+void print(T firstArg, Args ... args)
+```
+using different `Args` specified by a _template parameter pack_:
+```c++
+template <typename T, typename ... Args>
+```
+To end the recursion, the nontemplate overload of `print` is provided, 
+which is issued when the parameter pack is empty. 
+
+
+For example, a call such as
+```c++
+std::string s("world");
+print(7.5, "hello", s);
+```
+would be expanded and instantiated to
+```c++
+void print()
+{
+    
+}
+
+void print<std::string>(std::string firstArg)
+{
+    std::cout << firstArg << '\n';
+    print();
+}
+
+void print<char const *, std::string>(char const * firstArg, 
+                                      std::string secondArg)
+{
+    std::cout << firstArg << '\n';
+    print<std::string>(secondArg);
+}
+
+void print<double, char const *, std::string>(double firstArg, 
+                                              char const * secondArg, 
+                                              std::String thirdArg)
+{
+    std::cout << firstArg << '\n';
+    print<char const *, std::string>(secondArg, thridArg);
+}
+
+std::string s("world");
+print<double, char const*, std::string>(7.5, "hello", s);
+```
+
+#### Overloading Variadic and Nonvariadic Templates
+
+Note that you can also implement the example above as follows:
+```c++
+template <typename T>
+void print(T arg)
+{
+    std::cout << arg << '\n';
+} 
+
+template <typename T, typename ... Args>
+void print(T firstArg, Args ... args)
+{
+    std::cout << firstArg << '\n';  // print first argument
+    print(args...);                 // call print() for remaining arguments
+}
+```
+That is, if two function templates only differ by a trailing parameter pack, 
+the function template **without** the trailing parameter pack is preferred.
+Section C.3 explains the more general overload resolution rule that applies here.
+
+#### Operator `sizeof...`
+
+C++11 also introduced a new form of the `sizeof` operator for variadic templates: `sizeof...`. 
+It expands to the number of elements a parameter pack contains. 
+Thus,
+```c++i
+template <typename T, typename ... Args>
+void print (T firstArg, Args ... args)
+{
+    std::cout << sizeof...(Args) << '\n';  // print number of remaining types
+    std::cout << sizeof...(args) << '\n';  // print number of remaining args
+}
+```
+twice prints the number of remaining arguments after the first argument passed to `print`. 
+As you can see, you can call `sizeof...` for both template parameter packs and function parameter packs.
+
+
+This might lead us to think we can skip the function for the end of the recursion
+by not calling it in case there are no more arguments:
+```c++
+// ERROR
+template <typename T, typename ... Args>
+void print(T firstArg, Args ... args)
+{
+    std::cout << firstArg << '\n';
+    
+    if (sizeof...(args))
+    {
+        print(args...);
+    }
+}
+```
+However, this approach **doesn’t** work,
+because both branches of `if` statements in function templates are instantiated. 
+Whether the instantiated code is useful is a _run-time_ decision, 
+while the instantiation of the call is a _compile-time_ decision. 
+For this reason, if you call the `print` function template for one (last) argument, 
+the statement with the call of `print(args...)` still is instantiated for no argument, 
+and if there is no function `print` for no arguments provided, this is an error. 
+
+
+However, note that since C++17, a compile-time `if` (`if constexpr`) is available. 
+This will be discussed in Section 8.5. 
+```c++
+// OK since C++17
+template <typename T, typename ... Args>
+void print(T firstArg, Args ... args)
+{
+    std::cout << firstArg << '\n';
+    
+    if constexpr (sizeof...(args))
+    {
+        print(args...);
+    }
+}
+```
+
+
+### 📌 4.2 [Fold Expressions](https://en.cppreference.com/w/cpp/language/fold)
+
+
+Since C++17, there is a feature to compute the result of 
+using a binary operator over all the arguments of a parameter pack (with an optional initial value). 
+For example, the following function returns the sum of all passed arguments:
+```c++
+template <typename ... Args>
+auto foldSum(Args ... args)
+{
+    return (... + args);
+}
+
+// (((1 + 2) + 3) + 4)
+auto sum = foldSum(1, 2, 3, 4);
+```
+If the parameter pack is empty, the expression is usually ill-formed 
+(with the exception that for `operator&&` the value is `true`, 
+for `operator||` the value is `false`, 
+and for the comma operator the value for an empty parameter pack is `void()`).
+
+
+You can use almost all binary operators for fold expressions (see Section 12.4 for details). 
+For example, you can use a fold expression to traverse a path in a binary tree using `operator.*`:
+```c++
+// define binary tree structure and traverse helpers:
+struct Node
+{
+    explicit Node(int i = 0) : value(i), left(nullptr), right(nullptr) {}
+    
+    int value;
+    Node * left;
+    Node * right;
+    
+    // ...
+};
+
+Node * Node::* left = &Node::left;
+Node * Node::* right = &Node::right;
+
+template <typename NodePointer, typename ... NodeMemberPointers>
+Node * traverse(NodePointer np, NodeMemberPointers ... nmps)
+{
+    return (np ->* ... ->* nmps);  // np->*nmp1->*nmp2->*...
+}
+
+Node root(0), a(1), b(2);
+root.left = &a;
+a.right = &b;
+traverse(&root, left, right);
+```
 
 
 

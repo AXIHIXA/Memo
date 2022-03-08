@@ -1530,14 +1530,41 @@ double (*pf4)(int*) = ff;              // error: return type of ff and pf4 don't
 
 #### （类的）数据成员指针 (Class Data Member Pointer)
 
-- `*`表示普通指针，而`Class::*`表示 *成员指针* 
+- `Class::*`表示 *成员指针* 
+    - `Class::*` could be semantically considered as a "top-level constraint" to a pointer type, 
+      just like top-level cv-constraints
+    ```c++
+    struct C
+    {
+        explicit C(int v_ = 0, C * cp_ = nullptr) : v(v_), cp(cp_) {}
+        
+        void foo() { std::cout << "void C::foo()\n"; }
+        
+        int v;
+        C * cp;
+    }
+    
+    int C::* pointerToADataMemberOfCWhoseTypeIsInt = &C::v;
+    C * C::* pointerToADataMemberOfCWhoseTypeIsPointerToC = &C::cp;
+    void (C::* pointerToAMemberFunctionOfCTakingNoArgumentAndReturningVoid)() = &C::foo;
+    
+    auto cp = std::make_shared<C>();
+    
+    std::cout << (*cp).*pointerToADataMemberOfCWhoseTypeIsInt << '\n';                   // 0
+    std::cout << (*cp).pointerToADataMemberOfCWhoseTypeIsPointerToC == nullptr << '\n';  // 1
+    (*cp).*pointerToAMemberFunctionOfCTakingNoArgumentAndReturningVoid();                // void C::foo()
+    
+    std::cout << cp->*pointerToADataMemberOfCWhoseTypeIsInt << '\n';                     // 0
+    std::cout << cp->pointerToADataMemberOfCWhoseTypeIsPointerToC == nullptr << '\n';    // 1
+    cp->*pointerToAMemberFunctionOfCTakingNoArgumentAndReturningVoid();                  // void C::foo()
+    ```
     - 至于是数据成员指针，还是成员函数指针，那就跟普通函数指针与普通对象指针的区别一样，只看括号了
 - 指向类`C`的 *非静态数据成员* `m`的指针，以`&C::m`初始化
     - 这是 *类* 的一个 *附属* ，跟具体的某个对象没关系
     - `C`的 *成员函数* 中，`&(C::m)`、`&m`等**不再是**数据成员指针
 - 能用作 [*成员指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数
     - 使得每个 *该类的对象* 都能用这个 *类的数据成员指针* 访问到自己的数据成员
-```
+```c++
 struct C { int m; };
 
 int C::* p = &C::m;                    // pointer to data member m of class C
@@ -1549,7 +1576,7 @@ cp->m = 10;
 std::cout << cp->*p << std::endl;      // prints 10
 ```
 - 无二义 *非虚基类的数据成员指针* 可以 *隐式转化* 为 *派生类的数据成员指针*
-```
+```c++
 struct Base { int m; };
 struct Derived : Base {};
  
@@ -1581,7 +1608,7 @@ std::cout << b.*bp << std::endl;       // 未定义行为
     - 成员指针的被指向类型也可以是成员指针自身
     - 成员指针可为多级，而且在每级可以有不同的`cv`限定
     - 亦允许指针和成员指针的混合多级组合
-```
+```c++
 struct A
 {
     int m;
@@ -1607,7 +1634,7 @@ std::cout << a.**p2 << 'std::endl;     // prints 1
 - 能用作 [*成员指针访问运算符*](https://en.cppreference.com/w/cpp/language/operator_member_access) `operator.*`、`operator->*`的右操作数
     - 使得每个 *该类的对象* 都能用这个 *类的数据成员指针* 访问到自己的数据成员
     - 结果表达式 *只能用作* 函数调用运算符的 *左操作数* 
-```
+```c++
 struct C
 {
     void f(int n) { std::cout << n << '\n'; }
