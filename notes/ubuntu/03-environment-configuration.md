@@ -236,28 +236,26 @@ gedit -idea64.vmoptions
 - [Data flow analysis timeout](https://youtrack.jetbrains.com/issue/CPP-17623): press shift in CLion quickly twice, then we have a search window, search "Registry..." and change the timeout key. 
 
 ### `gcc-9` on `ubuntu 18.04 LTS`
+
 ```
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 sudo apt update
 sudo apt install gcc-9 g++-9
 ```
 
-### `gcc-11-multilib` on `ubuntu 20.04 LTS`
+### `gcc-11` on `ubuntu 20.04 LTS`
 
-Follow the instructions from 
-[here](https://packages.ubuntu.com/hirsute/amd64/gcc-11-multilib/download), 
-which is to:
-- Update the listed mirrors by adding a line to your `/etc/apt/sources.list` like:
-- `sudo add-apt-repository 'deb http://mirrors.kernel.org/ubuntu hirsute main universe'`
-- Choose a mirror based on your location from the list. I chose the kernel mirror as I am in North America.
-- `sudo apt-get update`
-- `sudo apt-get install gcc-11`
+```bash
+sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+sudo apt-get update
+sudo apt-get install gcc-11 g++-11
+```
 After that which `gcc-11` should produce a path to `gcc-11`. 
 ```bash
 $ which gcc-11
 /usr/bin/gcc-11
 ```
-
+Update alternatives:
 ```bash
 $ sudo update-alternatives --config gcc
 There are 6 choices for the alternative gcc (providing /usr/bin/gcc).
