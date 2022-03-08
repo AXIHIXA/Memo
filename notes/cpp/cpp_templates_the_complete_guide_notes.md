@@ -2026,6 +2026,447 @@ root.left = &a;
 a.right = &b;
 traverse(&root, left, right);
 ```
+With such a fold expression using an initializer,
+we might think about simplifying the variadic template to print all arguments, 
+introduced above:
+```c++
+template <typename T>
+class AddSpace
+{
+public:
+    friend std::ostream & operator<<(std::ostream & cout, const AddSpace & as)
+    {
+        return cout << as.ref << ' ';
+    }
+
+    explicit AddSpace(const T & ref_) : ref(ref_) {}
+
+private:
+    const T & ref;
+};
+
+template <typename T>
+std::ostream & operator<<(std::ostream & cout, const AddSpace<T> & as);
+
+template <typename ... Args>
+void print(const Args & ... args)
+{
+    (std::cout << ... << AddSpace(args)) << '\n';
+}
+
+print(1, 2.0, "hehe");  // 1 2.0 hehe
+```
+P.S. Stacking buffs like perfect forwarding and `enable_if`: 
+```c++
+template <typename T>
+class AddSpace
+{
+public:
+    // The enable_if might be redundant, 
+    // as this function could be found only via ADL
+    // (given that it is declared only inside template body)? 
+    template <typename U,
+              std::enable_if_t<std::is_same_v<std::remove_cv_t<std::decay_t<U>>,
+                                              AddSpace>,
+                               bool> = true>
+    friend std::ostream & operator<<(std::ostream & cout, U && as)
+    {
+        return cout << std::forward<U>(as).ref << ' ';
+    }
+
+    explicit AddSpace(const T & ref_) : ref(ref_) {}
+
+private:
+    const T & ref;
+};
+
+template <typename ... Args>
+void print(Args && ... args)
+{
+    (std::cout << ... << AddSpace(std::forward<Args>(args))) << '\n';
+}
+
+int a = 10;
+const int & b = a;
+std::string s("string");
+print(1, 3.0, "jj", a, b, std::move(s));  // 1 3 jj 10 10 string 
+```
+Note that the expression `AddSpace(args)` uses class template argument deduction 
+to have the effect of `AddSpace<Args>(args)`, 
+which for each argument creates an `AddSpace` object that refers to the passed argument 
+and adds a space when it is used in output expressions.
+See Section 12.4 for details about fold expressions.
+
+
+### 📌 4.3 Application of Variadic Templates
+
+
+Variadic templates play an important role when implementing generic libraries, 
+such as the C++ standard library. 
+One typical application is the _forwarding_ of a variadic number of arguments of arbitrary type. 
+For example, we use this feature when:
+- Passing arguments to the constructor of a new heap object owned by a shared pointer:
+```c++
+auto sp = std::make_shared<std::complex<float>>(4.2, 7.7);
+```
+- Passing arguments to a thread, which is started by the library:
+```c++
+void foo(int, const std::string &) { ... }
+std::thread t (foo, 42, "hello");
+```
+- Passing arguments to the constructor of a new element pushed into a vector:
+```c++
+std::vector<Customer> v;
+v.emplace_back("Tim", "Jovi", 1962);
+```
+Usually, the arguments are “_perfectly forwarded_” with move semantics (see Section 6.1).
+
+
+Note also that the same rules apply to variadic function template parameters as for ordinary parameters. 
+For example, if passed by value, arguments are copied and decay (e.g., arrays become pointers), 
+while if passed by reference, parameters refer to the original parameter and don’t decay:
+```c++
+// args are copies with decayed types:
+template <typename ...Args> 
+void foo(Args ... args);
+
+// args are nondecayed references to passed objects:
+template <typename ... Args> 
+void bar(Args const & ... args);
+```
+
+
+### 📌 4.4 Variadic Class Templates and Variadic Expressions
+
+
+Besides the examples above, parameter packs can appear in additional places,
+including, for example, expressions, class templates, using declarations, and even deduction guides. 
+Section 12.4 has a complete list.
+
+#### Variadic Expressions
+
+You can do more than just forwarding all the parameters. 
+You can compute with them,
+which means to compute with all the parameters in a parameter pack. 
+
+
+For example, the following function doubles each parameter of the parameter pack `args` a
+nd passes each doubled argument to `print`:
+```c++
+template <typename T>
+void print(T && t)
+{
+    std::cout << std::forward<T>(t) << '\n';
+}
+
+template <typename T, typename ... Args>
+void print(T && t, Args && ... args)
+{
+    std::cout << std::forward<T>(t) << ' ';
+    print(std::forward<Args>(args)...);
+}
+
+template <typename ... Args>
+void printDoubled(Args && ... args)
+{
+    // Function parameter pack unpacking expression, 
+    // not C++17 fold expression
+    print(std::forward<Args>(args) + std::forward<Args>(args)...);
+}
+```
+If, for example, you call
+```c++
+printDoubled(7.5, std::string("hello"), std::complex<float>(4, 2));
+```
+the function has the following effect (except for any constructor side effects):
+```c++
+print(7.5 + 7.5,
+      std::string("hello") + std::string("hello"),
+      std::complex<float>(4, 2) + std::complex<float>(4, 2));
+```
+If you just want to add 1 to each argument, 
+note that the dots from the ellipsis may **not** directly follow a numeric literal:
+```c++
+template <typename ... Args>
+void printAddOne(Args && ... args)
+{
+    // These are all function parameter pack unpacking expressions
+    print(std::forward<Args>(args) + 1...);    // ERROR: 1... is a literal with too many decimal points
+    print(std::forward<Args>(args) + 1 ...);   // OK
+    print((std::forward<Args>(args) + 1)...);  // OK
+}
+```
+Compile-time expressions can include template parameter packs in the same way.
+For example, the following function template returns 
+whether the types of all the arguments are the same:
+```c++
+template <typename T, typename ... Args>
+constexpr bool isHomogeneous(T, Args ...)
+{
+    // since C++17: unary right fold expression (pack op ...)
+    return (std::is_same_v<T, Args> && ...);
+}
+```
+This is an application of fold expressions: For
+```c++
+isHomogeneous(43, -1, "hello");
+```
+the expression for the return value expands to
+```c++
+std::is_same_v<int, int> && std::is_same_v<int, char const *>;
+```
+and yields `false`, while
+```c++
+isHomogeneous("hello", "", "world", "!");
+```
+yields `true` because all passed arguments are deduced to be `char const *` 
+(note that the argument types decay because the call arguments are passed by value). 
+
+#### Variadic Indices
+
+As another example, the following function uses a variadic list of indices
+to access the corresponding element of the passed first argument:
+```c++
+template <typename T>
+void print(T && t)
+{
+    std::cout << t << '\n';
+}
+
+template <typename T, typename ... Args>
+void print(T && t, Args && ... args)
+{
+    std::cout << t << ' ';
+    print(std::forward<Args>(args)...);
+}
+
+template <typename Container, typename ... Idx>
+void printElems(Container && c, Idx && ... idx)
+{
+    print(std::forward<Container>(c)[std::forward<Idx>(idx)]...);
+}
+
+std::vector<int> vec {0, 1, 2, 3, 4, 5, 6};
+
+// Is equivalent to print(vec[2], vec[4], vec[6]);
+// Prints 2 4 6
+printElems(vec, 2, 4, 6);
+```
+You can also declare nontype template parameters to be parameter packs. 
+For example:
+```c++
+template <std::size_t ... idx, typename Container>
+void printIdx(Container && c)
+{
+    print(c[idx]...);
+}
+
+std::vector<int> vec {0, 1, 2, 3, 4, 5, 6};
+printElems<2, 4, 6>(vec);  // 2 4 6
+```
+
+#### Variadic Class Templates
+
+
+Variadic templates can also be class templates. 
+An important example is a class where an arbitrary number of template parameters 
+specify the types of corresponding members:
+```c++
+template <typename ... Elements>
+class Tuple { ... };
+
+Tuple<int, std::string, char> tup;
+```
+This will be discussed in Chapter 25. 
+
+
+Another example is to be able to specify the possible types objects can have:
+```c++
+template <typename ... Types>
+class Variant { ... };
+
+Variant<int, std::string, char> var;
+```
+This will be discussed in Chapter 26. 
+
+
+You can also define a class that as a type represents a list of indices:
+```c++
+// type for arbitrary number of indices:
+template <std::size_t ...>
+struct Indices { ... };
+```
+This can be used to define a function that calls `print` for the elements of a `std::array` or `std::tuple` 
+using the compile-time access with `get` for the given indices:
+```c++
+template <typename T, std::size_t ... idx>
+void printByIdx(T t, Indices<idx...>)
+{
+    print(std::get<idx>(t)...);
+}
+
+std::array<std::string, 5> arr = {"Hello", "my", "new", "!", "World"}; 
+printByIdx(arr, Indices<0, 4, 3>());
+
+std::tuple t {12, "monkeys", 2.0};
+printByIdx(t, Indices<0, 1, 2>());
+```
+This is a first step towards meta-programming, 
+which will be discussed in Section 8.1 and Chapter 23. 
+
+#### Variadic Deduction Guides
+
+Even deduction guides (see Section 2.9) can be variadic. 
+For example, the C++ standard library defines the following deduction guide for `std::array`s:
+```c++
+namespace std 
+{
+template <typename T, typename ... U> 
+array(T, U ...) -> array<enable_if_t<(is_same_v<T, U> && ...), T>, 
+                         1 + sizeof...(U)>;
+}  // namespace std
+```
+An initialization such as
+```c++
+std::array a {42, 45, 77};
+```
+deduces `T` in the guide to the type of the element, 
+and the various `U ...` types to the types of the subsequent elements. 
+The total number of elements is therefore `1 + sizeof...(U)`. 
+```c++
+std::array<int, 3> a {42, 45, 77};
+```
+The `std::enable_if_t` expression for the first array parameter 
+is a fold expression that expands to:
+```c++
+is_same_v<T, U1> && is_same_v<T, U2> && is_same_v<T, U3> ...
+```
+If the result is not `true` (i.e., not all the element types are the same),
+the deduction guide is discarded and the overall deduction fails. 
+This way, the standard library ensures that 
+all elements must have the same type for the deduction guide to succeed.
+
+#### Variadic Base Classes and using
+
+Finally, consider the following example:
+```c++
+class Customer
+{
+public:
+    explicit Customer(std::string  n) : name(std::move(n)) {}
+    [[nodiscard]] std::string getName() const { return name; }
+
+private:
+    std::string name;
+};
+
+struct CustomerEq
+{
+    bool operator()(Customer const & c1, Customer const & c2) const
+    {
+        return c1.getName() == c2.getName();
+    }
+};
+
+struct CustomerHash
+{
+    std::size_t operator()(Customer const & c) const
+    {
+        return std::hash<std::string>()(c.getName());
+    }
+};
+
+// define class that combines operator() for variadic base classes:
+template <typename ... Bases>
+struct Overloader : Bases...
+{
+    // OK since C++17
+    using Bases::operator()...; 
+    
+    // ...
+};
+class Customer
+{
+public:
+    explicit Customer(std::string  n) : name(std::move(n)) {}
+    [[nodiscard]] std::string getName() const { return name; }
+
+private:
+    std::string name;
+};
+
+struct CustomerEq
+{
+    bool operator()(Customer const & c1, Customer const & c2) const
+    {
+        return c1.getName() == c2.getName();
+    }
+};
+
+struct CustomerHash
+{
+    std::size_t operator()(Customer const & c) const
+    {
+        return std::hash<std::string>()(c.getName());
+    }
+};
+
+// define class that combines operator() for variadic base classes:
+template <typename ... Bases>
+struct Overloader : Bases...
+{
+    // OK since C++17
+    using Bases::operator()...; 
+    
+    // ...
+};
+
+// combine hasher and equality for customers in one type:
+using CustomerOP = Overloader<CustomerHash, CustomerEq>;
+std::unordered_set<Customer, CustomerHash, CustomerEq> s1;
+std::unordered_set<Customer, CustomerOP, CustomerOP> s2;
+```
+See Section 26.4 for another application of this technique.
+
+
+### 📌 4.5 Summary
+
+
+- By using parameter packs, 
+  templates can be defined for an arbitrary number of template parameters of arbitrary type.
+- To process the parameters, 
+  you need recursion and/or a matching nonvariadic function.
+- Operator `sizeof...` yields the number of arguments provided for a parameter pack.
+- A typical application of variadic templates 
+  is forwarding an arbitrary number of arguments of arbitrary type.
+- By using fold expressions, you can apply operators to all arguments of a parameter pack. 
+
+
+
+
+
+
+### 🎯 Chapter 5 Tricky Basics
+
+
+This chapter covers some further basic aspects of templates
+that are relevant to the practical use of templates: 
+an additional use of the `typename` keyword, 
+defining member functions and nested classes as templates, 
+template template parameters,
+zero initialization, 
+and some details about using string literals as arguments for function templates. 
+These aspects can be tricky at times, 
+but every day-to-day programmer should have heard of them.
+
+
+### 📌 5.1 Keyword `typename`
+
+
+
+
+
+
 
 
 
