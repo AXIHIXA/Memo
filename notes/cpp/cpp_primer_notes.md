@@ -1531,8 +1531,7 @@ double (*pf4)(int*) = ff;              // error: return type of ff and pf4 don't
 #### （类的）数据成员指针 (Class Data Member Pointer)
 
 - `Class::*`表示 *成员指针* 
-    - `Class::*` could be semantically considered as a "top-level constraint" to a pointer type, 
-      just like top-level cv-constraints
+    - `Class::*` is just a vexing syntax, see the example. 
     ```c++
     struct C
     {
