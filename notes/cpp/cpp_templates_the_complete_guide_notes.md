@@ -15,9 +15,9 @@
 
 ### 🎯 Chapter 1 Function Templates
 
-### 📌 1.1 A First Look at Function Templates
+#### 📌 1.1 A First Look at Function Templates
 
-#### Instantiation
+##### Instantiation
 
 Templates aren’t compiled into single entities that can handle any type. 
 Instead, different entities are generated from the template for every type for which the template is used.
@@ -30,7 +30,7 @@ It results in an _instance_ of a template.
 Note that the mere use of a function template can trigger such an instantiation process. 
 There is no need for the programmer to request the instantiation separately.
 
-#### Two-Phase Translation
+##### Two-Phase Translation
 
 Templates are “compiled” in two phases:
 1. Without instantiation at _definition_ time, 
@@ -52,7 +52,7 @@ and discussed in detail in Section 14.3.
 Note that some compilers don’t perform the full checks of the first phase. 
 So you might not see general problems until the template code is instantiated at least once.
 
-#### Compiling and Linking
+##### Compiling and Linking
 
 Two-phase translation leads to an important problem in the handling of templates in practice: 
 When a function template is used in a way that triggers its instantiation, 
@@ -64,9 +64,9 @@ Methods of handling this problem are discussed in Chapter 9.
 For the moment, let’s take the simplest approach: 
 Implement each template inside a header file.
 
-### 📌 1.2 Template Argument Deduction
+#### 📌 1.2 Template Argument Deduction
 
-#### Type Conversions During Type Deduction
+##### Type Conversions During Type Deduction
 
 - During template type deduction,
   arguments' reference-ness and top-level cv-constraints are ignored.
@@ -102,7 +102,7 @@ max<double>(4, 7.2);
 ```
 3. Specify that the parameters may have different types.
 
-#### Type Deduction for Default Arguments
+##### Type Deduction for Default Arguments
 
 Note also that type deduction does **not** work for default call arguments. 
 For example:
@@ -122,7 +122,7 @@ void f(T = "");
 f();   // OK
 ```
 
-### 📌 1.3 Multiple Template Parameters
+#### 📌 1.3 Multiple Template Parameters
 
 Function templates have two distinct sets of parameters:
 1. _Template parameters_, 
@@ -155,7 +155,7 @@ C++ provides different ways to deal with this problem (to de detailed in the nex
 - Let the compiler deduce the return type.
 - Declare the return type to be the “common type” of the two parameter types. 
 
-#### Template Parameters for Return Types
+##### Template Parameters for Return Types
 
 _Template argument deduction_ allows us to call function templates 
 with syntax identical to that of calling an ordinary function: 
@@ -221,7 +221,7 @@ Thus, it is a good idea to keep it simple and use the one-parameter version of `
 
 See Chapter 15 for details of the deduction process.
 
-#### Deducing the Return Type
+##### Deducing the Return Type
 
 If a return type depends on template parameters, 
 the simplest and best approach to deduce the return type 
@@ -294,7 +294,7 @@ int const & ir = i;  // ir refers to i
 auto a = ir;         // a is declared as new object of type int
 ```
 
-#### Return Type as Common Type
+##### Return Type as Common Type
 
 Since C++11, the C++ standard library provides a means to specify choosing “the more general type.” 
 `std::common_type<>::type` yields the “common type” of two (or more) different types passed as template arguments. 
@@ -325,7 +325,7 @@ yield the same value `7.2` of type `double`.
 Note that `std::common_type` also decays.
 See Section D.5 for details. 
 
-### 📌 1.5 Overloading Function Templates
+#### 📌 1.5 Overloading Function Templates
 
 Like ordinary functions, function templates can be overloaded. 
 That is, you can have different function definitions with the same function name 
@@ -525,9 +525,9 @@ int max(int a, int b)
 We discuss details in Section 13.2. 
 
 
-### 📌 1.6 But, Shouldn’t We...?
+#### 📌 1.6 But, Shouldn’t We...?
 
-#### Pass by Value or by Reference?
+##### Pass by Value or by Reference?
 
 You might wonder why we in general declare the functions 
 to pass the arguments by value instead of using references. 
@@ -556,7 +556,7 @@ In addition, for templates, specific aspects come into play:
   For the moment inside the book we will usually pass arguments by value 
   unless some functionality is only possible when using references.
 
-#### Why Not `inline`?
+##### Why Not `inline`?
 
 In general, function templates **don’t** have to be declared with `inline`. 
 Unlike ordinary non-`inline` functions, 
@@ -578,7 +578,7 @@ but it can also make the code less efficient for many other cases.
 Nowadays, compilers usually are better at deciding this without the hint implied by the `inline` keyword. 
 However, compilers still account for the presence of inline in that decision.
 
-#### Why Not constexpr?
+##### Why Not `constexpr`?
 
 Since C++11, you can use `constexpr` to provide the ability 
 to use code to compute some values at compile time. 
@@ -609,7 +609,7 @@ However, to keep our focus on the fundamentals,
 we usually will skip `constexpr` when discussing other template features.
 
 
-### 📌 1.7 Summary
+#### 📌 1.7 Summary
 
 
 - Function templates define a family of functions for different template arguments.
@@ -636,10 +636,10 @@ we usually will skip `constexpr` when discussing other template features.
 ### 🎯 Chapter 2 Class Templates
 
 
-### 📌 2.1 Implementation of Class Template Stack
+#### 📌 2.1 Implementation of Class Template Stack
 
 
-### 📌 2.2 Use of Class Template Stack
+#### 📌 2.2 Use of Class Template Stack
 
 
 To use an object of a class template, 
@@ -711,7 +711,7 @@ So, with C++11 the rule to put a space between two closing template brackets
 was removed with the “angle bracket hack” (see Section 13.3). 
 
 
-### 📌 2.3 Partial Usage of Class Templates
+#### 📌 2.3 Partial Usage of Class Templates
 
 
 A class template usually applies multiple operations 
@@ -754,7 +754,7 @@ because it can’t instantiate the call of `operator<<` for this specific elemen
 ps.printOn(std::cout);
 ```
 
-#### Concepts
+##### Concepts
 
 This raises the question: 
 How do we know which operations are required for a template to be able to get instantiated? 
@@ -801,7 +801,7 @@ See Section 19.6 for a detailed example of such code.
 See Appendix E for a detailed discussion of concepts for C++. 
 
 
-### 📌 2.4 Friends
+#### 📌 2.4 Friends
 
 
 Instead of printing the stack contents with `printOn`, 
@@ -890,7 +890,7 @@ std::cout << ps << '\n';
 ```
 
 
-### 📌 2.5 Specializations of Class Templates
+#### 📌 2.5 Specializations of Class Templates
 
 
 You can specialize a class template for certain template arguments. 
@@ -959,7 +959,7 @@ it does demonstrate that the implementation of a specialization
 might look very different from the implementation of the primary template.
 
 
-### 📌 2.6 Partial Specialization
+#### 📌 2.6 Partial Specialization
 
 
 Class templates can be partially specialized. 
@@ -1024,7 +1024,7 @@ std::cout << *ptrStack.top() << '\n';
 delete ptrStack.pop();
 ```
 
-#### Partial Specialization with Multiple Parameters
+##### Partial Specialization with Multiple Parameters
 
 Class templates might also specialize the relationship between multiple template parameters.
 ```c++
@@ -1081,7 +1081,7 @@ class MyClass<T *, T *>
 For details of partial specialization, see Section 16.4. 
 
 
-### 📌 2.7 Default Class Template Arguments
+#### 📌 2.7 Default Class Template Arguments
 
 
 As for function templates, 
@@ -1139,9 +1139,9 @@ Stack<double, std::deque<double>> doubleStack;
 ```
 
 
-### 📌 2.8 Type Aliases
+#### 📌 2.8 Type Aliases
 
-#### Typedefs and Alias Declarations
+##### Typedefs and Alias Declarations
 
 ```c++
 // Typedef
@@ -1151,7 +1151,7 @@ typedef Stack<int> intStack;
 using IntStack = Stack<int>;
 ```
 
-#### Alias Templates
+##### Alias Templates
 
 Unlike a `typedef`, an alias declaration can be templated 
 to provide a convenient name for a family of types. 
@@ -1179,7 +1179,7 @@ Both `DequeStack<int>` and `Stack<int, std::deque<int>>` represent the same type
 Note again that, in general, templates can only be declared and defined in
 namespace scope (including global namespace scope) or inside class declarations.
 
-#### Alias Templates for Member Types
+##### Alias Templates for Member Types
 
 Alias templates are especially helpful to define shortcuts for types 
 that are members of class templates. 
@@ -1202,7 +1202,7 @@ template <typename T>
 using MyTypeIterator = typename MyType<T>::iterator;
 ```
 
-#### Type Traits Suffix_t
+##### Type Traits Suffix_t
 
 Since C++14, the standard library uses this technique to define shortcuts 
 for all type traits in the standard library that yield a type. 
@@ -1220,7 +1220,7 @@ using add_const_t = typename add_const<T>::type;
 ```
 
 
-### 📌 2.9 Class Template Argument Deduction
+#### 📌 2.9 Class Template Argument Deduction
 
 
 Prior to C++17, 
@@ -1278,7 +1278,7 @@ class template arguments may **not** be deduced only partially
 (by explicitly specifying only some of the template arguments). 
 See Section 15.12 for details.
 
-#### Class Template Arguments Deduction with String Literals
+##### Class Template Arguments Deduction with String Literals
 
 In principle, you can even initialize the stack with a string literal:
 ```c++
@@ -1316,7 +1316,7 @@ private:
 Stack stringStack = "bottom";  // Stack<const char *> deduced
 ```
 
-#### Deduction Guides
+##### Deduction Guides
 
 
 Instead of declaring the constructor to be called by value, 
@@ -1386,7 +1386,7 @@ Stack stack4 = {stringStack};
 See Section 15.12 for more details about class template argument deduction.
 
 
-### 📌 2.10 Templatized Aggregates
+#### 📌 2.10 Templatized Aggregates
 
 
 Aggregate classes (classes/structs with **no** user-provided, explicit, or inherited constructors, 
@@ -1424,7 +1424,7 @@ The C++17 standard library also defines a deduction guide for it,
 which we discuss in Section 4.4.
 
 
-### 📌 2.11 Summary
+#### 📌 2.11 Summary
 
 
 - A class template is a class that is implemented with one or more type parameters left open.
@@ -1454,7 +1454,7 @@ When using such a template, you have to specify the value template arguments exp
 The resulting code then gets instantiated.
 
 
-### 📌 3.1 Nontype Class Template Parameters
+#### 📌 3.1 Nontype Class Template Parameters
 
 
 ```c++
@@ -1543,7 +1543,7 @@ Thus, it is better when the programmer has to specify both values explicitly
 so that these two attributes are always documented during a declaration.
 
 
-### 📌 3.2 Nontype Function Template Parameters
+#### 📌 3.2 Nontype Function Template Parameters
 
 
 You can also define nontype parameters for function templates. 
@@ -1585,7 +1585,7 @@ T bar();
 ```
 
 
-### 📌 3.3 [Restrictions for Nontype Template Parameters](https://en.cppreference.com/w/cpp/language/template_parameters#Non-type_template_parameter)
+#### 📌 3.3 [Restrictions for Nontype Template Parameters](https://en.cppreference.com/w/cpp/language/template_parameters#Non-type_template_parameter)
 
 
 Note that nontype template parameters carry some restrictions. 
@@ -1653,7 +1653,7 @@ and since C++17 if it has no linkage at all.
 See Section 12.3 for a detailed discussion 
 and Section 17.2 for a discussion of possible future changes in this area. 
 
-#### Avoiding Invalid Expressions
+##### Avoiding Invalid Expressions
 
 Arguments for nontype template parameters might be any compile-time expressions.
 For example: 
@@ -1670,7 +1670,7 @@ C<42, (sizeof(int) > 4)> c;  // OK
 ```
 
 
-### 📌 3.4 Template Parameter Type `auto`
+#### 📌 3.4 Template Parameter Type `auto`
 
 
 Since C++17, you can define a nontype template parameter to 
@@ -1797,7 +1797,7 @@ C<(i)> x;  // N is int &
 See Section 15.10 for details.
 
 
-### 📌 3.5 Summary
+#### 📌 3.5 Summary
 
 
 - Templates can have template parameters that are values rather than types. 
@@ -1822,13 +1822,13 @@ through a class or framework.
 Another application is to provide generic code to process any number of parameters of any type.
 
 
-### 📌 4.1 Variadic Templates
+#### 📌 4.1 Variadic Templates
 
 
 Template parameters can be defined to accept an unbounded number of template arguments. 
 Templates with this ability are called _variadic templates_.
 
-#### Variadic Templates: Function Parameter Pack And Template Parameter Pack
+##### Variadic Templates: Function Parameter Pack And Template Parameter Pack
 
 ```c++
 void print()
@@ -1896,7 +1896,7 @@ std::string s("world");
 print<double, char const*, std::string>(7.5, "hello", s);
 ```
 
-#### Overloading Variadic and Nonvariadic Templates
+##### Overloading Variadic and Nonvariadic Templates
 
 Note that you can also implement the example above as follows:
 ```c++
@@ -1917,7 +1917,7 @@ That is, if two function templates only differ by a trailing parameter pack,
 the function template **without** the trailing parameter pack is preferred.
 Section C.3 explains the more general overload resolution rule that applies here.
 
-#### Operator `sizeof...`
+##### Operator `sizeof...`
 
 C++11 also introduced a new form of the `sizeof` operator for variadic templates: `sizeof...`. 
 It expands to the number of elements a parameter pack contains. 
@@ -1975,7 +1975,7 @@ void print(T firstArg, Args ... args)
 ```
 
 
-### 📌 4.2 [Fold Expressions](https://en.cppreference.com/w/cpp/language/fold)
+#### 📌 4.2 [Fold Expressions](https://en.cppreference.com/w/cpp/language/fold)
 
 
 Since C++17, there is a feature to compute the result of 
@@ -2098,7 +2098,7 @@ and adds a space when it is used in output expressions.
 See Section 12.4 for details about fold expressions.
 
 
-### 📌 4.3 Application of Variadic Templates
+#### 📌 4.3 Application of Variadic Templates
 
 
 Variadic templates play an important role when implementing generic libraries, 
@@ -2136,14 +2136,14 @@ void bar(Args const & ... args);
 ```
 
 
-### 📌 4.4 Variadic Class Templates and Variadic Expressions
+#### 📌 4.4 Variadic Class Templates and Variadic Expressions
 
 
 Besides the examples above, parameter packs can appear in additional places,
 including, for example, expressions, class templates, using declarations, and even deduction guides. 
 Section 12.4 has a complete list.
 
-#### Variadic Expressions
+##### Variadic Expressions
 
 You can do more than just forwarding all the parameters. 
 You can compute with them,
@@ -2222,7 +2222,7 @@ isHomogeneous("hello", "", "world", "!");
 yields `true` because all passed arguments are deduced to be `char const *` 
 (note that the argument types decay because the call arguments are passed by value). 
 
-#### Variadic Indices
+##### Variadic Indices
 
 As another example, the following function uses a variadic list of indices
 to access the corresponding element of the passed first argument:
@@ -2265,7 +2265,7 @@ std::vector<int> vec {0, 1, 2, 3, 4, 5, 6};
 printElems<2, 4, 6>(vec);  // 2 4 6
 ```
 
-#### Variadic Class Templates
+##### Variadic Class Templates
 
 
 Variadic templates can also be class templates. 
@@ -2314,7 +2314,7 @@ printByIdx(t, Indices<0, 1, 2>());
 This is a first step towards meta-programming, 
 which will be discussed in Section 8.1 and Chapter 23. 
 
-#### Variadic Deduction Guides
+##### Variadic Deduction Guides
 
 Even deduction guides (see Section 2.9) can be variadic. 
 For example, the C++ standard library defines the following deduction guide for `std::array`s:
@@ -2346,7 +2346,7 @@ the deduction guide is discarded and the overall deduction fails.
 This way, the standard library ensures that 
 all elements must have the same type for the deduction guide to succeed.
 
-#### Variadic Base Classes and using
+##### Variadic Base Classes and using
 
 Finally, consider the following example:
 ```c++
@@ -2429,7 +2429,7 @@ std::unordered_set<Customer, CustomerOP, CustomerOP> s2;
 See Section 26.4 for another application of this technique.
 
 
-### 📌 4.5 Summary
+#### 📌 4.5 Summary
 
 
 - By using parameter packs, 
@@ -2460,7 +2460,7 @@ These aspects can be tricky at times,
 but every day-to-day programmer should have heard of them.
 
 
-### 📌 5.1 Keyword `typename`
+#### 📌 5.1 Keyword `typename`
 
 
 
@@ -2475,7 +2475,7 @@ but every day-to-day programmer should have heard of them.
 
 ### 🎯
 
-### 📌 
+#### 📌 
 
 
 
