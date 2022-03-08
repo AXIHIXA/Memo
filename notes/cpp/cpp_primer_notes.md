@@ -1531,7 +1531,8 @@ double (*pf4)(int*) = ff;              // error: return type of ff and pf4 don't
 #### （类的）数据成员指针 (Class Data Member Pointer)
 
 - `Class::*`表示 *成员指针* (Member Pointer, Pointer to Member)
-    - `Class::*` is just a vexing syntax, see the example. 
+    - `Class::*` is just a vexing C++ syntax which is consistant to the vexing C-style declaration syntax. 
+      See the following example: 
     ```c++
     struct C
     {
@@ -1543,20 +1544,19 @@ double (*pf4)(int*) = ff;              // error: return type of ff and pf4 don't
         C * cp;
     };
 
-    int C::* pointerToADataMemberOfCWhoseTypeIsInt = &C::v;
-    C * C::* pointerToADataMemberOfCWhoseTypeIsPointerToC = &C::cp;
-    void (C::* pointerToAMemberFunctionOfCTakingNoArgumentAndReturningVoid)() = &C::foo;
+    int C::* pointerToMemberOfCWhoseTypeIsInt = &C::v;
+    C * C::* pointerToMemberOfCWhoseTypeIsPointerToC = &C::cp;
+    void (C::* pointerToMemberOfCWhoseTypeIsFunctionTakingNoArgumentAndReturningVoid)() = &C::foo;
 
     auto cp = std::make_shared<C>();
 
-    std::cout << (*cp).*pointerToADataMemberOfCWhoseTypeIsInt << '\n';                          // 0
-    std::cout << ((*cp).*pointerToADataMemberOfCWhoseTypeIsPointerToC == nullptr) << '\n';      // 1
-    ((*cp).*pointerToAMemberFunctionOfCTakingNoArgumentAndReturningVoid)();                     // void C::foo()
+    std::cout << (*cp).*pointerToMemberOfCWhoseTypeIsInt << '\n';                          // 0
+    std::cout << ((*cp).*pointerToMemberOfCWhoseTypeIsPointerToC == nullptr) << '\n';      // 1
+    ((*cp).*pointerToMemberOfCWhoseTypeIsFunctionTakingNoArgumentAndReturningVoid)();      // void C::foo()
 
-    std::cout << cp.get()->*pointerToADataMemberOfCWhoseTypeIsInt << '\n';                      // 0
-    std::cout << (cp.get()->*pointerToADataMemberOfCWhoseTypeIsPointerToC == nullptr) << '\n';  // 1
-    (cp.get()->*pointerToAMemberFunctionOfCTakingNoArgumentAndReturningVoid)();                 // void C::foo()
-
+    std::cout << cp.get()->*pointerToMemberOfCWhoseTypeIsInt << '\n';                      // 0
+    std::cout << (cp.get()->*pointerToMemberOfCWhoseTypeIsPointerToC == nullptr) << '\n';  // 1
+    (cp.get()->*pointerToMemberOfCWhoseTypeIsFunctionTakingNoArgumentAndReturningVoid)();  // void C::foo()
     ```
     - 至于是数据成员指针，还是成员函数指针，那就跟普通函数指针与普通对象指针的区别一样，只看括号了
 - 指向类`C`的 *非静态数据成员* `m`的指针，以`&C::m`初始化
