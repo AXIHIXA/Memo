@@ -1202,7 +1202,7 @@ template <typename T>
 using MyTypeIterator = typename MyType<T>::iterator;
 ```
 
-##### Type Traits Suffix_t
+##### Type Traits Suffix `_t`
 
 Since C++14, the standard library uses this technique to define shortcuts 
 for all type traits in the standard library that yield a type. 
@@ -2463,9 +2463,1226 @@ but every day-to-day programmer should have heard of them.
 #### 📌 5.1 Keyword `typename`
 
 
+The keyword typename was introduced during the standardization of C++ to
+clarify that a _nest name_ (identifier inside a template) is a type. 
+Consider the following example:
+```c++
+template <typename T>
+class MyClass
+{
+public:
+    // ...
+
+    void foo()
+    {
+        typename T::SubType * ptr;
+    }
+};
+```
+Here, the second `typename` is used to clarify that `SubType` is a type defined within class `T`. 
+Thus, `ptr` is a pointer to the type `T::SubType`.
+
+
+Without `typename`, `SubType` would be assumed to be a nontype member 
+(e.g., a static data member or an enumerator constant). 
+As a result, the expression
+```c++
+T::SubType * ptr
+```
+would be a multiplication of the static `SubType` member of class `T` with `ptr`,
+which is not an error, because for some instantiations of `MyClass` this could be valid code.
+
+
+In general, `typename` has to be used whenever a name that depends on a template parameter is a type. 
+This is discussed in detail in Section 13.3. 
+
+
+One application of `typename` is the declaration to iterators of standard containers in generic code:
+```c++
+template <typename T>
+void printContainer(const T & c)
+{
+    for (typename T::const_iteratorpos = c.cbegin(), end = c.cend(); pos != end; ++pos) 
+    {
+        std::cout << *pos << '\n';
+    }
+    
+    std::cout << '\n';
+}
+```
+P.S. A more flexible one:
+```c++
+namespace
+{
+    
+template <typename>
+struct is_container_helper : public std::false_type {};
+
+template <typename T, typename Alloc>
+struct is_container_helper<std::vector<T, Alloc>> : public std::true_type {};
+
+}  // namespace
+
+template <typename T>
+struct is_container : public is_container_helper<std::remove_cv_t<std::decay_t<T>>> {};
+
+template <typename T>
+constexpr bool is_container_v = is_container<T>::value;
+
+template <typename Container,
+          std::enable_if_t<is_container_v<Container>, bool> = true>
+std::ostream & operator<<(std::ostream & cout, Container && c)
+{
+    for (const auto & e : c)
+    {
+        cout << e << ' ';
+    }
+
+    return cout;
+}
+```
+See Section 13.3 for more details about the need for `typename` until C++17. 
+Note that C++20 will probably remove the need for `typename` in many common cases (see Section 17.1 for details).
+
+
+#### 📌 5.2 Zero Initialization
+
+
+For trivial types such as `int`, `double`, or pointer types, 
+there is **no** default constructor that initializes them with a useful default value. 
+Instead, any noninitialized local variable has an undefined value:
+```c++
+void foo()
+{
+    int x;      // x has undefined value
+    int * ptr;  // ptr points to a random location (instead of nowhere)
+}
+```
+Now if you write templates and want to have variables of a template type initialized by a default value, 
+you have the problem that a simple definition doesn’t do this for built-in types:
+```c++
+template <typename T>
+void foo()
+{
+    T x;  // x has undefined value if T is built-in type
+}
+```
+For this reason, it is possible to call explicitly a default constructor 
+for built-in types that initializes them with zero (or `false` for `bool` or `nullptr` for pointers). 
+As a consequence, you can ensure proper initialization even for built-in types by writing the following:
+```c++
+template<typename T>
+void foo()
+{
+    T x {};  // x is zero (or false) if T is a built-in type
+}
+```
+This way of initialization is called _value initialization_, 
+which means to either call a provided constructor or zero initialize an object. 
+This even works if the constructor is `explicit`. 
+
+
+Before C++11, the syntax to ensure proper initialization was
+```c++
+T x = T();  // x is zero (or false) if T is a built-in type
+```
+Prior to C++17, this mechanism (which is still supported) only worked 
+if the constructor selected for the copy-initialization is **not** `explicit`.
+The `explicit` specifier specifies that 
+a constructor or conversion function or deduction guide
+can **not** be used for _implicit conversions_ and _copy-initialization_. 
+
+
+In C++17, _mandatory copy elision_ avoids that limitation and either syntax can work, 
+but the braced initialized notation can use an initializer-list constructor 
+if no default constructor is available. 
+
+
+To ensure that a member of a class template, 
+for which the type is parameterized, gets initialized, 
+you can define a default constructor that uses a braced initializer to initialize the member:
+```c++
+template <typename T>
+class MyClass 
+{
+public:
+    // ensures that x is initialized even for built-in types
+    explicit MyClass() : x {} {}
+
+private:
+    T x;
+};
+```
+The pre-C++11 syntax also still works: 
+```c++
+// ensures that x is initialized even for built-in types
+MyClass::MyClass() : x() {}
+```
+Since C++11, you can also provide a default in-class initialization for a nonstatic member,
+so that the following is also possible:
+```c++
+template <typename T>
+class MyClass 
+{
+private:
+    T x {};  // zero-initialize x unless otherwise specified
+    ...
+};
+```
+However, note that default arguments cannot use that syntax. For example,
+```c++
+// ERROR
+template <typename T>
+void foo(T p {}) 
+{ 
+    ...
+}
+```
+Instead, we have to write:
+```c++
+// OK (must use T() before C++11)
+template <typename T>
+void foo(T p = T {}) 
+{ 
+    ...
+}
+```
+
+
+#### 📌 5.3 Using `this->` or `Base<T>::`
+
+
+For class templates with base classes that depend on template parameters, 
+using a name `x` by itself is **not** always equivalent to `this->x`, 
+even though a member `x` is inherited. For example:
+```c++
+template <typename T>
+class Base
+{
+public:
+    void bar() {}
+};
+
+template <typename T>
+class Derived : Base<T>
+{
+public:
+    void foo()
+    {
+        // calls external bar() or error
+        bar(); 
+    }
+};
+```
+In this example, for resolving the symbol `bar` inside `Derived<T>::foo`,
+`bar` defined in `Base<T>` is **never** considered. 
+Therefore, either you have an error, or another `bar` (such as a global one) is called. 
+
+
+We discuss this issue in Section 13.4 in detail. 
+For the moment, as a rule of thumb, we recommend that you always qualify any symbol
+that is declared in a base that is somehow dependent on a template parameter 
+with `this->` or `Base<T>::`. 
+
+
+#### 📌 5.4 Templates for Raw Arrays and String Literals
+
+
+When passing raw arrays or string literals to templates, some care has to be taken.
+First, if the template parameters are declared as references (including universal references), 
+the arguments **don’t** decay. 
+That is, a passed argument of `hello` has type `char const [6]`. 
+This can become a problem if raw arrays or string arguments of different length 
+are passed because the types differ. 
+Only when passing the argument by value, the types decay, 
+so that string literals are converted to type `char const *`. 
+This is discussed in detail in Chapter 7.
+
+
+Note that you can also provide templates that specifically deal with raw arrays or string literals. 
+For example:
+```c++
+template <typename T, std::size_t N, std::size_t M>
+bool less(T (& a)[N], T (& b)[M])
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+    
+    for (std::size_t i = 0; i < N && i < M; ++i)
+    {
+        if (a[i] < b[i])
+        {
+            return true;
+        }
+        
+        if (b[i] < a[i])
+        {
+            return false;
+        }
+    }
+    
+    return N < M;
+}
+
+// bool less(T (&)[N], T (&)[M]) [with T = int; long unsigned int N = 3; long unsigned int M = 5]
+// 1
+int x[] {1, 2, 3};
+int y[] {1, 2, 3, 4, 5};
+std::cout << less(x, y) << '\n';
+
+// bool less(T (&)[N], T (&)[M]) [with T = const char; long unsigned int N = 3; long unsigned int M = 4]
+// 1
+std::cout << less("ab", "abc") << '\n';
+```
+If you only want to provide a function template for string literals 
+(and other char arrays), you can do this as follows:
+```c++
+template <std::size_t N, std::size_t M>
+bool less(const char (& a)[N], const char (& b)[M])
+{
+    for (std::size_t i = 0; i < N && i < M; ++i)
+    {
+        if (a[i] < b[i])
+        {
+            return true;
+        }
+        
+        if (b[i] < a[i])
+        {
+            return false;
+        }
+    }
+    
+    return N < M;
+}
+```
+Note that you can and sometimes have to overload or partially specialize for arrays of unknown bounds. 
+The following program illustrates all possible overloads for arrays:
+```c++
+// primary template
+template <typename T>
+struct MyClass;
+
+// partial specialization for arrays of known bounds
+template <typename T, std::size_t SZ>
+struct MyClass<T[SZ]> 
+{
+    static void print()
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+};
+
+// partial specialization for references to arrays of known bounds
+template <typename T, std::size_t SZ>
+struct MyClass<T(&)[SZ]> 
+{
+    static void print()
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+};
+
+// partial specialization for arrays of unknown bounds
+template <typename T>
+struct MyClass<T []> 
+{
+    static void print()
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+};
+
+// partial specialization for references to arrays of unknown bounds
+template <typename T>
+struct MyClass<T (&)[]> 
+{
+    static void print()
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+};
+
+// partial specialization for pointers
+template <typename T>
+struct MyClass<T *> 
+{
+    static void print()
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+};
+```
+Here, the class template `MyClass` is specialized for various types: 
+arrays of known and unknown bound, 
+references to arrays of known and unknown bounds,
+and pointers. 
+Each case is different and can occur when using arrays:
+```c++
+template <typename T1, typename T2, typename T3>
+void foo(int a1[7],       // pointers by language rules
+         int a2[],        // pointers by language rules
+         int (& a3)[42],  // reference to array of known bound
+         int (& x0)[],    // reference to array of unknown bound
+         T1 x1,           // passing by value decays
+         T2 & x2,         // passing by reference
+         T3 && x3)        // passing by reference
+{
+    MyClass<decltype(a1)>::print();  // uses MyClass<T *>
+    MyClass<decltype(a2)>::print();  // uses MyClass<T *>
+    MyClass<decltype(a3)>::print();  // uses MyClass<T (&)[SZ]>
+    MyClass<decltype(x0)>::print();  // uses MyClass<T (&)[]>
+    MyClass<decltype(x1)>::print();  // uses MyClass<T *>
+    MyClass<decltype(x2)>::print();  // uses MyClass<T (&)[]>
+    MyClass<decltype(x3)>::print();  // uses MyClass<T (&)[]>
+}
+
+// static void MyClass<T [SZ]>::print() [with T = int; long unsigned int SZ = 42]
+int a[42];
+MyClass<decltype(a)>::print();
+
+// forward declare array
+// static void MyClass<T []>::print() [with T = int]
+extern int x[];                 
+MyClass<decltype(x)>::print();
+
+// static void MyClass<T *>::print() [with T = int]
+// static void MyClass<T *>::print() [with T = int]
+// static void MyClass<T (&)[SZ]>::print() [with T = int; long unsigned int SZ = 42]
+// static void MyClass<T (&)[]>::print() [with T = int]
+// static void MyClass<T *>::print() [with T = int]
+// static void MyClass<T (&)[]>::print() [with T = int]
+// static void MyClass<T (&)[]>::print() [with T = int]
+foo(a, a, a, x, x, x, x);
+```
+Note that a _function parameter_ declared as an array (with or without length) 
+by language rules really has a pointer type. 
+Note also that templates for arrays of unknown bounds can be used for an incomplete type such as
+```c++
+extern int i[];
+```
+And when this is passed by reference, it becomes a `int (&)[]`,
+which can also be used as a template parameter.
+Parameters of type `X (&)[]` for some arbitrary type `X` 
+have become valid only since C++17, through the resolution of Core issue 393. 
+However, many compilers accepted such parameters in earlier versions of the language. 
+
+See Section 19.3 for another example using the different array types in generic code. 
+
+
+#### 📌 5.5 Member Templates
+
+
+Class members can also be templates. 
+This is possible for both nested classes and member functions. 
+The application and advantage of this ability can again be demonstrated with the `Stack` class template. 
+Normally you can assign stacks to each other only when they have the same type, 
+which implies that the elements have the same type. 
+However, you can’t assign a stack with elements of any other type,
+even if there is an implicit type conversion for the element types defined:
+```c++
+Stack<int> intStack1;     // stack for ints
+Stack<int> intStack2;     // stack for ints
+Stack<float> floatStack;  // stack for floats
+intStack1 = intStack2;    // OK: stacks have same type
+floatStack = intStack1;   // ERROR: stacks have different types
+```
+The default assignment operator requires that both sides of the assignment operator
+have the same type, which is not the case if stacks have different element types. 
+
+
+By defining an assignment operator as a template, however, 
+you can enable the assignment of stacks with elements 
+for which an appropriate type conversion is defined.
+```c++
+template <typename T>
+class Stack
+{
+public:
+    void push(T const &);
+    
+    void pop();
+    
+    T const & top() const;
+    
+    bool empty() const
+    {
+        return elems.empty();
+    }
+
+    // assign stack of elements of type T2
+    template <typename T2>
+    Stack & operator=(Stack<T2> const &);
+
+private:
+    std::deque<T> elems; // elements
+};
+
+template <typename T>
+template <typename T2>
+Stack<T> & Stack<T>::operator=(Stack<T2> const & op2)
+{
+    Stack<T2> tmp(op2);
+    elems.clear();
+    
+    while (!tmp.empty())
+    {
+        elems.push_front(tmp.top());
+        tmp.pop();
+    }
+    
+    return *this;
+}
+```
+First let’s look at the syntax to define a _member template_. 
+Inside the template with template parameter `T`, 
+an inner template with template parameter `T2` is defined:
+```c++
+template <typename T>
+template <typename T2>
+...
+```
+If you instantiate a class template for two different argument types,
+you get two different class types. 
+Inside the member function, 
+the assigned stack `op2` has a different type. 
+So you are restricted to using the public interface. 
+It follows that the only way to access the elements is by calling `top`. 
+However, each element has to become a top element, then. 
+Thus, a copy of `op2` must first be made, 
+so that the elements are taken from that copy by calling `pop`. 
+Because `top` returns the last element pushed onto the stack, 
+we might prefer to use a container that supports 
+the insertion of elements at the other end of the collection. 
+For this reason, we use a `std::deque`, 
+which provides `push_front` to put an element on the other side of the collection.
+
+
+To get access to all the members of `op2`, 
+you can declare that all other stack instances are friends:
+```c++
+template <typename T>
+class Stack
+{
+public:
+    // to get access to private members of Stack<T2> for any type
+    template <typename> 
+    friend class Stack;
+    
+    void push(T const &);
+    void pop();
+    T const & top() const; 
+    
+    bool empty() const
+    {
+        return elems.empty();
+    }
+
+    // assign stack of elements of type T2
+    template <typename T2>
+    Stack & operator=(Stack<T2> const &);
+    
+private:
+    std::deque<T> elems; // elements
+};
+
+template <typename T>
+template <typename T2>
+Stack<T> & Stack<T>::operator=(Stack<T2> const & op2)
+{
+    elems.clear();
+    elems.insert(elems.begin(), op2.elems.cbegin(), op2.elems.cend());
+    return *this;
+}
+```
+Whatever your implementation is, having this member template, 
+you can now assign a stack of `int`s to a stack of `float`s:
+```c++
+Stack<int> intStack;      // stack for ints
+Stack<float> floatStack;  // stack for floats
+floatStack = intStack;    // OK: stacks have different types,
+                          // but int converts to float
+```
+Of course, this assignment does not change the type of the stack and its elements.
+After the assignment, the elements of the `floatStack` are still `float`s and
+therefore `top` still returns a `float`.
+
+
+It may appear that this function would disable type checking 
+such that you could assign a stack with elements of any type, but this is not the case. 
+The necessary type checking occurs 
+when the element of the (copy of the) source stack is moved to the destination stack:
+```c++
+elems.push_front(tmp.top());
+```
+If, for example, a stack of `std::string`s gets assigned to a stack of `float`s, 
+the compilation of this line results in an error message stating that 
+the `std::string` returned by `tmp.top()` cannot be passed as an argument to `elems.push_front`. 
+The message varies depending on the compiler, but this is the gist of what is meant. 
+```c++
+Stack<std::string> stringStack;  // stack of std::strings
+Stack<float> floatStack;         // stack of floats
+floatStack = stringStack;        // ERROR: std::string doesn’t convert to float
+```
+Again, you could change the implementation to parameterize the internal container type:
+```c++
+template <typename T, typename Cont = std::deque<T>>
+class Stack
+{
+public:
+    template <typename, typename>
+    friend class Stack;
+    
+    void push(T const &);
+    void pop();
+    T const & top() const; 
+    
+    bool empty() const
+    {
+        return elems.empty();
+    }
+    
+    template <typename T2, typename Cont2>
+    Stack & operator=(Stack<T2, Cont2> const &);
+
+private:
+    Cont elems; // elements
+};
+
+template <typename T, typename Cont>
+template <typename T2, typename Cont2>
+Stack<T, Cont> & Stack<T, Cont>::operator=(Stack<T2, Cont2> const & op2)
+{
+    elems.clear();
+    elems.insert(elems.begin(), op2.elems.cbegin(), op2.elems.cend());
+    return *this;
+}
+```
+Remember, for class templates, 
+only those member functions that are called are instantiated. 
+Thus, if you avoid assigning a stack with elements of a different type,
+you could even use a `std::vector` as an internal container:
+```c++
+// stack for ints using a vector as an internal container
+Stack<int, std::vector<int>> vStack;
+vStack.push(42); 
+vStack.push(7);
+std::cout << vStack.top() << '\n';
+```
+Because the assignment operator template isn’t necessary,
+**no** error message of a missing member function `push_front` occurs
+and the program is fine.
+
+#### Specialization of Member Function Templates
+
+Member function templates can also be partially or fully specialized. 
+For example, for the following class:
+```c++
+class BoolString
+{
+public:
+    explicit BoolString(std::string s) 
+            : value(std::move(s)) 
+    {
+        
+    }
+
+    template <typename T = std::string>
+    T get() const
+    {
+        return value;
+    }
+
+private:
+    std::string value;
+};
+```
+you can provide a full specialization for the member function template as follows:
+```c++
+// full specialization for BoolString::getValue<>() for bool
+template <>
+inline bool BoolString::get<bool>() const 
+{
+    return value == "true" || value == "1" || value == "on";
+}
+```
+Note that you don’t need and also **can’t** declare the specializations; you only define them. 
+Because it is a full specialization, and it is in a header file, 
+you have to declare it with `inline` to avoid errors 
+if the definition is included by different translation units. 
+
+
+You can use class and the full specialization as follows:
+```c++
+std::cout << std::boolalpha;
+BoolString s1("hello");
+std::cout << s1.get() << '\n';        // hello
+std::cout << s1.get<bool>() << '\n';  // false
+BoolString s2("on");
+std::cout << s2.get<bool>() << '\n';  // true
+```
+
+#### Special Member Function Templates
+
+Special member functions (default constructor, destructor, copy/move constructor and assignment operator)
+can also be member function templates.
+Member templates **don’t** count as _the_ special member functions that copy or move objects.
+These template versions also **don’t** count as user-defined versions. 
+In this example, for assignments of stacks of the same type, 
+the default assignment operator is still called. 
+
+
+This effect can be good and bad:
+- It can happen that a template constructor or assignment operator 
+  is a better match than the predefined copy/move constructor or assignment operator, 
+  although a template version is provided for initialization of other types only. 
+  See Section 6.2 for details.
+- It is not easy to “templify” a copy/move constructor, 
+  for example, to be able to constrain its existence. 
+  See Section 6.4 for details.
+
+#### The `.template` Construct for Dependent Template Names
+
+Sometimes, it is necessary to explicitly qualify template arguments 
+when _calling_ a member template. 
+This is _dependent template name_. 
+In that case, you have to use the `template` keyword 
+to ensure that the less-than token `<` 
+denotes the beginning of the template argument list
+instead of a call of `operator<`. 
+Consider the following example using the standard `std::bitset` type:
+```c++
+template <unsigned long N>
+void printBitset(std::bitset<N> const & bs)
+{
+    std::cout << bs.template to_string<char, std::char_traits<char>, std::allocator<char>>();
+}
+```
+For the bitset `bs` we call the member function template `to_string`,
+while explicitly specifying the string type details. 
+Without that extra use of `.template`,
+the compiler does not know that the less-than token `<` that follows 
+is not really less-than but the beginning of a template argument list. 
+Note that this is a problem only if the construct before the period depends on a template parameter. 
+In our example, the parameter bs depends on the template parameter `N`. 
+
+
+The `.template` notation (and similar notations such as `->template` and `::template`) 
+should be used only inside templates and only if they follow something that depends on a template parameter. 
+See Section 13.3 for details.
+
+#### Generic Lambdas and Member Templates
+
+Note that generic lambdas, introduced with C++14, 
+are shortcuts for member templates. 
+A simple lambda computing the “sum” of two arguments of arbitrary types:
+```c++
+[] (auto x, auto y)
+{
+    return x + y;
+}
+```
+is a shortcut for a default-constructed object of the following class:
+```c++
+class SomeCompilerSpecificName 
+{
+public:
+    // constructor only callable by compiler
+    SomeCompilerSpecificName(); 
+    
+    template <typename T1, typename T2>
+    auto operator() (T1 x, T2 y) const 
+    {
+        return x + y;
+    }
+};
+```
+See Section 15.10 for details.
+
+
+#### 📌 5.6 [Variable Templates](https://en.cppreference.com/w/cpp/language/variable_template)
+
+
+Since C++14, variables also can be parameterized by a specific type. 
+Such a thing is called a _variable template_.
+
+
+Yes, we have very similar terms for very different things: 
+- A _variable template_ is a variable that is a template 
+  (variable is a noun here). 
+- A _variadic template_ is a template for a variadic number of template parameters 
+  (variadic is an adjective here).
+
+
+For example, you can use the following code to define the value of `pi` 
+while still not defining the type of the value:
+```c++
+template <typename T>
+constexpr T pi {3.141592653589793238462643383279502884L};
+```
+Note that, as for all templates, 
+this declaration may **not** occur inside functions or block scope.
+
+
+To use a variable template, you have to specify its type. 
+For example, the following code uses different variables of the scope where `pi` is declared:
+```c++
+std::cout << pi<long double> << '\n';
+std::cout << pi<double> << '\n';
+std::cout << pi<float> << '\n';
+```
+You can also declare variable templates that are used in different translation units:
+```c++
+// "header.hpp"
+// zero-initialized value
+template <typename T> 
+T val {};
+
+// "1.cpp"
+#include "header.hpp"
+
+int main()
+{
+    val<long> = 42;
+    print();
+}
+
+// "2.cpp"
+#include "header.hpp"
+
+void print()
+{
+    // OK: prints 42
+    std::cout << val<long> << '\n';
+}
+```
+Variable templates can also have default template arguments:
+```c++
+template <typename T = long double>
+constexpr T pi {3.141592653589793238462643383279502884L};
+```
+You can use the default or any other type:
+```c++
+std::cout << pi<> << '\n';       // outputs a long double
+std::cout << pi<float> << '\n';  // outputs a float
+```
+However, note that you _always_ have to specify the angle brackets. 
+Just using `pi` is an error:
+```c++
+std::cout << pi << '\n';         // ERROR
+```
+Variable templates can also be parameterized by nontype parameters, 
+which also may be used to parameterize the initializer. 
+For example:
+```c++
+// array with N elements, zero-initialized
+template <int N>
+std::array<int, N> arr {}; 
+
+// type of dval depends on passed value
+template <auto N>
+constexpr decltype(N) dval = N;
+
+// N has value ’c’ of type char
+std::cout << dval<'c'> << '\n'; 
+
+// sets first element of global arr
+arr<10>[0] = 42; 
+
+// uses values set in arr
+for (std::size_t i = 0; i < arr<10>.size(); ++i) 
+{ 
+    std::cout << arr<10>[i] << '\n';
+}
+```
+Again, note that even when the initialization of and iteration over `arr` happens in different translation units, 
+the same variable `std::array<int, 10>` `arr` of global scope is still used.
+
+#### Variable Templates for Data Members
+
+A useful application of variable templates 
+is to define variables that represent members of class templates.
+For example, if a class template is defined as follows:
+```c++
+template <typename T>
+class MyClass 
+{
+public:
+    static constexpr int max = 1000;
+};
+```
+which allows you to define different values for different specializations of `MyClass`, 
+then you can define
+```c++
+template <typename T>
+int myMax = MyClass<T>::max;
+```
+so that application programmers can just write
+```c++
+auto i = myMax<std::string>;
+```
+instead of
+```c++
+auto i = MyClass<std::string>::max;
+```
+This means, for a standard class such as
+```c++
+namespace std
+{
+
+template <typename T>
+class numeric_limits
+{
+public:
+    ...
+    static constexpr bool is_signed = false;
+    ...
+};
+
+}  // namespace std
+```
+you can define
+```c++
+template <typename T>
+constexpr bool isSigned = std::numeric_limits<T>::is_signed;
+
+// instead of:
+isSigned<char>
+std::numeric_limits<char>::is_signed
+```
+
+#### Type Traits Suffix `_v`
+
+Since C++17, the standard library uses the technique of variable templates 
+to define shortcuts for all type traits in the standard library that yield a (Boolean) value.
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 9.4.0-1ubuntu1~20.04) 9.4.0
+namespace std
+{
+
+template <typename T>
+inline constexpr bool is_const_v = is_const<T>::value;
+
+}  // namespace std
+
+// instead of:
+std::is_const_v<T>
+std::is_const<T>::value
+```
+
+
+#### 📌 5.7 Template Template Parameters
+
+
+It can be useful to allow a template parameter itself to be a class template. 
+Again, our stack class template can be used as an example.
+
+
+To use a different internal container for stacks, 
+the application programmer has to specify the element type twice. 
+Thus, to specify the type of the internal container,
+you have to pass the type of the container _and_ the type of its elements again:
+```c++
+Stack<int, std::vector<int>> vStack;  // integer stack that uses a vector
+```
+With _template template parameters_, you can declare the `Stack` class template
+by specifying the type of the container **without** respecifying the type of its elements:
+```c++
+Stack<int, std::vector> vStack;       // integer stack that uses a vector
+```
+To do this, you must specify the second template parameter as a _template template parameter_.
+
+
+In principle, this looks as follows
+```c++
+template <typename T,
+          template <typename Elem> class Cont = std::deque>
+class Stack
+{
+public:
+    void push(T const &);
+    void pop();
+    T const & top() const;
+    
+    bool empty() const
+    {
+        return elems.empty();
+    }
+
+private:
+    Cont<T> elems;
+};
+```
+The difference is that the second template parameter 
+is declared as being a class template:
+```c++
+template <typename Elem> class Cont
+```
+The default value has changed from `std::deque<T>` to `std::deque`. 
+This parameter has to be a class template, 
+which is instantiated for the type `T`:
+```c++
+Cont<T> elems;
+```
+This use of the first template parameter
+for the instantiation of the second template parameter 
+is particular to this example.
+In general, you can instantiate a template template parameter 
+with any type inside a class template.
+
+
+Before C++11, `Cont` could only be substituted by the name of a _class template_. 
+Since C++11, we can also substitute `Cont` with the name of an _alias template_. 
+
+
+As usual, instead of `typename`, you could use the keyword `class` for template parameters.
+But it wasn’t until C++17 that a corresponding change was made
+to permit the use of the keyword `typename` instead of `class` 
+to declare a template template parameter:
+```c++
+// OK
+template <typename T,
+template <class Elem> class Cont = std::deque>
+class Stack { ... };
+
+// ERROR before C++17
+template <typename T,
+          template <typename Elem> class Cont = std::deque>
+class Stack { ... };
+```
+Those two variants mean exactly the same thing: 
+Using `class` instead of `typename` does not prevent us 
+from specifying an alias template as the argument corresponding to the `Cont` parameter.
+
+
+Because the template parameter of the template template parameter is not used,
+it is customary to omit its name (unless it provides useful documentation):
+```c++
+template <typename T, 
+          template <typename> class Cont = std::deque>
+class Stack { ... };
+```
+Member functions must be modified accordingly. 
+```c++
+template <typename T, template <typename> class Cont>
+void Stack<T, Cont>::push (T const & elem)
+{
+    elems.push_back(elem);
+}
+```
+Note that while template template parameters are placeholders for class or alias templates, 
+there is no corresponding placeholder for function or variable templates.
+
+#### Template Template Argument Matching
+
+If you try to use the new version of `Stack`, 
+you may get an error message saying that the default value `std::deque` 
+is not compatible with the template template parameter `Cont`. 
+
+
+A template template argument had to be a template whose parameters 
+exactly match those of the substituted template template parameter. 
+with some exceptions related to variadic template parameters (see Section 12.3). 
+
+
+In C++17, default arguments are considered when matching the template parameters.
+However, prior to C++17, default template arguments of template template arguments were **not** considered.  
+That is, a match can **not** be achieved when not explicitly re-specifying those default arguments.
+```c++
+template <template <typename T, typename U> Cont>
+class MyClass { ... };
+
+template <typename T, typename U = int>
+class C { ... };
+
+MyClass<C<T1, T2>> mc;  // good
+MyClass<C<T1>> mc2;     // ERROR before C++17 (default argument int was ignored during the matching process)
+```
+The pre-C++17 problem in this example is that 
+the `std::deque` template has more than one parameter.  
+`std::deque`'s second parameter `Allocator` has a default value.  
+But prior to C++17, this was **not** considered when matching `std::deque` to the `Cont` parameter. 
+
+
+We can rewrite the class declaration so that 
+the `Cont` parameter expects containers with two template parameters:
+```c++
+template <typename T,
+          template <typename Elem, 
+                    typename Alloc = std::allocator<Elem>>
+          class Cont = std::deque>
+class Stack
+{
+private:
+    Cont<T> elems;
+    ...
+};
+```
+Again, we could omit `Alloc` because it is not used.
+
+
+The final version of our `Stack` template 
+(including member templates for assignments of stacks of different element types) 
+now looks as follows:
+```c++
+template <typename T,
+          template <typename Elem,
+                    typename = std::allocator<Elem>>
+          class Cont = std::deque>
+class Stack
+{
+public:
+    template <typename, template <typename, typename> class>
+    friend class Stack;
+    
+    void push(T const &);
+    void pop();
+    T const & top() const;
+    
+    bool empty() const
+    {
+        return elems.empty();
+    }
+    
+    template <typename T2,
+              template <typename Elem2,
+                        typename = std::allocator<Elem2>> 
+              class Cont2>
+    Stack<T, Cont> & operator=(Stack<T2, Cont2> const &);
+    
+private:
+    Cont<T> elems; // elements
+};
+
+template <typename T, template <typename, typename> class Cont>
+void Stack<T, Cont>::push(T const & elem)
+{
+    elems.push_back(elem);
+}
+
+template <typename T, template <typename, typename> class Cont>
+void Stack<T, Cont>::pop()
+{
+    assert(!elems.empty());
+    elems.pop_back();
+}
+
+template <typename T, template <typename, typename> class Cont>
+T const & Stack<T, Cont>::top() const
+{
+    assert(!elems.empty());
+    return elems.back();
+}
+
+template <typename T, template <typename, typename> class Cont>
+template <typename T2, template <typename, typename> class Cont2>
+Stack<T, Cont> & Stack<T, Cont>::operator=(Stack<T2, Cont2> const & op2)
+{
+    elems.clear();
+    elems.insert(elems.begin(), op2.elems.cbegin(), op2.elems.cend());
+    return *this;
+}
+```
+Still, **not** _all_ standard container templates can be used for `Cont` parameter. 
+For example, `std::array` will **not** work because it includes a nontype template parameter for the array length 
+that has no match in our template template parameter declaration.
+
+
+For further discussion and examples of template template parameters, 
+see Section 12.2, Section 12.3, and Section 19.2.
+
+
+#### 📌 5.8 Summary
+
+
+- To access a nested type name that depends on a template parameter,
+  you have to qualify the name with a leading `typename`.
+- To access members of bases classes that depend on template parameters, 
+  you have to qualify the access by `this->` or their class name.
+- Nested classes and member functions can also be templates. 
+  One application is the ability to implement generic operations with internal type conversions.
+- Template versions of constructors or assignment operators 
+  **don’t** replace predefined constructors or assignment operators.
+- By using braced initialization or explicitly calling a default constructor, 
+  you can ensure that variables and members of templates are initialized with a default value
+  even if they are instantiated with a built-in type.
+- You can provide specific templates for raw arrays, 
+  which can also be applicable to string literals.
+- When passing raw arrays or string literals, 
+  arguments decay (perform an array-to-pointer conversion) during argument deduction 
+  if and only if the parameter is **not** a reference.
+- You can define variable templates. 
+- You can also use class templates and alias templates as template parameters, 
+  as template template parameters. 
+- Template template arguments must usually match their parameters exactly. 
 
 
 
+
+
+
+### 🎯 Chapter 6 Move Semantics and `std::enable_if`
+
+
+#### 📌 6.1 Perfect Forwarding
+
+
+Suppose you want to write generic code that forwards the basic property of passed arguments:
+- Modifyable objects should be forwarded so that they still can be modified.
+- Constant objects should be forwarded as read-only objects.
+- Movable objects should be forwarded as movable objects.
+
+
+To achieve this functionality without templates, we have to program all three cases.
+For example, to forward a call of `f` to a corresponding function `g`:
+```c++
+class X { ... };
+
+void g(X &) {}
+void g(const X &) {}
+void g(X &&) {}
+
+void f(X & val)
+{
+    g(val);
+}
+
+void f(const X & val)
+{
+    g(val);
+}
+
+void f(X && val)
+{
+    // Function parameters are lvalues. 
+    // Call std::move to cast to rvalue. 
+    g(std::move(val));
+}
+```
+Note that the code for movable objects (via an rvalue reference) 
+differs from the other code: 
+It needs a `std::move` because according to language rules, 
+move semantics is **not** passed through, 
+i.e., for an rvalue reference of an rvalue, the reference itself is lvalue. 
+The fact that move semantics is **not** automatically passed through is intentional and important.
+If it weren’t, we would lose the value of a movable object the first time we use it in a function.
+
+
+Although `val` in the third `f` is declared as rvalue reference, 
+its value category when used as expression is a non-constant lvalue (see Appendix B) 
+and behaves as `val` in the first `f`. 
+Without `std::move`, `g(X &)` for non-constant lvalues instead of `g(X &&)` would be called.
+
+
+C++11 introduces special rules for _perfect forwarding_ parameters.
+If we want to combine all three cases in generic code.
+```c++
+template <typename T>
+void f(T && val)
+{
+    g(std::forward<T>(val));
+}
+```
 
 
 
