@@ -4537,7 +4537,7 @@ requires ( parameter-list(optional) ) { requirement-seq }
   - **Simple Requirement**: Expression is valid;
   - **Type Requirements**: Named type is valid;
   - **Compound Requirements**: Properties of the named expression;
-  - **Nested Requirements**: 
+  - **Nested Requirements**: Mixture of the three above. 
 
 
 Requirements may refer to the template parameters that are in scope, 
