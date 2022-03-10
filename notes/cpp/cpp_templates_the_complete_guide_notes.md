@@ -2510,37 +2510,6 @@ void printContainer(const T & c)
     std::cout << '\n';
 }
 ```
-P.S. A more flexible one:
-```c++
-namespace
-{
-    
-template <typename>
-struct is_container_helper : public std::false_type {};
-
-template <typename T, typename Alloc>
-struct is_container_helper<std::vector<T, Alloc>> : public std::true_type {};
-
-}  // namespace
-
-template <typename T>
-struct is_container : public is_container_helper<std::remove_cv_t<std::decay_t<T>>> {};
-
-template <typename T>
-constexpr bool is_container_v = is_container<T>::value;
-
-template <typename Container,
-          std::enable_if_t<is_container_v<Container>, bool> = true>
-std::ostream & operator<<(std::ostream & cout, Container && c)
-{
-    for (const auto & e : c)
-    {
-        cout << e << ' ';
-    }
-
-    return cout;
-}
-```
 See Section 13.3 for more details about the need for `typename` until C++17. 
 Note that C++20 will probably remove the need for `typename` in many common cases (see Section 17.1 for details).
 
@@ -3072,6 +3041,34 @@ Because the assignment operator template isn’t necessary,
 **no** error message of a missing member function `push_front` occurs
 and the program is fine.
 
+#### [Limitations on Member Function Templates](https://en.cppreference.com/w/cpp/language/member_template#Member_function_templates)
+
+- Destructors and copy constructors can **not** be templates. 
+  - If a template constructor is declared which could be instantiated 
+    with the type signature of a copy constructor, 
+    the implicitly-declared copy constructor is used instead.
+- A member function template can **not** be virtual.  
+  - A member function template in a derived class can **not** 
+    override a virtual member function from the base class.
+- A non-template member function and a template member function with the same name may be declared. 
+  - In case of conflict (when some template specialization matches the non-template function signature exactly), 
+    the use of that name and type refers to the _non-template member_ 
+    unless an explicit template argument list is supplied. 
+- An out-of-class definition of a member function template 
+  must be equivalent to the declaration inside the class, 
+  otherwise it is considered to be an _overload_.
+- A _user-defined conversion function_ can be a template.
+  - During overload resolution, 
+    _specializations of conversion function templates_ 
+    are **not** found by name lookup. 
+    Instead, all visible conversion function templates are considered, 
+    and every specialization produced by template argument deduction 
+    (which has special rules for conversion function templates) 
+    is used as if found by name lookup.
+  - Using-declarations in derived classes can **not** refer to 
+    _specializations of template conversion functions_ from base classes.
+  - A _user-defined conversion function template_ can **not** have a deduced return type.
+
 #### Specialization of Member Function Templates
 
 Member function templates can also be partially or fully specialized. 
@@ -3144,7 +3141,7 @@ This effect can be good and bad:
 
 Sometimes, it is necessary to explicitly qualify template arguments 
 when _calling_ a member template. 
-This is _dependent template name_. 
+This is _dependent template name_. _
 In that case, you have to use the `template` keyword 
 to ensure that the less-than token `<` 
 denotes the beginning of the template argument list
@@ -3600,7 +3597,8 @@ see Section 12.2, Section 12.3, and Section 19.2.
 - To access members of bases classes that depend on template parameters, 
   you have to qualify the access by `this->` or their class name.
 - Nested classes and member functions can also be templates. 
-  One application is the ability to implement generic operations with internal type conversions.
+  One application is the ability to implement generic operations with internal type conversions. 
+  Limitations apply to member function templates. 
 - Template versions of constructors or assignment operators 
   **don’t** replace predefined constructors or assignment operators.
 - By using braced initialization or explicitly calling a default constructor, 
@@ -3662,8 +3660,10 @@ void f(X && val)
 Note that the code for movable objects (via an rvalue reference) 
 differs from the other code: 
 It needs a `std::move` because according to language rules, 
-move semantics is **not** passed through, 
-i.e., for an rvalue reference of an rvalue, the reference itself is lvalue. 
+move semantics is **not** passed through.  
+For the function parameter whose _type_ is rvalue reference, its _value category_ is lvalue. 
+
+
 The fact that move semantics is **not** automatically passed through is intentional and important.
 If it weren’t, we would lose the value of a movable object the first time we use it in a function.
 
@@ -3683,6 +3683,1104 @@ void f(T && val)
     g(std::forward<T>(val));
 }
 ```
+Note that `std::move` has no template parameter and “triggers” move semantics for the passed argument, 
+while `std::forward` “forwards” potential move semantic depending on a passed template argument.
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/// remove_reference
+template <typename _Tp>
+struct remove_reference
+{
+    typedef _Tp type;
+};
+
+template <typename _Tp>
+struct remove_reference<_Tp &>
+{
+    typedef _Tp type;
+};
+
+template <typename _Tp>
+struct remove_reference<_Tp &&>
+{
+    typedef _Tp type;
+};
+
+/// <bits/move.h>
+/// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/**
+ *  @brief  Convert a value to an rvalue.
+ *  @param  __t  A thing of arbitrary type.
+ *  @return The parameter cast to an rvalue-reference to allow moving it.
+ */
+template <typename _Tp>
+constexpr typename std::remove_reference<_Tp>::type &&
+move(_Tp && __t) noexcept
+{
+    return static_cast<typename std::remove_reference<_Tp>::type &&>(__t);
+}
+
+/**
+ *  @brief  Forward an lvalue.
+ *  @return The parameter cast to the specified type.
+ *
+ *  This function is used to implement "perfect forwarding".
+ */
+template <typename _Tp>
+constexpr _Tp &&
+forward(typename std::remove_reference<_Tp>::type & __t) noexcept
+{
+    return static_cast<_Tp &&>(__t);
+}
+
+/**
+ *  @brief  Forward an rvalue.
+ *  @return The parameter cast to the specified type.
+ *
+ *  This function is used to implement "perfect forwarding".
+ */
+template <typename _Tp>
+constexpr _Tp &&
+forward(typename std::remove_reference<_Tp>::type && __t) noexcept
+{
+    static_assert(!std::is_lvalue_reference<_Tp>::value,
+                  "template argument substituting _Tp is an lvalue reference type");
+    return static_cast<_Tp &&>(__t);
+}
+```
+Don’t assume that ` &&` for a template parameter `T` behaves as `X &&` for a specific type `X`. 
+Different rules apply! 
+However, syntactically they look identical:
+- `X &&` for a specific type `X` declares a parameter to be an rvalue reference. 
+  It can only be bound to a movable object 
+  (a prvalue, such as a temporary object, and an xvalue, such as an object passed with `std::move`; 
+  see Appendix B for details). 
+  It is always mutable and you can always “steal” its value. 
+  - A type like `X const &&` is valid but provides **no** common semantics in practice
+    because “stealing” the internal representation of a movable object requires
+    modifying that object. 
+    It might be used, though, to force passing only temporaries or objects marked with `std::move` 
+    without being able to modify them. 
+- `T &&` for a template parameter `T` declares a _forwarding reference_ (also called _universal reference_). 
+  - The term _universal reference_ was coined by Scott Meyers prior to C++17 
+    as a common term that could result in either an “lvalue reference” or an “rvalue reference”. 
+    The C++17 standard introduced the term _forwarding reference_, 
+    because the major reason to use such a reference is to forward objects. 
+    However, note that it does **not** automatically forward. 
+    The term does not describe what it is but what it is typically used for. 
+  - It can be bound to a mutable, immutable (i.e., `const`), or movable object. 
+    Inside the function definition, the parameter may be mutable, immutable, 
+    or refer to a value you can “steal” the internals from. 
+
+
+Note that `T` must really be the name of a template parameter. 
+Depending on a template parameter is not sufficient. 
+For a template parameter `T`, a declaration such as `typename T::iterator &&` is just an rvalue reference, 
+**not** a forwarding reference.
+
+
+Of course, perfect forwarding can also be used with variadic templates. 
+See Section 15.6 on page 280 for details of perfect forwarding. 
+
+
+#### 📌 6.2 Special Member Function Templates
+
+
+Member function templates can also be used as special member functions, 
+including as a constructor, which, however, might lead to surprising behavior.
+
+
+Consider the following example:
+```c++
+class Person
+{
+public:
+    explicit Person(std::string n) : name(std::move(n))
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+
+    explicit Person(std::string && n) : name(std::move(n))
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+    
+    Person(const Person & p) : name(p.name)
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+
+    Person(Person && p) noexcept : name(std::move(p.name))
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+
+private:
+    std::string name;
+};
+
+std::string s = "sname";
+Person p1(s);              // Person::Person(const string &)      
+Person p2("tmp");          // Person::Person(std::string &&)
+Person p3(p1);             // Person::Person(const Person &)
+Person p4(std::move(p1));  // Person::Person(Person &&)
+```
+Here, we have a class `Person` with a `std::string` member `name` 
+for which we provide initializing constructors. 
+To support move semantics, we overload the constructor taking a `std::string`. 
+
+
+Now let’s replace the two `std::string` constructors 
+with one generic constructor perfect forwarding the passed argument to the member `name`:
+```c++
+class Person
+{
+public:
+    template <typename String>
+    explicit Person(String && n) : name(std::forward<String>(n))
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+    
+    Person(const Person & p) : name(p.name)
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+
+    Person(Person && p) noexcept : name(std::move(p.name))
+    {
+        std::cout << __PRETTY_FUNCTION__ << '\n';
+    }
+
+private:
+    std::string name;
+};
+
+std::string s = "sname";
+Person p1(s);      // Person::Person(String &&) [with String = std::string &]
+Person p2("tmp");  // Person::Person(String &&) [with String = const char (&)[4]]
+```
+Note how the construction of `p2` does **not** create a temporary `std::string` in this case: 
+The parameter `String` is deduced to be of type `const char (&)[4]`. 
+Applying `std::forward<String>` to the pointer parameter of the constructor 
+has not much of an effect, 
+and the `name` member is thus constructed from a null-terminated C character array. 
+But when we attempt to call the copy constructor, we get an error: 
+```c++
+Person p3(p1);             // ERROR: Can not assign Person p1 to std::string name
+Person p4(std::move(p1));  // Person::Person(Person &&)
+```
+Note that also copying a constant `Person` works fine:
+```c++
+const Person p2c("ctmp");
+Person p3c(p2c);           // Person::Person(const Person&)
+```
+The problem is that, according to the overload resolution rules of C++ (see Section 16.2), 
+for a non-`const` lvalue `Person` `p`, the member template
+```c++
+template <typename String>
+explicit Person(String && n) : name(std::forward<String>(n))
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+```
+is a better match than the (usually predefined) copy constructor:
+```c++
+Person (Person const & p)
+```
+because the forwarding reference offers a _perfect match_, 
+while the predefined copy constructor requires one 
+_implicit conversion_ from non-`const` to `const`. 
+
+
+You might think about solving this by also providing a non-`const` copy constructor:
+```c++
+Person (Person & p)
+```
+However, that is only a partial solution, because for objects of a _derived class_, 
+the forwarding reference template is still a better match. 
+What you really want is to disable the member template for the case 
+that the passed argument is a `Person` or an expression that can be converted to a `Person`. 
+This can be done by using `std::enable_if`, which is introduced in the next section. 
+```c++
+template <typename String,
+          std::enable_if_t<std::is_convertible_v<String, 
+                                                 std::string>, 
+                           bool> = true>
+explicit Person::Person(String && n) : name(std::forward<String>(n))
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+```
+
+
+#### 📌 6.3 Disable Templates with `std::enable_if`
+
+
+Since C++11, the C++ standard library provides a helper template `std::enable_if` 
+to ignore function templates under certain compile-time conditions. 
+```c++
+// <type_traits>
+// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+
+/// Define a member typedef @c type only if a boolean constant is true.
+template <bool, typename _Tp = void>
+struct enable_if
+{
+};
+
+// Partial specialization for true.
+template <typename _Tp>
+struct enable_if<true, _Tp>
+{
+    typedef _Tp type;
+};
+
+/// Alias template for enable_if
+template <bool _Cond, typename _Tp = void>
+using enable_if_t = typename enable_if<_Cond, _Tp>::type;
+```
+`std::enable_if` is a type trait that evaluates
+a given compile-time constant expression (`constexpr`)
+passed as its first template argument, 
+and behaves as follows:
+- If the expression yields `true`, its type member `type` yields a type: 
+  - The type is `void` if no second template argument is passed;
+  - Otherwise, the type is the second template argument type. 
+- If the expression yields `false`, the member type is not defined. 
+  Due to a template feature called SFINAE (Substitution Failure Is Not An Error, see Section 8.4), 
+  this has the effect that the function template with the `std::enable_if` expression is ignored.
+
+
+For example, if a function template `foo` is defined as follows:
+```c++
+template <typename T>
+std::enable_if_t<(4 < sizeof(T))>
+foo() {}
+```
+this definition of `foo` is _ignored_ if `4 < sizeof(T)` yields `false`. 
+If `4 < sizeof(T)` yields `true`, the function template instantiated to
+```c++
+void foo() {}
+```
+If a second argument is passed to `std::enable_if`:
+```c++
+template <typename T>
+std::enable_if_t<(4 < sizeof(T)), T>
+foo() 
+{
+    return T {};
+}
+```
+Having the `std::enable_if` expression in the middle of a declaration is pretty clumsy. 
+For this reason, the common way to use `std::enable_if` 
+is to use `std::enable_if` as an _anonymous template (type of non-type) argument with a default value_.
+If that is still too clumsy, and you want to make the requirement/constraint more explicit,
+you can define your own name for it using an _alias template_: 
+```c++
+// use as anonymous type argument
+template <typename T, 
+          typename = std::enable_if_t<(4 < sizeof(T))>>
+void foo() {}
+
+// use as anonymous non-type argument
+template <typename T, 
+          std::enable_if_t<(4 < sizeof(T)), bool> = true>
+void bar() {}
+
+// use as alias template
+template <typename T>
+using EnableIfSizeGreaterThan4 = std::enable_if_t<(4 < sizeof(T))>;
+
+template <typename T,
+          typename = EnableIfSizeGreaterThan4<T>>
+void fun() {}
+```
+which expands to the following if `4 < sizeof(T)`: 
+```c++
+// use as anonymous type argument
+template <typename T, typename = void>
+void foo() {}
+
+// use as anonymous non-type argument
+template <typename T, bool = true>
+void bar() {}
+
+// use as alias template
+template <typename T, typename = void>
+void fun() {}
+```
+See Section 20.3 for a discussion of how `std::enable_if` is implemented.
+
+
+#### 📌 6.4 Using `std::enable_if`
+
+
+```c++
+template <typename String,
+          typename = std::enable_if_t<
+                  std::is_convertible_v<String, std::string>>>
+explicit Person::Person(String && n);
+```
+If type `String` is convertible to type `std::string`, the whole declaration expands to
+```c++
+template <typename String, typename = void>
+explicit Person::Person(String && n);
+```
+If type `String` is not convertible to type `std::string`, the whole function template is ignored.
+
+
+If you wonder why we don’t instead check whether `String` is “not convertible to `Person`”, beware:
+We are defining a function that might allow us to convert a `std::string` to a `Person`.
+So the constructor has to know whether it is enabled,
+which depends on whether it is convertible, which depends on whether it is enabled, and so on.
+**Never** use `std::enable_if` in places that impact the condition used by `std::enable_if`.
+This is a logical error that compilers do not necessarily detect.
+
+
+Again, we can define our own name for the constraint by using an alias template:
+```c++
+template <typename T>
+using EnableIfString = std::enable_if_t<std::is_convertible_v<T, std::string>>;
+
+template <typename String, typename = EnableIfString<String>>
+explicit Person::Person(String && n);
+```
+Note also that there is an alternative to using `std::is_convertible`
+because it requires that the types are _implicitly convertible_. 
+By using `std::is_constructible`, we also allow explicit conversions to be used for the initialization. 
+However, the order of the arguments is the opposite is this case:
+```c++
+template <typename T>
+using EnableIfString = std::enable_if_t<std::is_constructible_v<std::string, T>>;
+```
+See Section D.3 details about `std::is_constructible` and `std::is_convertible`. 
+See Section D.6 for details and examples to apply `std::enable_if` on variadic templates. 
+
+#### Disabling Special Member Functions
+
+Note that normally we **can’t** use `std::enable_if` to disable 
+the predefined copy/move constructors and/or assignment operators. 
+
+
+Recall Section 5.5 for one of the limitations on member function templates: 
+- _Destructors_ and _copy constructors_ can **not** be templates. 
+  - If a template constructor is declared which could be instantiated 
+    with the type signature of a copy constructor, 
+    the implicitly-declared copy constructor is used instead. 
+
+
+Thus, with this declaration:
+```c++
+class C 
+{
+public:
+    template <typename T>
+    C (T const &) { ... }
+    
+    ... 
+};
+```
+the predefined copy constructor is still used, when a copy of a `C` is requested:
+```c++
+C x;
+C y {x};  // still uses the predefined copy constructor (not the member template)
+```
+(There is really no way to use the member template 
+because there is no way to specify or deduce its template parameter `T`.)
+
+
+Deleting the predefined copy constructor is **no** solution, 
+because then the trial to copy a `C` results in an error. 
+
+
+There is a tricky solution, though: 
+We can declare a copy constructor for `const volatile` arguments and define it `= delete;`. 
+Doing so prevents another copy constructor from being implicitly declared. 
+With that in place, we can define a constructor template 
+that will be preferred over the (deleted) copy constructor for non-volatile types:
+```c++
+class C
+{
+public:
+    // user-define the predefined copy constructor as deleted
+    // (with conversion to volatile to enable better matches)
+    C(C const volatile &) = delete;
+    
+    // implement copy constructor template with better match:
+    template <typename T>
+    C(T const &) { ... }
+    
+    ...
+};
+```
+Now the template constructors are used even for “normal” copying:
+```c++
+C x;
+C y {x};  // uses the member template
+```
+In such a template constructor we can then apply additional constraints with `std::enable_if`. 
+For example, to prevent being able to copy objects of a class template `C` 
+if the template parameter is an integral type, 
+we can implement the following:
+```c++
+template <typename T>
+class C
+{
+public:
+    // user-define the predefined copy constructor as deleted
+    // (with conversion to volatile to enable better matches)
+    C(C const volatile &) = delete;
+    
+    // if U is no integral type, 
+    // provide copy constructor template with better match:
+    template <typename U,
+              typename = std::enable_if_t<!std::is_integral<U>::value>>
+    C(C<U> const &) 
+    {
+        ...
+    }
+};
+```
+
+
+#### 📌 6.5 [Constraints And Concepts](https://en.cppreference.com/w/cpp/language/constraints) `(since C++20)`
+
+
+Class templates, function templates, and non-template functions (typically members of class templates) 
+may be associated with a _constraint_, which specifies the requirements on template arguments, 
+which can be used to select the most appropriate function overloads and template specializations.
+
+
+Named sets of such requirements are called _concepts_. 
+Each concept is a predicate, evaluated at compile time, 
+and becomes a part of the interface of a template where it is used as a constraint: 
+```c++
+#include <concepts>
+#include <cstddef>
+#include <string>
+ 
+// Declaration of the concept "Hashable", 
+// which is satisfied by any type 'T' such that for values 'a' of type 'T', 
+// the expression std::hash<T>{}(a) compiles, 
+// and its result is convertible to std::size_t
+template <typename T>
+concept Hashable = requires(T a)
+{
+    { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
+};
+ 
+struct meow {};
+ 
+// Constrained C++20 function template:
+template <Hashable T>
+void f(T) {}
+
+// Alternative ways to apply the same constraint:
+template <typename T> requires Hashable<T>
+void g(T) {}
+
+// Alternative ways to apply the same constraint:
+template <typename T>
+void h(T) requires Hashable<T> {}
+ 
+int main()
+{
+    using std::operator""s;
+ 
+    f("abc"s);   // OK: std::string literals satisfies Hashable
+    f(meow {});  // ERROR: meow does not satisfy Hashable
+}
+```
+Violations of constraints are detected at compile time, 
+early in the template instantiation process, 
+which leads to easy-to-follow error messages. 
+
+
+The intent of concepts is to model semantic categories (Number, Range, RegularFunction) 
+rather than syntactic restrictions (HasPlus, Array). 
+According to _ISO C++ Core Guideline T.20_: 
+> The ability to specify meaningful semantics 
+> is a defining characteristic of a true concept, 
+> as opposed to a syntactic constraint. 
+
+
+#### Concepts
+
+
+A concept is a named set of requirements. 
+The definition of a concept must appear at namespace scope.
+The definition of a concept has the form
+```
+template <template-parameter-list>
+concept concept-name = constraint-expression;
+```
+```c++
+// concept
+template <class T, class U>
+concept Derived = std::is_base_of<U, T>::value;
+```
+Concepts can **not** recursively refer to themselves and can **not** be constrained:
+```c++
+template <typename T>
+concept V = V<T *>;     // ERROR: recursive concept
+ 
+template <class T>
+concept C1 = true;
+
+template <C1 T>
+concept Error1 = true;  // ERROR: C1 T attempts to constrain a concept definition
+
+template <class T> requires C1<T>
+concept Error2 = true;  // ERROR: the requires-clause attempts to constrain a concept
+```
+Explicit instantiations, explicit specializations, or partial specializations of concepts are **not** allowed.  
+That is, the meaning of the original definition of a constraint can **not** be changed. 
+
+
+Concepts can be named in an id-expression. 
+The value of the id-expression is `true` if the constraint expression is satisfied, and `false` otherwise.
+
+
+Concepts can also be named in a _type-constraint_, as part of
+- [Type Template Parameter Declaration](https://en.cppreference.com/w/cpp/language/template_parameters#Type_template_parameter)
+- [Placeholder Type Specifier (`auto`)](https://en.cppreference.com/w/cpp/language/auto)
+- [Compound Requirement](https://en.cppreference.com/w/cpp/language/constraints#Compound_Requirements)
+
+
+In a type-constraint, a concept takes one less template argument than its parameter list demands, 
+because the contextually deduced type is implicitly used as the first argument of the concept.
+```c++
+template <class T, class U>
+concept Derived = std::is_base_of<U, T>::value;
+ 
+template <Derived<Base> T>
+void f(T);  // T is constrained by Derived<T, Base>
+```
+
+#### Constraints
+
+A constraint is a sequence of logical operations and operands 
+that specifies requirements on template arguments. 
+They can appear within _requires-expressions_ and directly as bodies of concepts.
+
+
+There are three types of constraints:
+1. **Conjunctions**: Logical AND of multiple constraints via `&&`;
+2. **Disjunctions**: Logical OR of multiple constraints via `||`;
+3. **Atomic Constraints**: Parameter mapping. 
+
+
+The constraint associated with a declaration are determined 
+by [normalizing](https://en.cppreference.com/w/cpp/language/constraints#Constraint_normalization)
+a logical AND expression of the operands. 
+
+
+A constrained declaration may only be redeclared using the same syntactic form. 
+No diagnostic is required:
+```c++
+template <Incrementable T>
+void f(T) requires Decrementable<T>;
+ 
+template <Incrementable T>
+void f(T) requires Decrementable<T>;  // OK, redeclaration
+ 
+template <typename T> requires Incrementable<T> && Decrementable<T>
+void f(T);  // ill-formed, no diagnostic required
+ 
+// the following two declarations have different constraints:
+// the first declaration has Incrementable<T> && Decrementable<T>
+// the second declaration has Decrementable<T> && Incrementable<T>
+// Even though they are logically equivalent.
+ 
+template <Incrementable T> 
+void g(T) requires Decrementable<T>;
+ 
+template <Decrementable T> 
+void g(T) requires Incrementable<T>;  // ill-formed, no diagnostic required
+```
+
+##### Conjunctions
+
+The conjunction of two constraints is formed by using the `&&` operator in the constraint expression:
+```c++
+template <class T>
+concept Integral = std::is_integral<T>::value;
+
+template <class T>
+concept SignedIntegral = Integral<T> && std::is_signed<T>::value;
+
+template <class T>
+concept UnsignedIntegral = Integral<T> && !SignedIntegral<T>;
+```
+A conjunction of two constraints is satisfied only if both constraints are satisfied. 
+Conjunctions are evaluated left to right and short-circuited. 
+
+##### Disjunctions
+
+The disjunction of two constraints is formed by using the `||` operator in the constraint expression.
+
+
+A disjunction of two constraints is satisfied if either constraint is satisfied. 
+Disjunctions are evaluated left to right and short-circuited. 
+```c++
+template <class T = void> requires EqualityComparable<T> || Same<T, void>
+struct equal_to;
+```
+
+##### Atomic Constraints
+
+An atomic constraint consists of an expression `E` and a mapping: 
+from the template parameters that appear within `E`,  
+to template arguments involving the template parameters of the constrained entity, 
+called its _parameter mapping_.
+
+
+Atomic constraints are formed during constraint normalization. 
+`E` is **never** a logical AND or logical OR expression 
+(those form conjunctions and disjunctions, respectively). 
+
+
+Satisfaction of an atomic constraint is checked 
+by substituting the parameter mapping and template arguments into the expression `E`. 
+If the substitution results in an invalid type or expression, the constraint is not satisfied. 
+Otherwise, `E`, after any lvalue-to-rvalue conversion, 
+shall be a prvalue constant expression of type `bool` , 
+and the constraint is satisfied if and only if it evaluates to `true`.
+
+
+The type of `E` after substitution must be exactly `bool`. 
+No conversion is permitted:
+```c++
+template <typename T>
+struct S
+{
+    constexpr operator bool() const { return true; }
+};
+ 
+template <typename T> requires (S<T> {})
+void f(T);    // #1
+ 
+void f(int);  // #2
+ 
+void g()
+{
+    f(0);     // ERROR: S<int> {} does not have type bool when checking #1,
+              // even though #2 is a better match
+}
+```
+Two atomic constraints are considered _identical_ 
+if they are formed from the same expression at the source level
+and their parameter mappings are equivalent.
+```c++
+template <class T>
+constexpr bool is_meowable = true;
+ 
+template <class T>
+constexpr bool is_cat = true;
+ 
+template <class T>
+concept Meowable = is_meowable<T>;
+ 
+template <class T>
+concept BadMeowableCat = is_meowable<T> && is_cat<T>;
+ 
+template <class T>
+concept GoodMeowableCat = Meowable<T> && is_cat<T>;
+ 
+template <Meowable T>
+void f1(T);  // #1
+ 
+template <BadMeowableCat T>
+void f1(T);  // #2
+ 
+template <Meowable T>
+void f2(T);  // #3
+ 
+template <GoodMeowableCat T>
+void f2(T);  // #4
+ 
+void g()
+{
+    f1(0);   // ERROR, ambiguous:
+             // The is_meowable<T> in Meowable and BadMeowableCat forms 
+             // distinct atomic constraints that are not identical 
+             // (and so do not subsume each other)
+ 
+    f2(0);   // OK, calls #4, more constrained than #3
+             // GoodMeowableCat got its is_meowable<T> from Meowable
+}
+```
+
+##### Constraint Normalization
+
+Constraint normalization is the process that 
+transforms a constraint expression into a sequence of conjunctions and disjunctions of atomic constraints. 
+The normal form of an expression is defined as follows:
+- `(E)`: 
+  The normal form of `E`;
+- `E1 && E2`: 
+  The conjunction of the normal forms of `E1` and `E2`.
+- `E1 || E2`: 
+  The disjunction of the normal forms of `E1` and `E2`.
+- `C<A1, A2, ... , AN>`, where `C` names a concept:  
+  The normal form of the constraint expression of `C`, 
+  after substituting `A1, A2, ... , AN` for `C`'s respective template parameters 
+  in the parameter mappings of each atomic constraint of `C`. 
+  If any such substitution into the parameter mappings results in an invalid type or expression, 
+  the program is ill-formed, no diagnostic required. 
+```c++
+concept A = T::value || true;
+ 
+template <typename U>
+concept B = A<U *>;    // OK: normalized to the disjunction of 
+                       // - T::value (with mapping T -> U *) and
+                       // - true (with an empty mapping).
+                       // No invalid type in mapping even though
+                       // T::value is ill-formed for all pointer types
+ 
+template <typename V>
+concept C = B<V &>;    // Normalizes to the disjunction of
+                       // - T::value (with mapping T-> V & *) and
+                       // - true (with an empty mapping).
+                       // Invalid type V & * formed in mapping => ill-formed NDR
+```
+- Any other expression `E`:  
+  The atomic constraint whose expression is `E` and whose parameter mapping is the identity mapping. 
+  This includes all fold expressions, even those folding over the `&&` or `||` operators. 
+
+
+User-defined overloads of `&&` or `||` have **no** effect on constraint normalization.
+
+
+#### Requires Clauses
+
+The keyword `requires` is used to introduce a _requires-clause_, 
+which specifies constraints on template arguments or on a function declaration. 
+```c++
+// can appear as the last element of a function declarator
+template <typename T>
+void f(T &&) requires Eq<T>; 
+
+// or right after a template parameter list
+template <typename T> requires Addable<T> 
+T add(T a, T b) { return a + b; }
+```
+In this case, the keyword `requires` must be followed by some constant expression 
+(so it's possible to write `requires true`), 
+but the intent is one of the following:  
+- A named concept (as in the example above); 
+- A conjunction/disjunction of named concepts; 
+  - A _requires-expression_, which must have one of the following forms:
+    - A [primary expression](https://en.cppreference.com/w/cpp/language/expressions#Primary_expressions);
+      - E.g.: 
+        - `Swappable<T>`; 
+        - `std::is_integral<T>::value`;
+        - `std::is_object_v<Args> && ...`; 
+        - Any _parenthesized_ expression `(expr)`. 
+    - A sequence of primary expressions joined with `&&`; 
+    - A sequence of aforementioned expressions joined with `||`. 
+```c++
+template <class T>
+constexpr bool is_meowable = true;
+ 
+template <class T>
+constexpr bool is_purrable() { return true; }
+ 
+template <class T>
+void f(T) requires is_meowable<T>;      // OK
+ 
+template <class T>
+void g(T) requires is_purrable<T>();    // ERROR, is_purrable<T>() is not a primary expression
+ 
+template <class T>
+void h(T) requires (is_purrable<T>());  // OK
+```
+
+#### Requires Expressions
+
+The keyword `requires` is also used to begin a _requires-expression_, 
+which is a prvalue expression of type `bool` that describes the constraints on some template arguments. 
+Such an expression is `true` if the constraints are satisfied, and `false` otherwise:
+```c++
+// requires-expression
+template <typename T>
+concept Addable = requires (T x) { x + x; }; 
+ 
+// requires-clause, not requires-expression
+template <typename T> requires Addable<T> 
+T add(T a, T b) { return a + b; }
+ 
+// ad-hoc constraint, note keyword requires used twice
+template <typename T> requires requires (T x) { x + x; } 
+T add(T a, T b) { return a + b; }
+```
+The syntax of requires-expression is as follows:
+```c++
+requires { requirement-seq }
+requires ( parameter-list(optional) ) { requirement-seq }
+```
+- _parameter-list_: 
+  A comma-separated list of parameters like in a function declaration, 
+  **except** that default arguments are **not** allowed 
+  and it can **not** end with an ellipsis 
+  (other than one signifying a pack expansion). 
+  These parameters have **no** storage, linkage or lifetime,
+  and are only used to assist in specifying requirements. 
+  These parameters are in scope until the closing `}` of the _requirement-seq_.
+- _requirement-seq_: 
+  Sequence of requirements, each requirement ends with a semicolon.
+  Each requirement in the _requirements-seq_ is one of the following:
+  - **Simple Requirement**: Expression is valid;
+  - **Type Requirements**: Named type is valid;
+  - **Compound Requirements**: Properties of the named expression;
+  - **Nested Requirements**: 
+
+
+Requirements may refer to the template parameters that are in scope, 
+to the local parameters introduced in the _parameter-list_, 
+and to any other declarations that are visible from the enclosing context.
+
+
+The substitution of template arguments into a requires-expression used in a declaration of a templated entity 
+may result in the formation of invalid types or expressions in its requirements,
+or the violation of semantic constraints of those requirements. 
+In such cases, the _requires-expression_ evaluates to `false` 
+and does **not** cause the program to be ill-formed. 
+The substitution and semantic constraint checking proceeds in lexical order 
+and stops when a condition that determines the result of the _requires-expression_ is encountered. 
+If substitution (if any) and semantic constraint checking succeed, the requires-expression evaluates to `true`.
+
+
+If a substitution failure would occur in a _requires-expression_ for every possible template argument, 
+the program is ill-formed, no diagnostic required:
+```c++
+// invalid for every T: ill-formed, no diagnostic required
+template <class T>
+concept C = requires
+{
+    new int[-(int)sizeof(T)];
+};
+```
+If a _requires-expression_ contains invalid types or expressions in its requirements, 
+and it does **not** appear within the declaration of a templated entity, 
+then the program is ill-formed.
+
+##### Simple Requirements: Expression Is Valid
+
+A simple requirement is an arbitrary expression statement 
+that does **not** start with the keyword `requires`. 
+It asserts that the _expression is valid_. 
+The expression is an unevaluated operand. 
+Only language correctness is checked.
+```c++
+template <typename T>
+concept Addable = requires (T a, T b)
+{
+    a + b; // "the expression a+b is a valid expression that will compile"
+};
+ 
+template <class T, class U = T>
+concept Swappable = requires (T && t, U && u)
+{
+    swap(std::forward<T>(t), std::forward<U>(u));
+    swap(std::forward<U>(u), std::forward<T>(t));
+};
+```
+A requirement that starts with the keyword `requires` is always interpreted as a nested requirement. 
+Thus a simple requirement can **not** start with an unparenthesized _requires-expression_.
+
+##### Type Requirements: Named Type is Valid
+
+A type requirement is the keyword `typename` followed by a type name, optionally qualified. 
+The requirement is that the _named type is valid_. 
+This can be used to verify that a certain named nested type exists, 
+or that a class template specialization names a type, 
+or that an alias template specialization names a type. 
+A type requirement naming a class template specialization does **not** require the type to be complete.
+```c++
+template <typename T>
+using Ref = T &;
+ 
+template <typename T>
+concept C = requires
+{
+    typename T::inner;  // required nested member name
+    typename S<T>;      // required class template specialization
+    typename Ref<T>;    // required alias template substitution
+};
+ 
+template <class T, class U>
+using CommonType = std::common_type_t<T, U>;
+ 
+template <class T, class U>
+concept Common = requires (T && t, U && u)
+{
+    // CommonType<T, U> is valid and names a type
+    typename CommonType<T, U>;
+    { CommonType<T, U>{std::forward<T>(t)} }; 
+    { CommonType<T, U>{std::forward<U>(u)} }; 
+};
+```
+
+##### Compound Requirements: Properties of The Named Expression
+
+A compound requirement has the form
+```
+{ expression } noexcept(optional) -> type-constraint(optional) ;
+```
+and asserts _properties of the named expression_. 
+
+
+Substitution and semantic constraint checking proceeds in the following order: 
+1. Template arguments (if any) are substituted into expression;
+2. If `noexcept` is used, expression must **not** be potentially throwing;
+3. If _return-type-requirement_ is present, then:
+   1. Template arguments are substituted into the _return-type-requirement_;
+   2. `decltype((expression))` must satisfy the constraint imposed by the _type-constraint_. 
+      Otherwise, the enclosing _requires-expression_ is `false`.
+```c++
+template <typename T>
+concept C2 = requires(T x)
+{
+    // the expression *x must be valid
+    // AND the type T::inner must be valid
+    // AND the result of *x must be convertible to T::inner
+    {*x} -> std::convertible_to<typename T::inner>;
+ 
+    // the expression x + 1 must be valid
+    // AND std::same_as<decltype((x + 1)), int> must be satisfied
+    // i.e., (x + 1) must be a prvalue of type int
+    {x + 1} -> std::same_as<int>;
+ 
+    // the expression x * 1 must be valid
+    // AND its result must be convertible to T
+    {x * 1} -> std::convertible_to<T>;
+};
+```
+
+##### Nested Requirements
+
+A nested requirement has the form
+```
+requires constraint-expression ;
+```
+It can be used to specify additional constraints in terms of local parameters. 
+The constraint-expression must be satisfied by the substituted template arguments, if any. 
+Substitution of template arguments into a nested requirement 
+causes substitution into the constraint-expression 
+only to the extent needed to determine whether the constraint-expression is satisfied.
+```c++
+template <class T>
+concept Semiregular = 
+        DefaultConstructible<T> && 
+        CopyConstructible<T> &&
+        Destructible<T> && 
+        CopyAssignable<T> &&
+requires(T a, size_t n)
+{  
+    // nested: "Same<...> evaluates to true"
+    requires Same<T *, decltype(& a)>; 
+    
+    // compound: "a.~T()" is a valid expression that doesn't throw
+    { a.~T() } noexcept;
+    
+    // nested: "Same<...> evaluates to true"
+    requires Same<T*, decltype(new T)>;
+    
+    // nested
+    requires Same<T*, decltype(new T[n])>;  
+    
+    // compound
+    { delete new T };
+    
+    // compound
+    { delete new T[n] };  
+};
+```
+
+
+#### 📌 6.6 Summary
+
+
+- In templates, you can “perfectly” forward parameters by declaring them as forwarding references 
+  (declared with a type formed with the name of a template parameter followed by `&&`) 
+  and using `std::forward` in the forwarded call.
+- When using perfect forwarding member function templates, 
+  they might match better than the predefined special member function to copy or move objects. 
+- With std::enable_if, you can disable a function template when a compile-time condition is `false` 
+  (the template is then ignored once that condition has been determined). 
+- By using `std::enable_if` you can avoid problems 
+  when constructor templates or assignment operator templates
+  that can be called for single arguments 
+  are a better match than implicitly generated special member functions.
+- You can templify (and apply `enable_if`) to special member functions 
+  by `delete`ing the predefined special member functions for `const volatile`.
+- Concepts will allow us to use a more intuitive syntax for requirements on function templates. 
+
+
+
+
+
+
+### 🎯 Chapter 7 By Value or by Reference?
+
+
+C++ provides both _call-by-value_ and _call-by-reference_, 
+and it is **not** always easy to decide which one to choose:
+Usually calling by reference is cheaper for nontrivial objects but more complicated. 
+C++11 added move semantics to the mix, 
+which means that we now have different ways to pass by reference:
+1. `X const &` (constant lvalue reference):  
+   The parameter refers to the passed object, **without** the ability to modify it; 
+2. `X &` (nonconstant lvalue reference):  
+   The parameter refers to the passed object, with the ability to modify it;
+3. `X &&` (rvalue reference):  
+   The parameter refers to the passed object, with move semantics, 
+   meaning that you can modify or “steal” the value.
+4. `X const &&` (constant rvalue reference):  
+   Available, but with no established semantic meaning.   
+
+
+Deciding how to declare parameters with known concrete types is complicated enough. 
+In templates, types are **not** known, and therefore it becomes even harder 
+to decide which passing mechanism is appropriate. 
+
+
+Nevertheless, in Section 1.6 we did recommend passing parameters in function templates by value 
+unless there are good reasons, such as the following:
+- Copying (for lvalues, `since C++17`) is **not** possible. 
+  Note that since C++17 you can pass temporary entities (rvalues) by value 
+  even if **no** copy or move constructor is available (see Section B.2). 
+  So, since C++17 the additional constraint is that copying for lvalues is not possible. 
+- Parameters are used to return data. 
+- Templates just perfect-forward the parameters to somewhere else 
+  by keeping all the properties of the original arguments.
+- There are significant performance improvements.
+
+
+This chapter discusses the different approaches to declare parameters in templates, 
+motivating the general recommendation to pass by value, 
+and providing arguments for the reasons not to do so. 
+
+
+It also discusses the tricky problems you run into 
+when dealing with string literals and other raw arrays. 
+
+
+When reading this chapter, it is helpful to be familiar with 
+the terminology of _value categories_ (lvalue, rvalue, prvalue, xvalue, etc.), 
+which is explained in Appendix B.
+
+
+#### 📌 7.1 Passing by Value
+
+
+
+
 
 
 
