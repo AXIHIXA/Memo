@@ -4244,12 +4244,14 @@ primary-expression  : 'true' |
                       ...
 
 # Requires expression
-requires-expression : 'requires' '{' requirement-seq '}' | 
-                      'requires' '(' parameter-list(optional) ')' '{' requirement-seq '}'
-requirement-seq     : simple-requirement(expr is valid) | 
-                      type-requirements(named type is valid) | 
-                      compound-requirements(properties of named expression) |  
-                      nested-requirements(mixture of the three above)
+requires-expression   : 'requires' '{' requirement-seq '}' | 
+                        'requires' '(' parameter-list(optional) ')' '{' requirement-seq '}'
+requirement-seq       : simple-requirement(expression is valid) | 
+                        type-requirements(named type is valid) | 
+                        compound-requirements(properties of named expression) |  
+                        nested-requirements(mixture of the three above)
+compound-requirements : '{' expression '}' 'noexcept'(optional) '->' type-constraint(optional) ';'
+nested-requirements   : 'requires' constraint-expression ';'
 ```
 
 #### Concepts
