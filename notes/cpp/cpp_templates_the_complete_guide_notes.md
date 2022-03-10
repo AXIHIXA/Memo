@@ -4207,9 +4207,52 @@ According to _ISO C++ Core Guideline T.20_:
 > is a defining characteristic of a true concept, 
 > as opposed to a syntactic constraint. 
 
+#### Syntax Overview
+        
+```
+# Usage of concept-related stuff
+template-parameter-list : 'typename' parameter-name | 
+                          concept-name parameter-name | 
+                          ...
+template-arguments      : requires-clause
+function-declaration    : requires-clause
+
+# Concept Defination
+'template' '<' template-parameter-list '>'
+'concept' concept-name '=' constraint-expression ';'
+
+# Constraint expression
+constraint-expression : conjuctions | 
+                        disjunctions | 
+                        atomic-constraints
+conjuctions           : constraint-expression '&&' constraint-expression
+disjunctions          : constraint-expression '||' constraint-expression
+atomic-constraints    : true iff. expr is valid AND is of type bool with value ture, no conversion permitted
+
+# Requires clause
+requires-clause     : constant-expression
+constant-expression : primary-expression | 
+                      primary-expression '&&' primary-expression | 
+                      primary-expression '||' primary-expression | 
+                      requires-expression 
+primary-expression  : 'true' | 
+                      'false' |
+                      concept-name | 
+                      std::is_integral<T>::value | 
+                      std::is_object_v<Args> && ...;
+                      '(' expr ')' | 
+                      ...
+
+# Requires expression
+requires-expression : 'requires' '{' requirement-seq '}' | 
+                      'requires' '(' parameter-list(optional) ')' '{' requirement-seq '}'
+requirement-seq     : simple-requirement(expr is valid) | 
+                      type-requirements(named type is valid) | 
+                      compound-requirements(properties of named expression) |  
+                      nested-requirements(mixture of the three above)
+```
 
 #### Concepts
-
 
 A concept is a named set of requirements. 
 The definition of a concept must appear at namespace scope.
@@ -4353,7 +4396,7 @@ and the constraint is satisfied if and only if it evaluates to `true`.
 
 
 The type of `E` after substitution must be exactly `bool`. 
-No conversion is permitted:
+**No** conversion is permitted. 
 ```c++
 template <typename T>
 struct S
@@ -4556,7 +4599,7 @@ If substitution (if any) and semantic constraint checking succeed, the requires-
 
 
 If a substitution failure would occur in a _requires-expression_ for every possible template argument, 
-the program is ill-formed, no diagnostic required:
+the program is ill-formed, no diagnostic required: 
 ```c++
 // invalid for every T: ill-formed, no diagnostic required
 template <class T>
