@@ -2163,10 +2163,10 @@ value categories were redefined to characterize two independent properties of ex
 
 In C++11, expressions that:
 
-- have identity and cannot be moved from are called lvalue expressions;
-- have identity and can be moved from are called xvalue expressions;
+- have identity and cannot be moved from are called `lvalue` expressions;
+- have identity and can be moved from are called `xvalue` expressions;
 - do not have identity and can be moved from are called `prvalue` expressions;
-- do not have identity and cannot be moved from are not used.
+- do not have identity and cannot be moved from are **not** used.
 
 The expressions that have identity are called `glvalue` expressions.
 Both lvalues and `xvalues` are `glvalue` expressions.

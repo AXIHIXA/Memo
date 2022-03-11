@@ -4168,7 +4168,7 @@ and becomes a part of the interface of a template where it is used as a constrai
 // the expression std::hash<T>{}(a) compiles, 
 // and its result is convertible to std::size_t
 template <typename T>
-concept Hashable = requires(T a)
+concept Hashable = requires (T a)
 {
     { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
 };
@@ -4208,7 +4208,8 @@ According to _ISO C++ Core Guideline T.20_:
 > as opposed to a syntactic constraint. 
 
 #### Syntax Overview
-        
+
+Might not be correct, for quick-but-not-precise reference: 
 ```
 # Usage of concept-related stuff
 template-parameter-list : 'typename' parameter-name | 
@@ -4224,10 +4225,13 @@ function-declaration    : requires-clause
 # Constraint expression
 constraint-expression : conjuctions | 
                         disjunctions | 
-                        atomic-constraints
+                        atomic-constraints | 
+                        requires-expression
 conjuctions           : constraint-expression '&&' constraint-expression
 disjunctions          : constraint-expression '||' constraint-expression
-atomic-constraints    : true iff. expr is valid AND is of type bool with value ture, no conversion permitted
+atomic-constraints    : normalizes to true iff. 
+                        expression is valid AND 
+                        is of type bool with value ture, no conversion permitted
 
 # Requires clause
 requires-clause     : constant-expression
@@ -4823,6 +4827,95 @@ which is explained in Appendix B.
 
 #### 📌 7.1 Passing by Value
 
+
+When passing arguments by value, each argument must in principle be copied. 
+Thus, each parameter becomes a copy of the passed argument. 
+For classes, the object created as a copy 
+is generally initialized by the copy constructor.
+
+
+Calling a copy constructor can become expensive. 
+However, there are various way to avoid expensive copying 
+even when passing parameters by value: 
+In fact, compilers might optimize away copy operations. 
+Copying objects can become cheap even for complex objects by using move semantics.
+
+
+For example, let’s look at a simple function template 
+implemented so that the argument is passed by value:
+```c++
+template <typename T>
+void printV (T arg) 
+{
+    ...
+}
+```
+When calling this function template for an integer, the resulting code is
+```c++
+void printV (int arg) 
+{
+    ...
+}
+```
+Parameter `arg` becomes a copy of any passed argument, 
+no matter whether it is an object, a literal, or a function return value.
+
+
+If we define a `std::string` and call our function template for it:
+```c++
+void printV (std::string arg)
+{
+    ...
+}
+```
+Again, when passing the `std::string`, `arg` becomes a copy. 
+This time the copy is created by the copy constructor of the `std::string` class, 
+which is a potentially expensive operation,
+because in principle this copy operation creates a full or “deep” copy 
+so that the copy internally allocates its own memory to hold the value. 
+
+
+The implementation of the `std::string` class might itself 
+have some optimizations to make copying cheaper. 
+One is the _Small String Optimization (SSO)_, 
+using some memory directly inside the object to hold the value 
+without allocating memory as long as the value is not too long. 
+Another is the copy-on-write optimization, which creates a copy using the same memory 
+as the source as long as neither source nor the copy is modified. 
+However, the copy-on-write optimization has significant drawbacks in multi-threaded code.
+For this reason, it is forbidden for standard strings since C++11. 
+
+
+However, the potential copy constructor is **not** always called. 
+Consider the following:
+```c++
+std::string returnString();
+std::string s = "hi";
+printV(s);                   // copy constructor
+printV(std::string("hi"));   // copying usually optimized away (if not, move constructor)
+printV(returnString());      // copying usually optimized away (if not, move constructor)
+printV(std::move(s));        // move constructor
+```
+In the first call we pass an lvalue, 
+which means that the copy constructor is used. 
+However, in the second and third calls,
+when directly calling the function template for prvalues 
+(temporary objects created on the fly or returned by another function; see Appendix B), 
+compilers usually optimize passing the argument so that **no** copying constructor is called at all. 
+Note that since C++17, this optimization is required. 
+Before C++17, a compiler that doesn’t optimize the copying away, 
+must at least have to try to use move semantics, which usually makes copying cheap. 
+In the last call, when passing an xvalue 
+(an existing non-constant object with `std::move`), we force to call the move constructor by signaling that we no
+longer need the value of s.
+
+
+Thus, calling an implementation of printV() that declares the parameter to be
+passed by value usually is only expensive if we pass an lvalue (an object we created
+before and typically still use afterwards, as we didn’t use std::move() to pass it).
+Unfortunately, this is a pretty common case. One reason is that it is pretty common
+to create objects early to pass them later (after some modifications) to other
+functions.
 
 
 
