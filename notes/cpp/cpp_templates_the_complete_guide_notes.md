@@ -68,10 +68,10 @@ Implement each template inside a header file.
 
 ##### Type Conversions During Type Deduction
 
-- During template type deduction,
+- During template type deduction for template parameters,
   arguments' reference-ness and top-level cv-constraints are ignored.
-    - Note only pointers and references have top-level cv-constraints.
-      A raw type like `const int` is considered bottom-level cv-constraint.
+    - Note that arguments' top-level cv becomes bottom-level for reference parameters,
+      thus cv is kept for reference parameters.
 - When deducing types for universal reference parameters,
   reference collapse may occur.
 - During template type deduction,
@@ -4898,24 +4898,73 @@ printV(std::move(s));        // move constructor
 ```
 In the first call we pass an lvalue, 
 which means that the copy constructor is used. 
-However, in the second and third calls,
+However, in the second and third calls, 
 when directly calling the function template for prvalues 
 (temporary objects created on the fly or returned by another function; see Appendix B), 
-compilers usually optimize passing the argument so that **no** copying constructor is called at all. 
+compilers usually optimize passing the argument 
+so that **no** copying constructor is called at all. 
 Note that since C++17, this optimization is required. 
 Before C++17, a compiler that doesn’t optimize the copying away, 
-must at least have to try to use move semantics, which usually makes copying cheap. 
+must at least have to try to use move semantics,
+which usually makes copying cheap. 
 In the last call, when passing an xvalue 
-(an existing non-constant object with `std::move`), we force to call the move constructor by signaling that we no
-longer need the value of s.
+(an existing non-constant object with `std::move`), 
+we force to call the move constructor
+by signaling that we no longer need the value of `s`. 
 
 
-Thus, calling an implementation of printV() that declares the parameter to be
-passed by value usually is only expensive if we pass an lvalue (an object we created
-before and typically still use afterwards, as we didn’t use std::move() to pass it).
-Unfortunately, this is a pretty common case. One reason is that it is pretty common
-to create objects early to pass them later (after some modifications) to other
-functions.
+Thus, calling an implementation of `printV` 
+that declares the parameter to be passed by value 
+usually is only expensive if we pass an lvalue 
+(an object we created before and typically still use afterwards, 
+as we didn’t use `std::move` to pass it). 
+Unfortunately, this is a pretty common case. 
+One reason is that it is pretty common to create objects early 
+to pass them later (after some modifications) to other functions.
+
+#### Passing by Value Decays
+
+There is another property of passing by value we have to mention: 
+When passing arguments to a parameter by value, the type _decays_. 
+This means that raw arrays get converted to pointers, 
+and that top-level cv-constraints are removed, 
+just like using the value as initializer for an object declared with `auto`.
+```c++
+template <typename T>
+void printV (T arg) 
+{
+    ...
+}
+
+std::string const c = "hi";
+printV(c);     // decays so that arg has type std::string
+printV("hi");  // decays to pointer so that arg has type char const * 
+
+int arr[4];
+printV(arr);   // decays to pointer so that arg has type char const *
+```
+Thus, when passing the string literal `"hi"`, 
+its type `char const [3]` decays to `char const *` so that this is the deduced type of `T`. 
+Thus, the template is instantiated as follows:
+```c++
+void printV (char const * arg)
+{
+    ...
+}
+```
+This behavior is derived from C and has its benefits and drawbacks. 
+Often it simplifies the handling of passed string literals, 
+but the drawback is that inside `printV` we **can’t** distinguish between 
+passing a pointer to a single element and passing a raw array. 
+For this reason, we will discuss how to deal with string literals
+and other raw arrays in Section 7.4.
+
+
+#### 📌 7.2 Passing by Reference
+
+
+
+
 
 
 

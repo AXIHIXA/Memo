@@ -19,10 +19,10 @@
 
 ### 📌 Item 1: Understand template type deduction
 
-- During template type deduction,
-  arguments' reference-ness and top-level cv-constraints are ignored.
-  - Note only pointers and references have top-level cv-constraints.
-    A raw type like `const int` is considered bottom-level cv-constraint.
+- During template type deduction for template parameters,
+  arguments' reference-ness and top-level cv-constraints are ignored. 
+  - Note that arguments' top-level cv becomes bottom-level for reference parameters, 
+    thus cv is kept for reference parameters. 
 - When deducing types for universal reference parameters,
   reference collapse may occur.
 - During template type deduction,
