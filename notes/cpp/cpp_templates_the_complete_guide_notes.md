@@ -2346,7 +2346,7 @@ the deduction guide is discarded and the overall deduction fails.
 This way, the standard library ensures that 
 all elements must have the same type for the deduction guide to succeed.
 
-##### Variadic Base Classes and using
+##### Variadic Base Classes and `using`
 
 Finally, consider the following example:
 ```c++
@@ -4038,7 +4038,7 @@ We are defining a function that might allow us to convert a `std::string` to a `
 So the constructor has to know whether it is enabled,
 which depends on whether it is convertible, which depends on whether it is enabled, and so on.
 **Never** use `std::enable_if` in places that impact the condition used by `std::enable_if`.
-This is a logical error that compilers do not necessarily detect.
+This is a logical error that compilers do not necessarily detect. 
 
 
 Again, we can define our own name for the constraint by using an alias template:
@@ -4845,14 +4845,14 @@ For example, let’s look at a simple function template
 implemented so that the argument is passed by value:
 ```c++
 template <typename T>
-void printV (T arg) 
+void printV(T arg) 
 {
     ...
 }
 ```
 When calling this function template for an integer, the resulting code is
 ```c++
-void printV (int arg) 
+void printV(int arg) 
 {
     ...
 }
@@ -4863,7 +4863,7 @@ no matter whether it is an object, a literal, or a function return value.
 
 If we define a `std::string` and call our function template for it:
 ```c++
-void printV (std::string arg)
+void printV(std::string arg)
 {
     ...
 }
@@ -4922,7 +4922,7 @@ Unfortunately, this is a pretty common case.
 One reason is that it is pretty common to create objects early 
 to pass them later (after some modifications) to other functions.
 
-#### Passing by Value Decays
+##### Passing by Value Decays
 
 There is another property of passing by value we have to mention: 
 When passing arguments to a parameter by value, the type _decays_. 
@@ -4931,7 +4931,7 @@ and that top-level cv-constraints are removed,
 just like using the value as initializer for an object declared with `auto`.
 ```c++
 template <typename T>
-void printV (T arg) 
+void printV(T arg) 
 {
     ...
 }
@@ -4947,7 +4947,7 @@ Thus, when passing the string literal `"hi"`,
 its type `char const [3]` decays to `char const *` so that this is the deduced type of `T`. 
 Thus, the template is instantiated as follows:
 ```c++
-void printV (char const * arg)
+void printV(char const * arg)
 {
     ...
 }
@@ -4963,12 +4963,907 @@ and other raw arrays in Section 7.4.
 #### 📌 7.2 Passing by Reference
 
 
+Now let’s discuss the different flavors of passing by reference. 
+In all cases, **no** _copy_ gets created (because the parameter just refers to the passed argument). 
+Also, passing the argument **never** _decays_. 
+However, sometimes pass-by-reference is **not** possible, and if passing is possible, 
+there are cases in which the resulting type of the parameter may cause problems.
+
+##### 7.2.1 Passing by Constant Reference
+
+To avoid any (unnecessary) copying, when passing non-temporary objects, 
+we can use constant references. For example:
+```c++
+template <typename T>
+void printR(T const & arg) 
+{
+    ...
+}
+
+std::string returnString();
+std::string s = "hi";
+printR(s);                  // no copy
+printR(std::string("hi"));  // no copy
+printR(returnString());     // no copy
+printR(std::move(s));       // no copy
+```
+Even an `int` is passed by reference, 
+which is a bit counter-productive 
+but shouldn’t matter that much: 
+```c++
+int i = 42;
+printR(i);   // passes const int & (8 Bytes on 64-bit OS) 
+             // instead of copying an int (4 Bytes)
+```
+Under the hood, passing an argument by reference 
+is implemented by passing the address of the argument. 
+Addresses are encoded compactly, and therefore 
+transferring an address from the caller to the callee is efficient in itself. 
+However, passing an address can create uncertainties for the compiler 
+when it compiles the caller’s code: 
+What is the callee doing with that address? 
+In theory, the callee can change all the values that are “reachable” through that address. 
+That means, that the compiler has to assume that 
+_all the values it may have cached (usually in machine registers) are invalid after the call_. 
+Reloading all those values can be quite expensive. 
+
+
+You may be thinking that we are passing by _constant_ reference: 
+Cannot the compiler deduce from that that no change can happen? 
+Unfortunately, that is **not** the case 
+because the caller may modify the referenced object 
+through its own, non-const reference.
+Furthermore, the use of `const_cast` is another, more explicit, 
+way to modify the referenced object.
+
+
+This bad news is moderated by inlining: 
+If the compiler can expand the call _inline_,
+it can reason about the caller and the callee _together_ 
+and in many cases “see” that the address is not used for anything but passing the underlying value. 
+Function templates are often very short and therefore likely candidates for inline expansion. 
+However, if a template encapsulates a more complex algorithm, inlining is less likely to happen.
+
+##### Passing by Reference Does Not Decay
+
+When passing arguments to parameters by reference, they do **not** decay. 
+This means that raw arrays are **not** converted to pointers 
+and that cv-constraints are untouched. 
+However, because the _call_ parameter is declared as `T const &`, 
+the _template_ parameter `T` itself is **not** deduced as `const`. 
+For example:
+```c++
+template <typename T>
+void printR(T const & arg) 
+{
+    ...
+}
+
+std::string const c = "hi";
+printR(c);     // T deduced as std::string, arg is std::string const &
+printR("hi");  // T deduced as char [3], arg is const char (&)[3]
+int arr[4];
+printR(arr);   // T deduced as int [4], arg is const int (&)[4]
+```
+Thus, local objects declared with type `T` in `printR` are **not** constant. 
+
+##### 7.2.2 Passing by Non-constant Reference
+
+When you want to return values through passed arguments 
+(i.e., when you want to use _out_ or _inout_ parameters), 
+you have to use non-constant references (unless you prefer to pass them via pointers). 
+Again, this means that when passing the arguments, **no** copy gets created. 
+The parameters of the called function template just get direct access to the passed argument.
+Consider the following:
+```c++
+template <typename T>
+void outR(T & arg) 
+{
+    ...
+}
+```
+Note that calling `outR` for a temporary (prvalue) 
+or an existing object passed with `std::move` (xvalue) 
+usually is `not` allowed:
+```c++
+std::string returnString();
+std::string s = "hi";
+outR(s);                     // OK: T deduced as std::string, arg is std::string&
+outR(std::string("hi"));     // ERROR: not allowed to pass a temporary (prvalue)
+outR(returnString());        // ERROR: not allowed to pass a temporary (prvalue)
+outR(std::move(s));          // ERROR: not allowed to pass an xvalue
+```
+You can pass raw arrays of non-constant types, which again **don’t** decay:
+```c++
+int arr[4];
+outR(arr);                   // OK: T deduced as int [4], arg is int (&)[4]
+```
+Thus, you can modify elements and, for example, deal with the size of the array. 
+For example:
+```c++
+template <typename T>
+void outR (T & arg)
+{
+    if constexpr (std::is_array_v<T>)
+    {
+        std::cout << "got array of " << std::extent_v<T> << "elems\n";
+    }
+    
+    ...
+}
+```
+However, templates are a bit tricky here. 
+If you pass a const argument, the deduction might result in 
+`arg` becoming a declaration of a constant reference, 
+which means that passing an rvalue is suddenly allowed, 
+where an lvalue is expected:
+```c++
+std::string const c = "hi";
+outR(c);                    // OK: T deduced as std::string const
+outR(returnConstString());  // OK: T deduced as std::string const
+outR(std::move(c));         // OK: T deduced as std::string const
+outR("hi");                 // OK: T deduced as char const [3]
+```
+Note: 
+When passing `std::move(c)`, `std::move` first converts `c` to `std::string const &&`, 
+which then has the effect that `T` is deduced as `std::string const`. 
+
+
+Of course, any attempt to modify the passed argument inside the function template is an error in such cases. 
+Passing a `const` object is possible in the call expression itself,
+but when the function is fully instantiated (which may happen later in the compilation process), 
+any attempt to modify the value will trigger an error 
+(which, however, might happen deep inside the called template; see Section 9.4). 
+
+
+If you want to disable passing constant objects to non-constant references, 
+you can do the following:
+- Use `static_assert` to trigger a compile-time error:
+```c++
+template <typename T>
+void outR(T & arg) 
+{
+    static_assert(!std::is_const_v<T>, "out parameter of foo<T>(T &) is const");
+    ...
+}
+```
+- Disable the template for this case by `std::enable_if`:
+```c++
+template <typename T, 
+          typename = std::enable_if_v<!std::is_const_v<T>>>
+void outR(T & arg) 
+{
+    ...
+}
+```
+- Disable the template for this case by concepts:
+```c++
+template <typename T> requires !std::is_const_v<T>
+void outR(T & arg) 
+{
+    ...
+}
+```
+
+##### 7.2.3 Passing by Forwarding Reference
+
+One reason to use call-by-reference is to be able to perfect forward a parameter (see Section 6.1). 
+But remember that when a forwarding reference is used, 
+which is defined as an rvalue reference of a template parameter, special rules apply.
+```c++
+template <typename T>
+void passR(T && arg) 
+{
+    ...
+}
+```
+You can pass everything to a forwarding reference and, 
+as usual when passing by reference, **no** copy gets created. 
+However, the special rules for type deduction may result in some surprises:
+```c++
+std::string const c = "hi";
+passR(c);     // OK: T deduced as std::string const &
+
+// Note that C-style string literals are lvalues by language standard! 
+passR("hi");  // OK: T deduced as char const(&)[3] (also the type of arg)
+
+int arr[4];
+passR(arr);   // OK: T deduced as int (&)[4] (also the type of arg)
+```
+In each of these cases, inside `passR` the parameter `arg` has a type that “knows”
+whether we passed an rvalue (to use move semantics) or a constant/non-constant lvalue. 
+This is the only way to pass an argument, 
+such that it can be used to distinguish behavior for all of these three cases.
+This gives the impression that declaring a parameter as a forwarding reference is almost perfect. 
+But beware, there is no free lunch.
+For example, this is the only case where the template parameter `T`
+implicitly can become a reference type. 
+As a consequence, it might become an error to use `T` to declare a local object without initialization:  
+```c++
+template <typename T>
+void passR(T && arg) 
+{
+    // for passed lvalues, x is a reference, 
+    // which requires an initializer
+    T x;
+    
+    ...
+}
+
+foo(42);  // OK: T deduced as int
+int i;
+foo(i);   // ERROR: T deduced as int &, which makes the declaration of x in passR invalid
+```
+See Section 15.6 for further details about 
+how you can deal with this situation. 
+
+#### 7.3 Using [`std::ref` and `std::cref`](https://en.cppreference.com/w/cpp/utility/functional/ref)
+
+Since C++11, you can let the caller decide, 
+for a function template argument,
+whether to pass it by value or by reference. 
+When a template is declared to take arguments by value, 
+the caller can use `std::cref` and `std::ref`,
+declared in header file `<functional>`,
+to pass the argument "as if by reference".
+For example:
+```c++
+template <typename T>
+void printT(T arg) 
+{
+    ...
+}
+
+std::string s = "hello";
+printT(s);             // pass s by value
+printT(std::cref(s));  // pass s “as if by reference”
+```
+However, note that `std::cref` does **not** change the handling of parameters in templates. 
+Instead, it uses a trick: 
+It wraps the passed argument `s` by an object that acts like a reference. 
+In fact, it creates an object of type 
+[`std::reference_wrapper`](https://en.cppreference.com/w/cpp/utility/functional/reference_wrapper) 
+referring to the original argument 
+and passes this object by value. 
+The wrapper more or less supports only one operation: 
+an implicit type conversion back to the original type, yielding the original object. 
+So, whenever you have a valid operator for the passed object, 
+you can use the reference wrapper instead. For example:
+```c++
+void printString(std::string const & s)
+{
+    std::cout << s << '\n';
+}
+
+template <typename T>
+void printT(T arg)
+{
+    printString(arg);     // might convert arg back to std::string
+}
+
+std::string s = "hello";
+printT(s);                // print s passed by value
+printT(std::cref(s));     // print s passed “as if by reference”
+```
+The last call passes by value an object of type `std::reference_wrapper<string const>` to the parameter `arg`, 
+which then passes and therefore converts it back to its underlying type `std::string`.
+Note that the compiler has to know that an implicit conversion back to the original type is necessary. 
+For this reason, `std::ref` and `std::cref` usually work fine _only if_ you pass objects _through_ generic code. 
+For example, directly trying to output the passed object of the generic type `T` will fail 
+because there is **no** output operator defined for `std::reference_wrapper`:
+```c++
+template <typename T>
+void printV(T arg) 
+{
+    std::cout << arg << '\n';
+}
+
+std::string s = "hello";
+printV(s);                // OK
+printV(std::cref(s));     // ERROR: no operator<< for reference wrapper defined
+```
+Also, the following fails because you **can’t** compare 
+a reference wrapper with a `char const *` or `std::string`:
+```c++
+template <typename T1, typename T2>
+bool isless(T1 arg1, T2 arg2)
+{
+    return arg1 < arg2;
+}
+
+std::string s = " hello";
+if (isless(std::cref(s) < "world")) ...               // ERROR
+if (isless(std::cref(s) < std::string("world"))) ...  // ERROR
+```
+It also **doesn’t** help to give `arg1` and `arg2` a common type `T`:
+```c++
+template <typename T>
+bool isless(T arg1, T arg2)
+{
+    return arg1 < arg2;
+}
+```
+because then the compiler gets _conflicting types_ when trying to deduce `T` for `arg1` and `arg2`. 
+
+
+Thus, the effect of class `std::reference_wrapper` is 
+to be able to use a reference as a “first class object”,  
+which you can copy and therefore pass by value to function templates. 
+You can also use it in classes, for example,
+to hold references to objects in containers. 
+But you always finally need a conversion back to the underlying type.
+
+
+#### 📌 7.4 Dealing with String Literals and Raw Arrays
+
+
+So far, we have seen the different effects for templates parameters 
+when using string literals and raw arrays: 
+- Call-by-value decays so that they become pointers to the element type. 
+- Any form of call-by-reference does not decay 
+  so that the arguments become references that still refer to arrays.
+
+
+Both can be good and bad. 
+When decaying arrays to pointers, you lose the ability to 
+distinguish between handling pointers to elements from handling passed arrays. 
+On the other hand, when dealing with parameters where string literals may be passed,
+not decaying can become a problem,
+because string literals of different size have different types. 
+For example:
+```c++
+template <typename T>
+void foo(T const & arg1, T const & arg2)
+{
+    ...
+}
+
+foo("hi", "guy");  // ERROR
+```
+Here, `foo("hi","guy")` fails to compile, 
+because `"hi"` has type `char const [3]`, 
+while `"guy"` has type `char const [4]`, 
+but the template requires them to have the same type `T`. 
+Only if the string literals were to have the same length would such code compile. 
+For this reason, it is strongly recommended to use string literals of different lengths in test cases. 
+
+
+By declaring the function template `foo` to pass the argument by value, the call is possible:
+```c++
+template <typename T>
+void foo(T arg1, T arg2)
+{
+    ...
+}
+
+foo("hi", "guy");  // compiles, but...
+```
+But, that doesn’t mean that all problems are gone. 
+Even worse, compile-time problems may have become run-time problems. 
+Consider the following code, where we compare the passed argument using `operator==`:
+```c++
+template <typename T>
+void foo(T arg1, T arg2)
+{
+    if (arg1 == arg2)
+    {
+        // OOPS: compares addresses of passed arrays
+        ...
+    }
+    
+    ...
+}
+
+foo("hi", "guy");  // compiles, but...
+```
+As written, you have to know that you should 
+interpret the passed character pointers as strings. 
+But that’s probably the case anyway, 
+because the template also has to deal with arguments coming from 
+string literals that have been decayed already 
+(e.g., by coming from another function called by value 
+or being assigned to an object declared with `auto`). 
+
+
+Nevertheless, in many cases decaying is helpful,
+especially for checking whether two objects 
+(both passed as arguments, or one passed as argument and the other expecting the argument)
+have or convert to the same type. 
+One typical usage is perfect forwarding. 
+But if you want to use perfect forwarding,
+you have to declare the parameters as forwarding references. 
+In those cases, you might explicitly decay the arguments 
+using the type trait `std::decay`. 
+See the story of `std::make_pair` in Section 7.6 for a concrete example. 
+
+
+Note that other type traits sometimes also implicitly decay, 
+such as `std::common_type`, 
+which yields the common type of two passed argument types (see Section D.5). 
+
+##### 7.4.1 Special Implementations for String Literals and Raw Arrays
+
+You might have to distinguish your implementation according to 
+whether a pointer or an array was passed. 
+This, of course, requires that a passed array wasn’t decayed yet. 
+
+
+To distinguish these cases, you have to detect whether arrays are passed.
+Basically, there are two options:
+- You can declare template parameters so that they are only valid for arrays:
+  ```c++
+  template <typename T, std::size_t L1, std::size_t L2>
+  void foo(T (& arg1)[L1], T (& arg2)[L2])
+  {
+      T * pa = arg1;  // decay arg1
+      T * pb = arg2;  // decay arg2
+      
+      if (compareArrays(pa, L1, pb, L2)) 
+      {
+          ...
+      }
+  }
+  ```
+  Here, `arg1` and `arg2` have to be raw arrays of the same element type `T` 
+  but with different sizes `L1` and `L2`. 
+  However, note that you might need _multiple implementations_
+  to support the four various forms for each raw array call parameter, 
+  including whether the array is referenced or is bounded (see Section 5.4).
+- You can use type traits to detect whether an array (or a pointer) was passed:
+```c++
+template <typename T,
+          typename = std::enable_if_t<std::is_array_v<T>>>
+void foo (T && arg1, T && arg2)
+{
+    ...
+}
+```
+Due to these special handling, 
+often the best way to deal with arrays in different ways 
+is simply to use different function names. 
+Even better, of course, is to ensure that the caller of a template 
+uses `std::vector` or `std::array` or `std::string` literal. 
+But as long as string literals are raw arrays, 
+we always have to take them into account. 
+
+
+#### 📌 7.5 Dealing with Return Values
+
+
+For return values, you can also decide between returning by value or by reference. 
+However, returning references is potentially a source of trouble, 
+because you refer to something that is out of your control. 
+
+
+First, **never** ~~return any type of reference to temporaries~~, 
+including const lvalue reference and rvalue reference. 
+The delay of temporary destruction due to references can not be passed on. 
+
+
+There are a few cases where returning references is common programming practice:
+- Returning elements of containers or strings (e.g., by `operator[]` or `front`);
+- Granting write access to class members;
+- Returning objects for chained calls 
+  (`operator<<` and `operator>>` for streams and `operator=` for class objects in general). 
+
+
+In addition, it is common to grant read access to members by returning `const` references.
+
+
+Note that all these cases may cause trouble if used improperly. For example:
+```c++
+std::string * s = new std::string("whatever");
+auto & c = (*s)[0];
+delete s;
+std::cout << c << '\n';  // run-time ERROR
+```
+Here, we obtained a reference to an element of a string, 
+but by the time we use that reference, 
+the underlying string no longer exists 
+(i.e., we created a dangling reference),
+and we have undefined behavior.
+This example is somewhat contrived
+(the experienced programmer is likely to notice the problem right away), 
+but things easily become less obvious. For example:
+```c++
+auto s = std::make_shared<std::string>("whatever");
+auto & c = (*s)[0];
+s.reset();
+std::cout << c << '\n';  //run-time ERROR
+```
+We should therefore ensure that function templates return their result by value. 
+However, as discussed in this chapter, 
+using a template parameter `T` is **no** guarantee that it is not a reference, 
+because `T` might sometimes implicitly be deduced as a reference:
+```c++
+template <typename T>
+T retR(T && p)       // p is a forwarding reference
+{
+    return T {...};  // OOPS: returns by reference when called for lvalues
+}
+```
+Even when `T` is a template parameter deduced from a call-by-value call, 
+it might become a reference type when explicitly specifying the template parameter to be a reference:
+```c++
+template <typename T>
+T retV(T p)          // Note: T might become a reference
+{
+    return T {...};  // OOPS: returns a reference if T is a reference
+}
+
+int x;
+retV<int &>(x);      // retT instantiated for T as int &
+```
+To be safe, you have two options:
+- Use the type trait `std::remove_reference` (see Section D.4)
+  to convert type `T` to a non-reference:
+```c++
+template <typename T>
+std::remove_reference_t<T> retV(T p)
+{
+    return T {...};  // always returns by value
+}
+```
+  Other traits, such as `std::decay` (see Section D.4), 
+  may also be useful here because they also implicitly remove references.
+- Let the compiler deduce the return type by just declaring the return type to be `auto`, 
+  because `auto` always decays: 
+```c++
+template <typename T>
+auto retV(T p)       // by-value return type deduced by compiler
+{
+    return T {...};  // always returns by value
+}
+```
+
+
+#### 📌 7.6 Recommended Template Parameter Declarations
+
+
+As we learned in the previous sections, 
+we have very different ways to declare parameters that depend on template parameters:
+- **Declare to pass the arguments by value**:  
+  This approach is simple, it decays string literals and raw arrays, 
+  but it **doesn’t** provide the best performance for large objects. 
+  Still the caller can decide to pass by reference using `std::cref` and `std::ref`, 
+  but the caller must be careful that doing so is valid.
+- **Declare to pass the arguments by-reference**:  
+  This approach often provides better performance for somewhat large objects,
+  especially when passing: 
+  – Existing objects (lvalues) to lvalue references;
+  – Temporary objects (prvalues) or objects marked as movable (xvalue) to rvalue references;
+  – Or both to forwarding references.
+  Because in all these cases the arguments **don’t** decay, 
+  you may need special care when passing string literals and other raw arrays. 
+  For forwarding references, you also have to beware that with this approach 
+  template parameters implicitly can deduce to reference types.
+
+##### General Recommendations
+
+With these options in mind, for function templates we recommend the following:
+1. By default, declare parameters to be passed by value. 
+   This is simple and usually works even with string literals. 
+   The performance is fine for small arguments and for temporary or movable objects. 
+   The caller can sometimes use `std::ref` and `std::cref` when passing existing large objects (lvalues)
+   to avoid expensive copying. 
+2. If there are good reasons, do otherwise:
+   - If you need an out or inout parameter, 
+     which returns a new object or allows to modify an argument to/for the caller, 
+     pass the argument as a non-constant reference
+     (unless you prefer to pass it via a pointer). 
+     However, you might consider disabling accidentally accepting `const` objects
+     as discussed in Section 7.2.2. 
+   - If a template is provided to forward an argument, use perfect forwarding. 
+     That is, declare parameters to be forwarding references and use `std::forward` where appropriate. 
+     Consider using `std::decay` or `std::common_type` to “harmonize” 
+     the different types of string literals and raw arrays.
+   - If performance is key and it is expected that copying arguments is expensive, 
+     use constant references. 
+     This, of course, does not apply if you need a local copy anyway.
+3. If you know better, don’t follow these recommendations. 
+   However, do **not** ~~make intuitive assumptions about performance~~. 
+   Even experts fail if they try. Instead: Measure! 
+
+##### Don’t Be Over-Generic
+
+Note that, in practice, function templates often are **not** for arbitrary types of arguments. 
+Instead, some constraints apply. 
+For example, you may know that only vectors of some type are passed. 
+In this case, it is better **not** to declare such a function too generically, 
+because, as discussed, surprising side effects may occur. 
+Instead, use the following declaration:
+```c++
+template <typename T>
+void printVector(std::vector<T> const & v)
+{
+    ...
+}
+```
+With this declaration of parameter `v` in `printVector`, 
+we can be sure that the passed `T` **can’t** become a reference 
+because vectors can’t use references as element types. 
+Also, it is pretty clear that passing a vector by value almost always can become expensive because 
+the copy constructor of `std::vector` creates a copy of the elements. 
+For this reason, it is probably **never** useful to declare such a vector parameter to be passed by value.
+If we declare parameter `v` just as having type `T` deciding, 
+between call-by-value and call-by-reference becomes less obvious. 
+
+##### The `std::make_pair` Example
+
+`std::make_pair` is a good example to demonstrate the pitfalls of
+deciding a parameter passing mechanism. 
+It is a convenience function template in the C++ standard library 
+to create `std::pair` objects using type deduction. 
+Its declaration changed through different versions of the C++ standard:
+- In the first C++ standard, C++98, 
+  `std::make_pair` was declared to use call-by-reference to avoid unnecessary copying:
+  ```c++
+  template <typename T1, typename T2>
+  pair<T1, T2> make_pair(T1 const & a, T2 const & b)
+  {
+      return pair<T1, T2>(a, b);
+  }
+  ```
+  This, however, almost immediately caused significant problems 
+  when using pairs of string literals or raw arrays of different size.
+- As a consequence, with C++03 the function definition was changed to use call-by-value:
+  ```c++
+  template <typename T1, typename T2>
+  pair<T1, T2> make_pair(T1 a, T2 b)
+  {
+      return pair<T1, T2>(a, b);
+  }
+  ```
+  As you can read in the rationale for the issue resolution, 
+  > It appeared that this was a much smaller change to the standard than the other two suggestions, 
+  > and any efficiency concerns were more than offset by the advantages of the solution.
+- However, with C++11, `make_pair` had to support move semantics, 
+  so that the arguments had to become forwarding references. 
+  The complete implementation is even more complex: 
+  To support `std::ref` and `std::cref`, the function also 
+  unwraps instances of `std::reference_wrapper` into real references.
+  ```c++
+  /// <type_traits>
+  /// g++ (Ubuntu 9.4.0-1ubuntu1~20.04) 9.4.0
+  template <typename _Tp>
+  class reference_wrapper;
+  
+  // Helper which adds a reference to a type when given a reference_wrapper
+  template <typename _Tp>
+  struct __strip_reference_wrapper
+  {
+      typedef _Tp __type;
+  };
+  
+  template <typename _Tp>
+  struct __strip_reference_wrapper<reference_wrapper<_Tp>>
+  {
+      typedef _Tp & __type;
+  };
+  
+  template <typename _Tp>
+  struct __decay_and_strip
+  {
+      typedef typename __strip_reference_wrapper<typename decay<_Tp>::type>::__type __type;
+  };
+  
+  /// <stl_pair>
+  /// g++ (Ubuntu 9.4.0-1ubuntu1~20.04) 9.4.0
+  template <typename _T1, typename _T2>
+  constexpr pair<typename __decay_and_strip<_T1>::__type,
+                 typename __decay_and_strip<_T2>::__type>
+  make_pair(_T1 && __x, _T2 && __y)
+  {
+      typedef typename __decay_and_strip<_T1>::__type __ds_type1;
+      typedef typename __decay_and_strip<_T2>::__type __ds_type2;
+      typedef pair<__ds_type1, __ds_type2> __pair_type;
+      return __pair_type(std::forward<_T1>(__x), std::forward<_T2>(__y));
+  }
+  ```
+The C++ standard library now perfectly forwards passed arguments 
+in many places in similar way, 
+often combined with using `std::decay`.
+
+
+#### 📌 7.7 Summary
+
+
+- When testing templates, use string literals of different length.
+- Template parameters passed by value decay, 
+  while passing them by reference does **not** decay. 
+- The type trait `std::decay` allows you to decay parameters 
+  in templates passed by reference.
+- In some cases `std::cref` and `std::ref` allow you to pass arguments by reference 
+  when function templates declare them to be passed by value.
+- Passing template parameters by value is simple 
+  but may not result in the best performance.
+- Pass parameters to function templates by value 
+  unless there are good reasons to do otherwise.
+- Ensure that return values are usually passed by value 
+  (which might mean that a template parameter **can’t** be specified directly as a return type).
+- Always measure performance when it is important. 
+  Do **not** rely on intuition; it’s probably wrong.
 
 
 
 
 
 
+### 🎯 Chapter 8 Compile-Time Programming 
+
+
+C++ has always included some simple ways to compute values at compile time. 
+Templates considerably increased the possibilities in this area, 
+and further evolution of the language has only added to this toolbox. 
+
+
+In the simple case, you can decide whether to use certain or to choose between different template code. 
+But the compiler even can compute the outcome of control flow at compile time, 
+provided all necessary input is available. 
+
+
+In fact, C++ has multiple features to support compile-time programming: 
+- Since before C++98, templates have provided the ability to compute at compile time, 
+  including the TMP-based implementation 
+  of branches (via partial specializations) and loops (via recursion).
+- With partial specialization we can choose at compile time 
+  between different class template implementations 
+  depending on specific constraints or requirements.
+- With the SFINAE principle, we can allow 
+  selection between different function template implementations 
+  for different types or different constraints.
+- In C++11 and C++14, compile-time computing became increasingly better supported 
+  with the `constexpr` feature using “intuitive” execution path selection
+  and, since C++14, most statement kinds (including for loops, switch statements, etc.). 
+- C++17 introduced a `if constexpr` ("compile-time `if`") 
+  to discard statements depending on compile-time conditions or constraints. 
+  It works even outside of templates. 
+
+
+This chapter introduces these features with a special focus on the role and context of templates.
+
+
+#### 📌 8.1 Template Metaprogramming (TMP)
+
+
+Templates are instantiated at compile time
+(in contrast to dynamic languages, where genericity is handled at run time).
+It turns out that some of the features of C++ templates 
+can be combined with the instantiation process 
+to produce a sort of primitive recursive "programming language" (Functional Programming)
+within the C++ language itself. 
+
+
+In fact, it was Erwin Unruh who first found it out 
+by presenting a program computing prime numbers at compile time. 
+See Section 23.7 for details. 
+
+
+For this reason, templates can be used to “compute a program”. 
+Chapter 23 will cover the whole story and all features, 
+but here is a short example of what is possible. 
+
+
+The following code finds out at compile time 
+whether a given number is a prime number:
+```c++
+// p: number to check, d: current divisor
+template <unsigned p, unsigned d> 
+struct DoIsPrime
+{
+    static constexpr bool value = (p % d != 0) && DoIsPrime <p, d - 1>::value;
+};
+
+// end recursion if divisor is 2 
+template <unsigned p> 
+struct DoIsPrime<p, 2>
+{
+    static constexpr bool value = (p % 2 != 0);
+};
+
+// primary template
+template <unsigned p> 
+struct IsPrime
+{
+    // start recursion with divisor from p / 2:
+    static constexpr bool value = DoIsPrime<p, p / 2>::value;
+};
+
+// special cases (to avoid endless recursion with template instantiation):
+template <>
+struct IsPrime<0>
+{
+    static constexpr bool value = false;
+};
+
+template <>
+struct IsPrime<1>
+{
+    static constexpr bool value = false;
+};
+
+template <>
+struct IsPrime<2>
+{
+    static constexpr bool value = true;
+};
+
+template <>
+struct IsPrime<3>
+{
+    static constexpr bool value = true;
+};
+```
+The `IsPrime` template returns in member value 
+whether the passed template parameter `p` is a prime number. 
+To achieve this, it instantiates `DoIsPrime`,
+which recursively expands to an expression checking for each divisor `d` 
+between `p / 2` and `2` whether the divisor divides `p` without remainder. 
+
+
+For example, the expression
+```c++
+IsPrime<9>::value
+```
+expands to
+```c++
+DoIsPrime<9, 4>::value
+```
+which expands to
+```c++
+9 % 4 != 0 && DoIsPrime<9, 3>::value
+```
+which expands to
+```c++
+9 % 4 != 0 && 9 % 3 != 0 && DoIsPrime<9, 2>::value
+```
+which expands to
+```c++
+9 % 4 != 0 && 9 % 3 != 0 && 9 % 2 != 0
+```
+which evaluates to `false`, because `9 % 3 == 0`.
+
+
+As this chain of instantiations demonstrates:
+- We use recursive expansions of `DoIsPrime` to iterate over all divisors 
+  from `p / 2` down to `2` to find out whether any of these divisors 
+  divide the given integer exactly (i.e., without remainder). 
+- The partial specialization of `DoIsPrime` for `d` equal to `2` serves as 
+  the criterion to end the recursion. 
+
+
+Note that all this is done _at compile time_. That is,
+```c++
+IsPrime<9>::value
+```
+expands to `false` at compile time.
+
+
+The template syntax is arguably clumsy, 
+but code similar to this has been valid since C++98 (and earlier) 
+and has proven useful for quite a few libraries. 
+
+
+Before C++11, it was common to declare the value members 
+as enumerator constants instead of static data members (the "`enum` hack")
+to avoid the need to have an out-of-class definition 
+of the static data member (see Section 23.6). 
+For example:
+```c++
+// p: number to check, d: current divisor
+template <unsigned p, unsigned d> 
+struct DoIsPrime
+{
+    enum
+    {
+        value = (p % d != 0) && DoIsPrime <p, d - 1>::value
+    };
+};
+```
+See Chapter 23 for details. 
+
+
+#### 📌 8.2 Computing with `constexpr`
 
 
 

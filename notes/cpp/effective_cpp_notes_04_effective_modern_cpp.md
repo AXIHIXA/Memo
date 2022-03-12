@@ -19,6 +19,13 @@
 
 ### 📌 Item 1: Understand template type deduction
 
+- Decay 
+  - A concept inherited from C, done in the following steps: 
+    1. Remove reference; 
+    2. Branch: 
+       1. Not array, not function: remove cv;
+       2. Array: decay to pointer to its first element;
+       3. Function: decay to pointer to the function. 
 - During template type deduction for template parameters,
   arguments' reference-ness and top-level cv-constraints are ignored. 
   - Note that arguments' top-level cv becomes bottom-level for reference parameters, 
