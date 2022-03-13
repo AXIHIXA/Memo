@@ -5751,7 +5751,7 @@ whether a given number is a prime number:
 template <unsigned p, unsigned d> 
 struct DoIsPrime
 {
-    static constexpr bool value = (p % d != 0) && DoIsPrime <p, d - 1>::value;
+    static constexpr bool value = (p % d != 0) && DoIsPrime<p, d - 1>::value;
 };
 
 // end recursion if divisor is 2 
@@ -5856,7 +5856,7 @@ struct DoIsPrime
 {
     enum
     {
-        value = (p % d != 0) && DoIsPrime <p, d - 1>::value
+        value = (p % d != 0) && DoIsPrime<p, d - 1>::value
     };
 };
 ```
@@ -5864,6 +5864,624 @@ See Chapter 23 for details.
 
 
 #### 📌 8.2 Computing with `constexpr`
+
+
+C++11 introduced a new feature, `constexpr`, 
+that greatly simplifies various forms of compile-time computation. 
+In particular, given `constexpr` input, a `constexpr` function can be evaluated at compile time. 
+While in C++11 `constexpr` functions were introduced with stringent limitations 
+(e.g., each `constexpr` function definition was essentially limited to consist of a return statement), 
+most of these restrictions were removed with C++14. 
+Of course, successfully evaluating a `constexpr` function still requires that 
+all computational steps be possible and valid at compile time: 
+Currently, that excludes things like heap allocation or throwing exceptions.
+
+
+Our example to test whether a number is a prime number could be implemented as follows in C++11: 
+```c++
+// p: number to check, d: current divisor
+constexpr bool doIsPrime(unsigned p, unsigned d)
+{
+    // end recursion if divisor is 2 
+    return d == 2 ? (p % 2 != 0) : (p % d != 0) && doIsPrime(p, d - 1);
+};
+
+constexpr bool isPrime(unsigned p)
+{
+    // handle special cases
+    // start recursion with divisor from p / 2
+    return (p < 4) ? 1 < p : doIsPrime(p, p / 2);
+};
+```
+Due to the limitation of having only one statement, 
+we can only use the conditional operator as a selection mechanism, 
+and we still need recursion to iterate over the elements. 
+But the syntax is ordinary C++ function code, 
+making it more accessible than our first version relying on template instantiation.
+
+
+With C++14, `constexpr` functions can make use of most control structures available in general C++ code. 
+So, instead of writing unwieldy template code or somewhat arcane one-liners, we can now just use a plain for loop:
+```c++
+constexpr bool isPrime(unsigned p)
+{
+    for (unsigned d = 2; d <= p / 2; ++d)
+    {
+        if (p % d == 0)
+        {
+            return false;
+        }
+    }
+    
+    return 1 < p;
+}
+```
+With both the C++11 and C++14 versions of our `constexpr` `isPrime` implementations, 
+we can simply call
+```c++
+// evaluated at compile-time
+constexpr bool b = isPrime(9);
+```
+Note that it can do so at compile time, but it need not necessarily do so. 
+In a context that requires a compile-time value (e.g., an array length or a nontype template argument), 
+the compiler will attempt to evaluate a call to a `constexpr` function at compile time 
+and issue an error if that is not possible (since a constant must be produced in the end).
+In contexts that do not need compile-time values,
+when the compile-time evaluation fails,
+no error is issued and the call is left as a run-time call instead. 
+At the time of writing this book, even with `constexpr`, the compiler can decide
+to compute the initial value of `b` at run time.
+
+
+For example:
+```c++
+// evaluated at compile-time
+constexpr bool b1 = isPrime(9);
+```
+will compute the value at compile time. The same is true with
+```c++
+// evaluated at compile time if in namespace scope
+const bool b2 = isPrime(9); 
+```
+provided `b2` is defined at namespace scope (including the global namespace). 
+At block scope, the compiler can decide whether to compute it at compile or run time. 
+This, for example, is also the case here:
+```c++
+bool fiftySevenIsPrime() 
+{
+    // evaluated at compile or running time
+    return isPrime(57); 
+}
+```
+the compiler may or may not evaluate the call to isPrime at compile time.
+
+
+On the other hand:
+```c++
+int x = 9;
+std::cout << isPrime(x) << '\n';  // evaluated at run time
+```
+will generate code that computes at run time whether `x` is a prime number. 
+
+
+#### 📌 8.3 Execution Path Selection with Partial Specialization
+
+
+An interesting application of a compile-time test such as `isPrime` 
+is to use partial specialization to select at compile time between different implementations. 
+For example, we can choose between different implementations depending on 
+whether a template argument is a prime number:
+```c++
+// primary helper template:
+template <int SZ, bool = isPrime(SZ)>
+struct Helper;
+
+// implementation if SZ is not a prime number:
+template <int SZ>
+struct Helper<SZ, false>
+{
+    ...
+};
+
+// implementation if SZ is a prime number:
+template <int SZ>
+struct Helper<SZ, true>
+{
+    ...
+};
+
+template <typename T, std::size_t SZ>
+long foo(std::array<T, SZ> const & coll)
+{
+    // implementation depends on whether array has prime number as size
+    Helper<SZ> h; 
+    ...
+}
+```
+Here, depending on whether the size of the `std::array` argument is a prime number, 
+we use two different implementations of class `Helper`. 
+This kind of application of partial specialization is broadly applicable 
+to select among different implementations of a function template 
+depending on properties of the arguments it’s being invoked for.
+
+
+Above, we used two partial specializations to implement the two possible alternatives. 
+Instead, we can also use the primary template for one of the alternatives (the default) case 
+and partial specializations for any other special case:
+```c++
+// primary helper template (used if no specialization fits):
+template <int SZ, bool = isPrime(SZ)>
+struct Helper
+{
+    ...
+};
+
+// special implementation if SZ is a prime number:
+template <int SZ>
+struct Helper<SZ, true>
+{
+    ...
+};
+```
+Because function templates do **not** support partial specialization, 
+you have to use other mechanisms to change function implementation based on certain constraints.
+Our options include the following:
+- Use classes with static functions,
+- Use `std::enable_if`, introduced in Section 6.3,
+- Use the SFINAE feature, 
+- Use the compile-time `if` feature, available since C++17. 
+
+
+Chapter 20 discusses techniques for selecting a function implementation based on constraints. 
+
+
+#### 📌 8.4 SFINAE (Substitution Failure Is Not An Error)
+
+
+When a compiler sees a call to an overloaded function, 
+it performs overload resolution. 
+It must therefore consider each candidate separately, 
+evaluating the arguments of the call and picking the candidate that matches best. 
+See also Appendix C for some details about this process. 
+
+
+In cases where the set of candidates for a call includes function templates, 
+the compiler first has to determine what template arguments should be used for that candidate, 
+then substitute those arguments in the function parameter list and in its return type, 
+and then evaluate how well it matches (just like an ordinary function). 
+
+
+However, the substitution process could run into problems:
+It could produce constructs that make no sense. 
+Rather than deciding that such meaningless substitutions lead to errors, 
+the language rules instead say that candidates with such substitution problems are simply ignored.
+
+
+We call this principle SFINAE (pronounced like sfee-nay), 
+which stands for "Substitution Failure Is Not An Error". 
+
+
+Note that the substitution process described here 
+is distinct from the on-demand instantiation process 
+(see Section 2.2): 
+The substitution may be done even for potential instantiations that are not needed 
+(so the compiler can evaluate whether indeed they are unneeded). 
+It is a substitution of the constructs appearing directly in the declaration of the function (but not its body). 
+
+
+Consider the following example:
+```c++
+// number of elements in a raw array:
+template <typename T, unsigned N>
+std::size_t len(T (&)[N])
+{
+    return N;
+}
+
+// number of elements for a type having size_type:
+template <typename T>
+typename T::size_type len(T const & t)
+{
+    return t.size();
+}
+```
+Here, we define two function templates `len` taking one generic argument: 
+1. The first function template declares the parameter as `T (&)[N]`, 
+   which means that the parameter has to be an array of `N` elements of type `T`.
+2. The second function template declares the parameter simply as `T`, 
+   which places no constraints on the parameter but returns type `T::size_type`, 
+   which requires that the passed argument type has a corresponding member `size_type`.
+
+When passing a raw array or string literals, only the function template for raw arrays matches:
+```c++
+int a[10];
+std::cout << len(a) << '\n';      // OK: only len for array matches
+std::cout << len("tmp") << '\n';  // OK: only len for array matches
+```
+According to its signature, the second function template also matches 
+when substituting (respectively) `int [10]` and `char const [4]` for `T`,
+but those substitutions lead to potential errors in the return type `T::size_type`.
+The second template is therefore ignored for these calls.
+
+
+When passing a `std::vector`, only the second function template matches:
+```c++
+std::vector<int> v;
+std::cout << len(v) << '\n';  // OK: only len for a type with size_type matches
+```
+When passing a raw pointer, **neither** of the templates match (**without** a failure). 
+As a result, the compiler will complain that no matching `len` function is found:
+```c++
+int * p;
+std::cout << len(p) << '\n';  // ERROR: no matching len function found
+```
+Note that this differs from passing an object of a type having a `size_type` member, 
+but **no** `size` member function, as is, for example, the case for `std::allocator`:
+```c++
+std::allocator<int> x;
+std::cout << len(x) << '\n';  // ERROR: len function found, but can’t size
+```
+When passing an object of such a type, 
+the compiler finds the second function template as matching function template. 
+So instead of an error that no matching `len` function is found, 
+this will result in a compile-time error that calling `size` for a `std::allocator<int>` is invalid. 
+This time, the second function template is **not** ignored.
+
+
+Ignoring a candidate when substituting its return type is meaningless
+can cause the compiler to select another candidate whose parameters are a worse match.
+For example:
+```c++
+// number of elements in a raw array:
+template <typename T, unsigned N>
+std::size_t len(T (&)[N])
+{
+    return N;
+}
+
+// number of elements for a type having size_type:
+template <typename T>
+typename T::size_type len(T const & t)
+{
+    return t.size();
+}
+
+// fallback for all other types:
+std::size_t len(...)
+{
+    return 0;
+}
+```
+Here, we also provide a general `len` function that always matches but has the worst match 
+(match with ellipsis parameter list `(...)`) in overload resolution.
+In practice, such a fallback function would usually provide a more useful default, 
+throw an exception, or contain a static assertion to result in a useful error message. 
+See Section C.2.
+
+
+So, for raw arrays and vectors, we have two matches where the specific match is the better match. 
+For pointers, only the fallback matches so that the compiler no longer complains about a missing `len` for this call. 
+But for the allocator, the second and third function templates match, 
+with the second function template as the better match.
+So, still, this results in an error that no `size` member function can be called: 
+```c++
+int a[10];
+std::cout << len(a) << '\n';      // OK: len for array is best match
+std::cout << len("tmp") << '\n';  // OK: len for array is best match
+
+std::vector<int> v;
+std::cout << len(v) << '\n';      // OK: len for a type with size_type is best match
+
+int * p;
+std::cout << len(p) << '\n';      // OK: only fallback len matches
+
+std::allocator<int> x;
+std::cout << len(x) << '\n';      // ERROR: 2nd len function matches best,
+                                  // but can’t call size for x
+```
+See Section 15.7 for more details about SFINAE and Section 19.4 about some applications of SFINAE. 
+
+##### SFINAE and Overload Resolution
+
+Over time, the SFINAE principle has become so important and so prevalent among template designers 
+that the abbreviation has become a verb. 
+We say “we SFINAE out a function” if we mean to apply the SFINAE mechanism to ensure that 
+function templates are ignored for certain constraints 
+by instrumenting the template code to result in invalid code for these constraints. 
+And whenever you read in the C++ standard that a function template 
+> shall not participate in overload resolution unless... 
+
+it means that SFINAE is used to “SFINAE out” that function template for certain cases.
+
+
+For example, class `std::thread` declares a constructor:
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 9.4.0-1ubuntu1~20.04) 9.4.0
+namespace std
+{
+
+/// integral_constant
+template <typename T, T v>
+struct integral_constant
+{
+    static constexpr T value = v;
+    
+    typedef T value_type;
+    typedef integral_constant<T, v> type;
+    
+    constexpr operator value_type() const noexcept { return value; }
+    constexpr value_type operator()() const noexcept { return value; }
+};
+
+template <typename T, T v>
+constexpr T integral_constant<T, v>::value;
+
+/// The type used as a compile-time boolean with true value.
+typedef integral_constant<bool, true> true_type;
+
+/// The type used as a compile-time boolean with false value.
+typedef integral_constant<bool, false> false_type;
+
+template <typename, typename>
+struct is_same : public false_type {};
+
+template <typename T>
+struct is_same<T, T> : public true_type {};
+
+template <typename P>
+struct __not_ : public integral_constant<bool, !bool(P::value)> {};
+
+}  // namespace std
+
+/// <thread>
+/// g++ (Ubuntu 9.4.0-1ubuntu1~20.04) 9.4.0
+namespace std 
+{
+
+class thread 
+{
+public:
+    template <typename F, 
+              typename ... Args,
+              typename = enable_if_t<__not_same<F>>>
+    explicit thread(F && f, Args && ... args) { /* ... */ }
+    
+    // ...
+    
+private:
+    template <typename T>
+    using __not_same = __not_<is_same<remove_cv_t<remove_reference_t<T>>, thread>>;
+    
+    // ...
+};
+
+}  // namespace std
+```
+with the following remark:
+> Remarks: This constructor shall not participate in overload resolution 
+> if decay_t<F> is the same type as std::thread. 
+
+
+This means that the template constructor is ignored 
+if it is called with a `std::thread` as first and only argument. 
+The reason is that otherwise a member template like this sometimes might better match 
+than any predefined copy or move constructor (see Section 6.2 and Section 16.2.4 for details). 
+By SFINAE’ing out the constructor template when called for a thread,
+we ensure that the predefined copy or move constructor is always used 
+when a thread gets constructed from another thread. 
+Since the copy constructor for class `thread` is deleted, 
+this also ensures that copying is forbidden.
+
+
+Applying this technique on a case-by-case basis can be unwieldy. 
+Fortunately, the standard library provides tools to disable templates more easily. 
+The best-known such feature is `std::enable_if`. 
+It allows us to disable a template just by replacing a type with a construct containing the condition to disable it. 
+
+
+See Section 20.3 for details about how `std::enable_if` is implemented, 
+using partial specialization and SFINAE.
+
+##### 8.4.1 Expression SFINAE with `decltype`
+
+It’s not always easy to find out and formulate the right expression 
+to SFINAE out function templates for certain conditions.
+
+
+Suppose, for example, that we want to ensure that the function template `len` 
+is ignored for arguments of a type that has a `size_type` member but not a `size` member function. 
+Without any form of requirements for a `size` member function in the function declaration, 
+the function template is selected and its ultimate instantiation then results in an error:
+```c++
+template <typename T>
+typename T::size_type len(T const & t)
+{
+    return t.size();
+}
+
+std::allocator<int> x;
+std::cout << len(x) << '\n';  // ERROR: len selected, but x has no size
+```
+There is a common pattern or idiom to deal with such a situation
+(prior to C++20 concepts): 
+- Specify the return type with the _trailing return type_ syntax; 
+- Define the return type using `decltype` and the comma operator; 
+- Formulate all expressions that must be valid 
+  at the beginning of the comma operator 
+  (converted to `void` in case the comma operator is overloaded). 
+- Define an object of the real return type at the end of the comma operator. 
+For example: 
+```c++
+template <typename T>
+auto len(T const & t) -> decltype(static_cast<void>(t.size()), T::size_type())
+{
+    return t.size();
+}
+```
+The operand of the `decltype` construct is a comma-separated list of expressions, 
+so that the last expression `T::size_type()` yields a value of the desired return type 
+(which `decltype` uses to convert into the return type). 
+Before the (last) comma, we have the expressions that must be valid, 
+which in this case is just `t.size()`. 
+The cast of the expression to `void` is to avoid 
+the possibility of a user-defined comma operator overloaded for the type of the expressions. 
+Note that the argument of `decltype` is an _unevaluated_ operand, 
+which means that you, for example, can create "dummy objects" **without** calling constructors,
+which is discussed in Section 11.2.3.
+
+
+#### 📌 8.5 [Compile-Time `if`](https://en.cppreference.com/w/cpp/language/if#Constexpr_if)
+
+
+Partial specialization, SFINAE, and `std::enable_if` 
+allow us to enable or disable templates as a whole. 
+C++17 additionally introduces a compile-time `if` statement 
+that allows is to enable or disable specific statements based on compile-time conditions.
+
+
+With the syntax `if constexpr`, the compiler uses a compile-time expression 
+to decide whether to apply the _then_ part or the _else_ part (if any), 
+and _discard_ the opponent. 
+
+
+As a first example, consider the variadic function template `print` from Section 4.1. 
+It prints its arguments (of arbitrary types) using recursion. 
+Instead of providing a separate function to end the recursion, 
+the `constexpr if` feature allows us to decide locally whether to continue the recursion. 
+Although the code reads `if constexpr`, the feature is called `constexpr if`,
+because it is the `constexpr` form of `if` (and for historical reasons). 
+```c++
+template <typename T>
+void print(T && t)
+{
+    std::cout << std::forward<T>(t) << '\n';
+}
+
+template <typename T, typename ... Args>
+void print(T && t, Args && ... args)
+{
+    std::cout << std::forward<T>(t) << ' ';
+    print(std::forward<Args>(args)...);
+}
+```
+```c++
+template <typename T, typename ... Args>
+void print(T && t, Args && ... args)
+{
+    std::cout << std::forward<T>(t) << '\n';
+    
+    if constexpr (0 < sizeof...(args)) 
+    {
+        // code only available if 0 < sizeof...(args) (since C++17)
+        print(std::forward<Args>(args)...); 
+    }
+}
+```
+Here, if `print` is called for one argument only, 
+`args` becomes an empty parameter pack so that `sizeof...(args)` becomes `0`. 
+As a result, the recursive call of `print` becomes a _discarded statement_, 
+for which the code is not instantiated.
+Thus, a corresponding function is not required to exist and the recursion ends. 
+
+
+The fact that the code is not instantiated means that only the first translation phase
+(the definition time) is performed, 
+which checks for correct syntax and names that don’t depend on template parameters. 
+For example:
+```c++
+template <typename T>
+void foo(T t)
+{
+    if constexpr (std::is_integral_v<T>) 
+    {
+        if (t > 0) 
+        {
+            foo(t - 1); // OK
+        }
+    }
+    else 
+    {
+        // error if not declared and not discarded (i.e. T is not integral)
+        undeclared(t); 
+        
+        // error if not declared (even if discarded)
+        undeclared(); 
+        
+        // always asserts (even if discarded)
+        static_assert(false, "no integral");      
+        
+        // OK
+        static_assert(!std::is_integral_v<T>, "no integral");  
+    }
+}
+```
+Note that `if constexpr` can be used in any function, not only in templates.
+We only need a compile-time expression that yields a Boolean value. 
+For example:
+```c++
+int main()
+{
+    if constexpr (std::numeric_limits<char>::is_signed 
+    {
+        foo(42); // OK
+    }
+    else 
+    {
+        // error if undeclared() not declared
+        undeclared(42); 
+        
+        // always asserts (even if discarded)
+        static_assert(false, "unsigned"); 
+        
+        // OK
+        static_assert(!std::numeric_limits<char>::is_signed, "char is unsigned"); 
+    }
+}
+```
+With this feature, we can, for example, use our `isPrime` compile-time function,
+introduced in Section 8.2, 
+to perform additional code if a given size is not a prime number:
+```c++
+template <typename T, std::size_t SZ>
+void foo(std::array<T, SZ> const & coll)
+{
+    if constexpr (!isPrime(SZ)) 
+    {
+        // special additional handling 
+        // if the passed array has no prime number as size
+    }
+    
+    ...
+}
+```
+See Section 14.6 for further details.
+
+
+#### 📌 8.6 Summary
+
+
+- Templates provide the ability to compute at compile time 
+  (using recursion to iterate and partial specialization or `operator?:` for selections).
+- With `constexpr` functions, we can replace most compile-time computations 
+  with "ordinary functions" that are callable in compile-time contexts. 
+- With partial specialization, we can choose between different implementations of class templates
+  based on certain compile-time constraints.
+- Templates are used only if needed and 
+  substitutions in function template declarations do **not** result in invalid code. 
+  This principle is called SFINAE (Substitution Failure Is Not An Error). 
+- SFINAE can be used to provide function templates only for certain types and/or constraints.
+- Since C++17, a compile-time `if` allows us to enable or discard statements
+  according to compile-time conditions (even outside templates). 
+
+
+
+
+
+
+
+
+
 
 
 
