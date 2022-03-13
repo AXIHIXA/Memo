@@ -6479,12 +6479,781 @@ See Section 14.6 for further details.
 
 
 
+### 🎯 Chapter 9 Using Templates in Practice
+
+
+#### 📌 9.1 The Inclusion Model
+
+
+There are several ways to organize template source code. 
+This section presents the most popular approach: the _inclusion model_.
+
+##### 9.1.1 Linker Errors
+
+Most C and C++ programmers organize their non-template code largely as follows:
+- Classes and other types are entirely placed in _header files_. 
+  Typically, this is a file with a `.hpp` (or `.H`, `.h`, `.hh`, `.hxx`) filename extension. 
+- For global (non-inline) variables and (non-inline) functions, 
+  only a declaration is put in a header file, 
+  and the definition goes into a file compiled as its own translation unit. 
+  Such a _CPP file_ typically is a file with a `.cpp` (or `.C`, `.c`, `.cc`, or `.cxx`) filename extension.
+
+
+This works well: 
+It makes the needed type definition easily available throughout the program 
+and avoids duplicate definition errors on variables and functions from the linker.
+
+
+With these conventions in mind, a common error about which beginning template programmers complain 
+is illustrated by the following (erroneous) little program. 
+As usual for "ordinary code":
+```c++
+/// "myfirst.hpp"
+#ifndef MYFIRST_HPP
+#define MYFIRST_HPP
+// declaration of template
+template <typename T>
+void printTypeof(T const &);
+#endif  // MYFIRST_HPP
+```
+```c++
+/// "myfirst.cpp"
+#include <iostream>
+#include <typeinfo>
+#include "myfirst.hpp"
+// implementation/definition of template
+template <typename T>
+void printTypeof(T const& x)
+{
+    std::cout << typeid(x).name() << '\n';
+}
+```
+```c++
+/// "myfirstmain.cpp"
+#include "myfirst.hpp"
+
+// use of the template
+int main(int argc, char * argv[])
+{
+    double ice = 3.0;
+    printTypeof(ice);  // call function template for type double
+}
+```
+A C++ compiler will most likely accept this program without any problems, 
+but the linker will probably report an error, 
+implying that there is **no** definition of the function `printTypeof`. 
+
+
+The reason for this error is that the definition 
+of the function template `printTypeof` has **not** been instantiated. 
+In order for a template to be instantiated, 
+the compiler must know which definition should be instantiated 
+and for what template arguments it should be instantiated. 
+Unfortunately, in the previous example, these two pieces of information
+are in files that are compiled separately.
+Therefore, when our compiler sees the call to `printTypeof` 
+but has **no** definition in sight to instantiate this function for `double`, 
+it just assumes that such a definition is provided elsewhere
+and creates a reference (for the linker to resolve) to that definition. 
+On the other hand, when the compiler processes the file `myfirst.cpp`, 
+it has **no** indication at that point that it must instantiate 
+the template definition it contains for specific arguments.
+
+##### 9.1.2 Templates in Header Files
+
+The common solution to the previous problem 
+is to use the same approach that we would take with macros or with inline functions: 
+We include the definitions of a template in the header file that declares that template.
+
+
+That is, instead of providing a file `myfirst.cpp`, we rewrite `myfirst.hpp`
+so that it contains all template declarations and template definitions:
+```c++
+/// "myfirst.hpp"
+#ifndef MYFIRST_HPP
+#define MYFIRST_HPP
+
+#include <iostream>
+#include <typeinfo>
+
+// declaration of template
+template <typename T>
+void printTypeof(T const &);
+
+// implementation/definition of template
+template <typename T>
+void printTypeof(T const & x)
+{
+    std::cout << typeid(x).name() << '\n'; 
+}
+
+#endif  // MYFIRST_HPP
+```
+This way of organizing templates is called the _inclusion model_. 
+With this in place, you should find that 
+our program now correctly compiles, links, and executes.
+
+
+There are a few observations we can make at this point. 
+The most notable is that this approach has considerably increased 
+the cost of including the header file `myfirst.hpp`. 
+In this example, the cost is not only the result of the size of the template definition itself, 
+but also the result of the fact that we must also include the headers 
+used by the definition of our template, 
+in this case, `<iostream>` and `<typeinfo>`. 
+You may find that this amounts to tens of thousands of lines of code 
+because headers like `<iostream> `contain many template definitions of their own. 
+
+
+This is a real problem in practice because it considerably increases 
+the time needed by the compiler to compile significant programs.
+We will therefore examine some possible ways to approach this problem, 
+including _precompiled headers_ (see Section 9.3) 
+and the use of _explicit template instantiation_ (see Section 14.5).
+
+
+Despite this build-time issue, 
+we do recommend following this inclusion model 
+to organize your templates when possible 
+until a better mechanism becomes available. 
+As of 2022, such a mechanism is _modules_ `(since C++20)`, 
+but still faces serious cross-platform issues 
+(modules compiled by `gcc`, `clang` and `MSVC` are **not** interchangeable), etc. 
+This is introduced in Section 17.11.
+They are a language mechanism that allows the programmer to more logically organize code 
+in such a way that a compiler can separately compile all declarations 
+and then efficiently and selectively import the processed declarations whenever needed. 
+
+
+Another (more subtle) observation about the inclusion approach is that 
+non-inline function templates are distinct from inline functions and macros in an important way: 
+They are **not** expanded at the call site. 
+Instead, when they are instantiated, they create a new copy of a function. 
+Because this is an automatic process, a compiler could end up creating two copies in two different files, 
+and some linkers could issue errors when they find two distinct definitions for the same function. 
+In theory, this should **not** be a concern of ours: 
+It is a problem for the C++ compilation system to accommodate. 
+In practice, things work well most of the time, and we don’t need to deal with this issue at all. 
+For large projects that create their own library of code, however, problems occasionally show up. 
+A discussion of instantiation schemes in Chapter 14 
+and a close study of the documentation that came with the C++ translation system (compiler) 
+should help address these problems. 
+
+
+Finally, we need to point out that what applies to the ordinary function template in our example 
+also applies to member functions and static data members of class templates, 
+as well as to member function templates.
+
+
+#### 📌 9.2 Templates and `inline`
+
+
+Declaring functions to be inline is a common tool to improve the running time of programs. 
+The `inline` specifier was meant to be a hint for the implementation that
+inline substitution of the function body at the point of call is preferred
+over the usual function call mechanism.
+
+
+However, an implementation may ignore the hint. 
+Hence, the only guaranteed effect of `inline` is to 
+allow a function definition to appear multiple times in a program 
+(usually because it appears in a header file that is included in multiple places). 
+
+
+Like inline functions, function templates can be defined in multiple translation units. 
+This is usually achieved by placing the definition in a header file that is included by multiple CPP files.
+
+
+This **doesn’t** mean, however, that function templates use inline substitutions by default. 
+It is entirely up to the compiler whether and when inline substitution of a function template body 
+at the point of call is preferred over the usual function call mechanism. 
+Perhaps surprisingly, compilers are often better than programmers at 
+estimating whether inlining a call would lead to a net performance improvement. 
+As a result, the precise policy of a compiler with respect to inline varies from compiler to compiler, 
+and even depends on the options selected for a specific compilation.
+
+
+Nevertheless, with appropriate performance monitoring tools, 
+a programmer may have better information than a compiler 
+and may therefore wish to override compiler decisions 
+(e.g., when tuning software for particular platforms, 
+such as mobiles phones, or particular inputs). 
+Sometimes this is only possible with compiler-specific attributes 
+such as `gcc`'s `__always_inline` derivative (available in `<cdefs.h>`). 
+
+
+It’s worth pointing out at this point that 
+full specializations of function templates
+act like ordinary functions in this regard: 
+Their definition can appear only once unless they’re defined `inline` (see Section 16.3). 
+See also Appendix A for a broader, detailed overview of this topic.
+
+
+#### 📌 9.3 Precompiled Headers
+
+
+Even without templates, C++ header files can become very large and therefore take a long time to compile. 
+Templates add to this tendency, and the outcry of waiting programmers has in many cases driven vendors 
+to implement a scheme usually known as _precompiled headers (PCH)_. 
+This scheme operates outside the scope of the standard and relies on vendor-specific options. 
+Although we leave the details on how to create and use precompiled header files
+to the documentation of the various C++ compilation systems that have this feature, 
+it is useful to gain some understanding of how it works.
+
+
+When a compiler translates a file, it does so 
+starting from the beginning of the file and working through to the end. 
+As it processes each token from the file (which may come from `#included` files), 
+it adapts its internal state, 
+including such things as adding entries to a table of symbols 
+so that they may be looked up later. 
+While doing so, the compiler may also generate code in object files.
+
+
+The precompiled header scheme relies on the fact 
+that code can be organized in such a manner that 
+many files start with the same lines of code. 
+Let’s assume for the sake of argument 
+that every file to be compiled starts with the same `N` lines of code.
+We could compile these `N` lines 
+and save the complete state of the compiler at that point in a _precompiled header_. 
+Then, for every file in our program, we could reload the saved state 
+and start compilation at line `N + 1`. 
+At this point it is worthwhile to note that reloading the saved state 
+is an operation that can be orders of magnitude faster than actually compiling the first `N` lines. 
+However, saving the state in the first place is typically more expensive than just compiling the `N` lines. 
+The increase in cost varies roughly from 20% to 200%.
+
+
+The key to making effective use of precompiled headers is to ensure that
+as much as possible  files start with a maximum number of common lines of code. 
+In practice this means the files must start with the same `#include` directives, 
+which (as mentioned earlier) consume a substantial portion of our build time. 
+Hence, it can be very advantageous to pay attention to the order in which headers are included. 
+For example, the following two files:
+```c++
+#include <vector>
+#include <list>
+```
+```c++
+#include <list>
+#include <vector>
+```
+inhibit the use of precompiled headers because there is **no** common initial state in the sources.
+
+
+Some programmers decide that it is better to #include some extra unnecessary headers 
+than to pass on an opportunity to accelerate the translation of a file using a precompiled header. 
+This decision can considerably ease the management of the inclusion policy. 
+
+
+For example, `libstdc++` provides `<bits/stdc++.h>` that includes all the standard headers.
+(Note this is an extreme example. 
+Actual programs do **not** need a common header containing all STL headers!
+Also, in theory, the standard headers do **not** actually need to correspond to physical files.
+In practice, however, they do, and the files are very large.) 
+
+
+This file can then be precompiled, and every program file that 
+makes use of the standard library can then simply be started as follows:
+```c++
+#include <bits/stdc++.h>
+```
+Normally this would take a while to compile,
+but given a system with sufficient memory, 
+the pre-compiled header scheme allows it to be processed 
+significantly faster than almost any single standard header would require without pre-compilation. 
+The standard headers are particularly convenient in this way because they rarely change, 
+and hence the precompiled header for `<bits/stdc++.h>` can be built once. 
+Otherwise, precompiled headers are typically part of the dependency configuration of a project 
+(e.g., they are updated as needed by the popular `make` tool 
+or an integrated development environment’s (IDE) project build tool).
+
+
+One attractive approach to manage precompiled headers 
+is to create layers of precompiled headers 
+that go from the most widely used and stable headers 
+to headers that aren’t expected to change all the time and therefore are still worth precompiling. 
+However, if headers are under heavy development, 
+creating precompiled headers for them can take more time than what is saved by reusing them. 
+A key concept to this approach is that a precompiled header for a more stable layer 
+can be reused to improve the precompilation time of a less stable header. 
+
+
+#### 📌 9.4 Decoding the Error Novel
+
+
+Ordinary compilation errors are normally quite succinct and to the point. 
+For example, when a compiler says "`error: ‘class X’ has no member named ‘fun’`", 
+it usually isn’t too hard to figure out what is wrong in our code 
+(e.g., we might have mistyped `run` as `fun`). 
+Not so with templates. 
+Try some examples.
+
+##### Simple Type Mismatch
+
+```c++
+std::map<std::string, double> coll;
+
+auto pos = std::find_if(coll.begin(), coll.end(), [](std::string const & s)
+{
+    return s != "";
+});
+```
+
+##### Missing `const` on Some Compilers
+
+```c++
+class Customer
+{
+public:
+    Customer(std::string const & n) : name(n) {}
+
+    std::string getName() const
+    {
+        return name;
+    }
+
+private:
+    std::string name;
+};
+
+struct MyCustomerHash
+{
+    // NOTE: missing const
+    // in std::hash template argument
+    // is only an error with g++ and clang:
+    std::size_t operator()(Customer const & c)
+    {
+        return std::hash<std::string>()(c.getName());
+    }
+};
+
+std::unordered_set<Customer, MyCustomerHash> coll;
+```
+
+
+#### 📌 9.5 Afternotes
+
+
+The organization of source code in header files and CPP files is a practical consequence 
+of various incarnations of the _One-Definition Rule (ODR)_. 
+An extensive discussion of this rule is presented in Appendix A. 
+
+
+The inclusion model is a pragmatic answer dictated largely 
+by existing practice in C++ compiler implementations. 
+However, the first C++ implementation was different: 
+The inclusion of template definitions was implicit,
+which created a certain illusion of separation 
+(see Chapter 14 for details on this original model).
+
+
+The first C++ standard (C++98) provided explicit support for the separation model 
+of template compilation via _exported templates_. 
+The separation model allowed template declarations marked as `export` to be declared in headers, 
+while their corresponding definitions were placed in CPP files, 
+much like declarations and definitions for non-template code. 
+Unlike the inclusion model, this model was a theoretical model 
+not based on any existing implementation, 
+and the implementation itself proved far more complicated 
+than the C++ standardization committee had anticipated. 
+It took more than five years to see its first implementation published (May 2002), 
+and no other implementations appeared in the years since. 
+To better align the C++ standard with existing practice,
+the C++ standardization committee removed exported templates from C++11. 
+
+
+It is sometimes tempting to imagine ways of extending the concept of precompiled headers 
+so that more than one header could be loaded for a single compilation. 
+This would in principle allow for a finer grained approach to pre-compilation. 
+The obstacle here is mainly the preprocessor: 
+Macros in one header file can entirely change the meaning of subsequent header files. 
+However, once a file has been precompiled, macro processing is completed, 
+and it is hardly practical to attempt to patch a precompiled header 
+for the preprocessor effects induced by other headers. 
+Since C++20, _modules_ (see Section 17.11) are available. 
+Macro definitions can **not** leak into module interfaces. 
+
+
+#### 📌 9.6 Summary
+
+
+- The inclusion model of templates is the most widely used model for organizing template code. 
+  Alternatives are discussed in Chapter 14. 
+- Only full specializations of function templates need `inline` 
+  when defined in header files outside classes or structures. 
+- To take advantage of precompiled headers, 
+  be sure to keep the same order for `#include` directives. 
+- Learn to pick out the most important part from a clumsy compiler error message. 
 
 
 
 
 
 
+### 🎯 Chapter 10 Basic Template Terminology
+
+
+#### 📌 10.1 “Class Template” or “Template Class”?
+
+
+#### 📌 10.2 Substitution, Instantiation, and Specialization
+
+
+When processing source code that uses templates, 
+a C++ compiler must at various times substitute concrete template arguments 
+for the template parameters in the template. 
+Sometimes, this substitution is just tentative: 
+The compiler may need to check if the substitution could be valid 
+(see Section 8.4 and Section 15.7).
+
+
+The process of actually creating a definition for 
+a regular class, type alias, function, member function, or variable from a template 
+by substituting concrete arguments for the template parameters 
+is called _template instantiation_. 
+
+
+Surprisingly, there is currently no standard or generally agreed upon term 
+to denote the process of creating a declaration that is not a definition 
+through template parameter substitution. 
+We have seen the phrases _partial instantiation_ or _instantiation of a declaration_ used by some teams, 
+but those are by no means universal. 
+Perhaps a more intuitive term is _incomplete instantiation_ 
+(which, in the case of a class template, produces an incomplete class). 
+
+
+The entity resulting from an instantiation or an incomplete instantiation 
+(i.e., a class, function, member function, or variable) 
+is generically called a _specialization_.
+
+
+However, in C++ the instantiation process is **not** the only way to produce a specialization. 
+Alternative mechanisms allow the programmer to specify explicitly a declaration 
+that is tied to a special substitution of template parameters. 
+As we showed in Section 2.5, such a specialization is introduced with the prefix `template<>`:
+```c++
+// primary class template
+template <typename T1, typename T2>
+class MyClass 
+{
+    ...
+};
+
+// explicit specialization
+template <> 
+class MyClass<std::string, float> 
+{
+    ...
+};
+```
+Strictly speaking, this is called an _explicit specialization_ 
+(as opposed to an _instantiated_ or _generated specialization_). 
+
+
+As described in Section 2.6, 
+specializations that still have template parameters 
+are called _partial specializations_:
+```c++
+// partial specification
+template <typename T> 
+class MyClass<T, T>
+{
+    ...
+};
+
+// partial specification
+template <typename T>
+class MyClass<bool, T>
+{
+    ...
+};
+```
+When talking about (explicit or partial) specializations, 
+the general template is also called the _primary template_. 
+
+
+#### 📌 10.3 [Declarations versus Definitions](https://en.cppreference.com/w/cpp/language/definition)
+
+
+So far, the words _declaration_ and _definition_ have been used only a few times in this book. 
+However, these words carry with them a rather precise meaning in standard C++, 
+and that is the meaning that we use. 
+
+
+From [cppreference](https://en.cppreference.com/w/cpp/language/definition): 
+> Declarations introduce (or re-introduce) names into the C++ program.   
+> Each kind of entity is declared differently.   
+> Definitions are declarations that fully define the entity introduced by the declaration.   
+> Every declaration is a definition, except for several special cases. 
+
+
+A _declaration_ is a C++ construct that introduces or reintroduces a name into a C++ scope. 
+This introduction always includes a partial classification of that name,
+but the details are **not** required to make a valid declaration.
+Note that even though they have a "name", 
+macro definitions and `goto` labels are **not** considered declarations in C++. 
+```c++
+class C;        // a declaration of C as a class
+void f(int p);  // a declaration of f() as a function and p as a named parameter
+extern int v;   // a declaration of v as a variable
+```
+
+Declarations become definitions when the details of their structure are made known 
+or, in the case of variables, when storage space must be allocated. 
+- For **class type definitions**, 
+  this means a brace-enclosed body must be provided; 
+- For **function definitions**, 
+  this means a brace-enclosed body must be provided (in the common case), 
+  or the function must be designated as `= default` or `= delete`; 
+- For **variable definitions**, 
+  initialization or the absence of an `extern` specifier 
+  causes a declaration to become a definition. 
+
+
+Here are examples that complement the preceding non-definition declarations:
+```c++
+// definition (and declaration) of class C
+class C {}; 
+
+// definition (and declaration) of function f
+void f() {}
+
+// an initializer makes this a definition for int v
+extern int v = 1; 
+
+// global variable declarations not preceded by extern
+// are also definitions
+int w; 
+```
+By extension, the declaration of a class template or function template
+is called a definition if it has a body. Hence,
+```c++
+template <typename T>
+void func(T);
+```
+is a declaration that is **not** a definition, whereas
+```c++
+template <typename T>
+class S {};
+```
+is in fact a definition. 
+
+##### 10.3.1 Complete versus Incomplete Types
+
+Types can be _complete_ or _incomplete_, 
+which is a notion closely related to the distinction 
+between a _declaration_ and a _definition_. 
+Some language constructs require _complete types_, 
+whereas others are valid with _incomplete types_ too. 
+
+
+Incomplete types are one of the following: 
+- A class type (declaration) that has been declared but not yet defined. 
+- An array type (declaration) with an unspecified bound. 
+- An array type (declaration) with an incomplete element type. 
+- `void`
+- An enumeration type (declaration) as long as the underlying type or the enumeration values are not defined.
+- Any type above to which `const` and/or `volatile` are applied. 
+- All other types are _complete_. 
+
+
+Valid operations on incomplete types: 
+[HERE](https://github.com/AXIHIXA/Memo/blob/master/notes/cpp/cpp_primer_notes.md#%E7%B1%BB%E7%9A%84%E5%89%8D%E5%90%91%E5%A3%B0%E6%98%8E)
+
+
+For example:
+```c++
+class C;             // C is an incomplete type
+C const * cp;        // cp is a pointer to an incomplete type
+extern C elems[10];  // elems has an incomplete type
+extern int arr[];    // arr has an incomplete type
+
+... 
+
+class C {};          // C now is a complete type 
+                     // (and therefore cp and elems no longer refer to an incomplete type)
+int arr[10];         // arr now has a complete type
+```
+See Section 11.5 for hints about how to deal with incomplete types in templates. 
+
+
+#### 📌 10.4 [The One-Definition Rule](https://en.cppreference.com/w/cpp/language/definition#One_Definition_Rule)
+
+
+The C++ language definition places some constraints on the redeclaration of various entities. 
+The totality of these constraints is known as the _One-Definition Rule (ODR)_. 
+The details of this rule are a little complex and span a large variety of situations. 
+Later chapters illustrate the various resulting facets in each applicable context,
+and you can find a complete description of the ODR in Appendix A. 
+
+
+For now, it suffices to remember the following ODR basics:
+- Ordinary (i.e., not templates) non-inline functions and member functions, 
+  as well as (non-inline) global variables and static data members 
+  should be defined only once across the whole _program_.
+  Global and static variables and data members can be defined as `inline` since C++17. 
+  This removes the requirement that they be defined in exactly one translation unit.
+- Class types (including structs and unions), 
+  templates (including partial specializations but **not** full specializations), 
+  and inline functions and variables should be defined at most once 
+  _per translation unit_, 
+  and all these definitions should be identical. 
+
+
+A _translation unit_ is what results from preprocessing a source file; 
+that is, it includes the contents named by `#include` directives and produced by macro expansions. 
+
+
+In the remainder of this book, _linkable entity_ refers to any of the following: 
+- A function or member function;
+- A global variable; 
+- A static data member, including any such things generated from a template, as visible to the linker.
+
+
+#### 📌 10.5 Template Arguments versus Template Parameters
+
+
+```c++
+template <typename T, int N>
+class ArrayInClass 
+{
+public:
+    T array[N];
+};
+
+class DoubleArrayInClass 
+{
+public:
+    double array[10];
+};
+```
+The latter becomes essentially equivalent to the former 
+if we replace the parameters `T` and `N` by `double` and `10` respectively. 
+In C++, the name of this replacement is denoted as `ArrayInClass<double, 10>`. 
+
+
+Regardless of whether these arguments are themselves dependent on template parameters,
+the combination of the template name, followed by the arguments in angle brackets, 
+is called a _template-id_.
+This name can be used much like a corresponding non-template entity would be used: 
+```c++
+int main()
+{
+    ArrayInClass<double, 10> ad; 
+    ad.array[0] = 1.0;
+}
+```
+It is essential to distinguish between template parameters and template arguments. 
+In short, you can say that "parameters are initialized by arguments".
+In the academic world, 
+arguments are sometimes called _actual parameters_,
+whereas parameters are called _formal parameters_. 
+
+
+Or more precisely: 
+- _Template parameters_ are those names that are listed 
+  after the keyword `template` in the template declaration or definition 
+  (`T` and `N` in our example).
+- _Template arguments_ are the items that are substituted for template parameters
+  (`double` and `10` in our example). 
+  Unlike template parameters, template arguments can be more than just "names". 
+
+
+The substitution of template parameters by template arguments is explicit when indicated with a template-id, 
+but there are various situations when the substitution is implicit 
+(e.g., if template parameters are substituted by their default arguments). 
+
+
+A fundamental principle is that 
+any template argument must be a `constexpr` quantity or value 
+that can be determined at compile time. 
+As becomes clear later, this requirement translates into dramatic benefits 
+for the run-time costs of template entities. 
+Because template parameters are eventually substituted by compile-time values, 
+they can themselves be used to form compile-time expressions. 
+This was exploited in the `ArrayInClass` template to size the member array `array`. 
+The size of an array must be a _constant-expression_, 
+and the template parameter `N` qualifies as such. 
+
+
+We can push this reasoning a little further: 
+Because template parameters are compile-time entities, 
+they can also be used to create valid template arguments. 
+Here is an example:
+```c++
+template <typename T>
+class Dozen 
+{
+public:
+    ArrayInClass<T, 12> contents;
+};
+```
+Note how in this example the name `T` is both a template parameter and a template argument. 
+Thus, a mechanism is available to enable the construction of more complex templates from simpler ones. 
+Of course, this is not fundamentally different from the mechanisms that allow us to assemble types and functions.
+
+
+#### 📌 10.6 Summary
+
+
+- _Template instantiation_ is the process of creating regular classes or functions 
+  by replacing template _parameters_ with concrete _arguments_. 
+  The resulting entity is a _specialization_.
+- Types can be complete or incomplete.
+- According to the One-Definition Rule (ODR), 
+  non-inline functions, member functions, global variables, and static data members 
+  should be defined only once across the whole program.
+
+
+
+
+
+
+### 🎯 Chapter 11 Generic Libraries
+
+
+#### 📌 11.1 Callables
+
+
+_Callback_ refers to entities that are passed as function call arguments 
+(as opposed to, e.g., template arguments). 
+For example, a sort function may include a callback parameter as "sorting criterion", 
+which is called to determine whether one element precedes another in the desired sorted order. 
+
+
+In C++, there are several types that work well for _callbacks_ 
+because they can both be passed as function call arguments 
+and can be directly called with `operator()`:
+- Pointer-to-function types;
+- Class types with an overloaded `operator()` (sometimes called _functors_), including lambdas;
+- Class types with a conversion function 
+  yielding a pointer-to-function or reference-to-function. 
+
+
+Collectively, these types are called _function object types_, 
+and a value of such a type is a _function object_. 
+
+
+The C++ standard library introduces the slightly broader notion of a _callable type_,
+which is either a function object type or a pointer to member. 
+An object of callable type is a _callable object_, 
+which we refer to as a _callable_ for convenience. 
+
+
+Generic code often benefits from being able to accept any kind of callable, 
+and templates make it possible to do so. 
+
+##### 11.1.1 Supporting Function Objects
+
+
+
+
+
+
+
+## 🌱
 
 ## 🌱
 
