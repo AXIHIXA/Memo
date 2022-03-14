@@ -5064,7 +5064,7 @@ void outR(T & arg)
 ```
 Note that calling `outR` for a temporary (prvalue) 
 or an existing object passed with `std::move` (xvalue) 
-usually is `not` allowed:
+usually is **not** allowed:
 ```c++
 std::string returnString();
 std::string s = "hi";
@@ -5082,7 +5082,7 @@ Thus, you can modify elements and, for example, deal with the size of the array.
 For example:
 ```c++
 template <typename T>
-void outR (T & arg)
+void outR(T & arg)
 {
     if constexpr (std::is_array_v<T>)
     {
@@ -5093,7 +5093,7 @@ void outR (T & arg)
 }
 ```
 However, templates are a bit tricky here. 
-If you pass a const argument, the deduction might result in 
+If you pass a `const` argument, the deduction might result in 
 `arg` becoming a declaration of a constant reference, 
 which means that passing an rvalue is suddenly allowed, 
 where an lvalue is expected:
@@ -7247,19 +7247,1222 @@ and templates make it possible to do so.
 
 ##### 11.1.1 Supporting Function Objects
 
+```c++
+template <typename InputIterator, typename Function>
+Function foreach(InputIterator first, InputIterator last, Function f)
+{
+    for (; first != last; ++first) f(*first);
+    return f;
+}
+
+void func(int & i) {}
+
+class FunctionObject
+{
+public:
+    void operator()(int & i) {}
+};
+
+std::vector<int> primes {2, 3, 5, 7, 11, 13, 17, 19};
+
+// function as callable (decays to pointer)
+foreach(primes.begin(), primes.end(), func); 
+
+// function pointer as callable
+foreach(primes.begin(), primes.end(), &func); 
+
+// function object as callable
+foreach(primes.begin(), primes.end(), FuncObj()); 
+
+// lambda as callable
+foreach(primes.begin(), primes.end(), [](int & i) {});
+```
+Let’s look at each case in detail: 
+- When we pass the name of a function as a function argument, 
+  we **don’t** really pass the function itself but a pointer or reference to it. 
+  As with arrays (see Section 7.4), function arguments _decay_ to a pointer when passed by value, 
+  and in the case of a parameter whose type is a template parameter, 
+  a pointer-to-function type will be deduced.   
+
+  Just like arrays, functions can be passed by reference without decay. 
+  However, function types can **not** really be qualified with `const`. 
+  If we were to declare the last parameter of `foreach` with type `Callable const &`, 
+  the `const` would just _be ignored_. 
+  (Generally speaking, references to functions are rarely used in mainstream C++ code.)
+- Our second call explicitly takes a function pointer 
+  by passing the address of a function name. 
+  This is equivalent to the first call 
+  (where the function name implicitly decayed to a pointer value)
+  but is perhaps a little clearer. 
+- When passing a functor, we pass a class type object as a callable. 
+  Calling through a class type usually amounts to invoking its `operator()`. 
+  So the call
+  ```c++
+  f(*first);
+  ```
+  is usually transformed into
+  ```c++
+  f.operator()(*first);
+  ```
+  Note that when defining `operator()`, 
+  you should usually define it as a _constant member function_. 
+  Otherwise, subtle error messages can occur when frameworks or libraries 
+  expect this call not to change the state of the passed object.    
+  It is also possible for a class type object to be implicitly convertible 
+  to a pointer or reference to a _surrogate call function_ (discussed in Section C.3.5).
+  In such a case, the call
+  ```c++
+  f(*first);
+  ```
+  would be transformed into
+  ```c++
+  (f.operator F())(*first);
+  ```
+  where `F` is the type of the pointer-to-function or reference-to-function 
+  that the class type object can be converted to. 
+  This is relatively unusual.
+- Lambda expressions produce functors (called closures), 
+  and therefore this case is not different from the functor case. 
+  Lambdas are, however, a very convenient shorthand notation to introduce functors, 
+  and so they appear commonly in C++ code since C++11.   
+ 
+  The compiler-generated closure type for lambdas with **no** captures 
+  provides a conversion operator to a function pointer. 
+  However, that is **never** selected as a _surrogate call function_ 
+  because it is always a worse match than the normal `operator()` of the closure. 
+
+##### 11.1.2 Dealing with Member Functions and Additional Arguments
+
+One possible entity to call was not used in the previous example: 
+member functions.
+That’s because calling a non-static member function normally involves 
+specifying an object to which the call is applied 
+using syntax like `object.memfunc(...)` or `ptr->memfunc(...)` 
+and that doesn’t match the usual pattern `functionObject(...)`. 
+
+
+Fortunately, since C++17, the C++ standard library provides a utility 
+[`std::invoke`](https://en.cppreference.com/w/cpp/utility/functional/invoke) 
+in header `<functional>`
+that conveniently unifies this case with the ordinary function-call syntax cases, 
+thereby enabling calls to any callable object with a single form. 
+The following implementation of our `foreach` template uses `std::invoke`:
+```c++
+template <typename InputIterator, typename Function, typename ... Args>
+Function foreach(InputIterator first, InputIterator last, Function f, Args const & ... args)
+{
+    for (; first != last; ++first)
+    {
+        // Do NOT perfect-forward f and args,
+        // as the first call might steal their values!
+        std::invoke(f, args..., *first);
+    }
+
+    return f;
+}
+```
+Here, besides the callable parameter, we also accept an arbitrary number of additional parameters. 
+The `foreach` template then calls `std::invoke` with the given callable 
+followed by the additional given parameters along with the referenced element. 
+`std::invoke(f, a1, a2, ...)` works roughly (details emitted!) follows: 
+- If `f` is **pointer to member function**, 
+  is equivalent to something like `a1.*f(a2, ...)`, 
+  with special handling on reference wrappers, etc., to make the call valid;
+- If `f` is **pointer to data member** and only `a1` is passed, 
+  is equivalent to something like `a1.*f`, 
+  with special handling on reference wrappers, etc., to make the call valid;
+- **Otherwise**, is equivalent to `f(a1, a2, ...)`
+
+
+Note that we **can’t** use perfect forwarding here for the callable or additional parameters: 
+The first call might "steal" their values,
+leading to unexpected behavior calling `f` in subsequent iterations. 
+
+
+With this implementation, we can still compile our original calls to `foreach` above. 
+Now, in addition, we can also pass additional arguments to the callable 
+and the callable can be a member function.
+
+
+The following client code illustrates this:
+```c++
+// a class with a member function that shall be called
+class MyClass
+{
+public:
+    void memfunc(int i) const
+    {
+        std::cout << "MyClass::memfunc(" << i << ")\n";
+    }
+};
+
+std::vector<int> primes {2, 3, 5, 7, 11, 13, 17, 19};
+
+// pass lambda as callable and an additional argument:
+foreach(primes.begin(), 
+        primes.end(),
+        [](std::string const & prefix, int i)
+        {
+            std::cout << prefix << i << '\n';
+        },
+        "- value: ");
+
+// call obj.memfunc for/with each element in primes passed as argument
+MyClass obj;
+foreach(primes.begin(), primes.end(), &MyClass::memfunc, obj);
+```
+
+##### 11.1.3 Wrapping Function Calls
+
+
+A common application of `std::invoke` is to wrap single function calls 
+(e.g., to log the calls, measure their duration, or prepare some context such as starting a new thread for them). 
+Now, we can support move semantics by perfect forwarding both the callable and all passed arguments: 
+```c++
+template <typename Callable, typename ... Args>
+decltype(auto) call(Callable && op, Args && ... args)
+{
+    return std::invoke(std::forward<Callable>(op), std::forward<Args>(args)...); 
+}
+```
+The other interesting aspect is 
+how to deal with the return value of a called function 
+to "perfectly forward" it back to the caller. 
+To support returning references (such as a `std::ostream &`) 
+you have to use `decltype(auto)` instead of just `auto`. 
+
+
+If you want to temporarily store the value returned by `std::invoke` 
+in a variable to return it after doing something else,
+(i.e., some post-processing that can be done only after `std::invoke` is called), 
+you also have to declare the temporary variable with `decltype(auto)`:
+```c++
+decltype(auto) ret {std::invoke(std::forward<Callable>(op), std::forward<Args>(args)...)};
+... 
+return ret;
+```
+Note that declaring `ret` with `auto &&` is **incorrect**. 
+As a reference, `auto &&` extends the lifetime of the returned value 
+until the end of its scope (see Section 11.3) 
+but **not** beyond the return statement to the caller of the function. 
+
+
+However, there is also a problem with using `decltype(auto)`: 
+If the callable has return type `void`, 
+the initialization of `ret` as `decltype(auto)` is **not** allowed, 
+because `void` is an incomplete type. 
+You have the following options:
+• Declare an object in the line before that statement, 
+  whose destructor performs the observable behavior that you want to realize: 
+  ```c++
+  struct cleanup 
+  {
+      ~cleanup() 
+      {
+          // code to perform after 
+          // std::invoke(std::forward<Callable>(op), std::forward<Args>(args)...)
+      }
+  } dummy;
+  
+  return std::invoke(std::forward<Callable>(op), std::forward<Args>(args)...);
+  ```
+• Implement the `void` and non-`void` cases differently:
+```c++
+template <typename Callable, typename ... Args>
+decltype(auto) call(Callable && op, Args && ... args)
+{
+    if constexpr(std::is_same_v<std::invoke_result_t<Callable, Args...>, void>)
+    {
+        // return type is void:
+        std::invoke(std::forward<Callable>(op), std::forward<Args>(args)...);
+        // cleanup code here
+        return;
+    }
+    else
+    {
+        // return type is not void:
+        decltype(auto) ret {std::invoke(std::forward<Callable>(op), std::forward<Args>(args)...)};
+        // cleanup code here
+        return ret;
+    }
+}
+```
+
+
+#### 📌 11.2 Other Utilities to Implement Generic Libraries
+
+##### 11.2.1 [Type Traits](https://en.cppreference.com/w/cpp/header/type_traits)
+
+##### 11.2.2 [`std::addressof`](https://en.cppreference.com/w/cpp/memory/addressof)
+
+The `std::addressof` function template yields the actual address of an object or function. 
+It works even if the object type has an overloaded `operator&`. 
+Even though the latter is somewhat rare, it might happen (e.g., in smart pointers). 
+Thus, it is recommended to use `addressof` if you need an address of an object of arbitrary type:
+```c++
+template <typename T>
+void f (T && x)
+{
+    auto p = &x;                 // might fail with overloaded operator&
+    auto q = std::addressof(x);  // works even with overloaded operator&
+
+}
+```
+
+##### 11.2.3 [`std::declval`](https://en.cppreference.com/w/cpp/utility/declval)
+
+```c++
+template <typename T>
+typename std::add_rvalue_reference<T>::type declval() noexcept;
+```
+The `std::declval` function template can be used as a placeholder 
+for an object reference of a specific type.
+It converts any type `T` to `T &&` 
+(possibly cv-qualified, except for `void`, which remains unchanged), 
+making it possible to use member functions in `decltype` expressions 
+**without** the need to go through constructors.
+
+
+`declval` is commonly used in templates 
+where acceptable template parameters may have **no** constructor in common, 
+but have the same member function whose return type is needed. 
+
+
+The function **doesn’t** have a definition and therefore can **not** be called (and **doesn’t** create an object). 
+Hence, it can only be used in 
+[unevaluated expressions](https://en.cppreference.com/w/cpp/language/expressions#Unevaluated_expressions) 
+(such as `typeid`, `sizeof`, `noexcept` and `decltype` constructs). 
+So, instead of trying to create an object, you can assume you have an object of the corresponding type. 
+
+
+For example, the following declaration deduces the default return type `R` 
+from the passed template parameters `T1` and `T2`:
+```c++
+template <typename T1, 
+          typename T2,
+          typename R = std::decay_t<decltype(true ? std::declval<T1>() : std::declval<T2>())>>
+R max(T1 a, T2 b)
+{
+    return b < a ? a : b;
+}
+```
+To avoid that we have to call a (default) constructor for `T1` and `T2` 
+to be able to call operator `?:` in the expression to initialize `R`, 
+we use `std::declval` to "use" objects of the corresponding type **without** creating them. 
+This is only possible in the _unevaluated context_ of `decltype`, though.
+
+
+Don’t forget to use the `std::decay` type trait to ensure 
+the default return type can’t be a reference, 
+because `std::declval` itself yields rvalue references. 
+Otherwise, calls such as `max(1, 2)` will get a return type of `int &&`.
+See Section 19.3.4 for details.
+
+
+#### 📌 11.3 Perfect Forwarding Temporaries
+
+
+We can use _forwarding references_ and `std::forward` 
+to "perfectly forward" generic parameters:
+```c++
+template <typename ... Args>
+void f(Args && ... args)
+{
+    g(std::forward<Args>(args)...);
+}
+```
+However, sometimes we have to perfectly forward data 
+in generic code that does **not** come through a parameter. 
+In that case, we can use `auto &&` to create a variable that can be forwarded. 
+Assume, for example, that we have chained calls to functions `get` and `set` 
+where the return value of `get` should be perfectly forwarded to `set`:
+```c++
+template <typename T>
+void foo(T && x)
+{
+    set(get(std::forward<T>(x)));
+}
+```
+Suppose further that we need to update our code to perform some operation 
+on the intermediate value produced by `get`. 
+We do this by holding the value in a variable declared with `auto &&`: 
+```c++
+template <typename T>
+void foo(T && x)
+{
+    auto && val = get(std::forward<T>(x));
+    set(std::forward<decltype(val)>(val));
+}
+```
+This avoids extraneous copies of the intermediate value.
+
+
+#### 📌 11.4 References as Template Parameters
+
+Although it is not common, 
+template type parameters can become reference types.
+```c++
+template <typename T>
+constexpr bool templateParameterIsReference(T) 
+{
+    return std::is_reference_v<T>;
+}
+
+int i;
+int & r = i;
+std::cout << std::boolalpha;
+std::cout << templateParameterIsReference(i) << '\n';         // false
+std::cout << templateParameterIsReference(r) << '\n';         // false
+std::cout << templateParameterIsReference<int &>(i) << '\n';  // true
+std::cout << templateParameterIsReference<int &>(r) << '\n';  // true
+```
+Even if a reference variable is passed to `templateParameterIsReference`, 
+the template parameter `T` is deduced to the type of the referenced type 
+(because, for a reference variable `v`, the expression `v` has the referenced type; 
+the type of an expression is **never** a reference). 
+However, we can force the reference case by explicitly specifying the type of `T`. 
+
+
+Doing this can fundamentally change the behavior of a template, 
+and a template may not have been designed with this possibility in mind, 
+thereby triggering errors or unexpected behavior:
+```c++
+template <typename T, T z = T {}>
+class RefMem
+{
+public:
+    RefMem() : zero {z} {}
+
+private:
+    T zero;
+};
+
+int null = 0;
+
+int main()
+{
+    RefMem<int> rm1; 
+    RefMem<int> rm2;
+    rm1 = rm2;                // OK
+    
+    RefMem<int &> rm3;        // ERROR: invalid default value for z
+    RefMem<int &, 0> rm4;     // ERROR: invalid default value for z
+    
+    extern int null;
+    RefMem<int &, null> rm5
+    RefMem<int &, null> rm6;
+    rm5 = rm6;                // ERROR: operator= is deleted due to reference member
+    
+    return 0;
+}
+```
+Here we have a class with a member of template parameter type `T`,
+initialized with a non-type template parameter `z` 
+that has a zero-initialized default value. 
+Instantiating the class with type `int` works as expected. 
+However, when trying to instantiate it with a reference, things become tricky:
+- The default initialization no longer works. 
+- You can no longer pass just `0` as initializer for an `int`. 
+- And, perhaps most surprising, the assignment operator is no longer available
+  because classes with nonstatic reference members have deleted default assignment operators.
+
+
+Also, using reference types for non-type template parameters 
+is tricky and can be dangerous. 
+Consider this example:
+```c++
+// Note: size is reference
+template <typename T, int & sz> 
+class Arr
+{
+public:
+    Arr() : elems(sz) {}
+
+    void print() const
+    {
+        for (int i = 0; i < sz; ++i)
+        {
+            std::cout << elems[i] << ' ';
+        }
+    }
+    
+private:
+    std::vector<T> elems;
+};
+
+int size = 10;
+
+int main()
+{
+    Arr<int, size> x;     // initializes internal vector with 10 elements
+    x.print();            // OK
+
+    size += 100;          // OOPS: modifies sz in Arr
+    x.print();            // run-time ERROR: invalid memory access: loops over 110 elements
+
+    Arr<int &, size> y;   // compile-time ERROR deep in the code of class std::vector
+}
+```
+Here, the attempt to instantiate `Arr` for elements of a reference type 
+results in an error deep in the code of class `std::vector`,
+because it **can’t** be instantiated with references as elements. 
+
+
+Perhaps worse is the run-time error resulting from making `sz` a reference: 
+It allows the recorded size value to change without the container being aware of it 
+(i.e., the size value can become invalid). 
+Thus, operations using the `size` (like the `print` member) 
+are bound to run into undefined behavior (causing the program to crash, or worse). 
+
+
+Note that changing the template parameter `sz` to be of type `int const &` 
+does **not** address this issue, because `size` itself is still modifiable. 
+
+
+Arguably, this example is far-fetched. 
+However, in more complex situations, issues like these do occur. 
+Also, in C++17 non-type parameters can be deduced: 
+```c++
+template <typename T, decltype(auto) sz>
+class Arr;
+```
+Using `decltype(auto)` can easily produce reference types 
+and is therefore generally avoided in this context (use `auto` by default). 
+See Section 15.10.3 for details. 
+
+
+The C++ standard library for this reason sometimes has surprising specifications and constraints. 
+For example:
+- In order to still have an assignment operator even if the template parameters are instantiated for references, 
+  classes `std::pair` and `std::tuple` _implement_ the assignment operator instead of using the default behavior.
+- Because of the complexity of possible side effects, 
+  instantiation of the C++17 standard library class templates `std::optional` and `std::variant`
+  for reference types is ill-formed (at least in C++17).   
+  To disable references, a simple static assertion is enough:
+  ```c++
+  template <typename T>
+  class optional
+  {
+      static_assert(!std::is_reference<T>::value, "Invalid instantiation of optional<T> for references");
+      ...
+  };
+  ```
+  Reference types in general are quite unlike other types 
+  and are subject to several unique language rules. 
+  This impacts, for example, the declaration of call parameters (see Section 7) 
+  and also the way we define type traits (see Section 19.6.1).
+
+
+#### 📌 11.5 Defer Evaluations
+
+
+When implementing templates, sometimes the question comes up 
+whether the code can deal with incomplete types. 
+Consider the following class template:
+```c++
+template <typename T>
+class Container
+{
+public:
+    ...
+private:
+    T * elems;
+    std::size_t size;
+};
+```
+So far, this class can be used with incomplete types. 
+This is useful, for example, with classes that refer to elements of their own type:
+```c++
+struct Node
+{
+    std::string value;
+    Container<Node> next;  // only possible if Cont accepts incomplete types
+};
+```
+However, for example, just by using some traits, 
+you might lose the ability to deal with incomplete types. 
+For example:
+```c++
+template <typename T>
+class Containter
+{
+public:
+    ...
+
+    std::conditional_t<std::is_move_constructible_v<T>, 
+                       T &&, 
+                       T &>
+    foo();
+
+private:
+    T * elems;
+    std::size_t size;
+};
+```
+Here, we use the trait `std::conditional` to decide 
+whether the return type of the member function `foo` is `T &&` or `T &`. 
+The decision depends on whether the template parameter type `T` supports move semantics.
+
+
+The problem is that the trait `std::is_move_constructible` requires that
+its argument is a complete type
+(and is `not` void or an array of unknown bound; see Section D.3.2). 
+Thus, with this declaration of `foo`, the declaration of `struct Node` fails.
+
+
+**Not** all compilers yield an error if `std::is_move_constructible` is not an incomplete type. 
+This is allowed, because for this kind of error, no diagnostics is required. 
+Thus, this is at least a portability problem. 
+
+
+We can deal with this problem by replacing `foo` by a member template 
+so that the evaluation of `std::is_move_constructible` is deferred 
+to the point of instantiation of `foo`:
+```c++
+template <typename T>
+class Containter
+{
+public:
+    ...
+    
+    template <typename D = T>
+    std::conditional_t<std::is_move_constructible_v<D>, 
+                       T &&, 
+                       T &>
+    foo();
+
+private:
+    T * elems;
+    std::size_t size;
+};
+```
+Now, the traits depends on the template parameter `D` 
+(defaulted to `T`, the value we want anyway) 
+and the compiler has to wait until `foo` is called for a concrete type like `Node` 
+before evaluating the traits 
+(by then `Node` is a complete type; it was only incomplete while being defined). 
+
+
+#### 📌 11.6 Things to Consider When Writing Generic Libraries
+
+
+Let’s list some things to remember when implementing generic libraries 
+(note that some of them might be introduced later in this book): 
+• Use forwarding references to forward values in templates. 
+  If the values do **not** depend on template parameters, use `auto &&` (see Section 11.3). 
+• When parameters are declared as forwarding references, 
+  be prepared that a template parameter has a reference type when passing lvalues 
+  (see Section 15.6.2). 
+• Use `std::addressof` when you need the address of an object depending on a template parameter 
+  to avoid surprises when it binds to a type with overloaded `operator&` (Section 11.2.2). 
+• For member function templates, 
+  ensure that they don’t match better than 
+  the predefined copy/move constructor or assignment operator (Section 6.4). 
+• Consider using `std::decay` when template parameters might be string literals 
+  and are not passed by value (Section 7.4 and Section D.4). 
+• If you have out or inout parameters depending on template parameters, 
+  remember to SFINAE-out `const` template call arguments (see Section 7.2.2). 
+• Be prepared to deal with the side effects of template parameters being references
+  (see Section 11.4 details and Section 19.6.1 for an example). 
+  In particular, you might want to ensure that the return type can’t become a reference 
+  (see Section 7.5). 
+• Be prepared to deal with incomplete types to support, 
+  for example, recursive data structures (see Section 11.5).
+• Overload for all array types and not just `T[sz]` (see Section 5.4). 
+
+
+#### 📌 11.7 Summary
+
+
+- Templates allow you to pass functions, function pointers, function objects, functors, and lambdas as _callables_.
+- When defining classes with an overloaded `operator()`, 
+  declare it as `const` unless the call changes its state. 
+- With `std::invoke`, you can implement code that can handle all callables, including member functions.
+- Use `decltype(auto)` (**not** `auto &&`) to forward a return value perfectly. 
+- Use `auto &&` to perfectly forward objects in generic code 
+  if their type does not depend on template parameters. 
+- Type traits are type functions that check for properties and capabilities of types. 
+- Use `std::addressof` when you need the address of an object in a template.
+- Use `std::declval` to create values of specific types in unevaluated expressions.
+- Be prepared to deal with the side effects of template parameters being references. 
+- You can use templates to defer the evaluation of expressions until the templates get instantiated 
+  (e.g., to support using incomplete types in class templates). 
 
 
 
 
 
 
-## 🌱
+## 🌱 Part II Templates in Depth
 
-## 🌱
+
+
+### 🎯 Chapter 12 Fundamentals in Depth
+
+
+In this chapter we review some of the fundamentals 
+introduced in the first part of this book in depth: 
+the declaration of templates, 
+the restrictions on template parameters,
+the constraints on template arguments, 
+and so forth.
+
+
+#### 📌 12.1 Parameterized Declarations
+
+
+C++ currently supports four fundamental kinds of templates: 
+- Class templates;
+- Function templates; 
+- Variable templates; 
+- Alias templates.
+Each of these template kinds can appear in namespace scope,
+but also in class scope.
+In class scope, they become 
+- Nested class templates; 
+- Member function templates; 
+- Static data member templates; 
+- Member alias templates. 
+
+
+Such templates are declared much like 
+ordinary classes, functions, variables, and type aliases 
+(or their class member counterparts) 
+except for being introduced 
+by a _parameterization clause_ of the form
+```
+template <template-parameter-list>
+...
+```
+Note that C++17 introduced another construct that is introduced with such a parameterization clause: 
+_deduction guides_ (see Section 2.9 and Section 15.12.1 ). 
+Those **aren’t** called templates (e.g., they are **not** instantiated), 
+but the syntax was chosen to be reminiscent of function templates. 
+
+
+We’ll come back to the actual template parameter declarations in a later section. 
+First, some examples illustrate the four kinds of templates. 
+They can occur in namespace scope (including global namespace scope) as follows:
+```c++
+// a namespace scope class template
+template <typename T>
+class Data
+{
+public:
+    static constexpr bool copyable = true;
+};
+
+// a namespace scope function template
+template <typename T>
+void log(T x) {}
+
+// a namespace scope variable template (since C++14)
+template <typename T> 
+T pi = 3.141592653589793238462643383279502884L;
+
+// a namespace scope variable template (since C++14)
+template <typename T> 
+bool dataCopyable = Data<T>::copyable;
+
+// a namespace scope alias template
+template <typename T> 
+using DataList = Data<T *>;
+```
+Note that in this example, the static data member `Data<T>::copyable` is **not** a variable template, 
+even though it is indirectly parameterized through the parameterization of the class template Data. 
+However, a variable template can appear in class scope (as the next example will illustrate), 
+and in that case it is a static data member template.
+
+
+The following example shows the four kinds of templates as class members 
+that are defined within their parent class:
+```c++
+class Collection
+{
+public:
+    // an in-class member class template definition
+    template <typename T>
+    class Node {};
+
+    // an in-class (and therefore implicitly inline)
+    // member function template definition
+    template <typename T>
+    T * alloc() {}
+
+    // a static member variable template (since C++14)
+    template <typename T>
+    static T pi = 3.141592653589793238462643383279502884L;
+
+    // a member alias template
+    template <typename T>
+    using NodePtr = Node<T> *;
+};
+```
+Note that in C++17, variables (including static data members) 
+and variable templates can be `inline`, 
+which means that their definition can be repeated across translation units. 
+This is redundant for variable templates, 
+which can always be defined in multiple translation units. 
+Unlike member functions, however, a static data member being defined in its enclosing class 
+does **not** make it inline: 
+The keyword `inline` must be specified in all cases. 
+
+
+Finally, the following code demonstrates how member templates 
+that are **not** alias templates can be defined out-of-class:
+```c++
+// a namespace scope class template
+template <typename T> 
+class List 
+{
+public:
+    // because a template constructor is defined
+    List() = default;
+    
+    // another member class template,
+    // without its definition
+    template <typename U> 
+    class Handle;
+
+    // a member function template (constructor)
+    template <typename U> 
+    List(List<U> const &);
+
+    // a member variable template (since C++14)
+    template <typename U> 
+    static U pi;
+};
+
+// out-of-class member class template definition
+template <typename T> 
+template <typename U>
+class List<T>::Handle {};
+
+// out-of-class member function template definition
+template <typename T> 
+template <typename U>
+List<T>::List (List<U> const & b) {}
+
+// out-of-class static data member template definition
+template <typename T> 
+template <typename U>
+U List<T>::pi = 3.141592653589793238462643383279502884L;
+```
+Member templates defined outside their enclosing class
+may need multiple `template<...>` parameterization clauses: 
+one for every enclosing class template and one for the member template itself. 
+The clauses are listed starting from the outermost class template.
+
+
+Note also that a constructor template 
+(a special kind of member function template)
+**disables** the implicit declaration of the default constructor 
+(because it is only implicitly declared if **no** other constructor is declared). 
+Adding a defaulted declaration
+```c++
+List() = default;
+```
+ensures an instance of `List<T>` is default-constructible 
+with the semantics of an implicitly declared constructor. 
+
+##### Union Templates
+
+_Union templates_ are possible too (and they are considered a kind of class template):
+```c++
+template <typename T>
+union AllocChunk 
+{
+    T object;
+    unsigned char bytes[sizeof(T)];
+};
+```
+
+##### Default Call Arguments
+
+Function templates can have default call arguments just like ordinary function declarations:
+```c++
+template <typename T>
+void report_top(Stack<T> const & s, int number = 10);
+
+// T {} is zero for built-in types
+template <typename T>
+void fill(Array<T> & a, T const & v = T {}); 
+```
+The latter declaration shows that a default call argument could depend on a template parameter. 
+It also can be defined as (the only way possible before C++11, see Section 5.2)
+```c++
+template <typename T>
+void fill(Array<T> & a, T const & v = T()); 
+```
+When the `fill` function is called, the default argument is **not** instantiated 
+if a second function call argument is supplied. 
+This ensures that no error is issued if the default call argument 
+can **not** be instantiated for a particular `T`:  
+```c++
+// no default constructor
+class Value 
+{
+public:
+    explicit Value(int); 
+};
+
+void init(Array<Value> & a)
+{
+    Value zero(0);
+    fill(array, zero);  // OK: default constructor not used
+    fill(array);        // ERROR: undefined default constructor for Value is used
+}
+```
+
+##### Non-template Members of Class Templates
+
+In addition to the four fundamental kinds of templates declared inside a class,
+you can also have ordinary class members parameterized by being part of a class template. 
+They are occasionally (erroneously) also referred to as _member templates_.
+Although they can be parameterized, such definitions **aren’t** quite first-class templates. 
+Their parameters are entirely determined by the template of which they are members. 
+For example:
+```c++
+template <int I>
+class CupBoard
+{
+    class Shelf;                // ordinary class in class template
+    void open();                // ordinary function in class template
+    enum Wood : unsigned char;  // ordinary enumeration type in class template
+    static double totalWeight;  // ordinary static data member in class template
+};
+```
+The corresponding definitions only specify a parameterization clause for the parent class templates, 
+but **not** for the member itself, because it is **not** a template 
+(i.e., no parameterization clause is associated with the name appearing after the last `::`):
+```c++
+// definition of ordinary class in class template
+template <int I> 
+class CupBoard<I>::Shelf {};
+
+// definition of ordinary function in class template
+template <int I>
+void CupBoard<I>::open() {}
+
+// definition of ordinary enumeration type class in class template
+template <int I> 
+enum CupBoard<I>::Wood 
+{
+    MAPLE, 
+    CHERRY, 
+    OAK
+};
+
+// definition of ordinary static member in class template
+template <int I> 
+double CupBoard<I>::totalWeight = 0.0;
+```
+Since C++17, the static `totalWeight` member can be initialized 
+inside the class template using `inline`:
+```c++
+template <int I>
+class CupBoard
+{
+    inline static double totalWeight = 0.0;
+    ...
+};
+```
+Although such parameterized definitions are commonly called _templates_, 
+the term doesn’t quite apply to them. 
+A term that has been occasionally suggested for these entities is _temploid_. 
+Since C++17, the C++ standard does define the notion of a _templated entity_, 
+which includes templates and temploids as well as, 
+recursively, any entity defined or created in templated entities 
+(that includes, e.g., a friend function defined inside a class template 
+or the closure type of a lambda expression appearing in a template). 
+Neither _temploid_ nor _templated entity_ has gained much traction so far, 
+but they may be useful terms to communicate more precisely about C++ templates in the future. 
+
+##### 12.1.1 Virtual Member Functions
+
+Member function templates can **not** be declared virtual. 
+This constraint is imposed because the usual implementation of the virtual function call mechanism
+uses a _fixed-size virtual table_ with one entry per virtual function. 
+However, the number of instantiations of a member function template 
+is **not** fixed until the entire program has been translated. 
+Hence, supporting virtual member function templates would require support 
+for a whole new kind of mechanism in C++ compilers and linkers. 
+
+
+In contrast, the ordinary members of class templates can be virtual 
+because their number is fixed when a class is instantiated:
+```c++
+template <typename T>
+class Dynamic 
+{
+public:
+    // OK: one destructor per instance of Dynamic<T>
+    virtual ~Dynamic(); 
+    
+    // ERROR: unknown number of instances of copy
+    // given an instance of Dynamic<T>
+    template <typename U>
+    virtual void copy(U const &);
+};
+```
+
+##### 12.1.2 Linkage of Templates
+
+Every template must have a name, and that name must be unique within its scope,
+except that function templates can be overloaded (see Chapter 16). 
+Note especially that, unlike class types, 
+class templates can **not** share a name with a different kind of entity:
+```c++
+// OK: 
+// class names and non-class names 
+// are in a different "space"
+int C;
+
+class C;
+
+// ERROR: conflict with variable X
+int X;
+
+template <typename T>
+class X;
+
+// ERROR: conflict with struct S
+struct S;
+
+template <typename T>
+class S; 
+```
+Template names have linkage, but they can **not** have C linkage. 
+Nonstandard linkages may have an implementation-dependent meaning 
+(however, we don’t know of an implementation that supports nonstandard name linkages for templates):
+```c++
+// this is the default: 
+// the linkage specification could be left out
+extern "C++" template <typename T>
+void normal();
+
+// ERROR: 
+// templates can not have C linkage
+extern "C" template <typename T>
+void invalid();
+
+// nonstandard, 
+// but maybe some compiler will someday support
+// linkage compatible with Java generics
+extern "Java" template <typename T>
+void javaLink();
+```
+Templates usually have external linkage. 
+The only exceptions are namespace scope function templates with the `static` specifier, 
+templates that are direct or indirect members of an unnamed namespace (which have internal linkage), 
+and member templates of unnamed classes (which have no linkage). 
+For example:
+```c++
+// refers to the same entity as a declaration 
+// of the same name (and scope) in another file
+template <typename T>
+void external(); 
+
+// unrelated to a template with the same name in another file
+template <typename T>
+static void internal();
+
+// redeclaration of the previous declaration
+template <typename T>
+static void internal();
+
+namespace
+{
+
+// also unrelated to a template with the same name in another file,
+// even one that similarly appears
+template <typename>
+void otherInternal(); 
+
+}  // namespace anonymous
+
+namespace
+{
+
+// redeclaration of the previous template declaration
+template <typename>
+void otherInternal();
+
+}  // namespace anonymous
+
+struct
+{
+    // no linkage: cannot be redeclared
+    template <typename T>
+    void f(T) {} 
+} x;
+```
+Note that since the latter member template has no linkage, 
+it must be defined within the unnamed class 
+because there is **no** way to provide a definition outside the class. 
+
+
+As of C++17, templates can **not** be declared in function scope or local class scope, 
+but _generic lambdas_ (see Section 15.10.6), 
+which have associated closure types that contain member function templates, 
+can appear in local scopes, which effectively implies a kind of local member function template.
+
+
+The linkage of an instance of a template is that of the template. 
+For example, a function `internal<void>` 
+instantiated from the template `internal` declared above
+will have internal linkage. 
+This has an interesting consequence in the case of variable templates: 
+```c++
+template <typename T> 
+T zero = T {};
+```
+All instantiations of `zero` have external linkage, 
+even something like `zero<int const>`. 
+That’s perhaps counter-intuitive given that
+```c++
+int const zero = int {};
+```
+has internal linkage because it is declared with a `const` type. 
+Similarly, all instantiations of the template
+```c++
+template <typename T> 
+int const max_volume = 11;
+```
+have external linkage, 
+despite all those instantiations also having type `int const`.
+
+##### 12.1.3 Primary Templates
+
+Normal declarations of templates declare _primary templates_. 
+Such template declarations are declared **without** 
+adding template arguments in angle brackets after the template name:
+```c++
+// OK: primary template
+template <typename T>
+class Box;
+
+// ERROR: does not specialize
+template <typename T>
+class Box<T>;
+
+// OK: primary template
+template <typename T>
+void translate(T);
+
+// ERROR: not allowed for functions
+template <typename T>
+void translate<T>(T);
+
+// OK: primary template
+template <typename T> 
+constexpr T zero = T {};
+
+// ERROR: does not specialize
+template <typename T> 
+constexpr T zero<T> = T {}; 
+```
+Non-primary templates occur when declaring _partial specializations_ of class or variable templates. 
+Those are discussed in Chapter 16. 
+Function templates must always be primary templates (thus can **not** be partially specialized). 
+
+
+#### 📌 12.2 Template Parameters
+
+
+There are three basic kinds of template parameters:
+1. Type parameters (these are by far the most common);
+2. Non-type parameters; 
+3. Template template parameters.
+
+
+Any of these basic kinds of template parameters
+can be used as the basis of a _template parameter pack_ (see Section 12.2.4). 
+
+
+Template parameters are declared in the introductory parameterization clause of a template declaration.
+An exception since C++14 are the implicit template type parameters for a generic lambda. 
+See Section 15.10.6.
+
+Such declarations do **not** necessarily need to be named:
+```c++
+// X is parameterized by a type and an integer
+template <typename, int>
+class X; 
+```
+A parameter name is, of course, required if the parameter is referred to later in the template. 
+Note also that a template parameter name can be referred to in a subsequent parameter declaration (but not before):
+```c++
+template <typename T, 
+          T Root, 
+          template <T> class Buf> 
+class Structure;
+```
+
+##### 12.2.1 Type Parameters
+
+
+
+
+
+
+
+### 🎯
+
+#### 📌
+
+
+1 
+2 The keyword class does not imply that the substituting argument should be a
+class type. It could be any accessible type.
+3 Template template parameters do not denote types either; however, they are
+distinct from nontype parameters. This oddity is historical: Template template
+parameters were added to the language after type parameters and nontype
+parameters.
+4 At the time of this writing, only “pointer to object” and “pointer to function” types
+are permitted, which excludes types like void*. However, all compilers appear to
+accept void* also.
+5 See Appendix B for a discussion of value categories such as rvalues and lvalues.
+6 Template arguments for subsequent template parameters can still be determined
+by template argument deduction; see Chapter 15.
+7 However, a constructor template can be a default constructor.
+8 The term variadic is borrowed from C’s variadic functions, which accept a
+variable number of function arguments. Variadic templates also borrowed from C
+the use of the ellipsis to denote zero or more arguments and are intended as a typesafe
+replacement for C’s variadic functions for some applications.
+9 This syntactic understanding of pack expansions is a useful tool, but it breaks
+down when the template parameter packs have length zero. Section 12.4.5 on page
+207 provides more details about the interpretation of zero-length pack expansions.
+10 Mixins are discussed in further detail in Section 21.3 on page 508.
+11 There is a similar restriction on members of class templates and nested classes
+within class templates: If a member is declared with a type that does not appear to
+be a function type, but after instantiation the type of that member is a function
+type, the program is ill-formed because the semantic interpretation of the member
+has changed from a data member to a member function.
+12 Because overloading these three special operators is unusual, this problem is
+fortunately rare (but subtle). The original proposal for fold expressions included
+empty expansion values for more common operators like + and *, which would
+have caused more serious problems.
+13 This was the very first extension added to C++11, thanks to a proposal by William
+M. “Mike” Miller.
+
+
+
+
+
+
+
+
+
+
+
+## 🌱 Part III Templates and Design
 
 ### 🎯
 
 #### 📌 
+
+
 
 
 
