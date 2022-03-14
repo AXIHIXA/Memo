@@ -8402,6 +8402,131 @@ class Structure;
 ##### 12.2.1 Type Parameters
 
 
+Type parameters are introduced with either the keyword `typename` or the keyword `class`: 
+The two are entirely equivalent.
+The keyword `class` does **not** imply that the substituting argument should be a class type. 
+It could be any accessible type.
+
+
+The keyword must be followed by a simple identifier, 
+and that identifier must be followed by one of the following: 
+- A comma `,` to denote the start of the next parameter declaration; 
+- A closing angle bracket `>` to denote the end of the parameterization clause;
+- An equal sign `=` to denote the beginning of a default template argument. 
+
+
+Within a template declaration, a type parameter acts much like a type alias. 
+For example, it is **not** possible to use an elaborated name of the form `class T` when `T` is a template parameter, 
+even if `T` were to be substituted by a class type:
+```c++
+template <typename Allocator>
+class List 
+{
+    class Allocator * allocptr;  // ERROR: use "Allocator * allocptr"
+    friend class Allocator;      // ERROR: use "friend Allocator"
+    ...
+};
+```
+
+##### 12.2.2 Non-type Parameters
+
+Non-type template parameters stand for constant values 
+that can be determined at compile or link time (i.e. satisfies `constexpr`). 
+
+
+Template template parameters do **not** denote types either. 
+However, they are distinct from non-type parameters. 
+This oddity is historical: 
+Template template parameters were added to the language 
+_after_ type parameters and non-type parameters.
+
+
+The type of such a parameter 
+(in other words, the type of the value for which it stands) 
+must be one of the following:
+- An integer type or an enumeration type;
+- A pointer type;
+  - As of C++17, 
+    only "pointer to object" and "pointer to function" types are permitted, 
+    which **excludes** types like `void *`. 
+    However, all compilers appear to accept `void *` also. 
+- A pointer-to-member type;
+- An lvalue reference type 
+  (both references to objects and references to functions are acceptable);
+- `std::nullptr_t`;
+- A type containing `auto` or `decltype(auto)` `(since C++17)` (see Section 15.10.1).
+
+
+All other types are excluded as of C++17, 
+although floating-point types may be added in the future (see Section 17.2).  
+
+
+The declaration of a non-type template parameter can 
+in some cases also start with the keyword `typename`:
+```c++
+template <typename T,                         // a type parameter
+          typename T::Allocator * Allocator>  // a non-type parameter
+class List;
+```
+or with the keyword `class`:
+```c++
+class X {};
+
+// a non-type parameter of pointer type
+// keyword class is optional here
+template <class X *>
+class Y;
+
+// a non-type parameter of pointer type
+template <X *>
+class Z;
+```
+The two cases are easily distinguished 
+because the first is followed by a simple identifier 
+and then one of a small set of tokens 
+(`=` for a default argument, 
+`,` to indicate that another template parameter follows, 
+or a closing `>` to end the template parameter list). 
+Keyword `typename` in the first non-type parameter 
+because it is a nested name dependent on template parameters 
+(see Section 5.1 and Section 13.3.2). 
+
+
+Function and array types can be explicitly specified as non-type template parameters, 
+but they are implicitly adjusted to the pointer type to which they decay:
+```c++
+template <int buf[5]> class Lexer;     // buf is really an int*
+template <int * buf> class Lexer;      // OK: this is a redeclaration
+template <int fun()> struct FuncWrap;  // fun really has pointer to function type
+template <int (*)()> struct FuncWrap;  // OK: this is aredeclaration
+```
+Non-type template parameters are declared much like variables, 
+but they can **not** have non-type specifiers like `static`, `mutable`, and so forth. 
+They can have `const` and `volatile` qualifiers, 
+but if such a qualifier appears at the outermost level of the parameter type, 
+it is simply ignored:
+```c++
+template <int const length> class Buffer;  // const is useless here
+template <int length> class Buffer;        // same as previous declaration
+```
+Finally, non-reference non-type parameters are always prvalues when used in expressions. 
+Their address can **not** be taken, and they can **not** be assigned to. 
+A non-type parameter of lvalue reference type, on the other hand, can be used to denote an lvalue:
+```c++
+template <int & Counter>
+struct LocalIncrement 
+{
+    // OK: reference to an integer
+    LocalIncrement() { Counter = Counter + 1; } 
+    ~LocalIncrement() { Counter = Counter - 1; }
+};
+```
+Rvalue references are **not** permitted.
+
+##### 12.2.3 Template Template Parameters
+
+
+
 
 
 
@@ -8412,17 +8537,7 @@ class Structure;
 #### 📌
 
 
-1 
-2 The keyword class does not imply that the substituting argument should be a
-class type. It could be any accessible type.
-3 Template template parameters do not denote types either; however, they are
-distinct from nontype parameters. This oddity is historical: Template template
-parameters were added to the language after type parameters and nontype
-parameters.
-4 At the time of this writing, only “pointer to object” and “pointer to function” types
-are permitted, which excludes types like void*. However, all compilers appear to
-accept void* also.
-5 See Appendix B for a discussion of value categories such as rvalues and lvalues.
+
 6 Template arguments for subsequent template parameters can still be determined
 by template argument deduction; see Chapter 15.
 7 However, a constructor template can be a default constructor.
