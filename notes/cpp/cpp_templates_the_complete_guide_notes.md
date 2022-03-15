@@ -8525,7 +8525,371 @@ Rvalue references are **not** permitted.
 
 ##### 12.2.3 Template Template Parameters
 
+Template template parameters are placeholders for class or alias templates. 
+They are declared much like class templates, 
+but the keywords `struct` and `union` can **not** be used:
+```c++
+template <template <typename X> class C>     // OK
+void f(C<int> * p);
 
+template <template <typename X> struct C>    // ERROR: struct not valid here
+void f(C<int> * p);
+
+template <template <typename X> union C>     // ERROR: union not valid here
+void f(C<int> * p);
+```
+C++17 allows the use of `typename` instead of `class`: 
+That change was motivated by the fact that template template parameters can be substituted 
+not only by class templates but also by alias templates 
+(which instantiate to arbitrary types). 
+So, in C++17, our example above can be written instead as
+```c++
+template <template <typename X> typename C>  // OK since C++17
+void f(C<int> * p);
+```
+In the scope of their declaration, template template parameters 
+are used just like other class or alias templates. 
+
+
+The parameters (`typename T`, `typename A`) 
+of template template parameters (`class Container`) 
+can have default template arguments (`A = MyAllocator`). 
+These default arguments apply 
+when the corresponding parameters are **not** specified 
+in uses of the template template parameter:
+```c++
+template <template <typename T, 
+                    typename A = MyAllocator> 
+          class Container>
+class Adaptation 
+{
+    // implicitly equivalent to Container<int, MyAllocator>
+    Container<int> storage;
+    ...
+};
+```
+`T` and `A` are the names of the template parameter 
+of the template template parameter `Container`.
+These names be used _only_ in the declaration 
+of other parameters of that template template parameter.
+The following contrived template illustrates this concept:
+```c++
+template <template <typename T, T *> 
+          class Buf>
+class Lexer 
+{
+    // ERROR: 
+    // names of the template parameters 
+    // of a template template parameter 
+    // can not be used here 
+    static T * storage; 
+    ...
+};
+```
+Usually however, the names of the template parameters of a template template parameter 
+are **not** needed in the declaration of other template parameters 
+and are therefore often left unnamed altogether. 
+For example, our earlier `Adaptation` template could be declared as follows:
+```c++
+template <template <typename, 
+                    typename = MyAllocator> 
+          class Container>
+class Adaptation 
+{
+    // implicitly equivalent to Container<int, MyAllocator>
+    Container<int> storage;
+    ...
+};
+```
+
+##### 12.2.4 Template Parameter Packs
+
+Since C++11, any kind of template parameter can be turned into a _template parameter pack_ 
+by introducing an ellipsis `...` prior to the template parameter name or, 
+if the template parameter is unnamed, where the template parameter name would occur:
+```c++
+// declares a template parameter pack named Types
+template <typename ... Types> 
+class Tuple;
+```
+A template parameter pack behaves like its underlying template parameter,
+but with a crucial difference:
+While a normal template parameter matches exactly one template argument, 
+a template parameter pack can match _any number of_ template arguments. 
+This means that the `Tuple` class template declared above accepts 
+any number of (possibly distinct) types as template arguments:
+```c++
+using IntTuple = Tuple<int>;             // OK: one template argument 
+using IntCharTuple = Tuple<int, char>;   // OK: two template arguments
+using IntTriple = Tuple<int, int, int>;  // OK: three template arguments
+using EmptyTuple = Tuple<>;              // OK: zero template arguments
+```
+Similarly, template parameter packs of non-type and template template parameters
+can accept any number of non-type or template template arguments, respectively:
+```c++
+// OK: declares a non-type template parameter pack
+template <typename T, unsigned ... Dimensions>
+class MultiArray;
+
+// OK: 3x3 matrix
+using TransformMatrix = MultiArray<double, 3, 3>;
+
+// OK: declares a template template parameter pack
+template <typename T, template <typename, typename> ... Containers>
+void testContainers(); 
+```
+The `MultiArray` example requires all non-type template arguments to be of the same type `unsigned`. 
+C++17 introduced the possibility of deduced non-type template arguments, 
+which allows us to work around that restriction to some extent (see Section 15.10.1): 
+```c++
+template <auto ... vs>
+struct Values {};
+
+Values<1, 2, 3> beginning;
+Values<1, 'x', nullptr> triplet;
+
+// homogeneous pack of non-type parameters
+template <auto v1, decltype(v1) ... vs>
+struct HomogeneousValues {};
+```
+Primary class templates, primary variable templates, and alias templates
+may have _at most one_ template parameter pack and,
+if present, the template parameter pack must be _the last_ template parameter. 
+Function templates have a weaker restriction: 
+Multiple template parameter packs are permitted, 
+as long as each template parameter subsequent to a template parameter pack 
+either has a default value (see the next section) or can be deduced (see Chapter 15):
+```c++
+// ERROR: template parameter pack is not the last template parameter
+template <typename ... Types, typename Last>
+class LastType;
+
+// OK: template parameter pack is followed by a deducible template parameter
+template <typename ... TestTypes, typename T>
+void runTests(T value); 
+
+template <unsigned ...> 
+struct Tensor;
+
+// OK: the tensor dimensions can be deduced
+template <unsigned ... dims1, unsigned ... dims2>
+auto compose(Tensor<dims1...>, Tensor<dims2...>);
+```
+The last example is the declaration of a function with a deduced return type `(since C++14)`. 
+See also Section 15.10.1.
+
+
+Declarations of _partial specializations_ of class/variable templates (see Chapter 16) 
+_can_ have multiple parameter packs, unlike their primary template counterparts. 
+That is because partial specialization are selected through a deduction process 
+that is nearly identical to that used for function templates. 
+```c++
+template <typename ...> 
+struct Typelist;
+
+template <typename X, typename Y> 
+struct Zip;
+
+// OK: partial specialization uses deduction 
+// to determine the Xs and Ys substitutions
+template <typename ... Xs, typename ... Ys>
+struct Zip<Typelist<Xs...>, Typelist<Ys...>>;
+```
+A type parameter pack can **not** be expanded in its own parameter clause. 
+For example:
+```c++
+// ERROR: Ts cannot be expanded in its own parameter list
+template <typename ... Ts, Ts... vals> 
+struct StaticValues {};
+```
+However, nested templates can create similar valid situations:
+```c++
+template <typename ... Ts> struct ArgList 
+{
+    template<Ts ... vals> 
+    struct Vals {};
+};
+
+ArgList<int, char, char>::Vals<3, 'x', 'y'> tada;
+```
+A template that contains a template parameter pack is called a _variadic template_ 
+because it accepts a variable number of template arguments. 
+Chapter 4 and Section 12.4 describe the use of variadic templates. 
+
+##### 12.2.5 Default Template Arguments
+
+Any kind of template parameter that is **not** a template parameter pack 
+can be equipped with a default argument, 
+although it must match the corresponding parameter in kind 
+(e.g., a type parameter can **not** have a non-type default argument). 
+A default argument can **not** depend on its own parameter, 
+because the name of the parameter is **not** in scope until after the default argument. 
+However, it may depend on previous parameters:
+```c++
+template <typename T, 
+          typename Allocator = std::allocator<T>>
+class List;
+```
+A template parameter for a class template, variable template, or alias template 
+can have a default template argument 
+only if default arguments were also supplied for the subsequent parameters. 
+(A similar constraint exists for default function call arguments.) 
+The subsequent default values are usually provided in the same template declaration, 
+but they could also have been declared in a previous declaration of that template. 
+The following example makes this clear:
+```c++
+// OK
+template <typename T1, 
+          typename T2, 
+          typename T3,
+          typename T4 = char, 
+          typename T5 = char>
+class Quintuple; 
+
+// OK: T4 and T5 already have defaults
+template <typename T1, 
+          typename T2, 
+          typename T3 = char,
+          typename T4, 
+          typename T5>
+class Quintuple;
+
+// ERROR: 
+// T1 can not have a default argument
+// because its successor T2 does not have one
+template <typename T1 = char, 
+          typename T2, 
+          typename T3,
+          typename T4, 
+          typename T5>
+class Quintuple; 
+```
+Default template arguments for template parameters of function templates 
+do **not** require subsequent template parameters to have a default template argument:
+```c++
+// OK: if not explicitly specified, R will be void
+template <typename R = void, typename T>
+R * addressof(T& value); 
+```
+Default template arguments can **not** be repeated:
+```c++
+template <typename T = void>
+class Value;
+
+// ERROR: repeated default argument
+template <typename T = void>
+class Value; 
+```
+A number of contexts do **not** permit default template arguments:
+- Partial specializations
+```c++
+template <typename T>
+class C;
+
+// ERROR
+template <typename T = int>
+class C<T *>;
+```
+- Parameter packs
+```c++
+template <typename ... Ts = int> 
+struct X;
+```
+- The out-of-class definition of a member of a class template:
+```c++
+template<typename T> 
+struct X
+{
+    T f();
+};
+
+// ERROR
+template <typename T = int> 
+T X<T>::f() {}
+```
+- A friend class template declaration:
+```c++
+struct S 
+{
+    template <typename = void> 
+    friend struct F;
+};
+```
+- A friend function template declaration **unless** it is a definition 
+  and **no** declaration of it appears anywhere else in the translation unit:
+```c++
+struct S
+{
+    // ERROR: not adefinition
+    template <typename = void> 
+    friend void f(); 
+    
+    // OK so far
+    template <typename = void> 
+    friend void g() {}
+};
+
+// ERROR: 
+// g was given a default template argument when defined.  
+// No other declaration may exist here. 
+template <typename> 
+void g();
+```
+
+
+#### 📌 12.3 Template Arguments
+
+
+When instantiating a template, template parameters are substituted by template arguments. 
+The arguments can be determined using several different mechanisms:
+- **Explicit template arguments**:  
+  A template name can be followed by explicit template arguments enclosed in angle brackets. 
+  The resulting name is called a _template-id_.
+- **Injected class name**:  
+  Within the scope of a class template `X` with template parameters `P1`, `P2`, ..., 
+  the name `X` can be equivalent to the template-id `X<P1, P2, ...>`. 
+  See Section 13.2.3 for details. 
+- **Default template arguments**:  
+  Explicit template arguments can be omitted from template instances 
+  if default template arguments are available. 
+  However, for a class or alias template,
+  even if all template parameters have a default value, 
+  the (possibly empty) angle brackets must be provided. 
+- **Argument deduction**:  
+  Function template arguments that are **not** explicitly specified 
+  may be deduced from the types of the function call arguments in a call. 
+  This is described in detail in Chapter 15.
+  Deduction is also done in a few other situations.
+  If all the template arguments can be deduced, 
+  **no** angle brackets need to be specified after the name of the function template. 
+  C++17 also introduces the ability to deduce class template arguments
+  from the initializer of a variable declaration or functional-notation type conversion. 
+  See Section 15.12 for a discussion. 
+
+##### 12.3.1 Function Template Arguments
+
+Template arguments for a function template can be specified explicitly, 
+deduced from the way the template is used, 
+or provided as a default template argument. 
+For example: 
+```c++
+template <typename T>
+T max(T a, T b)
+{
+    return b < a ? a : b;
+}
+
+max<double>(1.0, -3.0);  // explicitly specify template argument
+max(1.0, -3.0);          // template argument is implicitly deduced to be double
+max<int>(1.0, 3.0);      // the explicit <int> inhibits the deduction;
+                         // hence the result has type int
+```
+Some template arguments can **never** be deduced 
+because their corresponding template parameter does **not** appear in a function parameter type 
+or for some other reason (see Section 15.2). 
+The corresponding parameters are typically
+placed at the beginning of the list of template parameters so they can be specified
+explicitly while allowing the other arguments to be deduced. For example:
 
 
 
