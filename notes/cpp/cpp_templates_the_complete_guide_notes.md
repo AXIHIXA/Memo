@@ -246,7 +246,7 @@ In C++11 we can benefit from the fact that the trailing return type syntax allow
 That is, we can declare that the return type is derived from what `operator?:` yields: 
 ```c++
 template <typename T1, typename T2>
-auto max (T1 a, T2 b) -> decltype(b < a ? a : b)
+auto max(T1 a, T2 b) -> decltype(b < a ? a : b)
 {
     return b < a ? a : b;
 }
@@ -260,7 +260,7 @@ a common arithmetic type is found for the result).
 Note that
 ```c++
 template <typename T1, typename T2>
-auto max (T1 a, T2 b) -> decltype(b < a ? a : b)
+auto max(T1 a, T2 b) -> decltype(b < a ? a : b)
 ```
 is a _declaration_, so that the compiler uses the rules of `operator?:` called for parameters `a` and `b` 
 to find out the return type of `max` at compile time. 
@@ -268,7 +268,7 @@ The implementation does **not** necessarily have to match.
 In fact, using `true` as the condition for `operator?:` in the declaration is enough:
 ```c++
 template <typename T1, typename T2>
-auto max (T1 a, T2 b) -> decltype(true ? a : b);
+auto max(T1 a, T2 b) -> decltype(true ? a : b);
 ```
 However, in any case this definition has a significant drawback: 
 It might happen that the return type is a reference type, 
@@ -3133,7 +3133,7 @@ This effect can be good and bad:
   is a better match than the predefined copy/move constructor or assignment operator, 
   although a template version is provided for initialization of other types only. 
   See Section 6.2 for details.
-- It is not easy to “templify” a copy/move constructor, 
+- It is not easy to "templify" a copy/move constructor, 
   for example, to be able to constrain its existence. 
   See Section 6.4 for details.
 
@@ -4021,8 +4021,7 @@ See Section 20.3 for a discussion of how `std::enable_if` is implemented.
 
 ```c++
 template <typename String,
-          typename = std::enable_if_t<
-                  std::is_convertible_v<String, std::string>>>
+          typename = std::enable_if_t<std::is_convertible_v<String, std::string>>>
 explicit Person::Person(String && n);
 ```
 If type `String` is convertible to type `std::string`, the whole declaration expands to
@@ -4168,9 +4167,9 @@ and becomes a part of the interface of a template where it is used as a constrai
 // the expression std::hash<T>{}(a) compiles, 
 // and its result is convertible to std::size_t
 template <typename T>
-concept Hashable = requires (T a)
+concept Hashable = requires (T t)
 {
-    { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
+    { std::hash<T>{}(t) } -> std::convertible_to<std::size_t>;
 };
  
 struct meow {};
@@ -4557,14 +4556,14 @@ Such an expression is `true` if the constraints are satisfied, and `false` other
 ```c++
 // requires-expression
 template <typename T>
-concept Addable = requires (T x) { x + x; }; 
+concept Addable = requires (T t) { t + t; }; 
  
 // requires-clause, not requires-expression
 template <typename T> requires Addable<T> 
 T add(T a, T b) { return a + b; }
  
 // ad-hoc constraint, note keyword requires used twice
-template <typename T> requires requires (T x) { x + x; } 
+template <typename T> requires requires (T t) { t + t; } 
 T add(T a, T b) { return a + b; }
 ```
 The syntax of requires-expression is as follows:
@@ -6313,7 +6312,13 @@ There is a common pattern or idiom to deal with such a situation
 - Define an object of the real return type at the end of the comma operator. 
 For example: 
 ```c++
-template <typename T>
+// template <typename T>
+// concept Sizeable = requires (T t) 
+// { 
+//     t.size(); 
+//     T::size_type(); 
+// };
+template <typename T>  // requires Sizeable<T>
 auto len(T const & t) -> decltype(static_cast<void>(t.size()), T::size_type())
 {
     return t.size();
@@ -8765,11 +8770,12 @@ template <typename T1 = char,
 class Quintuple; 
 ```
 Default template arguments for template parameters of function templates 
-do **not** require subsequent template parameters to have a default template argument:
+do **not** require subsequent template parameters to have a default template argument, 
+as those can still be determined by template argument deduction (see Chapter 15): 
 ```c++
 // OK: if not explicitly specified, R will be void
 template <typename R = void, typename T>
-R * addressof(T& value); 
+R * addressof(T & value); 
 ```
 Default template arguments can **not** be repeated:
 ```c++
@@ -8887,11 +8893,1182 @@ max<int>(1.0, 3.0);      // the explicit <int> inhibits the deduction;
 Some template arguments can **never** be deduced 
 because their corresponding template parameter does **not** appear in a function parameter type 
 or for some other reason (see Section 15.2). 
-The corresponding parameters are typically
-placed at the beginning of the list of template parameters so they can be specified
-explicitly while allowing the other arguments to be deduced. For example:
+The corresponding parameters are typically placed at the beginning of the list of template parameters, 
+so they can be specified explicitly while allowing the other arguments to be deduced:
+```c++
+// SrcT can be deduced, but DstT can not
+template <typename DstT, typename SrcT>
+DstT implicit_cast(SrcT const & x) 
+{
+    return x;
+}
+
+int main()
+{
+    double value = implicit_cast<double>(-1);
+}
+```
+If we had reversed the order of the template parameters in this example 
+(in other words, if we had written `template<typename SrcT, typename DstT>`),
+a call of `implicit_cast` would have to specify _both_ template arguments explicitly. 
 
 
+Moreover, such parameters can’t usefully 
+be placed after a template parameter pack 
+or appear in a partial specialization, 
+because there would be **no** way to explicitly specify or deduce them.
+```c++
+// useless declaration,
+// because N can not be specified or deduced
+template <typename ... Ts, int N>
+void f(double (&)[N + 1], Ts ... ps);
+```
+Because function templates can be overloaded, 
+explicitly providing all the arguments for a function template 
+may **not** be sufficient to identify a single function: 
+In some cases, it identifies a _set_ of functions. 
+The following example illustrates a consequence of this observation:
+```c++
+template <typename Func, typename T>
+void apply(Func f, T x)
+{
+    f(x);
+}
+
+template <typename T> 
+void single(T);
+
+template <typename T> 
+void multi(T);
+
+template <typename T> 
+void multi(T *);
+
+int main()
+{
+    apply(&single<int>, 3);  // OK
+    apply(&multi<int>, 7);   // ERROR: ambiguous call: no single multi<int>
+}
+```
+In this example, the first call to `apply` works 
+because the type of the expression `&single<int>` is unambiguous. 
+As a result, the template argument value for the `Func` parameter is easily deduced. 
+In the second call, however, `&multi<int>` could be one of two different types 
+and therefore `Func` can **not** be deduced in this case.
+
+
+Furthermore, it is possible that substituting template arguments in a function template 
+results in an attempt to construct an invalid C++ type or expression. 
+Consider the following overloaded function template (`RT1` and `RT2` are unspecified types):
+```c++
+template <typename T> 
+RT1 test(typename T::X const *);
+
+template <typename T> 
+RT2 test(/* ... */);
+```
+The expression `test<int>` makes **no** sense 
+for the first of the two function templates 
+because type `int` has **no** member type `X`. 
+However, the second template has no such problem. 
+Therefore, the expression `&test<int>` identifies the address of a single function. 
+The fact that the substitution of `int` into the first template fails does not make the expression invalid. 
+This SFINAE principle is an important ingredient to make the overloading of function templates practical 
+and is discussed in Section 8.4 and Section 15.7.
+
+##### 12.3.2 Type Arguments
+
+Template type arguments are the "values" specified for template type parameters.
+Any type (including `void`, function types, reference types, etc.) can be used as a template argument, 
+as long as their substitution for the template parameters must lead to valid constructs:
+```c++
+// requires that the unary * be applicable to T
+template <typename T>
+void clear(T p)
+{
+    *p = 0;
+}
+
+int main()
+{
+    int a;
+    clear(a);  // ERROR: int doesn’t support the unary *
+}
+```
+
+##### 12.3.3 Non-type Arguments
+
+Non-type template arguments are the values substituted for non-type parameters. 
+Such a value must be one of the following things: 
+- Another non-type template parameter that has the right type. 
+- A compile-time constant value of integer (or enumeration) type. 
+  This is acceptable only if the corresponding parameter has a type 
+  that matches that of the value or a type 
+  to which the value can be implicitly converted **without** narrowing. 
+  For example, a `char` value can be provided for an `int` parameter, 
+  but `500` is **not** valid for an 8-bit `char` parameter. 
+- The name of an external variable or function 
+  preceded by the built-in unary address-of operator `operator&`. 
+  For functions and array variables, `operator&` can be left out. 
+  Such template arguments match non-type parameters of a pointer type. 
+  C++17 relaxed this requirement to permit any constant-expression 
+  that produces a pointer to a function or variable. 
+- The previous kind of argument but **without** a leading `operator&` 
+  is a valid argument for a non-type parameter of reference type. 
+  C++17 relaxed the constraint to permit any constant-expression `glvalue` for a function or variable. 
+- A pointer-to-member constant.  
+  In other words, an expression of the form `&ClassType::nonStaticMember`. 
+  This matches non-type parameters of pointer-to-member type _only_. 
+  In C++17, any constant-expression evaluating to a matching pointer-to-member constant is permitted. 
+- A null pointer constant is a valid argument for a non-type parameter of pointer or pointer-to-member type. 
+
+
+For non-type parameters of integral type, 
+implicit conversions to the parameter type are considered. 
+With the introduction of `constexpr` conversion functions in C++11, 
+this means that the argument before conversion can have a class type. 
+
+
+Prior to C++17, when matching an argument to a parameter that is a pointer or reference, 
+user-defined conversions (constructors for one argument and conversion operators) 
+and derived-to-base conversions are **not** considered,
+even though in other circumstances they would be valid implicit conversions. 
+Implicit conversions that make an argument more `const` and/or more `volatile` are fine. 
+Here are some valid examples of non-type template arguments:
+```c++
+template <typename T, T nonTypeParam>
+class C;
+
+// integer type
+C<int, 33> * c1;
+
+// address of an external variable
+int a;
+C<int*, &a> * c2;
+
+// Name of a function. 
+// Overload resolution selects f(int) in this case. 
+// The & is implied. 
+void f();
+void f(int);
+
+C<void (*)(int), f> * c3;
+
+// function template instantiations are functions
+template <typename T> 
+void templ_func();
+
+C<void (), &templ_func<double>> * c4; 
+
+struct X 
+{
+    static bool b;
+    int n;
+    constexpr operator int() const { return 42; }
+};
+
+// static class members are acceptable variable/function names 
+C<bool &, X::b> * c5;
+
+// an example of a pointer-to-member constant 
+C<int X::*, &X::n> * c6;
+
+// OK. 
+// X is first converted to int via a constexpr conversion function, 
+// and then to long via a standard integer conversion. 
+C<long, X {}> * c7; 
+```
+A general constraint of template arguments is that 
+a compiler or a linker must be able to express their value when the program is being built. 
+Values that aren’t known until a program is run (e.g., the address of local variables) 
+**aren’t** compatible with the notion that templates are instantiated when the program is built. 
+
+
+There are some constant values that are, **not** currently valid:
+- Floating-point numbers;
+- String literals;
+- Null pointer constants `(until C++11)`
+
+
+One of the problems with string literals is that 
+two identical literals can be stored at two distinct addresses. 
+An alternative (but cumbersome) way to express templates instantiated over constant strings 
+involves introducing an additional variable to hold the string:
+```c++
+template <char const * str>
+class Message {};
+
+extern char const hello[] = "Hello World!";
+char const hello11[] = "Hello World!";
+
+void foo()
+{
+    static char const hello17[] = "Hello World!";
+    Message<hello> msg03;    // OK in all versions
+    Message<hello11> msg11;  // OK since C++11
+    Message<hello17> msg17;  // OK since C++17
+}
+```
+The requirement is that a non-type template parameter declared as reference or pointer
+can be a constant expression with: 
+- External linkage; 
+- Internal linkage `(since C++11)`; 
+- Any linkage `(since C++17)`. 
+
+Here are a few other invalid examples:
+```c++
+template <typename T, T nontypeParam>
+class C;
+
+struct Base 
+{
+    int i;
+};
+
+struct Derived : public Base {}; 
+
+Base base;
+Derived derived;
+
+C<Base*, &derived> * err1;  // ERROR: derived-to-base conversions are not considered
+C<int &, base.i> * err2;    // ERROR: fields of variables aren’t considered to be variables
+
+int a[10];
+C<int *, &a[0]> * err3;     // ERROR: aren’t acceptable either
+```
+
+##### 12.3.4 Template Template Arguments
+
+A template template argument must generally be a class template or alias template
+with parameters that exactly match the parameters of the template template parameter it substitutes. 
+Prior to C++17, default template arguments of a template template argument were _ignored_ 
+(but if the template template parameter has default arguments, 
+they are considered during the instantiation of the template). 
+C++17 relaxed the matching rule to just require that 
+the template template parameter be _at least as specialized (see Section 16.2.2) as_ 
+the corresponding template template argument.
+
+
+This makes the following example invalid prior to C++17:
+```c++
+// Container expects one parameter
+template<typename T1, 
+         typename T2,
+         template <typename> class Container>
+class Rel {};
+
+// ERROR before C++17: 
+// std::list<T, Alloc = std::allocator<T>> has more than template parameter
+// Default template arguments are not considered during substitution
+Rel<int, double, std::list> rel;
+```
+The problem in this example is that the `std::list` template has more than one parameter. 
+The second parameter (which describes an allocator) has a default value, 
+but prior to C++17, that is **not** considered when matching `std::list` to the `Container` parameter. 
+
+
+Variadic template template parameters are an **exception** 
+to the pre-C++17 "exact match" rule described above 
+and offer a solution to this limitation: 
+They enable more general matching against template template arguments. 
+A template template parameter pack can match zero or more template parameters 
+of the same kind (type, non-type, template) in the template template argument:
+```c++
+// Container expects any number of type parameters
+template <typename T1, 
+          typename T2,
+          template <typename ...> class Container>
+class Rel {};
+
+// OK: 
+// std::list has two template arguments,
+// but can be used with one argument. 
+Rel<int, double, std::list> rel;
+```
+Template parameter packs can only match template arguments
+of the same kind (type, non-type, template). 
+For example, the following class template can be instantiated 
+with any class template or alias template having only template type parameters, 
+because the template type parameter pack passed there as `TT` 
+can match zero or more template type parameters:
+```c++
+template <template <typename... > class TT>
+class AlmostAnyTmpl {};
+
+AlmostAnyTmpl<std::vector> withVector;  // two type parameters
+AlmostAnyTmpl<std::map> withMap;        // four type parameters
+
+// ERROR: 
+// A template type parameter pack
+// doesn’t match a non-type template parameter
+AlmostAnyTmpl<std::array> withArray;
+```
+Prior to C++17, only the keyword `class` could be used to declare a template template parameter. 
+But this does **not** indicate that 
+only class templates declared with the keyword `class` 
+were allowed as substituting arguments. 
+`struct`, `union`, and alias templates are all valid arguments 
+for a template template parameter. 
+This is similar to the observation that any type can be used as an argument
+for a template type parameter declared with the keyword `class`.
+
+##### 12.3.5 Equivalence
+
+Two sets of template arguments are equivalent 
+when values of the arguments are identical one-for-one. 
+For type arguments, type aliases **don’t** matter: 
+It is the type ultimately underlying the type alias declaration that is compared. 
+For integer non-type arguments, the value of the argument is compared. 
+How that value is expressed **doesn’t** matter:
+```c++
+// Note NO template definition is needed 
+// to establish template equivalence!
+template <typename T, int I>
+class Mix;
+
+using Int = int;
+
+// p2 has the same type as p1
+Mix<int, 3 * 3> * p1;
+Mix<Int, 4 + 5> * p2;
+```
+As is clear from this example, 
+**no** template definition is needed 
+to establish the equivalence of the template argument lists. 
+
+
+In template-dependent contexts, 
+the "value" of a template argument can **not** always be established definitely, 
+and the rules for equivalence become a little more complicated.
+```c++
+template <int N> struct I {};
+template <int M, int N> void f(I<M + N>);  // #1
+template <int N, int M> void f(I<N + M>);  // #2
+template <int M, int N> void f(I<N + M>);  // #3 ERROR
+```
+`#1` and `#2` are _equivalent_ and declare the same function template `f`,  
+because these two templates are the same by swapping the naming of `N` and `M`.
+The expressions `M + N` and `N + M` in those two declarations are called _equivalent_.
+
+Declaration `#3` is subtly different: The order of the operands is inverted. 
+That makes the expression `N + M` in `#3` **not** equivalent to either of the other two expressions. 
+However, because the expression will produce the same result for any values of the template parameters involved, 
+those expressions are called _functionally equivalent_. 
+It is an **error** for templates to be declared in ways that differ only because 
+the declarations include functionally equivalent expressions that are not actually equivalent. 
+
+
+However, such an error need **not** be diagnosed by your compiler. 
+That’s because some compilers may 
+internally represent `N + 1 + 1` in exactly the same way as `N + 2`, 
+whereas other compilers may not. 
+Rather than impose a specific implementation approach, 
+the standard allows either one and requires programmers to be careful in this area.
+
+
+A function generated from a function template is **never** equivalent to an ordinary function
+even though they may have the same type and the same name. 
+This has two important consequences for class members:
+1. A function generated from a member function template 
+   **never** overrides a virtual function.
+2. A constructor generated from a constructor template is 
+   **never** a copy or move constructor. 
+   However, a constructor template can be a default constructor. 
+   Similarly, an assignment generated from an assignment template 
+   is **never** a copy-assignment or move-assignment operator. 
+
+
+This can be good and bad: 
+- It can happen that a template constructor or assignment operator
+  is a better match than the predefined copy/move constructor or assignment operator,
+  although a template version is provided for initialization of other types only.
+  See Section 6.2 for details.
+- It is not easy to "templify" a copy/move constructor,
+  for example, to be able to constrain its existence.
+  See Section 6.4 for details.
+
+
+#### 📌 12.4 Variadic Templates
+
+
+Variadic templates are templates that contain at least one template parameter pack. 
+The term variadic is borrowed from C’s variadic functions, 
+which accept a variable number of function arguments. 
+Variadic templates also borrowed from C the use of the ellipsis to denote zero or more arguments 
+and are intended as a typesafe replacement for C’s variadic functions for some applications. 
+
+
+Variadic templates are useful when a template’s behavior 
+can be generalized to any number of arguments. 
+The `Tuple` class template introduced in Section 12.2.4 is one such type, 
+because a tuple can have any number of elements, 
+all of which are treated the same way. 
+We can also imagine a simple `print` function 
+that takes any number of arguments and displays each of them in sequence. 
+
+
+When template arguments are determined for a variadic template, 
+each template parameter pack in the variadic template will match 
+a sequence of zero or more template arguments (an _argument pack_). 
+```c++
+template <typename ... Types>
+class Tuple {};
+
+int main() 
+{
+    Tuple<> t0;            // Types contains an empty list
+    Tuple<int> t1;         // Types contains int
+    Tuple<int, float> t2;  // Types contains int and float
+}
+```
+Because a template parameter pack represents a list of template arguments 
+rather than a single template argument, 
+it must be used in a context where the same language construct 
+applies to all of the arguments in the argument pack. 
+One such construct is the `sizeof...` operation, 
+which counts the number of arguments in the argument pack:
+```c++
+template <typename ... Types>
+class Tuple
+{
+public:
+    static constexpr std::size_t length = sizeof...(Types);
+};
+
+int a1[Tuple<int>::length];               // array of one integer
+int a3[Tuple<short, int, long>::length];  // array of three integers
+```
+
+##### 12.4.1 Pack Expansions
+
+The `sizeof...` expression is an example of a _pack expansion_. 
+A pack expansion is a construct that expands an argument pack into separate arguments. 
+`sizeof...` is one form of pack expansion. 
+Other forms pack expansions are identified by an ellipsis `...` to the right of an element in the list. 
+```c++
+template <typename ...>
+class Tuple {};
+
+template <typename ... Types>
+class MyTuple : public Tuple<Types ...> {};
+
+MyTuple<int, float> t2;  // inherits from Tuple<int, float>
+```
+Note that you **can’t** access the individual elements of a parameter pack directly by name, 
+because names for individual elements are **not** defined in a variadic template.
+If you need the types, the only thing you can do is to pass them (recursively) to another class or function. 
+
+
+Each pack expansion has a pattern, 
+which is the type or expression that will be repeated for each argument in the argument pack
+and typically comes before the ellipsis that denotes the pack expansion. 
+Our prior examples have had only trivial patterns (the name of the parameter pack) 
+but patterns can be arbitrarily complex. 
+```c++
+template <typename ... Types>
+class PtrTuple : public Tuple<Types * ...> {};
+
+PtrTuple<int, float> t3;  // Inherits from Tuple<int *, float *>
+```
+
+##### 12.4.2 Where Can Pack Expansions Occur?
+
+Our examples thus far have focused on the use of pack expansions 
+to produce a sequence of template arguments. 
+In fact, pack expansions can be used essentially anywhere 
+in the language where the grammar provides a comma-separated list,
+including:
+- In the list of base classes.
+- In the list of base class initializers in a constructor.
+- In a list of call arguments (the pattern is the argument expression).
+- In a list of initializers (e.g., in a braced initializer list).
+- In the template parameter list of a class, function, or alias template.
+- In the list of exceptions that can be thrown by a function 
+  (deprecated in C++11 and C++14, and disallowed in C++17). 
+- Within an attribute, if the attribute itself supports pack expansions 
+  (although no such attribute is defined by the C++ standard).
+- When specifying the alignment of a declaration.
+- When specifying the capture list of a lambda.
+- In the parameter list of a function type.
+- In using declarations `(since C++17)`. 
+
+
+We’ve already mentioned `sizeof...` as a pack-expansion mechanism 
+that does **not** actually produce a list. 
+C++17 also adds _fold expressions_, 
+which are another mechanism that does **not** produce a comma-separated list.
+```c++
+template <typename ... Mixins>
+class Point : public Mixins...  // base class pack expansion
+{
+public:
+    Point() : Mixins()... {}  // base class initializer pack expansion
+
+    template <typename Visitor>
+    void visitMixins(Visitor visitor)
+    {
+        visitor(static_cast<Mixins &>(*this)...);  // call argument pack expansion
+    }
+
+private:
+    double x, y, z;
+};
+
+struct Color { char red, green, blue; };
+struct Label { std::string name; };
+
+Point<Color, Label> p;  // inherits from both Color and Label
+```
+A pack expansion can also be used within a template parameter list 
+to create a non-type or template parameter pack:
+```c++
+template <typename ... Ts>
+struct Values 
+{
+    template <Ts ... vs>
+    struct Holder {};
+};
+
+int i;
+Values<char, int, int *>::Holder<'a', 17, &i> valueHolder;
+```
+Note that once the type arguments for `Values` have been specified, 
+the non-type argument list for `Values::Holder` has a fixed length; 
+the parameter pack `vs` is thus **not** a variable-length parameter pack. 
+
+`Values` is a non-type template parameter pack for which 
+each of the actual template arguments can have a different type, 
+as specified by the types provided for the template type parameter pack `Ts`. 
+Note that the ellipsis in the declaration of `Values` plays a dual role, 
+both declaring the template parameter as a template parameter pack 
+and declaring the type of that template parameter pack as a pack expansion. 
+
+##### 12.4.3 Function Parameter Packs
+
+A _function parameter pack_ is a function parameter that matches zero or more function call arguments. 
+Like a template parameter pack, a function parameter pack is introduced 
+using an ellipsis `...` prior to (or in the place of) the function parameter name. 
+A function parameter pack must be expanded by a pack expansion whenever it is used. 
+Template parameter packs and function parameter packs together are referred to as _parameter packs_. 
+
+
+Unlike template parameter packs, function parameter packs are always pack expansions, 
+so their declared types must include at least one parameter pack. 
+```c++
+template <typename ... Mixins>
+class Point : public Mixins...
+{
+public:
+    Point(Mixins... mixins) : Mixins(mixins)... {}
+    
+private:
+    double x, y, z;
+};
+
+struct Color { char red, green, blue; };
+struct Label { std::string name; };
+
+Point<Color, Label> p({0x7f, 0, 0x7f}, {"center"});
+```
+A function parameter pack for a function template may depend on 
+template parameter packs declared in that template, 
+which allows the function template to accept an arbitrary number of call arguments 
+without losing type information:
+```c++
+template <typename ... Types>
+void print(Types ... values);
+
+int main()
+{
+    std::string welcome("Welcome to ");
+    print(welcome, "C++", 2011, '\n');  //calls print<std::string, char const *, int, char>
+}
+```
+There is a syntactic ambiguity between an unnamed function parameter pack 
+appearing at the end of a parameter list and a C-style `vararg` parameter: 
+```c++
+template <typename T> 
+void c_style(int, T ...);
+
+template <typename ... T> 
+void pack(int, T ...);
+```
+In the first case, the `T ...` is treated as `T, ...`: 
+an unnamed parameter of type `T` followed by a C-style `vararg` parameter. 
+In the second case, the `T ...` construct is treated as a function parameter pack 
+because `T` is a valid expansion pattern. 
+The disambiguation can be forced by adding a comma before the ellipsis 
+(which ensures the ellipsis is treated as a C-style `vararg` parameter) 
+or by following the `...` by an identifier, 
+which makes it a named function parameter pack. 
+Note that in generic lambdas, a trailing `...` will be treated as denoting a parameter pack 
+if the type that immediately precedes it (with **no** intervening comma) contains `auto`.
+
+##### 12.4.4 Multiple and Nested Pack Expansions
+
+The pattern of a pack expansion can be arbitrarily complex 
+and may include multiple, nested, distinct parameter packs.
+When instantiating a pack expansion containing multiple parameter packs, 
+all of the parameter packs must have the _same length_.
+```c++
+template <typename F, typename ... Types>
+void forwardCopy(F f, Types const & ... values) 
+{
+    f(Types(values)...);
+}
+```
+```c++
+template <typename ... OuterTypes>
+class Nested 
+{
+    template <typename ... InnerTypes>
+    void f(InnerTypes const & ... innerValues) 
+    {
+        g(OuterTypes(InnerTypes(innerValues)...)...);
+    }
+};
+```
+
+##### 12.4.5 Zero-Length Pack Expansions
+
+The syntactic interpretation of pack expansions can be a useful tool 
+for understanding how an instantiation of a variadic template 
+will behave with different numbers of arguments. 
+However, the syntactic interpretation often **fails** in the presence of _zero-length argument packs_. 
+To illustrate this, consider the Point class template syntactically substituted with zero arguments: 
+```c++
+template <typename ... Mixins>
+struct Point : public Mixins...
+{
+    Point(Mixins... mixins) : Mixins(mixins)... {}
+};
+```
+```c++
+template <>
+struct Point : 
+{
+    Point() : {}
+};
+```
+The code as written above is ill-formed, 
+since the template parameter list is now empty 
+and the empty base class and base class initializer lists 
+each have a stray colon character.
+
+
+Pack expansions are actually semantic constructs, 
+and the substitution of an argument pack of any size does **not** affect how the pack expansion 
+(or its enclosing variadic template) is parsed. 
+Rather, when a pack expansion expands to an empty list, 
+the program behaves (semantically) as if the list were **not** present. 
+The instantiation `Point<>` ends up having **no** base classes, 
+and its default constructor has **no** base class initializers but is otherwise well-formed. 
+This semantic rules holds even when the syntactic interpretation of zero-length pack expansion 
+would be well-defined (but different) code:
+```c++
+template <typename T, typename ... Types>
+void g(Types ... values)
+{
+    T v(values...);
+}
+```
+The variadic function template `g` creates a value `v` 
+that is direct-initialized from the sequence of values it is given. 
+If that sequence of values is empty, the declaration of `v` looks 
+syntactically like a function declaration `T v()`. 
+However, since substitution into a pack expansion is semantic 
+and can **not** affect the kind of entity produced by parsing, 
+`v` is initialized with zero arguments (value-initialization). 
+
+
+There is a similar restriction on members of class templates and nested classes within class templates: 
+If a member is declared with a type that does not appear to be a function type, 
+but after instantiation the type of that member is a function type, 
+the program is ill-formed because the semantic interpretation of the member 
+has changed from a data member to a member function. 
+
+##### 12.4.6 Fold Expressions
+
+A recurring pattern in programming is the _fold_ of an operation on a sequence of values. 
+For example, a *right fold o*f a function fn over a sequence 
+`x[1], x[2], ..., x[n-1], x[n]` is given by `fn(x[1], fn(x[2], fn(..., fn(x[n - 1], x[n])...)))`. 
+While exploring a new language feature, 
+the C++ committee ran into the need to deal with such constructs 
+for the special case of a logical binary operator (i.e., `&&` or `||`) applied to a pack expansion. 
+Without an extra feature, we might write the following code to achieve that for the `&&` operator:
+```c++
+bool and() 
+{ 
+    return true; 
+}
+
+template <typename T>
+bool and(T cond) 
+{  
+    return cond; 
+}
+
+template <typename T, typename ... Ts>
+bool and(T cond, Ts ... conds) 
+{
+    return cond && and(cond...);
+}
+```
+With C++17, a new feature called _fold expressions_ was added (see Section 4.2). 
+It applies to all binary operators **except** `.,` `->`, and `[]`. 
+Given an unexpanded expression pattern _pack_ and a non-pattern expression _value_,
+C++17 allows us to write for a _right fold_ of the operator `op` (_binary right fold_): 
+```c++
+(pack op ... op value)
+```
+or for a _left fold_ of the operator `op` (_binary left fold_):
+```c++
+(value op ... op pack)
+```
+Note that the parentheses are required here. 
+
+
+The fold operation applies to the sequence 
+that results from expanding the pack
+and adding value as either the last element of the sequence (for a right fold) 
+or the first element of the sequence (for a left fold). 
+
+
+With this feature available: 
+```c++
+template <typename ... T> bool g() 
+{
+    return and(trait<T>()...);
+}
+```
+turns into
+```c++
+template <typename ... T> 
+bool g() 
+{
+    return (trait<T>() && ... && true);
+}
+```
+Fold expressions are pack expansions. 
+Note that if the pack is empty, 
+the type of the fold expression can still be determined from the non-pack operand (`value` in the forms above). 
+
+
+However, the designers of this feature also wanted an option to leave out the `value` operand. 
+Two other forms are therefore available in C++17: 
+The _unary right fold_
+```c++
+(pack op ...)
+```
+and the _unary left fold_
+```c++
+(... op pack)
+```
+Again, the parentheses are required. 
+Clearly this creates a problem for empty expansions: 
+How do we determine their type and value? 
+The answer is that an empty expansion of a unary fold is generally an error, 
+with three exceptions:
+- An empty expansion of a unary fold of `&&` produces the value `true`.
+- An empty expansion of a unary fold of `||` produces the value `false`.
+- An empty expansion of a unary fold of the comma operator `,` produces a `void` expression. 
+
+
+Note that this will create surprises if you overload one of these special operators
+in a somewhat unusual way:
+```c++
+struct BooleanSymbol {};
+
+BooleanSymbol operator||(BooleanSymbol, BooleanSymbol);
+
+template <typename ... BTs> 
+void symbolic(BTs ... ps) 
+{
+    BooleanSymbol result = (ps || ...);
+}
+```
+Suppose we call `symbolic` with types that are derived from `BooleanSymbol`.
+For all expansions, the result will produce a `BooleanSymbol` value
+**except** for the empty expansion, which will produce a bool `value`. 
+
+
+Because overloading these three special operators is unusual, 
+this problem is fortunately rare (but subtle). 
+The original proposal for fold expressions included empty expansion values 
+for more common operators like `+` and `*`, which would have caused more serious problems. 
+
+
+We therefore generally caution against the use of unary fold expressions, 
+and recommend using binary fold expressions instead 
+(with an explicitly specified empty expansion value). 
+
+
+#### 📌 12.5 Friends
+
+
+The basic idea of friend declarations is a simple one: 
+Identify classes or functions that have a privileged connection 
+with the class in which the friend declaration appears. 
+Matters are somewhat complicated, by two facts:
+1. A friend declaration may be the only declaration of an entity. 
+2. A friend function declaration can be a definition. 
+
+##### 12.5.1 Friend Classes of Class Templates
+
+Friend class declarations can **not** be definitions and therefore are rarely problematic. 
+In the context of templates, the only new facet of friend class declarations 
+is the ability to name a particular instance of a class template as a friend:
+```c++
+template <typename T>
+class Node;
+
+template <typename T>
+class Tree 
+{
+    friend class Node<T>;
+};
+```
+Note that the class template must be visible at the point 
+where one of its instances is made a friend of a class or class template. 
+With an ordinary class, there is **no** such requirement:
+```c++
+template <typename T>
+class Tree 
+{
+    friend class Factory;  // OK even if first declaration of Factory
+    friend class Node<T>;  // ERROR if Node is not visible
+};
+```
+Section 13.2.2 has more to say about this. 
+
+
+One application is the declaration of other class template instantiations to be friends:
+```c++
+template <typename T>
+class Stack 
+{
+public:
+    // to get access to private members of Stack<U> for any type U:
+    template <typename> friend class Stack;
+    
+    // assign stack of elements of type U
+    template <typename U>
+    Stack<T> & operator= (Stack<U> const &);
+
+    ...
+};
+```
+C++11 also added syntax to make a template parameter a friend:
+```c++
+template <typename T>
+class Wrap 
+{
+    friend T;
+    ...
+};
+```
+This is valid for any type `T` but is ignored if `T` is **not** actually a class type. 
+
+##### 12.5.2 Friend Functions of Class Templates
+
+An instance of a function template can be made a friend 
+by making sure the name of the friend function is followed by angle brackets. 
+The angle brackets can contain the template arguments, 
+but if the arguments can be deduced, 
+the angle brackets can be left empty:
+```c++
+template <typename T1, typename T2>
+void combine(T1, T2);
+
+class Mixer 
+{
+    // OK: T1 = int &, T2 = int &
+    friend void combine<>(int &, int &);
+    
+    // OK: T1 = int, T2 = int
+    friend void combine<int, int>(int, int);
+    
+    // OK: T1 = char T2 = int
+    friend void combine<char>(char, int);
+    
+    // OK: definition of a specialization
+    friend void combine<>(long, long) {}
+    
+    // ERROR: does not match combine template
+    friend void combine<char>(char &, int);
+};
+```
+Note that we can **not** define a template instance (at most, we can define a specialization), 
+and hence a friend declaration that names an instance can **not** be a definition.
+If the name is **not** followed by angle brackets, there are two possibilities:
+1. If the name isn’t qualified (in other words, it doesn’t contain `::`), 
+   it **never** refers to a template instance. 
+   If no matching non-template function is visible at the point of the friend declaration, 
+   the friend declaration is the first declaration of that function. 
+   The declaration could also be a definition.
+2. If the name is qualified (it contains `::`), 
+   the name _must_ refer to a previously declared function or function template. 
+   A matching function is preferred over a matching function template. 
+   However, such a friend declaration can **not** be a definition. 
+   An example may help clarify the various possibilities:
+```c++
+void multiply(void *);
+
+template <typename T>
+void multiply(T);
+
+class Comrades 
+{
+    // defines a new function ::multiply(int)
+    friend void multiply(int) {}
+
+    // refers to the ordinary function above,
+    // not to the multiply<void *> instance
+    friend void ::multiply(void *);
+    
+    // refers to an instance of the template
+    friend void ::multiply(int);
+
+    // qualified names can also have angle brackets,
+    // but a template must be visible
+    friend void ::multiply<double *>(double *);
+
+    // ERROR: a qualified friend can not be a definition
+    friend void ::error() {}
+};
+```
+In our previous examples, we declared the friend functions in an ordinary class. 
+The same rules apply when we declare them in class templates, 
+but the template parameters may participate in identifying the function that is to be a friend:
+```c++
+template <typename T>
+class Node 
+{
+    Node<T> * allocate();
+    ...
+};
+
+template <typename T>
+class List 
+{
+    friend Node<T> * Node<T>::allocate();
+    ...
+};
+```
+A friend function may also be defined within a class template, 
+in which case it is only instantiated when it is actually used. 
+This typically requires the friend function 
+to use the class template itself in the type of the friend function, 
+which makes it easier to express functions on the class template 
+that can be called as if they were visible in namespace scope
+(name found via ADL):
+```c++
+template <typename T>
+class Creator 
+{
+    // Every T instantiates a different function ::feed
+    friend void feed(Creator<T>) {}
+};
+
+int main()
+{
+    Creator<void> one;
+    feed(one);  // Instantiates ::feed(Creator<void>)
+    
+    Creator<double> two;
+    feed(two);  // Instantiates ::feed(Creator<double>)
+}
+```
+In this example, every instantiation of `Creator` generates a different function. 
+Note that even though these functions are generated as part of the instantiation of a template, 
+the functions themselves are ordinary functions, `not` instances of a template.
+However, they are considered _templated entities_ (see Section 12.1) 
+and their definition is instantiated only when used. 
+Also note that because the body of these functions is defined inside a class definition, 
+they are implicitly inline.
+Hence, it is **not** an error for the same function to be generated in two different translation units. 
+Section 13.2.2 Section 21.2.1 have more to say about this topic.
+
+##### 12.5.3 Friend Templates
+
+Usually when declaring a friend that is an instance of a function or a class template,
+we can express exactly which entity is to be the friend. 
+Sometimes it is useful to express that all instances of a template are friends of a class. 
+This requires a _friend template_:
+```c++
+class Manager 
+{
+    template <typename T>
+    friend class Task;
+    
+    template <typename T>
+    friend void Schedule<T>::dispatch(Task<T> *);
+    
+    template <typename T>
+    friend int ticket() 
+    {
+        return ++Manager::counter;
+    }
+    
+    static int counter;
+};
+```
+Just as with ordinary friend declarations, a friend template can be a definition 
+only if it names an unqualified function name that is **not** followed by angle brackets
+(except defining specializations of existing templates). 
+
+
+A friend template can declare only primary templates and members of primary templates. 
+Any partial specializations and explicit specializations associated with a primary template 
+are automatically considered friends too. 
+
+
+
+
+
+
+### 🎯 Chapter 13 Names in Templates
+
+
+When a C++ compiler encounters a name, 
+it must "look it up" to identify the entity being referred. 
+From an implementer’s point of view, C++ is a hard language in this respect. 
+Consider the C++ statement `x * y;`. 
+If `x` and `y` are the names of variables, this statement is a multiplication, 
+but if `x` is the name of a type, then the statement declares `y` as a pointer to an entity of type `x`. 
+
+
+This small example demonstrates that C++ (like C) is a _context-sensitive_ language: 
+A construct can **not** always be understood without knowing its wider context. 
+How does this relate to templates? 
+Well, templates are constructs that must deal with multiple wider contexts: 
+1. The context in which the template appears;
+2. The context in which the template is instantiated;
+3. The contexts associated with the template arguments for which the template is instantiated. 
+
+
+#### 📌 13.1 Name Taxonomy
+
+
+C++ classifies names in a large variety of ways. 
+Fortunately, you can gain good insight into most C++ template issues 
+by familiarizing yourself with two major naming concepts:
+1. A name is a _qualified name_ if the scope to which it belongs
+   is explicitly denoted using a scope-resolution operator (`::`) or a member access operator (`.` or `->`). 
+   For example, `this->count` is a qualified name, 
+   but `count` is not (even though the plain `count` might actually refer to a class member). 
+2. A name is a _dependent name_ if it depends in some way on a template parameter. 
+   For example, `std::vector<T>::iterator` is usually a dependent name if `T` is a template parameter, 
+   but it is a non-dependent name if `T` is a known type alias (such as the `T` from `using T = int`). 
+
+- **Identifier**:  
+  A name that consists solely of an uninterrupted sequences of letters, underscores `_`, and digits. 
+  It can **not** start with a digit, and some identifiers are reserved for the implementation: 
+  You should **not** introduce them in your programs 
+  (as a rule of thumb, avoid leading underscores and double underscores). 
+  The concept of "letter" should be taken broadly and includes special _universal character names_ 
+  (UCNs) that encode glyphs from non-alphabetical languages.
+- **Operator-function-id**:  
+  The keyword `operator` followed by the symbol for an operator. 
+  for example, `operator new` and `operator []`. 
+- **Conversion-function-id**:  
+  Used to denote a user-defined implicit conversion operator. 
+  For example, `operator int &`, 
+  which could also be obfuscated as `operator int bitand`. 
+- **Literal-operator-id**:   
+  Used to denote a user-defined literal operator. 
+  For example, `operator ""_km`, which will be used when writing a literal such as `100_km`.
+- **Template-id**:  
+  The name of a template followed by template arguments enclosed in angle brackets. 
+  For example, `List<T, int, 0>`. 
+  A template-id may also be an `operator-function-id` or a `literal-operator-id`
+  followed by template arguments enclosed in angle brackets. 
+  For example, `operator+<X<int>>`.
+- **Unqualified-id**:  
+  The generalization of an identifier.
+  It can be any of the above 
+  (`identifier`, `operator-function-id`, `conversion-function-id`, `literal-operator-id`, or `template-id`) 
+  or a "destructor name" 
+  (e.g., notations like `~Data` or `~List<T, T, N>`). 
+- **Qualified-id**:  
+  An `unqualified-id` that is qualified with the name of a class, enum, or namespace, 
+  or just with the global scope resolution operator. 
+  Note that such a name itself can be qualified.
+  Examples are `::X`, `S::x`, `Array<T>::y`, and `::N::A<T>::z`. 
+- **Qualified Name**:  
+  This term is not defined in the standard, 
+  but we use it to refer to names that undergo _qualified lookup_. 
+  Specifically, this is a `qualified-id` or an `unqualified-id` 
+  that is used after an explicit member access operator (`.` or `->`). 
+  Examples are `S::x`, `this->f`, and `p->A::m`. 
+  However, just `class_mem` in a context that is implicitly equivalent to `this->class_mem` is **not** a qualified name: 
+  The member access must be explicit. 
+- **Unqualified Name**:  
+  An `unqualified-id` that is **not** a qualified name.
+  This is not a standard term but corresponds to names that undergo 
+  what the standard calls unqualified lookup.
+- **Name**:  
+  Either a qualified or an unqualified name.
+- **Dependent Name**:  
+  A name that depends in some way on a template parameter.
+  Typically, a qualified or unqualified name that explicitly contains a template parameter is dependent. 
+  Furthermore, a qualified name that is qualified by a member access operator (`.` or `->`) 
+  is typically dependent if the type of the expression on the left of the access operator is type-dependent, 
+  a concept that is discussed in Section 13.3.6. 
+  In particular, `b` in `this->b` is generally a dependent name when it appears in a template. 
+  Finally, a name that is subject to _Argument-Dependent Lookup (ADL)_ (described in Section 13.2), 
+  such as ident in a call of the form `ident(x, y)` or `+` in the expression `x + y`, 
+  is a dependent name if and only if any of the argument expressions is type-dependent. 
+- **Non-dependent Name**:  
+  A name that is **not** a dependent name by the above description. 
+
+
+#### 📌 13.2 Looking Up Names
+
+
+
+
+
+andard.
+2 In C++98/C++03, this was also called Koenig lookup (or extended Koenig lookup)
+after Andrew Koenig, who first proposed a variation of this mechanism.
+3 Although this was clearly intended by those who wrote the C++ standard, it is not
+clearly spelled out in the standard.
+4 Note the double parentheses to avoid parsing (Invert<1>)0 as a cast operation
+—yet another source of syntactic ambiguity.
+5 Specific exceptions were introduced to address tokenization issues described in
+this section.
+6 The 1998 and 2003 versions of the C++ standard did not support this “angle
+bracket hack.” However, the need to introduce a space between the two
+consecutive right angle brackets was such a common stumbling block for
+beginning template users that the committee decided to codify this hack in the
+2011 standard.
+7 Some compilers that provide a C++98 or C++03 mode keep the C++11 behavior
+in those modes and thus print 0 0 even when formally compiling C++98/C++03
+code.
+8 This is therefore an exception to the aforementioned maximum munch principle.
+9 Thanks to Richard Smith for pointing that out.
+10 Note that C++20 will probably remove the need for typename in most cases (see
+Section 17.1 on page 354 for details).
+11 Syntactically, only type names are permitted within these contexts, so a qualified
+name is always assumed to name a type.
+12 Adapted from [VandevoordeSolutions], proving once and for all that C++
+promotes code reuse.
+13 The terms type-dependent expression and value-dependent expression are used in
+the C++ standard to describe the semantics of templates, and they have an effect
+on several aspects of template instantiation (Chapter 14). On the other hand, the
+term instantiation-dependent expression is mainly only used by the authors of C++
+compilers. Our definition of a instantiation-dependent expression comes from theItanium C++ ABI [ItaniumABI], which provides the basis for binary
+interoperability among a number of different C++ compilers.
+14 This is part of the two-phase lookup rules that distinguish between a first phase
+when template definitions are first seen and a second phase when templates are
+instantiated (see Section 14.3.1 on page 249).
+15 However, the lookup is nonetheless repeated when the template is instantiated, and
+if a different result is produced in that context, the program is ill-formed.
+16 Braces are not entirely without problems either. Specifically, the syntax to
+specialize class templates would require nontrivial adaptation.
+17 Fortunately, they found out before they released the new functionality.
+18 Ironically, the first of these implementations had been developed by HP as well.
 
 
 
@@ -8899,33 +10076,6 @@ explicitly while allowing the other arguments to be deduced. For example:
 ### 🎯
 
 #### 📌
-
-
-
-6 Template arguments for subsequent template parameters can still be determined
-by template argument deduction; see Chapter 15.
-7 However, a constructor template can be a default constructor.
-8 The term variadic is borrowed from C’s variadic functions, which accept a
-variable number of function arguments. Variadic templates also borrowed from C
-the use of the ellipsis to denote zero or more arguments and are intended as a typesafe
-replacement for C’s variadic functions for some applications.
-9 This syntactic understanding of pack expansions is a useful tool, but it breaks
-down when the template parameter packs have length zero. Section 12.4.5 on page
-207 provides more details about the interpretation of zero-length pack expansions.
-10 Mixins are discussed in further detail in Section 21.3 on page 508.
-11 There is a similar restriction on members of class templates and nested classes
-within class templates: If a member is declared with a type that does not appear to
-be a function type, but after instantiation the type of that member is a function
-type, the program is ill-formed because the semantic interpretation of the member
-has changed from a data member to a member function.
-12 Because overloading these three special operators is unusual, this problem is
-fortunately rare (but subtle). The original proposal for fold expressions included
-empty expansion values for more common operators like + and *, which would
-have caused more serious problems.
-13 This was the very first extension added to C++11, thanks to a proposal by William
-M. “Mike” Miller.
-
-
 
 
 

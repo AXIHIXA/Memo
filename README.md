@@ -4,12 +4,12 @@
 
 - `C/C++`
     - *[C++ Primer](./notes/cpp/cpp_primer_notes.md)*
+    - *[C++ Templates: The Complete Guide](./notes/cpp/cpp_templates_the_complete_guide_notes.md)*
     - *Effective C++*
         1. *[Effective C++](./notes/cpp/effective_cpp_notes_01_effective_cpp.md)*
         2. *[More Effective C++](./notes/cpp/effective_cpp_notes_02_more_effective_cpp.md)*
         3. *[Effective STL](./notes/cpp/effective_cpp_notes_03_effective_stl.md)*
         4. *[Effective Modern C++](./notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
-    - *[C++ Templates: The Complete Guide](./notes/cpp/cpp_templates_the_complete_guide_notes.md)*
     - *[CPP Concurrency In Action](./notes/cpp/cpp_concurrency_in_action_notes.md)*
 
 - `Python`
