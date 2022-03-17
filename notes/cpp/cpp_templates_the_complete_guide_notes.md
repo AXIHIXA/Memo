@@ -10389,12 +10389,9 @@ If another programmer can write an explicit specialization (described in detail 
 such that `X` refers to that specialization, then `X` refers to an unknown specialization. 
 
 
-For example, consider the instantiation of the type `C<int>::J` in the context of the above example: 
-We know the definition of `C<T>::J` used to instantiate the concrete type. 
-Moreover, because an explicit specialization can **not** specialize a template or member of a template
-**without** also specializing all of the enclosing templates or members, 
-`C<int>` will be instantiated from the enclosing class definition. 
-Hence, the references to `J` and `C<int>` within `J` refer to a current instantiation. 
+For example, consider the instantiation of the type `C<int>::J` in the context of the above example. 
+We could not explicitly specialize `C` or `J` for those defined in `J`, 
+so, the references to `J` and `C<int>` within `J` refer to a current instantiation. 
 On the other hand, one could write an explicit specialization for `C<int>::I` as follows:
 ```c++
 template <> 
