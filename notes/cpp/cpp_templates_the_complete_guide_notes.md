@@ -10372,7 +10372,7 @@ class C
     struct J
     {
         C * c;         // C refers to a current instantiation
-        C<Type> * c2;  // C<Type> refers to a current
+        C<Type> * c2;  // C<Type> refers to a current instantiation
         I * i;         // I refers to an unknown instantiation because I does not enclose J
         J * j;         // J refers to a current instantiation
     };
