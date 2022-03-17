@@ -10026,14 +10026,415 @@ by familiarizing yourself with two major naming concepts:
 #### 📌 13.2 Looking Up Names
 
 
+Qualified names are looked up in the scope implied by the qualifying construct. 
+If that scope is a class, then base classes may also be searched. 
+However, enclosing scopes of the qualified scope are **not** considered when looking up qualified names.
+```c++
+int x;
+
+class B 
+{
+public:
+    int i;
+};
+
+class D : public B {};
+
+void f(D * pd)
+{
+    pd->i = 3;  // finds B::i
+    D::x = 2;   // ERROR: No x in D and its children scopes
+}
+```
+In contrast, unqualified names are typically looked up in successively more enclosing scopes.  
+In member function definitions, 
+the scope of the class and its base classes is searched before any other enclosing scopes. 
+This is called _ordinary lookup_. 
+```c++
+extern int count;               // #1
+
+int lookup_example(int count)   // #2
+{
+    if (count < 0) 
+    {
+        int count = 1;          // #3
+        lookup_example(count);  // refers to #3
+    }
+    
+    return count + ::count;     // refers to #2 + #1
+    
+}
+```
 
 
+#### 📌 13.2.1 Argument-Dependent Lookup
 
-andard.
-2 In C++98/C++03, this was also called Koenig lookup (or extended Koenig lookup)
+
+Unqualified names sometimes undergo _Argument-Dependent Lookup (ADL)_ in addition to ordinary lookup.
+In C++98/C++03, this was also called _Koenig Lookup_ (or _Extended Koenig Lookup_)
 after Andrew Koenig, who first proposed a variation of this mechanism.
-3 Although this was clearly intended by those who wrote the C++ standard, it is not
-clearly spelled out in the standard.
+
+
+Suppose we need to apply function template `max` to a type defined in another namespace:
+```c++
+template <typename T>
+inline T max(T a, T b)
+{
+    return b < a ? a : b;
+}
+
+namespace BigMath 
+{
+
+class BigNumber {};
+
+bool operator<(BigNumber const &, BigNumber const &);
+
+}  // namespace BigMath
+
+using BigMath::BigNumber;
+
+void g(BigNumber const & a, BigNumber const & b)
+{
+    BigNumber x = ::max(a, b);
+}
+```
+The problem here is that the `max` template is unaware of the `BigMath` namespace. 
+Ordinary lookup would **not** find the `operator<` applicable to values of type `BigNumber`.
+Without ADL, this greatly reduces the applicability of templates in the presence of C++ namespaces. 
+
+
+ADL applies primarily to unqualified names of non-member functions 
+in a function call or operator invocation. 
+ADL does **not** happen if ordinary lookup finds
+- The name of a member function;
+- The name of a variable;
+- The name of a type;
+- The name of a block-scope function declaration.
+ADL is also **inhibited** if the name of the function to be called 
+is enclosed in parentheses.
+
+
+Otherwise, if the name is followed by a list of argument expressions enclosed in parentheses, 
+ADL proceeds by looking up the name in _associated namespaces_ and _associated classes_ of the call arguments.
+ADL then looks up the name in all the associated namespaces as if
+the name had been qualified with each of these namespaces in turn,
+**except** that using directives are **ignored**.
+
+
+The precise definition of the set of _associated namespaces_ and _associated classes_ for a given type 
+is determined by the following rules:
+- **Built-in types**: 
+  - Empty set.
+- **Pointer types** and **array types**:
+  - Associated namespaces and classes: That of the underlying type.
+- **Enumeration** types: 
+  - Associated namespace: Namespace in which the enumeration is declared.
+- **Class members**:
+  - Associated class: The enclosing class
+- **Class types** (including union types): 
+  - Associated classes: 
+    The type itself, the enclosing class, and any direct and indirect base classes. 
+  - Associated namespaces: 
+    The namespaces in which the associated classes are declared. 
+  - If the class is a class template instance, 
+    then the types of the template type arguments and the classes and namespaces 
+    in which the template template arguments are declared are also included. 
+- **Function types**:
+  - Associated namespaces and classes: 
+    The namespaces and classes associated with all the parameter types 
+    and those associated with the return type.
+- **Pointer-to-member-of-class-`X` types**, 
+  - Associated namespaces and classes: 
+    Those associated with `X` in addition to those associated with the type of the member. 
+    (If it is a pointer-to-member-function type, then the parameter and return types can contribute too.) 
+
+```c++
+namespace X 
+{
+
+template <typename T> 
+void f(T);
+    
+}  // namespace X
+
+namespace N 
+{
+    using namespace X;
+    
+    enum E { e1 };
+    
+    void f(E) 
+    {
+        std::cout << "N::f(N::E)\n";
+    }
+}  // namespace N
+
+void f(int)
+{
+    std::cout << "::f(int)\n";
+}
+
+int main()
+{
+    ::f(N::e1);  // Qualified function name, no ADL
+    f(N::e1);    // Ordinary lookup finds ::f(int) and ADL finds N::f(E), 
+                 // the latter is preferred. 
+                 // Note that using directives are ignored during ADL, 
+                 // so X::f(T) is not found. 
+}
+```
+Note that in this example, 
+the using directive in namespace `N` is **ignored**when ADL is performed. 
+Hence `X::f()` is **never** even a candidate for the call.
+
+##### 13.2.2 Argument-Dependent Lookup of Friend Declarations
+
+A friend function declaration can be the first declaration of the nominated function.
+(And it could also be the only declaration if the friend function is defined in friend declaration.) 
+If this is the case, then the function is assumed to be declared in the nearest namespace scope 
+(which may be the global scope) enclosing the class containing the friend declaration. 
+However, such a friend declaration is **not** directly visible in that scope:
+```c++
+template <typename T>
+class C 
+{
+    friend void f();
+    friend void f(C<T> const &);
+};
+
+void g(C<int> * p)
+{ 
+    f();    // ERROR: f() can not be found
+    f(*p);  // OK: f(C<int> const &) visible here via ADL
+}
+```
+If friend declarations were visible in the enclosing namespace, 
+then instantiating a class template may make visible the declaration of ordinary functions. 
+This would lead to surprising behavior: 
+The call `f()` would result in a compilation error 
+unless an instantiation of the class `C` occurred earlier in the program!
+
+
+On the other hand, it can be useful to declare (and define) a function in a friend declaration only 
+(see Section 21.2.1 for a technique that relies on this behavior). 
+Such a function can be found when the class of which they are a friend 
+is among the associated classes considered by ADL. 
+
+
+Reconsider our last example. 
+The call `f()` has **no** associated classes or namespaces because there are no arguments: 
+It is an invalid call in our example. 
+However, the call `f(*p)` does have the associated class `C<int>`
+and the global namespace is also associated 
+(because this is the namespace in which the class template `C` is declared). 
+Therefore, the second friend function declaration could be found
+provided the class `C<int>` was actually fully instantiated prior to the call. 
+
+
+To ensure this, it is assumed that a call involving a lookup for friends in associated classes 
+actually causes the class to be instantiated (if not done already). 
+Although this was clearly intended by those who wrote the C++ standard, 
+it is **not** clearly spelled out in the standard.
+
+
+The ability of Argument-Dependent Lookup to find friend declarations and definition 
+is sometimes referred to as _friend name injection_. 
+However, this term is somewhat misleading, 
+because it is the name of a pre-standard C++ feature 
+that did in fact "inject" the names of friend declarations into the enclosing scope, 
+making them visible to normal name lookup. 
+In our example above, this would mean that both calls would be well-formed. 
+
+##### 13.2.3 Injected Class Names
+
+The name of a class is injected into the class scope of that class itself 
+and is therefore accessible as an unqualified name in that scope. 
+However, it is **not** accessible as a qualified name 
+because this is the notation used to denote the constructors. 
+```c++
+int C;
+
+class C 
+{
+public:
+    static int f() 
+    {
+        return sizeof(C);
+    }
+
+private:
+    int i[2];
+};
+
+int f()
+{
+    return sizeof(C);
+}
+
+int main()
+{
+    std::cout << "C::f() = " << C::f() << '\n'
+              << " ::f() = " << ::f() << '\n';
+}
+```
+The member function `C::f()` returns the size of type `C`, 
+whereas the function `::f()` returns the size of the variable `C`
+(in other words, the size of an `int` object). 
+
+
+Class templates also have injected class names. 
+However, they’re stranger than ordinary injected class names: 
+They can be followed by template arguments (in which case they are injected class _template_ names), 
+But, when they are **not** followed by template arguments, 
+depending on the context, they could represent:
+- An alias for the class type being defined
+- The template type with its parameters as its arguments 
+  (specialization arguments for a partial specialization). 
+```c++
+template <template <typename> class TT>
+class X {};
+
+template <typename T>
+class C
+{
+    C * a;        // OK: same as "C<T> * a;"
+    C<void> & b;  // OK 
+    X<C> c;       // OK: C without a template argument list denotes the template C
+    X<::C> d;     // OK: ::C is not the injected class name and therefore always denotes the template
+};
+```
+The injected class name for a variadic template has an additional wrinkle: 
+If the injected class name were directly formed 
+by using the variadic template’s template parameters as the template arguments, 
+the injected class name would contain template parameter packs that have **not** been expanded. 
+Therefore, when forming the injected class name for a variadic template, 
+the template argument that corresponds to a template parameter pack 
+is a pack expansion whose pattern is that template parameter pack:
+```c++
+template <int I, typename ... Ts> 
+class V 
+{
+    V * a;         // OK: same as "V<I, Ts...> * a;"
+    V<0, void> b;  // OK
+};
+```
+
+##### 13.2.4 Current Instantiations
+
+The injected class name of a class or class template is effectively 
+an alias for the type being defined. 
+Inside a class template or a nested class within a class template, 
+each template instantiation produces a different type. 
+This property means that the injected class name refers to 
+the same instantiation of the class template 
+rather than some other specialization of that class template.  
+The same holds for nested classes of class templates. 
+
+
+Within a class template, 
+the injected class name or any type that is equivalent to the injected class name
+is said to refer to a _current instantiation_. 
+Types that depend on a template parameter (i.e., _dependent types_) 
+but do **not** refer to a current instantiation 
+are said to refer to an _unknown specialization_, 
+which may be instantiated from the same class template 
+or some entirely different class template. 
+```c++
+template <typename T> 
+class Node
+{
+    using Type = T;
+    
+    Node * next;            // Node refers to the current instantiation
+    Node<Type> * previous;  // Node<Type> refers to the current instantiation too
+    Node<T *> * parent;     // Node<T *> refers to an unknown instantiation
+};
+```
+Identifying whether a type refers to a current instantiation
+can be confusing in the presence of nested classes and class templates. 
+The injected class names of enclosing classes and class templates (or types equivalent to them) 
+do refer to a current instantiation, 
+while the names of other nested classes or class templates do **not**:
+```c++
+template <typename T>
+class C
+{
+    using Type = T;
+    
+    struct I
+    {
+        C * c;         // C refers to a current instantiation
+        C<Type> * c2;  // C<Type> refers to a current instantiation
+        I * i;         // I refers to a current instantiation
+    };
+    
+    struct J
+    {
+        C * c;         // C refers to a current instantiation
+        C<Type> * c2;  // C<Type> refers to a current
+        I * i;         // I refers to an unknown instantiation because I does not enclose J
+        J * j;         // J refers to a current instantiation
+    };
+};
+```
+When a type refers to a current instantiation, 
+the contents of that instantiated class are guaranteed to be instantiated 
+from the class template or nested class thereof that is currently being defined. 
+
+
+This hints another way to determine whether a type `X` within the definition of a class template 
+refers to a current instantiation or an unknown specialization: 
+If another programmer can write an explicit specialization (described in detail in Chapter 16) 
+such that `X` refers to that specialization, then `X` refers to an unknown specialization. 
+
+
+For example, consider the instantiation of the type `C<int>::J` in the context of the above example: 
+We know the definition of `C<T>::J` used to instantiate the concrete type. 
+Moreover, because an explicit specialization can **not** specialize a template or member of a template
+**without** also specializing all of the enclosing templates or members, 
+`C<int>` will be instantiated from the enclosing class definition. 
+Hence, the references to `J` and `C<int>` within `J` refer to a current instantiation. 
+On the other hand, one could write an explicit specialization for `C<int>::I` as follows:
+```c++
+template <> 
+struct C<int>::I 
+{
+    // definition of the specialization
+};
+```
+Here, the specialization of `C<int>::I` provides a completely different definition
+than the one that was visible from the definition of `C<T>::J`, 
+so the `I` inside the definition of `C<T>::J` refers to an unknown specialization. 
+
+
+#### 📌 13.3 Parsing Templates
+
+
+Two fundamental activities of compilers for most programming languages are
+- _Tokenization_ (also called _Scanning_ or _Lexing_);
+- Parsing. 
+
+
+The tokenization process reads the source code as a sequence of characters 
+and generates a sequence of tokens from it. 
+A parser will then find known patterns in the token sequence 
+by recursively reducing tokens or previously found patterns into grammar. 
+
+
+##### 13.3.1 Context Sensitivity in Non-templates
+
+
+
+
+
+
+
+
+
+
+2 
+3 
 4 Note the double parentheses to avoid parsing (Invert<1>)0 as a cast operation
 —yet another source of syntactic ambiguity.
 5 Specific exceptions were introduced to address tokenization issues described in
