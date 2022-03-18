@@ -32,7 +32,7 @@ There is no need for the programmer to request the instantiation separately.
 
 ##### Two-Phase Translation
 
-Templates are “compiled” in two phases:
+Templates are "compiled" in two phases:
 1. Without instantiation at _definition_ time, 
    the template code itself is checked for correctness ignoring the template parameters.
    This includes:
@@ -10351,11 +10351,10 @@ class Node
     Node<T *> * parent;     // Node<T *> refers to an unknown instantiation
 };
 ```
-Identifying whether a type refers to a current instantiation
-can be confusing in the presence of nested classes and class templates. 
+In the presence of nested classes and class templates. 
 The injected class names of enclosing classes and class templates (or types equivalent to them) 
-do refer to a current instantiation, 
-while the names of other nested classes or class templates do **not**:
+refer to a current instantiation, 
+while the names of other nested classes or class templates do **not**: 
 ```c++
 template <typename T>
 class C
@@ -10416,57 +10415,1012 @@ Two fundamental activities of compilers for most programming languages are
 The tokenization process reads the source code as a sequence of characters 
 and generates a sequence of tokens from it. 
 A parser will then find known patterns in the token sequence 
-by recursively reducing tokens or previously found patterns into grammar. 
-
+by recursively reducing tokens or previously found patterns into grammar.
 
 ##### 13.3.1 Context Sensitivity in Non-templates
 
+Tokenizing is easier than parsing. 
+Parsing is a subject for which a solid theory has been developed, 
+and many useful languages are not hard to parse using this theory. 
+However, the theory works best for _Context-Free Grammar/Languages (CFG)_, 
+and we have already noted that C++ is _context sensitive_. 
+
+
+To handle this, a C++ compiler will couple a symbol table to the tokenizer and parser: 
+When a declaration is parsed, it is entered in the symbol table. 
+When the tokenizer finds an identifier, 
+it looks it up and annotates the resulting token if it finds a type. 
+
+
+For example, if the C++ compiler sees
+```c++
+x *
+```
+the tokenizer looks up `x`. 
+If it finds a type, 
+the parser receives from the tokenizer
+```
+identifier, type, x, symbol, *
+```
+concludes that a declaration has started. 
+However, if `x` is **not** found to be a type,
+then the parser receives from the tokenizer
+```c++
+identifier, non-type, x, symbol, *
+```
+and the construct can be parsed validly only as a multiplication. 
+The details of these principles are dependent on the particular implementations. 
+
+
+Another example of context sensitivity:
+```c++
+X<1>(0)
+```
+If `X` is the name of a class template, 
+then the previous expression casts the integer `0` to the type `X<1>` generated from that template. 
+If X is **not** a template, then the previous expression is equivalent to
+```c++
+(X < 1) > 0
+```
+In other words, `X` is compared with `1`, 
+and the result of that comparison is then compared with `0`. 
+Although code like this is rarely used, it is valid C++ (and valid C, for that matter). 
+A C++ parser will therefore look up names appearing before a `<` and treat the `<` as an angle bracket 
+only if the name is known to be that of a template. 
+Otherwise, the `<` is treated as an ordinary less-than operator. 
+
+
+This form of context sensitivity is an unfortunate consequence of 
+having chosen angle brackets to delimit template argument lists. 
+Here is another such consequence:
+```c++
+template <bool B>
+class Invert 
+{
+public:
+    static bool const result = !B;
+};
+
+void g()
+{
+    bool test = Invert<(1 > 0)>::result;  // parentheses required!
+}
+```
+If the parentheses in `Invert<(1 > 0)>` were omitted,
+the greater-than symbol would be mistaken for the closing of the template argument list. 
+This would make the code invalid because the compiler would read it to be equivalent to
+```c++
+((Invert<1>))0>::result
+```
+Note the double parentheses to avoid parsing `(Invert<1>)0` as a cast operation, 
+yet another source of syntactic ambiguity. 
+
+
+The tokenizer isn’t spared problems with the angle-bracket notation either.
+For example, in
+```
+List<List<int>> a;
+~~~~~~~~~~~~~^~~~~  no space between right angle brackets
+```
+the two `>` characters combine into a right-shift token `>>` 
+and hence are **never** treated as two separate tokens by the tokenizer. 
+This is a consequence of the maximum munch tokenization principle: 
+A C++ implementation must collect as many consecutive characters as possible into a token.
+Specific exceptions were introduced to address 
+tokenization issues described in this section.
+
+
+As mentioned in Section, since C++11, the C++ standard specifically calls out this case, 
+where a nested template-id is closed by a right-shift token `>>`, 
+and, within the parser, treats the right shift as being equivalent to 
+two separate right angle brackets `>` and `>` to close two template-ids at once. 
+
+
+The 1998 and 2003 versions of the C++ standard did **not** support this "angle bracket hack". 
+However, the need to introduce a space between the two consecutive right angle brackets
+was such a common stumbling block for beginning template users
+that the committee decided to codify this hack in the 2011 standard.
+
+
+This change silently changes the meaning of some admittedly contrived programs: 
+```c++
+template <int I> 
+struct X 
+{
+    static int const c = 2;
+};
+
+template <> 
+struct X<0> 
+{
+    typedef int c;
+};
+
+template <typename T> 
+struct Y
+{
+    static int const c = 3;
+};
+
+static int const c = 4;
+
+int main()
+{
+    std::cout << (Y<X<1> >::c >::c>::c) << ' ';
+              << (Y<X< 1>>::c >::c>::c) << '\n';
+}
+```
+This is a valid C++98 program that outputs `0 3`
+It is also a valid C++11 program, 
+but there the angle bracket hack makes the two parenthesized expressions equivalent,
+and the output is `0 0`. 
+Some compilers that provide a C++98 or C++03 mode keep the C++11 behavior in those modes 
+and thus print `0 0` even when formally compiling C++98/C++03 code.
+
+
+A similar problem existed because of the existence of the digraph `<:` 
+as an alternative for the source character `[` (which is not available on some traditional keyboards): 
+```c++
+template <typename T> 
+struct G {};
+
+struct S;
+G<::S> gs;  // valid since C++11, but an error before that
+```
+Before C++11, that last line of code was equivalent to `G[:S> gs;`,
+which is clearly invalid. 
+Another "lexical hack" was added to address that problem: 
+When a compiler sees the characters `<::` not immediately followed by `:` or `>`, 
+the leading pair of characters `<:` is **not** treated as a digraph token equivalent to `[`.
+This is therefore an exception to the aforementioned maximum munch principle. 
+
+
+This _digraph hack_ can make previously valid (but somewhat contrived) programs invalid: 
+```c++
+#define F(X) X ## :
+
+int a[] = {1, 2, 3}; 
+int i = 1;
+
+int n = a F(<::)i];  // valid in C++98/C++03, but not in C++11
+```
+
+##### 13.3.2 Dependent Names of Types And `typename` Prefix
+
+The problem with names in templates is that they can **not** always be sufficiently classified. 
+In particular, one template can **not** look into another template 
+because the contents of that other template can be made invalid by an explicit specialization. 
+The following contrived example illustrates this:
+```c++
+template <typename T>
+class Trap
+{
+public:
+    enum { x };          // #1 x is not a type here
+};
+
+template <typename T>
+class Victim
+{
+public:
+    void poof()
+    {
+        Trap<T>::x * y;  // #2 declaration or multiplication?
+    }
+
+    int y;
+};
+
+template <>
+class Trap<void>
+{
+public:
+    using x = int;       // #3 x is a type here
+};
+
+void boom(Victim<void> & bomb)
+{
+    bomb.poof();
+}
+```
+As the compiler is parsing line `#2`, 
+it must decide whether it is seeing a declaration or a multiplication. 
+This decision in turn depends on whether `Trap<T>::x` is a type name. 
+
+
+`Trap<T>` is a _dependent name_ because it depends on the template parameter `T`. 
+Moreover, `Trap<T>` refers to an _unknown specialization_, 
+which means that the compiler can **not** safely look inside the primary template 
+to determine whether the name `Trap<T>::x` is a type or not. 
+Actually, another specification `Trap<void>` just contradicts with the primary template
+on what `Trap<T>::x` is. 
+
+
+However, as illustrated by the example, 
+name lookup into an unknown specialization is still a problem. 
+The language definition resolves this problem by specifying that 
+in general a dependent qualified name does **not** denote a type 
+unless that name is prefixed with the keyword `typename`. 
+If it turns out that the name is not the name of a type after template argument substitution, 
+the program is invalid and your C++ compiler should complain at instantiation time. 
+Note that this use of `typename` differs from the use to denote template type parameters. 
+Unlike type parameters, you can **not** equivalently replace `typename` with `class`.
+
+
+The `typename` prefix to a name is _required_ when the name satisfies all of the following conditions: 
+1. It is qualified and **not** itself followed by `::` to form a more qualified name.
+2. It is **not** part of an `elaborated-type-specifier`, 
+   i.e., a type name that starts with one of the keywords `class`, `struct`, `union`, or `enum`. 
+3. It is **not** used in a _list of base class specifications_ 
+   or in a _list of member initializers_ introducing a constructor definition. 
+   Syntactically, only type names are permitted within these contexts, 
+   so a qualified name is always assumed to name a type.
+4. It is dependent on a template parameter.
+5. It is a member of an unknown specialization, 
+   meaning that the type named by the qualifier refers to an unknown specialization. 
+
+
+Furthermore, the `typename` prefix is _**not** allowed_ 
+unless at least the first two previous conditions hold. 
+
+##### 13.3.3 Dependent Names of Templates And `template` Prefix
+
+A problem very similar to the one encountered in the previous section occurs 
+when a name of a template is dependent. 
+In general, a C++ compiler is required to treat a `<` following the name of a template 
+as the beginning of a template argument list. 
+Otherwise, it is a less-than operator. 
+As is the case with type names, a compiler has to assume that a dependent name does **not** refer to a template 
+unless the programmer provides extra information using the keyword `template`:
+```c++
+template <typename T>
+class Shell
+{
+public:
+    template <int N>
+    class In
+    {
+    public:
+        template <int M>
+        class Deep
+        {
+        public:
+            virtual void f() {}
+        };
+    };
+};
+
+template <typename T, int N>
+class Weird
+{
+public:
+    void case1(typename Shell<T>::template In<N>::template Deep<N> * p)
+    {
+        p->template Deep<N>::f();  // inhibit virtual call
+    }
+
+    void case2(typename Shell<T>::template In<N>::template Deep<N> & p)
+    {
+        p.template Deep<N>::f();   // inhibit virtual call
+    }
+};
+```
+This example shows how all the operators that can qualify a name (`::`, `->`, and `.`) 
+may need to be followed by the keyword `template`. 
+
+Specifically, this is the case whenever 
+the type of the name or expression preceding the qualifying operator 
+is dependent on a template parameter and refers to an unknown specialization, 
+and the name that follows the operator is a `template-id` 
+(in other words, a template name followed by template arguments in angle brackets). 
+```c++
+dependent-name-to-unknown-specification ::/->/. template template-id
+```
+For example, in the expression
+```c++
+p.template Deep<N>::f()
+```
+the type of `p` depends on the template parameter `T`. 
+Consequently, a C++ compiler can `not` look up `Deep` to see if it is a template, 
+and we must explicitly indicate that `Deep` is the name of a template by inserting the prefix `template`. 
+
+
+Without the `template` prefix, 
+`Deep` will be parsed as non-template member of `p`, 
+and `p.Deep<N>::f()` will be parsed as `((p.Deep) < N) > f()`. 
+Note also that this may need to happen multiple times within a qualified name because qualifiers
+themselves may be qualified with a dependent qualifier.
+
+
+If the keyword `template` is omitted in cases such as these,
+the opening and closing angle brackets are parsed as less-than and greater-than operators. 
+As with the `typename` keyword, one can safely add the `template` prefix 
+to indicate that the following name is a template-id, 
+even if the `template` prefix is **not** strictly needed.
+
+##### 13.3.4 Dependent Names in Using Declarations
+
+Using declarations can bring in names from two places: namespaces and classes. 
+The namespace case is not relevant in this context 
+because there are **no** such things as _namespace templates_. 
+Using declarations that bring in names from classes, on the other hand, 
+can bring in names only from a base class to a derived class. 
+Such using declarations behave like "symbolic links" or "shortcuts"
+in the derived class to the base declaration, 
+thereby allowing the members of the derived class to access the nominated name 
+as if it were actually a member declared in that derived class. 
+```c++
+class BX 
+{
+public:
+    void f(int);
+    void f(char const *);
+    void g();
+};
+
+class DX : private BX 
+{
+public:
+    using BX::f;
+};
+```
+By now you can probably perceive the problem when a using declaration brings in a name from a dependent class. 
+Although we know about the name, we **don’t** know whether it’s the name of a type, a template, or something else:
+```c++
+template <typename T>
+class BXT 
+{
+public:
+    using Mystery = T;
+    
+    template <typename U>
+    struct Magic {};
+};
+
+template <typename T>
+class DXTT : private BXT<T> 
+{
+public:
+    using typename BXT<T>::Mystery;
+    
+    Mystery * p;  // would be a syntax error without the earlier typename
+};
+```
+Again, if we want a dependent name to be brought in by a using declaration to denote a type, 
+we must explicitly say so by inserting the keyword `typename`.
+Strangely, the C++ standard does **not** provide for a similar mechanism to mark such dependent names as templates.
+```c++
+template <typename T>
+class DXTM : private BXT<T>
+{
+public:
+    using BXT<T>::template Magic;  // ERROR: not standard
+    Magic<T> * plink;              // SYNTAX ERROR: Magic is not a known template
+};
+```
+The standardization committee has not been inclined to address this issue. 
+However, C++11 alias templates do provide a partial workaround:
+```c++
+template <typename T>
+class DXTM : private BXT<T>
+{
+public:
+    template <typename U> 
+    using Magic = typename BXT<T>::template Magic<U>;  // alias template
+    
+    Magic<int> * plink;                                // OK
+}
+```
+This is a little unwieldy, but it achieves the desired effect for the case of class templates. 
+The case of function templates (arguably less common) remains **unaddressed**, unfortunately. 
+
+##### 13.3.5 ADL and Explicit Template Arguments
+
+```c++
+namespace N 
+{
+
+class X {};
+
+template <int I> 
+void select(X *) {}
+
+}  // namespace N
+
+void g(N::X * xp)
+{
+    select<3>(xp);
+}
+```
+In this example, we may expect that the template `select` is found through ADL in the call `select<3>(xp)`. 
+However, this is **not** the case because 
+a compiler can **not** decide that `xp` is a function call argument 
+until it has decided that `<3>` is a template argument list. 
+Furthermore, a compiler can **not** decide that `<3>` is a template argument list 
+until it has found `select` to be a template. 
+Because this chicken-and-egg problem can not be resolved, 
+the expression is parsed as `(select < 3) > (xp)`, which makes no sense. 
+
+
+This example may give the impression that ADL is disabled for `template-id`s, but it is **not**. 
+The code can be fixed by introducing a function template named select that is visible at the call:
+```c++
+void g(N::X * xp)
+{
+    template <typename T> 
+    void select();
+    
+    select<3>(xp);
+}
+```
+Even though it **doesn’t** make any sense for the call `select<3>(xp)`, 
+the presence of this function template ensures that `select<3>` will be parsed as a `template-id`. 
+ADL will then find the function template `N::select`, and the call will succeed.
+
+##### 13.3.6 Dependent Expressions
+
+Like names, expressions themselves can be dependent on template parameters. 
+An expression that depends on a template parameter can behave differently from one instantiation to the next. 
+For example, selecting a different overloaded function or producing a different type or constant value.
+In contrast, expressions that do not depend on a template parameter provide the same behavior in all instantiations.
+
+
+An expression can be dependent on a template parameter in several ways: 
+- **Type-Dependent Expressions**: Type of the expression itself can vary from one instantiation to the next;
+- **Value-Dependent Expressions**: Produce different constant values from one instantiation to the next. 
+
+
+_Type-dependent expressions_ are those whose type can vary from one instantiation to the next. 
+For example, an expression that refers to a function parameter whose type is that of a template parameter:
+```c++
+template <typename T> 
+void typeDependent1(T x)
+{
+    // the expression type-dependent, 
+    // because the type of x can vary
+    x;
+}
+```
+Expressions that have type-dependent subexpressions are generally type-dependent themselves. 
+For example, calling a function `f` with the argument `x`:
+```c++
+template <typename T> 
+void typeDependent1(T x)
+{
+    // the expression type-dependent, 
+    // because the type of x can vary
+    f(x);
+}
+```
+Here, note that type of `f(x)` can vary from one instantiation to the next 
+both because `f` might resolve to a template whose result type depends on the argument type 
+and because _two-phase lookup_ (discussed in Section 14.3.1) might find 
+completely different functions named `f` in different instantiations. 
+
+
+Expressions that produce different constant values from one instantiation to the next
+are called _value-dependent expressions_. 
+The simplest of which are those that refer to a non-type template parameter of non-dependent type:
+```c++
+template <int N> 
+void valueDependent1()
+{
+    // the expression is value-dependent but not type-dependent,
+    // because N has a fixed type but a varying constant value
+    N;
+}
+```
+Like type-dependent expressions, an expression is generally value-dependent 
+if it is composed of other value-dependent expressions, 
+so `N + N` or `f(N)` are also value-dependent expressions.
+
+
+Some operations, such as `sizeof`, have a known result type, 
+so they can turn a type-dependent operand into a value-dependent expression that is `not` type-dependent:
+```c++
+template <typename T> 
+void valueDependent2(T x)
+{
+    sizeof(x);  // the expression is value-dependent but not type-dependent
+}
+```
+The `sizeof` operation always produces a value of type `std::size_t` regardless of its input, 
+so a `sizeof` expression is **never** type-dependent, even if its subexpression is type-dependent. 
+However, the resulting constant value will vary from one instantiation to the next, 
+so `sizeof(x)` is a value-dependent expression.
+
+
+What if we apply `sizeof` on a value-dependent expression?
+```c++
+template <typename T> 
+void maybeDependent(T const & x)
+{
+    sizeof(sizeof(x));
+}
+```
+Here, the inner `sizeof` expression is value-dependent, as noted above. 
+However, the outer sizeof expression always computes the size of a `std::size_t`, 
+so both its type and constant value are consistent across all instantiations of the template, 
+despite the innermost expression `(x)` being type-dependent. 
+Any expression that involves a template parameter is an _instantiation-dependent_ expression, 
+even if both its type and constant value are invariant across valid instantiations. 
+However, an instantiation-dependent expression may turn out to be invalid when instantiated. 
+For example, instantiating `maybeDependent` with an incomplete class type will trigger an error, 
+because sizeof can **not** be applied to such types.
+
+
+Type-dependence, value-dependence, and instantiation-dependence 
+can be thought of as a series of increasingly more inclusive classifications of expressions. 
+Any type-dependent expression is also considered to be value-dependent, 
+because an expression whose type that varies from one instantiation to the next 
+will naturally have its constant value vary from one instantiation to the next. 
+Similarly, an expression whose type or value varies from one instantiation to the next 
+depends on a template parameter in some way, 
+so both type-dependent expressions and value-dependent expressions are instantiation-dependent.
+
+
+As one proceeds from the innermost context (type-dependent expressions) to the outermost context, 
+more of the behavior of the template is determined when the template is parsed 
+and therefore can **not** vary from one instantiation to the next. 
+For example, consider the call `f(x)`: 
+If `x` is type-dependent, 
+then `f` is a dependent name that is subject to two-phase lookup (Section 14.3.1), 
+whereas if `x` is value-dependent but not type-dependent, 
+`f` is a non-dependent name for which name lookup can be completely determined 
+at the time that the template is parsed. 
+
+##### 13.3.7 Compiler Errors
+
+A C++ compiler is permitted (but **not** required!) to diagnose errors at the time the template is parsed 
+when all of the instantiations of the template would produce that error. 
+Let’s expand on the `f(x)` example from the previous section to explore this further:
+```c++
+void f() {}
+
+template <int x> 
+void nondependentCall()
+{
+    // x is value-dependent, so f is non-dependent. 
+    // This call will never succeed
+    f(x);
+}
+```
+Here, the call `f(x)` will produce an error in every instantiation 
+because `f` is a non-dependent name and the only visible `f` accepts zero arguments, not one. 
+A C++ compiler can produce an error when parsing the template 
+or may wait until the first template instantiation: 
+Commonly used compilers differ even on this simple example. 
+One can construct similar examples with expressions that are instantiation-dependent but not value-dependent:
+```c++
+template <int N>
+void instantiationDependentBound()
+{
+    constexpr int x = sizeof(N);
+    constexpr int y = sizeof(N) + 1;
+    int array[x - y];  // negative size in all instantiations
+}
+```
+
+
+#### 📌 13.4 Inheritance and Class Templates
+
+
+Class templates can inherit or be inherited from.
+For many purposes, there is nothing significantly different between the template and non-template scenarios. 
+However, there is one important subtlety 
+when deriving a class template from a base class referred to by a dependent name. 
+Let’s first look at the somewhat simpler case of non-dependent base classes.
+
+##### 13.4.1 Non-dependent Base Classes
+
+In a class template, a non-dependent base class is one with a complete type
+that can be determined without knowing the template arguments. 
+In other words, the name of this base is denoted using a non-dependent name:
+```c++
+template <typename>
+class Base
+{
+public:
+    using T = int;
+    
+    int basefield;
+};
+
+// not a template case really
+class D1 : public Base<Base<void>>
+{
+public:
+    void f()
+    {
+        basefield = 3;
+    }
+};
+
+// usual access to non-dependent base
+template <typename T>
+class D2 : public Base<double>
+{
+public:
+    void f()
+    {
+        // usual access to inherited member
+        basefield = 7;
+    }
+    
+    // T is Base<double>::T (aka int), 
+    // not the template parameter!
+    T strange;
+};
+```
+Non-dependent bases in templates behave very much like bases in ordinary non-template classes, 
+but there is a slightly unfortunate surprise: 
+When an unqualified name is looked up in the templated derivation, 
+the non-dependent bases are considered _before_ the list of template parameters. 
+This means that in the previous example, 
+the member `strange` of the class template `D2` always has the type `T` 
+corresponding to `Base<double>::T` (aka `int`). 
+For example, the following function is **not** valid C++ (assuming the previous declarations):
+```c++
+void g(D2<int *> & d2, int * p)
+{
+    // ERROR: type mismatch!
+    d2.strange = p;
+}
+```
+
+##### 13.4.2 Dependent Base Classes
+
+In the previous example, the base class is fully determined. 
+It does **not** depend on a template parameter. 
+This implies that a C++ compiler can look up non-dependent names in those base classes
+_as soon as_ the template definition is seen. 
+An alternative (**not** allowed by the C++ standard) would consist in delaying the lookup of such names 
+until the template is instantiated. 
+The disadvantage of this alternative approach is that it also delays 
+any error messages resulting from missing symbols until instantiation. 
+Hence, the C++ standard specifies that a non-dependent name appearing in a template 
+is looked up _as soon as_ it is encountered:
+```c++
+template <typename>
+class Base
+{
+public:
+    using T = int;
+
+    int basefield;
+};
+
+// dependent base
+template <typename T>
+class DD : public Base<T>
+{
+public:
+    void f()
+    {
+        basefield = 0;  // #1 ERROR: use of undeclared identifier basefield
+    }
+};
+
+// explicit specialization
+template <>
+class Base<bool>
+{
+public:
+    enum
+    {
+        basefield = 42  // #2
+    };
+};
+
+void g(DD<bool> & d)
+{
+    d.f();              // #3
+}
+```
+At point `#1` we find our reference to a non-dependent name `basefield`: 
+It must be looked up _right away_. 
+Suppose we look it up in the template `Base` and bind it to the `int` member that we find therein. 
+However, shortly after this we override the generic definition of `Base` with an explicit specialization. 
+As it happens, this specialization changes the meaning of the `basefield` member 
+to which we already committed! 
+So, when we instantiate the definition of `DD::f` at point `#3`, 
+we find that we too eagerly bound the non-dependent name at point `#1`. 
+There is **no** modifiable `basefield` in `DD<bool>` that was specialized at point `#2`, 
+and an error message should have been issued. 
+
+
+To circumvent this problem, standard C++ says that 
+non-dependent names are **not** looked up in dependent base classes. 
+(But they are still looked up as soon as they are encountered.) 
+This is part of the two-phase lookup rules that distinguish 
+between a first phase when template definitions are first seen 
+and a second phase when templates are instantiated (see Section 14.3.1). 
+
+
+So, a standard C++ compiler will emit a diagnostic at point `#1`. 
+To correct the code, it suffices to make the name `basefield` dependent 
+because dependent names can be looked up only at the time of instantiation, 
+and at that time the concrete base instance that must be explored will be known. 
+For example, at point `#3`, the compiler will know that 
+the base class of `DD<bool>` is `Base<bool>`
+and that this has been explicitly specialized by the programmer. 
+In this case, our preferred way to make the name dependent is as follows:
+```c++
+// Variation 1:
+template <typename T>
+class DD1 : public Base<T> 
+{
+public:
+    // lookup delayed
+    void f() { this->basefield = 0; }
+};
+```
+An alternative consists in introducing a dependency using a qualified name:
+```c++
+// Variation 2:
+template <typename T>
+class DD2 : public Base<T> 
+{
+public:
+    void f() { Base<T>::basefield = 0; }
+};
+```
+Care must be taken with this solution,
+because if the unqualified non-dependent name is used to form a virtual function call, 
+then the qualification **inhibits** the virtual call mechanism and the meaning of the program changes. 
+Nonetheless, there are situations when the first variation can **not** be used and this alternative is appropriate:
+```c++
+template <typename T>
+class B
+{
+public:
+    enum E
+    {
+        e1 = 6, 
+        e2 = 28, 
+        e3 = 496
+    };
+
+    virtual void zero(E e = e1) {}
+
+    virtual void one(E & e) {}
+};
+
+template <typename T>
+class D : public B<T>
+{
+public:
+    void f()
+    {
+        typename D<T>::E e;  // this->E would not be valid syntax
+        this->zero();        // D<T>::zero() would inhibit virtuality
+        one(e);              // one is dependent because its argument is dependent
+    }
+};
+```
+Note how we used `D<T>::E` instead of `B<T>::E` in this example. 
+In this case, either one works. 
+In _multiple-inheritance_ cases, however, we may **not** know which base class provides the desired member 
+(in which case using the derived class for qualification works) 
+or multiple base classes may declare the same name 
+(in which case we may have to use a specific base class name for disambiguation). 
+
+
+Note that the name one in the call `one(e)` is dependent on the template parameter 
+simply because the type of one of the call's explicit arguments is dependent. 
+Implicitly-used default arguments with a type that depends on a template parameter do **not** count 
+because the compiler can **not** verify this until it already has decided the lookup (a chicken-and-egg problem). 
+To avoid subtlety, we prefer to use the `this->` prefix in all situations that allow it, 
+even for non-template code. 
+If you find that the repeated qualifications are cluttering up your code, 
+you can bring a name from a dependent base class in the derived class once and for all:
+```c++
+// Variation 3:
+template <typename T>
+class DD3 : public Base<T> 
+{
+public:
+    using Base<T>::basefield;    // #1 dependent name now in scope
+    void f() { basefield = 0; }  // #2 fine
+};
+```
+The lookup at point `#2` succeeds and finds the using declaration of point `#1`.
+However, the using declaration is **not** verified until instantiation time and our goal is achieved. 
+There are some subtle limitations to this scheme. 
+For example, if multiple bases are derived from, 
+the programmer must select exactly which one contains the desired member. 
+
+
+When searching for a qualified name within the current instantiation, 
+the C++ standard specifies that name lookup 
+first search in the current instantiation and in all non-dependent bases, 
+similar to the way it performs unqualified lookup for that name. 
+If any name is found, then the qualified name refers to a member of a current instantiation 
+and will **not** be a dependent name.
+However, the lookup is nonetheless repeated when the template is instantiated,
+and if a different result is produced in that context, the program is ill-formed. 
+If no such name is found, and the class has any dependent bases, 
+then the qualified name refers to a member of an unknown specialization. 
+For example:
+```c++
+class NonDep
+{
+public:
+    using Type = int;
+};
+
+template <typename T>
+class Dep
+{
+public:
+    using OtherType = T;
+};
+
+template <typename T>
+class DepBase : public NonDep, public Dep<T>
+{
+public:
+    void f()
+    {
+        // Finds NonDep::Type. 
+        // typename keyword is optional
+        typename DepBase<T>::Type t;
+
+        // Finds nothing. 
+        // DepBase<T>::OtherType is a member of an unknown specialization
+        typename DepBase<T>::OtherType * ot;
+    }
+};
+```
 
 
 
 
 
 
+### 🎯 Chapter 14 Instantiation
 
 
+Template instantiation is the process that 
+generates types, functions, and variables from generic template definitions.
+The term _instantiation_ is sometimes also used to refer to the creation of objects from types. 
+In this book, however, it always refers to template instantiation.
 
-2 
-3 
-4 Note the double parentheses to avoid parsing (Invert<1>)0 as a cast operation
-—yet another source of syntactic ambiguity.
-5 Specific exceptions were introduced to address tokenization issues described in
-this section.
-6 The 1998 and 2003 versions of the C++ standard did not support this “angle
-bracket hack.” However, the need to introduce a space between the two
-consecutive right angle brackets was such a common stumbling block for
-beginning template users that the committee decided to codify this hack in the
-2011 standard.
-7 Some compilers that provide a C++98 or C++03 mode keep the C++11 behavior
-in those modes and thus print 0 0 even when formally compiling C++98/C++03
-code.
-8 This is therefore an exception to the aforementioned maximum munch principle.
-9 Thanks to Richard Smith for pointing that out.
-10 Note that C++20 will probably remove the need for typename in most cases (see
-Section 17.1 on page 354 for details).
-11 Syntactically, only type names are permitted within these contexts, so a qualified
-name is always assumed to name a type.
-12 Adapted from [VandevoordeSolutions], proving once and for all that C++
-promotes code reuse.
-13 The terms type-dependent expression and value-dependent expression are used in
-the C++ standard to describe the semantics of templates, and they have an effect
-on several aspects of template instantiation (Chapter 14). On the other hand, the
-term instantiation-dependent expression is mainly only used by the authors of C++
-compilers. Our definition of a instantiation-dependent expression comes from theItanium C++ ABI [ItaniumABI], which provides the basis for binary
-interoperability among a number of different C++ compilers.
-14 This is part of the two-phase lookup rules that distinguish between a first phase
-when template definitions are first seen and a second phase when templates are
-instantiated (see Section 14.3.1 on page 249).
-15 However, the lookup is nonetheless repeated when the template is instantiated, and
-if a different result is produced in that context, the program is ill-formed.
-16 Braces are not entirely without problems either. Specifically, the syntax to
-specialize class templates would require nontrivial adaptation.
-17 Fortunately, they found out before they released the new functionality.
-18 Ironically, the first of these implementations had been developed by HP as well.
+
+The concept of instantiation of C++ templates is fundamental but also somewhat intricate. 
+One of the underlying reasons for this intricacy is that the definitions of entities generated by a template 
+are no longer limited to a single location in the source code. 
+The location of the template, the location where the template is used,
+and the locations where the template arguments are defined all play a role in the meaning of the entity. m
+
+
+In this chapter we explain how we can organize our source code to enable proper template use. 
+In addition, we survey the various methods that are used by the most popular C++ compilers to handle template instantiation. 
+Although all these methods should be semantically equivalent, 
+it is useful to understand basic principles of the compiler’s instantiation strategy. 
+Each mechanism comes with its set of little quirks when building real-life software, 
+and conversely, each influenced the final specifications of standard C++. 
+
+
+#### 📌 14.1 On-Demand Instantiation
+
+
+When a C++ compiler encounters the use of a template specialization, 
+it will create that specialization by substituting the required arguments for the template parameters. 
+The term _specialization_ is used in the general sense of an entity that is a specific instance of a template. 
+It does **not** refer to the _explicit specialization_ mechanism described in Chapter 16. 
+
+
+This is done automatically and requires **no** direction from the client code 
+(or from the template definition, for that matter). 
+This _on-demand instantiation_ feature is sometimes also called 
+_implicit instantiation_ or _automatic instantiation_.
+
+
+On-demand instantiation implies that the compiler often needs access to the full definition 
+(in other words, not just the declaration) 
+of the template and some of its members at the point of use. 
+Consider the following tiny source code file:
+```c++
+// #1 declaration only
+template <typename T>
+class C;
+
+// #2 fine: definition of C<int>
+C<int> * p = nullptr;
+
+
+template <typename T>
+class C
+{
+public:
+    void f();       // #3 member declaration
+};                  // #4 class template definition completed
+
+void g(C<int> & c)  // #5 use class template declaration only
+{
+    // #6 use class template definition,
+    // will need definition of C::f in this translation unit
+    c.f();    
+}
+
+// required definition due to #6
+template <typename T>
+void C<T>::f() {}
+```
+At point `#1` in the source code, only the declaration of the template is available, 
+**not** the definition (such a declaration is sometimes called a _forward declaration_). 
+As is the case with ordinary classes, 
+we do **not** need the definition of a class template to be visible to declare pointers or references to this type, 
+as was done at point `#2`. 
+For example, the type of the parameter of function `g` 
+does **not** require the full definition of the template `C`. 
+However, as soon as a component needs to know the size of a template specialization 
+or if it accesses a member of such a specialization, 
+the entire class template definition is required to be visible. 
+This explains why at point `#6` in the source code, the class template definition must be seen. 
+Otherwise, the compiler can **not** verify that the member exists and is accessible
+(not private or protected). 
+Furthermore, the member function definition is needed too, 
+since the call at point `#6` requires `C<int>::f` to exist.
+
+
+Here is another expression that needs the instantiation: 
+```c++
+C<void> * p = new C<void>;
+```
+In this case, instantiation is needed so that the compiler can determine the size of `C<void>`, 
+which the new-expression needs to determine how much storage to allocate. 
+You might observe that for this particular template, 
+the type of the argument substituted for `T` 
+will **not** influence the size of the template 
+because in any case, `C<X>` is an empty class 
+(without explicit specializations, without data member in the primary template). 
+However, a compiler is **not** required to avoid
+instantiation by analyzing the template definition 
+(and all compilers do perform the instantiation in practice). 
+Furthermore, instantiation is also needed in this example 
+to determine whether `C<void>` has an accessible default constructor 
+and to ensure `C<void>` does not declare member `operator new` or `operator delete`. 
+
+
+The need to access a member of a class template is **not** 
+always very explicitly visible in the source code. 
+For example, C++ overload resolution requires visibility 
+into class types for parameters of candidate functions:
+```c++
+template <typename T>
+class C
+{
+public:
+    // a constructor that can be called with a single parameter
+    // may be used for implicit conversions
+    C(int) {}
+};
+
+void candidate(C<double>) {}  // #1
+
+void candidate(int) {}        // #2
+
+int main()
+{
+    // both previous function declarations can be called
+    candidate(42);
+}
+```
+The call `candidate(42)` will resolve to the overloaded declaration at point `#2`.
+However, the declaration at point `#1` could also be instantiated 
+to check whether it is a viable candidate for the call
+(it is in this case because the one-argument constructor 
+can implicitly convert `42` to an rvalue of type `C<double>`). 
+Note that the compiler is allowed (but **not** required) to perform this instantiation 
+if it can resolve the call **without** it 
+(as could be the case in this example because an implicit conversion would not be selected over an exact match). 
+Note also that the instantiation of `C<double>` could trigger an error, which may be surprising. 
+
+
+#### 📌 14.2 Lazy Instantiation
+
 
 
 
@@ -10478,9 +11432,63 @@ specialize class templates would require nontrivial adaptation.
 
 
 
+3 Anonymous unions are always special in this way: Their members can be
+considered to be members of the enclosing class. An anonymous union is
+primarily a construct that says that some class members share the same storage.
+4 Some compilers, such as GCC, allow zero-length arrays as extensions and may
+therefore accept this code even when N ends up being 0.
+5 Typical examples are smart pointer templates (e.g., the standard
+std::unique_ptr<T>).
+6 Besides two-phase lookup, terms such as two-stage lookup or two-phase name
+lookup are also used.
+7 Surprisingly, this is not clearly specified in the standard at the time of this writing.
+However, it is not expected to be a controversial issue.
+8 The call operator of generic lambdas are a subtle exception to that observation.
+9 In modern compilers the inlining of calls is typically handled by a mostly
+language-independent component of the compiler dedicated to optimizations (a
+“back end” or “middle end”). However, C++ “front ends” (the C++-specific part
+of the C++ compiler) that were designed in the earlier days of C++ may also have
+the ability to expand calls inline because older back ends were too conservative
+when considering calls for inline expansion.
+10 The original C++98 standard also provided a separation model. It never gained
+popularity and was removed just before publishing the C++11 standard.
+11 Current systems have grown to detect certain other differences, however. For
+example, they might report if one instantiation has associated debugging
+information and another does not.
+12 When a compiler is unable to “inline” every call to a function that you marked
+with the keyword inline, a separate copy of the function is emitted in the objectfile. This may happen in multiple object files.
+13 Virtual function calls are usually implemented as indirect calls through a table of
+pointers to functions. See [LippmanObjMod] for a thorough study of such
+implementation aspects of C++.
+14 Sun Microsystems was later acquired by Oracle.
+15 Do not let this phrase mislead you into thinking that Cfront was an academic
+prototype: It was used in industrial contexts and formed the basis of many
+commercial C++ compiler offerings. Release 3.0 appeared in 1991 but was
+plagued with bugs. Version 3.0.1 followed soon thereafter and made templates
+usable.
+16 HP’s aC++ was grown out of technology from a company called Taligent (later
+absorbed by International Business Machines, or IBM). HP also added greedy
+instantiation to aC++ and made that the default mechanism.
+17 In the 1998 and 2003 C++ standards, this was the only portable way to inhibit
+instantiation in other translation units.
+18 An interesting part of this optimization problem is to determine exactly which
+specializations are good candidates for explicit instantiation declarations. Low-
+level utilities such as the common Unix tool nm can be useful in identifying which
+automatic instantiations actually made it into the object files that comprise a
+program.
+19 Although the code reads if constexpr, the feature is called constexpr if,
+because it is the “constexpr” form of if.
+20 Optimization may nonetheless mask the error. With constexpr if the problem is
+guaranteed not to exist.
+21 Ironically, EDG was the most vocal opponent of the feature when it was added to
+the working paper for the original standard.
 
 
 
+
+### 🎯
+
+#### 📌
 
 
 ## 🌱 Part III Templates and Design
