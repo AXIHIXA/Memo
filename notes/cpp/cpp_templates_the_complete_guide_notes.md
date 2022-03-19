@@ -68,26 +68,23 @@ Implement each template inside a header file.
 
 ##### Type Conversions During Type Deduction
 
-- During template type deduction for template parameters,
-  arguments' reference-ness and top-level cv-constraints are ignored.
-    - Note that arguments' top-level cv becomes bottom-level for reference parameters,
-      thus cv is kept for reference parameters.
+- During template type deduction, 
+  arguments will _decay_ **unless** they're used to initialize references. 
+  - Functions and arrays decay to corresponding pointer types;
+  - Arguments' reference-ness and cv-constraints are removed.
 - When deducing types for universal reference parameters,
   reference collapse may occur.
-- During template type deduction,
-  arguments that are array or function names decay to pointers,
-  unless they're used to initialize references.
 - Automatic type conversions are limited during type deduction:
   - When declaring call parameters by reference,
-    even trivial conversions do not apply to type deduction.
+    even trivial conversions do **not** apply to type deduction.
     Two arguments declared with the same template parameter `T` must match exactly.
   - When declaring call parameters by value,
     only trivial conversions that decay are supported:
-    Qualifications with `const` or `volatile` are ignored,
-    references convert to the referenced type,
-    and raw arrays or functions convert to the corresponding pointer type.
-    For two arguments declared with the same template parameter `T`,
-    the _decayed_ types must match.
+    Qualifications with `const` or `volatile` are ignored, 
+    references convert to the referenced type, 
+    and raw arrays or functions convert to the corresponding pointer type. 
+    For two arguments declared with the same template parameter `T`, 
+    the _decayed_ types must match. 
 
 
 Three ways to handle type deduction failures dur to argument type mismatch:
@@ -13000,7 +12997,62 @@ See Section 25.6 for an application of the feature to compute integral literals 
 
 #### 📌 15.6 Rvalue References 
 
+##### 15.6.1 Reference Collapsing
 
+Programmers are **not** allowed to _directly_ declare a “reference to a reference”:
+```c++
+int const & r = 42;
+int const & & ref2ref = i;  // ERROR: reference to reference is invalid
+```
+However, when composing types through the substitution of
+template parameters, type aliases, or `decltype` constructs, 
+such situations are permitted:
+```c++
+using RI = int &;
+int i = 42;
+RI r = i;
+R const & rr = r;  // OK: rr has type int &. 
+                   // const qualifier on a reference type RI (aka int &) has no effect. 
+```
+The rules that determine the type resulting from such a composition 
+are known as the _reference collapsing_ rules: 
+1. Any `const` or `volatile` qualifiers applied on top of the inner reference are simply **discarded**. 
+   I.e., only the bottom-level cv is retained. 
+2. The two references are reduced to a single reference. 
+   - Only rvalue reference of rvalue references are rvalue references. 
+   - All other compositions yields lvalue references. 
+```c++
+using RCI = int const &;
+RCI volatile && r = 42;   // OK: r has type int const &, top-level volatile is discarded
+using RRI = int &&;
+RRI const && rr = 42;     // OK: rr has type int &&, top-level const is discarded
+```
+
+##### 15.6.2 Forwarding References
+
+Template argument deduction behaves in a special way when a function parameter is a _forwarding reference_ 
+(an rvalue reference to a template parameter of that function template). 
+In this case, template argument deduction considers **not** just the type of the function call argument 
+but also whether that argument is an lvalue or an rvalue. 
+- **When the argument is an lvalue**, 
+  the type determined by template argument deduction is an lvalue reference to the argument type, 
+  and the reference collapsing rules (see above) ensure that the substituted parameter will be an lvalue reference. 
+- **Otherwise**, 
+  the type deduced for the template parameter is simply the argument type (**not** a reference type), 
+  and the substituted parameter is an rvalue reference to that type. 
+```c++
+template <typename T> 
+void f(T && p) {}
+
+void g()
+{
+    int i;
+    int const j = 0;
+    f(i);  // T = int &
+    f(j);  // T = const int &
+    f(2);  // T = int
+}
+```
 
 
 

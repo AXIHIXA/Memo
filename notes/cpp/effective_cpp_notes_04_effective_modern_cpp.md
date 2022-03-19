@@ -26,15 +26,23 @@
        1. Not array, not function: remove cv;
        2. Array: decay to pointer to its first element;
        3. Function: decay to pointer to the function. 
-- During template type deduction for template parameters,
-  arguments' reference-ness and top-level cv-constraints are ignored. 
-  - Note that arguments' top-level cv becomes bottom-level for reference parameters, 
-    thus cv is kept for reference parameters. 
+- During template type deduction, 
+  arguments will _decay_ **unless** they're used to initialize references. 
+  - Functions and arrays decay to corresponding pointer types;
+  - Arguments' reference-ness and cv-constraints are removed.
 - When deducing types for universal reference parameters,
   reference collapse may occur.
-- During template type deduction,
-  arguments that are array or function names decay to pointers,
-  unless they’re used to initialize references.
+- Automatic type conversions are limited during type deduction:
+  - When declaring call parameters by reference,
+    even trivial conversions do **not** apply to type deduction.
+    Two arguments declared with the same template parameter `T` must match exactly.
+  - When declaring call parameters by value,
+    only trivial conversions that decay are supported:
+    Qualifications with `const` or `volatile` are ignored, 
+    references convert to the referenced type, 
+    and raw arrays or functions convert to the corresponding pointer type. 
+    For two arguments declared with the same template parameter `T`, 
+    the _decayed_ types must match. 
 - Automatic type conversions are limited during type deduction:
   - When declaring call parameters by reference,
     even trivial conversions do not apply to type deduction.
