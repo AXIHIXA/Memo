@@ -11891,7 +11891,7 @@ the class template definition must have been seen earlier in the translation uni
 This is also needed for the POIs of function templates and variable templates 
 (and member functions and static data members of class templates), 
 and typically template definitions are simply added to header files that are `#included` into the translation unit, 
-even when they’re non-type templates. 
+even when they're non-type templates. 
 This source model for template definitions is called the _inclusion model_, 
 and it is the only automatic source model for templates supported by the current C++ standard. 
 
@@ -12109,7 +12109,7 @@ but instead by emitting the object code in the object file that caused the insta
 Libraries present yet another challenge. 
 A number of generated specializations may be packaged in a library. 
 When the library is added to another project, 
-that project’s database may need to be made aware of the instantiations that are already available. 
+that project's database may need to be made aware of the instantiations that are already available. 
 If not, and if the project creates some of its own points of instantiation 
 for the specializations present in the library, 
 duplicate instantiation may occur.
@@ -12124,7 +12124,7 @@ was not linked in the final executable program.
 
 
 Ultimately, queried instantiation did **not** survive in the marketplace, 
-and even Sun’s compiler now uses greedy instantiation. 
+and even Sun's compiler now uses greedy instantiation. 
 
 ##### 14.4.3 Iterated Instantiation
 
@@ -12179,7 +12179,7 @@ The drawbacks of the original Cfront scheme are quite severe:
   In particular, the original Cfront implementation was **not** engineered to support concurrent compilations.
 
 
-The iteration principle was subsequently refined both by the Edison Design Group’s (EDG) implementation and by HP’s aC++, 
+The iteration principle was subsequently refined both by the Edison Design Group's (EDG) implementation and by HP's aC++, 
 eliminating some of the drawbacks of the original Cfront implementation. 
 In practice, these implementations work quite well, and,
 although a build “from scratch” is typically more time consuming than the alternative schemes, 
@@ -12812,6 +12812,203 @@ That is discussed in Section 15.10.4.
 #### 📌 15.4 Initializer Lists
 
 
+When the argument of a function call is an initializer list, 
+that argument **doesn't** have a specific type, 
+so in general no deduction will be performed from that given pair `(A, P)` because there is no `A`:
+```c++
+template <typename T> 
+void f(T t) {}
+
+int main() 
+{
+    f({1, 2, 3});  // ERROR: can not deduce T from an initializer list
+}
+```
+However, if the parameter type `P`, after removing references and top-level cv, 
+is equivalent to `std::initializer_list<P′>` for some type `P′` that has a deducible pattern,
+deduction proceeds by comparing `P′` to the type of each element in the initializer list, 
+succeeding only if all of the elements have the same type:
+```c++
+template <typename T> 
+void f(std::initializer_list<T> il) {}
+
+int main() 
+{
+    f({1, 2, 3});  // OK: T deduced to int
+    f({1, '2'});   // ERROR: T is deduced to both in and char
+}
+```
+Similarly, if the parameter type `P` is a reference to an array type 
+with element type `P′` for some type `P′` that has a deducible pattern, 
+deduction proceeds by comparing `P′` to the type of each element in the initializer list, 
+succeeding only if all of the elements have the same type. 
+Furthermore, if the bound has a deducible pattern (i.e., just names a non-type template parameter), 
+then that bound is deduced to the number of elements in the list. 
+```c++
+template <typename T, std::size_t N>
+void f(T (&&)[N])
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+int main(int argc, char * argv[])
+{
+    f({1, 2, 3});  // T = int; N = 3
+}
+```
+
+
+#### 📌 15.5 Parameter Packs
+
+
+```c++
+template <typename First, typename ... Rest>
+void f(First first, Rest ... rest) {}
+
+void g(int i, double j, int * k)
+{
+    f(i, j, k);  // deduces First to int, Rest to {double, int *}
+}
+```
+Deduction for the first function parameter is simple, since it does not involve any parameter packs.
+Deduction determines the value of the parameter pack `Rest` to be the sequence `{double, int *}`.
+Substituting the results of that deduction and the deduction for the first function parameter 
+yields the function type `void (int, double, int*)`, which matches the argument types at the call site. 
+
+
+Values for multiple template parameters and parameter packs 
+can be determined from each of the argument types: 
+```c++
+template <typename T, typename ... Rest>
+void h1(std::pair<T, Rest> const & ...) {}
+
+template <typename ... Ts, typename ... Rest>
+void h2(std::pair<Ts, Rest> const & ...) {}
+
+void foo(std::pair<int, float> pif,
+         std::pair<int, double> pid,
+         std::pair<double, double> pdd)
+{
+    h1(pif, pid);  // OK: deduces T to int, Rest to {float,double}
+    h2(pif, pid);  // OK: deduces Ts to {int, int}, Rest to {float, double}
+    
+    h1(pif, pdd);  // ERROR: T deduced to int from the 1st arg, but to double from the 2nd
+    h2(pif, pdd);  // OK: deduces Ts to {int, double}, Rest to {float, double}
+}
+```
+Deduction for parameter packs is **not** limited to function parameter packs 
+where the argument-parameter pairs come from call arguments. 
+In fact, this deduction is used wherever a pack expansion 
+is at the end of a function parameter list or a template argument list.
+If a pack expansion occurs anywhere else in a function parameter list or template argument list, 
+that pack expansion is considered a non-deduced context. 
+```c++
+template <typename ... Types>
+bool f1(std::tuple<Types ...>, std::tuple<Types ...>) {}
+
+template <typename ... Types1, typename ... Types2>
+bool f2(std::tuple<Types1 ...>, std::tuple<Types2 ...>) {}
+
+void bar(std::tuple<short, int, long> sv,
+         std::tuple<unsigned short, unsigned, unsigned long> uv)
+{
+    f1(sv, sv);  // OK: Types is deduced to {short, int, long}.
+    f2(sv, sv);  // OK: Types1 is deduced to {short, int, long}, Types2 is deduced to {short, int, long}.
+    f1(sv, uv);  // ERROR: Types is deduced to {short, int, long} from the 1st arg, but to {unsigned short, unsigned, unsigned long} from the 2nd.
+    f2(sv, uv);  // OK: Types1 is deduced to {short, int, long}, Types2 is deduced to {unsigned short, unsigned, unsigned long}.
+}
+```
+
+##### 15.5.1 Literal Operator Templates
+
+C++11 allows user-defined literals (could be `constexpr`) as follows:
+- Cooked: Pre-processed by processor. 
+```c++
+T operator "" _suffix(unsigned long long);
+T operator "" _suffix(long double);
+T operator "" _suffix(char);
+T operator "" _suffix(wchar_t);
+T operator "" _suffix(char16_t);
+T operator "" _suffix(char32_t);
+T operator "" _suffix(char const *, std::size_t);
+T operator "" _suffix(wchar_t const *, std::size_t);
+T operator "" _suffix(char16_t const *, std::size_t);
+T operator "" _suffix(char32_t const *, std::size_t);
+```
+- Raw: Only suffix numeric types! 
+```c++
+T operator "" _suffix(const char *);
+
+// literal operator template
+template <char ...>
+T operator "" _suffix();
+```
+When the compiler identifies a user-defined literal and has to call the appropriate user-defined literal operator, 
+it will pick the overload from the overload set according to the following rules: 
+- **For integral literals**, it calls in the following order: 
+  1. The operator that takes an `unsigned long long`, 
+  2. The _raw_ literal operator that takes a `const char *`, 
+  3. the literal operator template. 
+- **For floating-point literals**, it calls in the following order: 
+  1. The operator that takes a `long double`, 
+  2. The _raw_ literal operator that takes a `const char *`, 
+  3. The literal operator template.
+- **For character literals**, it calls the appropriate operator, 
+  depending on the character type (`char`, `wchar_t`, `char16_t`, and `char32_t`). 
+- **For string literals**, it calls the appropriate operator, 
+  that takes a pointer to the string of characters and the size, 
+  depending on the string type. 
+
+
+Literal operator templates have their argument determined in a unique way. 
+```c++
+template <char...>
+int operator "" _B7();  // #1
+
+int a = 121_B7;         // #2
+```
+Here, the initializer for `#2` contains a user-defined literal, 
+which is turned into a call to the literal operator template `#2` 
+with the template argument list `<'1', '2', '1'>`. 
+Thus, an implementation of the literal operator such as
+```c++
+template <char ... cs>
+int operator "" _B7()
+{
+    std::array<char, sizeof...(cs)> chars {cs...};
+
+    for (char c: chars)
+    {
+        std::cout << '\'' << c << '\'';
+    }
+
+    std::cout << '\n';
+    return ...;
+}
+```
+will output `'1' '2' '1' '.' '5'` for `121.5_B7`. 
+Note that raw literal operators are _only supported for valid numeric (integral and floating-point) literals_: 
+```c++
+auto b = 01.3_B7;    // OK: deduces {'0', '1', '.', '3'}
+auto c = 0xFF00_B7;  // OK: deduces {'0', 'x', 'F', 'F', '0', '0'}
+auto d = 0815_B7;       // ERROR: invalid digit '8' in octal constant
+auto e = hello_B7;      // ERROR: use of undeclared identifier hello_B7
+auto f = "hello"_B7;    // ERROR: no matching operator "" _B7
+```
+See Section 25.6 for an application of the feature to compute integral literals at compile time. 
+
+
+#### 📌 15.6 Rvalue References 
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12824,8 +13021,7 @@ That is discussed in Section 15.10.4.
 
 
 2 
-3 If a pack expansion occurs anywhere else in a function parameter list or template
-argument list, that pack expansion is considered a nondeduced context.
+3 
 4 Reference collapsing was introduced into the C++ 2003 standard when it was
 noted that the standard pair class template would not work with reference types.
 The 2011 standard extended reference collapsing further by incorporating rules for
@@ -12847,7 +13043,7 @@ function template being substituted.
 9 Although C++14 introduced deduced return types in general, they were already
 available to C++11 lambdas using a specification that was not worded in terms of
 deduction. In C++14, that specification was updated to use the general auto
-deduction mechanism (from a programmer’s point of view, there is no difference).
+deduction mechanism (from a programmer's point of view, there is no difference).
 10 The same technique can be used to extract the associated member type: Instead of
 using Type = C; use using Type = M;.
 11 As mentioned elsewhere, treating a parameter of rvalue reference type as an
