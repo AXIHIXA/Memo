@@ -19,7 +19,7 @@
 
 ##### Instantiation
 
-Templates aren’t compiled into single entities that can handle any type. 
+Templates aren't compiled into single entities that can handle any type. 
 Instead, different entities are generated from the template for every type for which the template is used.
 
 
@@ -38,8 +38,8 @@ Templates are "compiled" in two phases:
    This includes:
    – Syntax errors are discovered, such as missing semicolons.
    – Using unknown names (type names, function names, ...) 
-     that don’t depend on template parameters are discovered.
-   – Static assertions that don’t depend on template parameters are checked.
+     that don't depend on template parameters are discovered.
+   – Static assertions that don't depend on template parameters are checked.
 2. At _instantiation_ time, 
    the template code is checked (again) to ensure that all code is valid. 
    That is, now especially, all parts that depend on template parameters are double-checked.
@@ -49,7 +49,7 @@ The fact that names are checked twice is called _two-phase lookup_
 and discussed in detail in Section 14.3.
 
 
-Note that some compilers don’t perform the full checks of the first phase. 
+Note that some compilers don't perform the full checks of the first phase. 
 So you might not see general problems until the template code is instantiated at least once.
 
 ##### Compiling and Linking
@@ -57,11 +57,11 @@ So you might not see general problems until the template code is instantiated at
 Two-phase translation leads to an important problem in the handling of templates in practice: 
 When a function template is used in a way that triggers its instantiation, 
 which is at _compile time_, 
-a compiler will (at some point) need to see that template’s _definition_. 
+a compiler will (at some point) need to see that template's _definition_. 
 This breaks the usual compile and link distinction for ordinary functions, 
 when the declaration of a function is sufficient to compile its use. 
 Methods of handling this problem are discussed in Chapter 9. 
-For the moment, let’s take the simplest approach: 
+For the moment, let's take the simplest approach: 
 Implement each template inside a header file.
 
 #### 📌 1.2 Template Argument Deduction
@@ -76,7 +76,7 @@ Implement each template inside a header file.
   reference collapse may occur.
 - During template type deduction,
   arguments that are array or function names decay to pointers,
-  unless they’re used to initialize references.
+  unless they're used to initialize references.
 - Automatic type conversions are limited during type deduction:
   - When declaring call parameters by reference,
     even trivial conversions do not apply to type deduction.
@@ -144,7 +144,7 @@ It may appear desirable to be able to pass parameters of different types to the 
 but it raises a problem. 
 If you use one of the parameter types as return type,
 the argument for the other parameter might get converted to this type, 
-regardless of the caller’s intention. 
+regardless of the caller's intention. 
 Thus, the return type depends on the call argument order. 
 The maximum of `66.66` and `42` will be the `double` `66.66`, 
 while the maximum of `42` and `66.66` will be the `int` `66`. 
@@ -153,7 +153,7 @@ while the maximum of `42` and `66.66` will be the `int` `66`.
 C++ provides different ways to deal with this problem (to de detailed in the next section):
 - Introduce a third template parameter for the return type.
 - Let the compiler deduce the return type.
-- Declare the return type to be the “common type” of the two parameter types. 
+- Declare the return type to be the "common type" of the two parameter types. 
 
 ##### Template Parameters for Return Types
 
@@ -213,7 +213,7 @@ R max(T1 a, T2 b)
 // OK: return type is double, T1 and T2 are deduced
 ::max<double>(4, 7.2);
 ```
-Note that these modified versions of `max` **don’t** lead to significant advantages. 
+Note that these modified versions of `max` **don't** lead to significant advantages. 
 For the one-parameter version, you can already specify the parameter (and return) type 
 if two arguments of a different type are passed. 
 Thus, it is a good idea to keep it simple and use the one-parameter version of `max`. 
@@ -296,8 +296,8 @@ auto a = ir;         // a is declared as new object of type int
 
 ##### Return Type as Common Type
 
-Since C++11, the C++ standard library provides a means to specify choosing “the more general type.” 
-`std::common_type<>::type` yields the “common type” of two (or more) different types passed as template arguments. 
+Since C++11, the C++ standard library provides a means to specify choosing "the more general type." 
+`std::common_type<>::type` yields the "common type" of two (or more) different types passed as template arguments. 
 ```c++
 #include <type_traits>
 
@@ -445,7 +445,7 @@ or to specifying template parameters explicitly.
 Otherwise, unexpected effects may happen. 
 For example, if you implement your `max` template to pass the arguments by reference 
 and overload it for two C-strings passed by value, 
-you **can’t** use the three-argument version to compute the maximum of three C-strings:
+you **can't** use the three-argument version to compute the maximum of three C-strings:
 ```c++
 // maximum of two values of any type (call-by-reference)
 template <typename T> 
@@ -484,7 +484,7 @@ leaving `main` with a dangling reference.
 Unfortunately, the error is quite subtle and may not manifest itself in all cases.
 
 
-Note, in contrast, that the first call to `max` in `main` doesn’t suffer from the same issue. 
+Note, in contrast, that the first call to `max` in `main` doesn't suffer from the same issue. 
 There temporaries are created for the arguments (7, 42, and 68), 
 but those temporaries are created in main where they persist until the statement is done. 
 
@@ -525,7 +525,7 @@ int max(int a, int b)
 We discuss details in Section 13.2. 
 
 
-#### 📌 1.6 But, Shouldn’t We...?
+#### 📌 1.6 But, Shouldn't We...?
 
 ##### Pass by Value or by Reference?
 
@@ -558,7 +558,7 @@ In addition, for templates, specific aspects come into play:
 
 ##### Why Not `inline`?
 
-In general, function templates **don’t** have to be declared with `inline`. 
+In general, function templates **don't** have to be declared with `inline`. 
 Unlike ordinary non-`inline` functions, 
 we can define non-`inline` function templates in a header file
 and include this header file in multiple translation units.
@@ -572,7 +572,7 @@ See Section 9.2 for more details.
 From a strict language definition perspective, 
 `inline` _only_ means that a definition of a function can appear multiple times in a program. 
 However, it is also meant as a _hint_ to the compiler that 
-calls to that function should be “expanded inline”: 
+calls to that function should be "expanded inline": 
 Doing so can produce more efficient code for certain cases, 
 but it can also make the code less efficient for many other cases. 
 Nowadays, compilers usually are better at deciding this without the hint implied by the `inline` keyword. 
@@ -683,7 +683,7 @@ If a class template has `static` members,
 these are also instantiated once for each type for which the class template is used.
 
 
-An instantiated class template’s type can be used just like any other type. 
+An instantiated class template's type can be used just like any other type. 
 You can qualify it with `const` or `volatile` or derive array and reference types from it.
 You can also use it as part of a type definition with `typedef` or `using` (see Section 2.8) 
 or use it as a type parameter when building another template type. 
@@ -708,7 +708,7 @@ However, because the missing space was a typical bug,
 which required corresponding error messages, 
 the semantics of the code more and more had to get taken into account anyway. 
 So, with C++11 the rule to put a space between two closing template brackets 
-was removed with the “angle bracket hack” (see Section 13.3). 
+was removed with the "angle bracket hack" (see Section 13.3). 
 
 
 #### 📌 2.3 Partial Usage of Class Templates
@@ -738,7 +738,7 @@ class Stack
     }
 };
 ```
-You can still use this class for elements that **don’t** have `operator<<` defined:
+You can still use this class for elements that **don't** have `operator<<` defined:
 ```c++
 // note: std::pair<> has no operator<< defined
 Stack<std::pair<int, int>> ps; 
@@ -748,7 +748,7 @@ std::cout << ps.top().first << '\n';   // OK
 std::cout << ps.top().second << '\n';  // OK
 ```
 Only if you call `printOn` for such a stack, the code will produce an error, 
-because it can’t instantiate the call of `operator<<` for this specific element type:
+because it can't instantiate the call of `operator<<` for this specific element type:
 ```c++
 // ERROR: operator<< not supported for element type
 ps.printOn(std::cout);
@@ -809,7 +809,7 @@ it is better to implement `operator<<` for the stack.
 However, as usual `operator<<` has to be implemented as nonmember function, 
 which then could call `printOn` inline. 
 Note that this means that `operator<<` for class `Stack` is **not** a function template, 
-but an “ordinary” function instantiated with the class template if needed.
+but an "ordinary" function instantiated with the class template if needed.
 It is a _templated entity_, see Section 12.1. 
 
 If we could accept to _declare and define_ friend `operator<<` 
@@ -867,13 +867,13 @@ In fact, we have two options:
        friend std::ostream & operator<<<T>(std::ostream &, Stack<T> const &);
    };
    ```
-   Note the `<T>` behind the “function name” `operator<<`. 
+   Note the `<T>` behind the "function name" `operator<<`. 
    Thus, we declare a specialization of the non-member function template as friend. 
    Without `<T>` we would declare a new non-template function. 
    See Section 12.5 for details.
 
 
-In any case, you can still use this class for elements that don’t have `operator<<` defined. 
+In any case, you can still use this class for elements that don't have `operator<<` defined. 
 Only calling `operator<<` for this stack results in an error:
 ```c++
 // std::pair<> has no operator<< defined
@@ -908,7 +908,7 @@ To specialize a class template,
 you have to declare the class with a leading `template<>` 
 and a specification of the types for which the class template is specialized. 
 The types are used as a template argument and must be specified directly following the name of the class.
-For these specializations, any definition of a member function must be defined as an “ordinary” member function,
+For these specializations, any definition of a member function must be defined as an "ordinary" member function,
 with each occurrence of `T` being replaced by the specialized type.
 ```c++
 template <>
@@ -1228,7 +1228,7 @@ you _always_ had to pass _all_ template parameter types to class templates,
 unless they have default values. 
 Since C++17, the constraint was relaxed. 
 Instead, you can skip to define the templates arguments explicitly, 
-if the _constructor_ is able to deduce all template parameters (that don’t have a default value).
+if the _constructor_ is able to deduce all template parameters (that don't have a default value).
 (If there is no constructor, then class template argument deduction fails.)
 
 
@@ -1286,7 +1286,7 @@ Stack stringStack = "bottom";  // Stack<char const[7]> deduced since C++17
 ```
 **BUT** this causes a lot of trouble: 
 In general, when passing arguments of a template type `T` _by reference_, 
-the parameter **doesn’t** _decay_ (low-level `const`-ness is kept).  
+the parameter **doesn't** _decay_ (low-level `const`-ness is kept).  
 This means that we really initialize a `Stack<char const[7]>` 
 and use type `char const [7]` wherever `T` is used. 
 For example, we may **not** push a string of different size, because it has a different type. 
@@ -1359,7 +1359,7 @@ private:
     std::vector<std::string> elems;
 };
 ```
-However, by language rules, you **can’t** [copy initialize](https://en.cppreference.com/w/cpp/language/copy_initialization) 
+However, by language rules, you **can't** [copy initialize](https://en.cppreference.com/w/cpp/language/copy_initialization) 
 (initialize using `=`) an object by passing a string literal to a constructor expecting a `std::string`.
 Note that if this were possible, 
 there will be an implicit conversion sequence 
@@ -1448,7 +1448,7 @@ which we discuss in Section 4.4.
 ### 🎯 Chapter 3 [Nontype Template Parameters]((https://en.cppreference.com/w/cpp/language/template_parameters#Non-type_template_parameter))
 
 
-For function and class templates, template parameters **don’t** have to be types. 
+For function and class templates, template parameters **don't** have to be types. 
 They can also be ordinary values.
 When using such a template, you have to specify the value template arguments explicitly. 
 The resulting code then gets instantiated.
@@ -1949,7 +1949,7 @@ void print(T firstArg, Args ... args)
     }
 }
 ```
-However, this approach **doesn’t** work,
+However, this approach **doesn't** work,
 because both branches of `if` statements in function templates are instantiated. 
 Whether the instantiated code is useful is a _run-time_ decision, 
 while the instantiation of the call is a _compile-time_ decision. 
@@ -2119,12 +2119,12 @@ std::thread t (foo, 42, "hello");
 std::vector<Customer> v;
 v.emplace_back("Tim", "Jovi", 1962);
 ```
-Usually, the arguments are “_perfectly forwarded_” with move semantics (see Section 6.1).
+Usually, the arguments are "_perfectly forwarded_" with move semantics (see Section 6.1).
 
 
 Note also that the same rules apply to variadic function template parameters as for ordinary parameters. 
 For example, if passed by value, arguments are copied and decay (e.g., arrays become pointers), 
-while if passed by reference, parameters refer to the original parameter and don’t decay:
+while if passed by reference, parameters refer to the original parameter and don't decay:
 ```c++
 // args are copies with decayed types:
 template <typename ...Args> 
@@ -2528,7 +2528,7 @@ void foo()
 }
 ```
 Now if you write templates and want to have variables of a template type initialized by a default value, 
-you have the problem that a simple definition doesn’t do this for built-in types:
+you have the problem that a simple definition doesn't do this for built-in types:
 ```c++
 template <typename T>
 void foo()
@@ -2659,7 +2659,7 @@ with `this->` or `Base<T>::`.
 
 When passing raw arrays or string literals to templates, some care has to be taken.
 First, if the template parameters are declared as references (including universal references), 
-the arguments **don’t** decay. 
+the arguments **don't** decay. 
 That is, a passed argument of `hello` has type `char const [6]`. 
 This can become a problem if raw arrays or string arguments of different length 
 are passed because the types differ. 
@@ -2846,7 +2846,7 @@ This is possible for both nested classes and member functions.
 The application and advantage of this ability can again be demonstrated with the `Stack` class template. 
 Normally you can assign stacks to each other only when they have the same type, 
 which implies that the elements have the same type. 
-However, you can’t assign a stack with elements of any other type,
+However, you can't assign a stack with elements of any other type,
 even if there is an implicit type conversion for the element types defined:
 ```c++
 Stack<int> intStack1;     // stack for ints
@@ -2902,7 +2902,7 @@ Stack<T> & Stack<T>::operator=(Stack<T2> const & op2)
     return *this;
 }
 ```
-First let’s look at the syntax to define a _member template_. 
+First let's look at the syntax to define a _member template_. 
 Inside the template with template parameter `T`, 
 an inner template with template parameter `T2` is defined:
 ```c++
@@ -2990,7 +2990,7 @@ The message varies depending on the compiler, but this is the gist of what is me
 ```c++
 Stack<std::string> stringStack;  // stack of std::strings
 Stack<float> floatStack;         // stack of floats
-floatStack = stringStack;        // ERROR: std::string doesn’t convert to float
+floatStack = stringStack;        // ERROR: std::string doesn't convert to float
 ```
 Again, you could change the implementation to parameterize the internal container type:
 ```c++
@@ -3037,7 +3037,7 @@ vStack.push(42);
 vStack.push(7);
 std::cout << vStack.top() << '\n';
 ```
-Because the assignment operator template isn’t necessary,
+Because the assignment operator template isn't necessary,
 **no** error message of a missing member function `push_front` occurs
 and the program is fine.
 
@@ -3102,7 +3102,7 @@ inline bool BoolString::get<bool>() const
     return value == "true" || value == "1" || value == "on";
 }
 ```
-Note that you don’t need and also **can’t** declare the specializations; you only define them. 
+Note that you don't need and also **can't** declare the specializations; you only define them. 
 Because it is a full specialization, and it is in a header file, 
 you have to declare it with `inline` to avoid errors 
 if the definition is included by different translation units. 
@@ -3122,8 +3122,8 @@ std::cout << s2.get<bool>() << '\n';  // true
 
 Special member functions (default constructor, destructor, copy/move constructor and assignment operator)
 can also be member function templates.
-Member templates **don’t** count as _the_ special member functions that copy or move objects.
-These template versions also **don’t** count as user-defined versions. 
+Member templates **don't** count as _the_ special member functions that copy or move objects.
+These template versions also **don't** count as user-defined versions. 
 In this example, for assignments of stacks of the same type, 
 the default assignment operator is still called. 
 
@@ -3171,7 +3171,7 @@ See Section 13.3 for details.
 
 Note that generic lambdas, introduced with C++14, 
 are shortcuts for member templates. 
-A simple lambda computing the “sum” of two arguments of arbitrary types:
+A simple lambda computing the "sum" of two arguments of arbitrary types:
 ```c++
 [] (auto x, auto y)
 {
@@ -3279,7 +3279,7 @@ std::array<int, N> arr {};
 template <auto N>
 constexpr decltype(N) dval = N;
 
-// N has value ’c’ of type char
+// N has value 'c' of type char
 std::cout << dval<'c'> << '\n'; 
 
 // sets first element of global arr
@@ -3433,7 +3433,7 @@ Since C++11, we can also substitute `Cont` with the name of an _alias template_.
 
 
 As usual, instead of `typename`, you could use the keyword `class` for template parameters.
-But it wasn’t until C++17 that a corresponding change was made
+But it wasn't until C++17 that a corresponding change was made
 to permit the use of the keyword `typename` instead of `class` 
 to declare a template template parameter:
 ```c++
@@ -3600,7 +3600,7 @@ see Section 12.2, Section 12.3, and Section 19.2.
   One application is the ability to implement generic operations with internal type conversions. 
   Limitations apply to member function templates. 
 - Template versions of constructors or assignment operators 
-  **don’t** replace predefined constructors or assignment operators.
+  **don't** replace predefined constructors or assignment operators.
 - By using braced initialization or explicitly calling a default constructor, 
   you can ensure that variables and members of templates are initialized with a default value
   even if they are instantiated with a built-in type.
@@ -3665,7 +3665,7 @@ For the function parameter whose _type_ is rvalue reference, its _value category
 
 
 The fact that move semantics is **not** automatically passed through is intentional and important.
-If it weren’t, we would lose the value of a movable object the first time we use it in a function.
+If it weren't, we would lose the value of a movable object the first time we use it in a function.
 
 
 Although `val` in the third `f` is declared as rvalue reference, 
@@ -3683,8 +3683,8 @@ void f(T && val)
     g(std::forward<T>(val));
 }
 ```
-Note that `std::move` has no template parameter and “triggers” move semantics for the passed argument, 
-while `std::forward` “forwards” potential move semantic depending on a passed template argument.
+Note that `std::move` has no template parameter and "triggers" move semantics for the passed argument, 
+while `std::forward` "forwards" potential move semantic depending on a passed template argument.
 ```c++
 /// <type_traits>
 /// g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
@@ -3751,29 +3751,29 @@ forward(typename std::remove_reference<_Tp>::type && __t) noexcept
     return static_cast<_Tp &&>(__t);
 }
 ```
-Don’t assume that ` &&` for a template parameter `T` behaves as `X &&` for a specific type `X`. 
+Don't assume that ` &&` for a template parameter `T` behaves as `X &&` for a specific type `X`. 
 Different rules apply! 
 However, syntactically they look identical:
 - `X &&` for a specific type `X` declares a parameter to be an rvalue reference. 
   It can only be bound to a movable object 
   (a prvalue, such as a temporary object, and an xvalue, such as an object passed with `std::move`; 
   see Appendix B for details). 
-  It is always mutable and you can always “steal” its value. 
+  It is always mutable and you can always "steal" its value. 
   - A type like `X const &&` is valid but provides **no** common semantics in practice
-    because “stealing” the internal representation of a movable object requires
+    because "stealing" the internal representation of a movable object requires
     modifying that object. 
     It might be used, though, to force passing only temporaries or objects marked with `std::move` 
     without being able to modify them. 
 - `T &&` for a template parameter `T` declares a _forwarding reference_ (also called _universal reference_). 
   - The term _universal reference_ was coined by Scott Meyers prior to C++17 
-    as a common term that could result in either an “lvalue reference” or an “rvalue reference”. 
+    as a common term that could result in either an "lvalue reference" or an "rvalue reference". 
     The C++17 standard introduced the term _forwarding reference_, 
     because the major reason to use such a reference is to forward objects. 
     However, note that it does **not** automatically forward. 
     The term does not describe what it is but what it is typically used for. 
   - It can be bound to a mutable, immutable (i.e., `const`), or movable object. 
     Inside the function definition, the parameter may be mutable, immutable, 
-    or refer to a value you can “steal” the internals from. 
+    or refer to a value you can "steal" the internals from. 
 
 
 Note that `T` must really be the name of a template parameter. 
@@ -3833,7 +3833,7 @@ for which we provide initializing constructors.
 To support move semantics, we overload the constructor taking a `std::string`. 
 
 
-Now let’s replace the two `std::string` constructors 
+Now let's replace the two `std::string` constructors 
 with one generic constructor perfect forwarding the passed argument to the member `name`:
 ```c++
 class Person
@@ -4032,7 +4032,7 @@ explicit Person::Person(String && n);
 If type `String` is not convertible to type `std::string`, the whole function template is ignored.
 
 
-If you wonder why we don’t instead check whether `String` is “not convertible to `Person`”, beware:
+If you wonder why we don't instead check whether `String` is "not convertible to `Person`", beware:
 We are defining a function that might allow us to convert a `std::string` to a `Person`.
 So the constructor has to know whether it is enabled,
 which depends on whether it is convertible, which depends on whether it is enabled, and so on.
@@ -4061,7 +4061,7 @@ See Section D.6 for details and examples to apply `std::enable_if` on variadic t
 
 #### Disabling Special Member Functions
 
-Note that normally we **can’t** use `std::enable_if` to disable 
+Note that normally we **can't** use `std::enable_if` to disable 
 the predefined copy/move constructors and/or assignment operators. 
 
 
@@ -4116,7 +4116,7 @@ public:
     ...
 };
 ```
-Now the template constructors are used even for “normal” copying:
+Now the template constructors are used even for "normal" copying:
 ```c++
 C x;
 C y {x};  // uses the member template
@@ -4754,7 +4754,7 @@ requires(T a, size_t n)
 #### 📌 6.6 Summary
 
 
-- In templates, you can “perfectly” forward parameters by declaring them as forwarding references 
+- In templates, you can "perfectly" forward parameters by declaring them as forwarding references 
   (declared with a type formed with the name of a template parameter followed by `&&`) 
   and using `std::forward` in the forwarded call.
 - When using perfect forwarding member function templates, 
@@ -4788,7 +4788,7 @@ which means that we now have different ways to pass by reference:
    The parameter refers to the passed object, with the ability to modify it;
 3. `X &&` (rvalue reference):  
    The parameter refers to the passed object, with move semantics, 
-   meaning that you can modify or “steal” the value.
+   meaning that you can modify or "steal" the value.
 4. `X const &&` (constant rvalue reference):  
    Available, but with no established semantic meaning.   
 
@@ -4840,7 +4840,7 @@ In fact, compilers might optimize away copy operations.
 Copying objects can become cheap even for complex objects by using move semantics.
 
 
-For example, let’s look at a simple function template 
+For example, let's look at a simple function template 
 implemented so that the argument is passed by value:
 ```c++
 template <typename T>
@@ -4870,7 +4870,7 @@ void printV(std::string arg)
 Again, when passing the `std::string`, `arg` becomes a copy. 
 This time the copy is created by the copy constructor of the `std::string` class, 
 which is a potentially expensive operation,
-because in principle this copy operation creates a full or “deep” copy 
+because in principle this copy operation creates a full or "deep" copy 
 so that the copy internally allocates its own memory to hold the value. 
 
 
@@ -4903,7 +4903,7 @@ when directly calling the function template for prvalues
 compilers usually optimize passing the argument 
 so that **no** copying constructor is called at all. 
 Note that since C++17, this optimization is required. 
-Before C++17, a compiler that doesn’t optimize the copying away, 
+Before C++17, a compiler that doesn't optimize the copying away, 
 must at least have to try to use move semantics,
 which usually makes copying cheap. 
 In the last call, when passing an xvalue 
@@ -4916,7 +4916,7 @@ Thus, calling an implementation of `printV`
 that declares the parameter to be passed by value 
 usually is only expensive if we pass an lvalue 
 (an object we created before and typically still use afterwards, 
-as we didn’t use `std::move` to pass it). 
+as we didn't use `std::move` to pass it). 
 Unfortunately, this is a pretty common case. 
 One reason is that it is pretty common to create objects early 
 to pass them later (after some modifications) to other functions.
@@ -4953,7 +4953,7 @@ void printV(char const * arg)
 ```
 This behavior is derived from C and has its benefits and drawbacks. 
 Often it simplifies the handling of passed string literals, 
-but the drawback is that inside `printV` we **can’t** distinguish between 
+but the drawback is that inside `printV` we **can't** distinguish between 
 passing a pointer to a single element and passing a raw array. 
 For this reason, we will discuss how to deal with string literals
 and other raw arrays in Section 7.4.
@@ -4962,7 +4962,7 @@ and other raw arrays in Section 7.4.
 #### 📌 7.2 Passing by Reference
 
 
-Now let’s discuss the different flavors of passing by reference. 
+Now let's discuss the different flavors of passing by reference. 
 In all cases, **no** _copy_ gets created (because the parameter just refers to the passed argument). 
 Also, passing the argument **never** _decays_. 
 However, sometimes pass-by-reference is **not** possible, and if passing is possible, 
@@ -4988,7 +4988,7 @@ printR(std::move(s));       // no copy
 ```
 Even an `int` is passed by reference, 
 which is a bit counter-productive 
-but shouldn’t matter that much: 
+but shouldn't matter that much: 
 ```c++
 int i = 42;
 printR(i);   // passes const int & (8 Bytes on 64-bit OS) 
@@ -4999,9 +4999,9 @@ is implemented by passing the address of the argument.
 Addresses are encoded compactly, and therefore 
 transferring an address from the caller to the callee is efficient in itself. 
 However, passing an address can create uncertainties for the compiler 
-when it compiles the caller’s code: 
+when it compiles the caller's code: 
 What is the callee doing with that address? 
-In theory, the callee can change all the values that are “reachable” through that address. 
+In theory, the callee can change all the values that are "reachable" through that address. 
 That means, that the compiler has to assume that 
 _all the values it may have cached (usually in machine registers) are invalid after the call_. 
 Reloading all those values can be quite expensive. 
@@ -5019,7 +5019,7 @@ way to modify the referenced object.
 This bad news is moderated by inlining: 
 If the compiler can expand the call _inline_,
 it can reason about the caller and the callee _together_ 
-and in many cases “see” that the address is not used for anything but passing the underlying value. 
+and in many cases "see" that the address is not used for anything but passing the underlying value. 
 Function templates are often very short and therefore likely candidates for inline expansion. 
 However, if a template encapsulates a more complex algorithm, inlining is less likely to happen.
 
@@ -5072,7 +5072,7 @@ outR(std::string("hi"));     // ERROR: not allowed to pass a temporary (prvalue)
 outR(returnString());        // ERROR: not allowed to pass a temporary (prvalue)
 outR(std::move(s));          // ERROR: not allowed to pass an xvalue
 ```
-You can pass raw arrays of non-constant types, which again **don’t** decay:
+You can pass raw arrays of non-constant types, which again **don't** decay:
 ```c++
 int arr[4];
 outR(arr);                   // OK: T deduced as int [4], arg is int (&)[4]
@@ -5169,7 +5169,7 @@ passR("hi");  // OK: T deduced as char const(&)[3] (also the type of arg)
 int arr[4];
 passR(arr);   // OK: T deduced as int (&)[4] (also the type of arg)
 ```
-In each of these cases, inside `passR` the parameter `arg` has a type that “knows”
+In each of these cases, inside `passR` the parameter `arg` has a type that "knows"
 whether we passed an rvalue (to use move semantics) or a constant/non-constant lvalue. 
 This is the only way to pass an argument, 
 such that it can be used to distinguish behavior for all of these three cases.
@@ -5215,7 +5215,7 @@ void printT(T arg)
 
 std::string s = "hello";
 printT(s);             // pass s by value
-printT(std::cref(s));  // pass s “as if by reference”
+printT(std::cref(s));  // pass s "as if by reference"
 ```
 However, note that `std::cref` does **not** change the handling of parameters in templates. 
 Instead, it uses a trick: 
@@ -5242,7 +5242,7 @@ void printT(T arg)
 
 std::string s = "hello";
 printT(s);                // print s passed by value
-printT(std::cref(s));     // print s passed “as if by reference”
+printT(std::cref(s));     // print s passed "as if by reference"
 ```
 The last call passes by value an object of type `std::reference_wrapper<string const>` to the parameter `arg`, 
 which then passes and therefore converts it back to its underlying type `std::string`.
@@ -5261,7 +5261,7 @@ std::string s = "hello";
 printV(s);                // OK
 printV(std::cref(s));     // ERROR: no operator<< for reference wrapper defined
 ```
-Also, the following fails because you **can’t** compare 
+Also, the following fails because you **can't** compare 
 a reference wrapper with a `char const *` or `std::string`:
 ```c++
 template <typename T1, typename T2>
@@ -5274,7 +5274,7 @@ std::string s = " hello";
 if (isless(std::cref(s) < "world")) ...               // ERROR
 if (isless(std::cref(s) < std::string("world"))) ...  // ERROR
 ```
-It also **doesn’t** help to give `arg1` and `arg2` a common type `T`:
+It also **doesn't** help to give `arg1` and `arg2` a common type `T`:
 ```c++
 template <typename T>
 bool isless(T arg1, T arg2)
@@ -5286,7 +5286,7 @@ because then the compiler gets _conflicting types_ when trying to deduce `T` for
 
 
 Thus, the effect of class `std::reference_wrapper` is 
-to be able to use a reference as a “first class object”,  
+to be able to use a reference as a "first class object",  
 which you can copy and therefore pass by value to function templates. 
 You can also use it in classes, for example,
 to hold references to objects in containers. 
@@ -5337,7 +5337,7 @@ void foo(T arg1, T arg2)
 
 foo("hi", "guy");  // compiles, but...
 ```
-But, that doesn’t mean that all problems are gone. 
+But, that doesn't mean that all problems are gone. 
 Even worse, compile-time problems may have become run-time problems. 
 Consider the following code, where we compare the passed argument using `operator==`:
 ```c++
@@ -5357,7 +5357,7 @@ foo("hi", "guy");  // compiles, but...
 ```
 As written, you have to know that you should 
 interpret the passed character pointers as strings. 
-But that’s probably the case anyway, 
+But that's probably the case anyway, 
 because the template also has to deal with arguments coming from 
 string literals that have been decayed already 
 (e.g., by coming from another function called by value 
@@ -5384,7 +5384,7 @@ which yields the common type of two passed argument types (see Section D.5).
 
 You might have to distinguish your implementation according to 
 whether a pointer or an array was passed. 
-This, of course, requires that a passed array wasn’t decayed yet. 
+This, of course, requires that a passed array wasn't decayed yet. 
 
 
 To distinguish these cases, you have to detect whether arrays are passed.
@@ -5523,7 +5523,7 @@ As we learned in the previous sections,
 we have very different ways to declare parameters that depend on template parameters:
 - **Declare to pass the arguments by value**:  
   This approach is simple, it decays string literals and raw arrays, 
-  but it **doesn’t** provide the best performance for large objects. 
+  but it **doesn't** provide the best performance for large objects. 
   Still the caller can decide to pass by reference using `std::cref` and `std::ref`, 
   but the caller must be careful that doing so is valid.
 - **Declare to pass the arguments by-reference**:  
@@ -5532,7 +5532,7 @@ we have very different ways to declare parameters that depend on template parame
   – Existing objects (lvalues) to lvalue references;
   – Temporary objects (prvalues) or objects marked as movable (xvalue) to rvalue references;
   – Or both to forwarding references.
-  Because in all these cases the arguments **don’t** decay, 
+  Because in all these cases the arguments **don't** decay, 
   you may need special care when passing string literals and other raw arrays. 
   For forwarding references, you also have to beware that with this approach 
   template parameters implicitly can deduce to reference types.
@@ -5554,16 +5554,16 @@ With these options in mind, for function templates we recommend the following:
      as discussed in Section 7.2.2. 
    - If a template is provided to forward an argument, use perfect forwarding. 
      That is, declare parameters to be forwarding references and use `std::forward` where appropriate. 
-     Consider using `std::decay` or `std::common_type` to “harmonize” 
+     Consider using `std::decay` or `std::common_type` to "harmonize" 
      the different types of string literals and raw arrays.
    - If performance is key and it is expected that copying arguments is expensive, 
      use constant references. 
      This, of course, does not apply if you need a local copy anyway.
-3. If you know better, don’t follow these recommendations. 
+3. If you know better, don't follow these recommendations. 
    However, do **not** ~~make intuitive assumptions about performance~~. 
    Even experts fail if they try. Instead: Measure! 
 
-##### Don’t Be Over-Generic
+##### Don't Be Over-Generic
 
 Note that, in practice, function templates often are **not** for arbitrary types of arguments. 
 Instead, some constraints apply. 
@@ -5579,8 +5579,8 @@ void printVector(std::vector<T> const & v)
 }
 ```
 With this declaration of parameter `v` in `printVector`, 
-we can be sure that the passed `T` **can’t** become a reference 
-because vectors can’t use references as element types. 
+we can be sure that the passed `T` **can't** become a reference 
+because vectors can't use references as element types. 
 Also, it is pretty clear that passing a vector by value almost always can become expensive because 
 the copy constructor of `std::vector` creates a copy of the elements. 
 For this reason, it is probably **never** useful to declare such a vector parameter to be passed by value.
@@ -5679,9 +5679,9 @@ often combined with using `std::decay`.
 - Pass parameters to function templates by value 
   unless there are good reasons to do otherwise.
 - Ensure that return values are usually passed by value 
-  (which might mean that a template parameter **can’t** be specified directly as a return type).
+  (which might mean that a template parameter **can't** be specified directly as a return type).
 - Always measure performance when it is important. 
-  Do **not** rely on intuition; it’s probably wrong.
+  Do **not** rely on intuition; it's probably wrong.
 
 
 
@@ -5712,7 +5712,7 @@ In fact, C++ has multiple features to support compile-time programming:
   selection between different function template implementations 
   for different types or different constraints.
 - In C++11 and C++14, compile-time computing became increasingly better supported 
-  with the `constexpr` feature using “intuitive” execution path selection
+  with the `constexpr` feature using "intuitive" execution path selection
   and, since C++14, most statement kinds (including for loops, switch statements, etc.). 
 - C++17 introduced a `if constexpr` ("compile-time `if`") 
   to discard statements depending on compile-time conditions or constraints. 
@@ -5738,7 +5738,7 @@ by presenting a program computing prime numbers at compile time.
 See Section 23.7 for details. 
 
 
-For this reason, templates can be used to “compute a program”. 
+For this reason, templates can be used to "compute a program". 
 Chapter 23 will cover the whole story and all features, 
 but here is a short example of what is possible. 
 
@@ -6001,7 +6001,7 @@ Here, depending on whether the size of the `std::array` argument is a prime numb
 we use two different implementations of class `Helper`. 
 This kind of application of partial specialization is broadly applicable 
 to select among different implementations of a function template 
-depending on properties of the arguments it’s being invoked for.
+depending on properties of the arguments it's being invoked for.
 
 
 Above, we used two partial specializations to implement the two possible alternatives. 
@@ -6118,7 +6118,7 @@ Note that this differs from passing an object of a type having a `size_type` mem
 but **no** `size` member function, as is, for example, the case for `std::allocator`:
 ```c++
 std::allocator<int> x;
-std::cout << len(x) << '\n';  // ERROR: len function found, but can’t size
+std::cout << len(x) << '\n';  // ERROR: len function found, but can't size
 ```
 When passing an object of such a type, 
 the compiler finds the second function template as matching function template. 
@@ -6176,7 +6176,7 @@ std::cout << len(p) << '\n';      // OK: only fallback len matches
 
 std::allocator<int> x;
 std::cout << len(x) << '\n';      // ERROR: 2nd len function matches best,
-                                  // but can’t call size for x
+                                  // but can't call size for x
 ```
 See Section 15.7 for more details about SFINAE and Section 19.4 about some applications of SFINAE. 
 
@@ -6184,13 +6184,13 @@ See Section 15.7 for more details about SFINAE and Section 19.4 about some appli
 
 Over time, the SFINAE principle has become so important and so prevalent among template designers 
 that the abbreviation has become a verb. 
-We say “we SFINAE out a function” if we mean to apply the SFINAE mechanism to ensure that 
+We say "we SFINAE out a function" if we mean to apply the SFINAE mechanism to ensure that 
 function templates are ignored for certain constraints 
 by instrumenting the template code to result in invalid code for these constraints. 
 And whenever you read in the C++ standard that a function template 
 > shall not participate in overload resolution unless... 
 
-it means that SFINAE is used to “SFINAE out” that function template for certain cases.
+it means that SFINAE is used to "SFINAE out" that function template for certain cases.
 
 
 For example, class `std::thread` declares a constructor:
@@ -6266,7 +6266,7 @@ This means that the template constructor is ignored
 if it is called with a `std::thread` as first and only argument. 
 The reason is that otherwise a member template like this sometimes might better match 
 than any predefined copy or move constructor (see Section 6.2 and Section 16.2.4 for details). 
-By SFINAE’ing out the constructor template when called for a thread,
+By SFINAE'ing out the constructor template when called for a thread,
 we ensure that the predefined copy or move constructor is always used 
 when a thread gets constructed from another thread. 
 Since the copy constructor for class `thread` is deleted, 
@@ -6284,7 +6284,7 @@ using partial specialization and SFINAE.
 
 ##### 8.4.1 Expression SFINAE with `decltype`
 
-It’s not always easy to find out and formulate the right expression 
+It's not always easy to find out and formulate the right expression 
 to SFINAE out function templates for certain conditions.
 
 
@@ -6392,7 +6392,7 @@ Thus, a corresponding function is not required to exist and the recursion ends.
 
 The fact that the code is not instantiated means that only the first translation phase
 (the definition time) is performed, 
-which checks for correct syntax and names that don’t depend on template parameters. 
+which checks for correct syntax and names that don't depend on template parameters. 
 For example:
 ```c++
 template <typename T>
@@ -6638,7 +6638,7 @@ Because this is an automatic process, a compiler could end up creating two copie
 and some linkers could issue errors when they find two distinct definitions for the same function. 
 In theory, this should **not** be a concern of ours: 
 It is a problem for the C++ compilation system to accommodate. 
-In practice, things work well most of the time, and we don’t need to deal with this issue at all. 
+In practice, things work well most of the time, and we don't need to deal with this issue at all. 
 For large projects that create their own library of code, however, problems occasionally show up. 
 A discussion of instantiation schemes in Chapter 14 
 and a close study of the documentation that came with the C++ translation system (compiler) 
@@ -6669,7 +6669,7 @@ Like inline functions, function templates can be defined in multiple translation
 This is usually achieved by placing the definition in a header file that is included by multiple CPP files.
 
 
-This **doesn’t** mean, however, that function templates use inline substitutions by default. 
+This **doesn't** mean, however, that function templates use inline substitutions by default. 
 It is entirely up to the compiler whether and when inline substitution of a function template body 
 at the point of call is preferred over the usual function call mechanism. 
 Perhaps surprisingly, compilers are often better than programmers at 
@@ -6687,10 +6687,10 @@ Sometimes this is only possible with compiler-specific attributes
 such as `gcc`'s `__always_inline` derivative (available in `<cdefs.h>`). 
 
 
-It’s worth pointing out at this point that 
+It's worth pointing out at this point that 
 full specializations of function templates
 act like ordinary functions in this regard: 
-Their definition can appear only once unless they’re defined `inline` (see Section 16.3). 
+Their definition can appear only once unless they're defined `inline` (see Section 16.3). 
 See also Appendix A for a broader, detailed overview of this topic.
 
 
@@ -6718,7 +6718,7 @@ While doing so, the compiler may also generate code in object files.
 The precompiled header scheme relies on the fact 
 that code can be organized in such a manner that 
 many files start with the same lines of code. 
-Let’s assume for the sake of argument 
+Let's assume for the sake of argument 
 that every file to be compiled starts with the same `N` lines of code.
 We could compile these `N` lines 
 and save the complete state of the compiler at that point in a _precompiled header_. 
@@ -6772,13 +6772,13 @@ The standard headers are particularly convenient in this way because they rarely
 and hence the precompiled header for `<bits/stdc++.h>` can be built once. 
 Otherwise, precompiled headers are typically part of the dependency configuration of a project 
 (e.g., they are updated as needed by the popular `make` tool 
-or an integrated development environment’s (IDE) project build tool).
+or an integrated development environment's (IDE) project build tool).
 
 
 One attractive approach to manage precompiled headers 
 is to create layers of precompiled headers 
 that go from the most widely used and stable headers 
-to headers that aren’t expected to change all the time and therefore are still worth precompiling. 
+to headers that aren't expected to change all the time and therefore are still worth precompiling. 
 However, if headers are under heavy development, 
 creating precompiled headers for them can take more time than what is saved by reusing them. 
 A key concept to this approach is that a precompiled header for a more stable layer 
@@ -6789,8 +6789,8 @@ can be reused to improve the precompilation time of a less stable header.
 
 
 Ordinary compilation errors are normally quite succinct and to the point. 
-For example, when a compiler says "`error: ‘class X’ has no member named ‘fun’`", 
-it usually isn’t too hard to figure out what is wrong in our code 
+For example, when a compiler says "`error: ‘class X' has no member named ‘fun'`", 
+it usually isn't too hard to figure out what is wrong in our code 
 (e.g., we might have mistyped `run` as `fun`). 
 Not so with templates. 
 Try some examples.
@@ -6900,7 +6900,7 @@ Macro definitions can **not** leak into module interfaces.
 ### 🎯 Chapter 10 Basic Template Terminology
 
 
-#### 📌 10.1 “Class Template” or “Template Class”?
+#### 📌 10.1 "Class Template" or "Template Class"?
 
 
 #### 📌 10.2 Substitution, Instantiation, and Specialization
@@ -7282,9 +7282,9 @@ foreach(primes.begin(), primes.end(), FuncObj());
 // lambda as callable
 foreach(primes.begin(), primes.end(), [](int & i) {});
 ```
-Let’s look at each case in detail: 
+Let's look at each case in detail: 
 - When we pass the name of a function as a function argument, 
-  we **don’t** really pass the function itself but a pointer or reference to it. 
+  we **don't** really pass the function itself but a pointer or reference to it. 
   As with arrays (see Section 7.4), function arguments _decay_ to a pointer when passed by value, 
   and in the case of a parameter whose type is a template parameter, 
   a pointer-to-function type will be deduced.   
@@ -7340,10 +7340,10 @@ Let’s look at each case in detail:
 
 One possible entity to call was not used in the previous example: 
 member functions.
-That’s because calling a non-static member function normally involves 
+That's because calling a non-static member function normally involves 
 specifying an object to which the call is applied 
 using syntax like `object.memfunc(...)` or `ptr->memfunc(...)` 
-and that doesn’t match the usual pattern `functionObject(...)`. 
+and that doesn't match the usual pattern `functionObject(...)`. 
 
 
 Fortunately, since C++17, the C++ standard library provides a utility 
@@ -7379,7 +7379,7 @@ followed by the additional given parameters along with the referenced element.
 - **Otherwise**, is equivalent to `f(a1, a2, ...)`
 
 
-Note that we **can’t** use perfect forwarding here for the callable or additional parameters: 
+Note that we **can't** use perfect forwarding here for the callable or additional parameters: 
 The first call might "steal" their values,
 leading to unexpected behavior calling `f` in subsequent iterations. 
 
@@ -7533,7 +7533,7 @@ where acceptable template parameters may have **no** constructor in common,
 but have the same member function whose return type is needed. 
 
 
-The function **doesn’t** have a definition and therefore can **not** be called (and **doesn’t** create an object). 
+The function **doesn't** have a definition and therefore can **not** be called (and **doesn't** create an object). 
 Hence, it can only be used in 
 [unevaluated expressions](https://en.cppreference.com/w/cpp/language/expressions#Unevaluated_expressions) 
 (such as `typeid`, `sizeof`, `noexcept` and `decltype` constructs). 
@@ -7557,8 +7557,8 @@ we use `std::declval` to "use" objects of the corresponding type **without** cre
 This is only possible in the _unevaluated context_ of `decltype`, though.
 
 
-Don’t forget to use the `std::decay` type trait to ensure 
-the default return type can’t be a reference, 
+Don't forget to use the `std::decay` type trait to ensure 
+the default return type can't be a reference, 
 because `std::declval` itself yields rvalue references. 
 Otherwise, calls such as `max(1, 2)` will get a return type of `int &&`.
 See Section 19.3.4 for details.
@@ -7710,7 +7710,7 @@ int main()
 ```
 Here, the attempt to instantiate `Arr` for elements of a reference type 
 results in an error deep in the code of class `std::vector`,
-because it **can’t** be instantiated with references as elements. 
+because it **can't** be instantiated with references as elements. 
 
 
 Perhaps worse is the run-time error resulting from making `sz` a reference: 
@@ -7851,7 +7851,7 @@ before evaluating the traits
 #### 📌 11.6 Things to Consider When Writing Generic Libraries
 
 
-Let’s list some things to remember when implementing generic libraries 
+Let's list some things to remember when implementing generic libraries 
 (note that some of them might be introduced later in this book): 
 • Use forwarding references to forward values in templates. 
   If the values do **not** depend on template parameters, use `auto &&` (see Section 11.3). 
@@ -7861,7 +7861,7 @@ Let’s list some things to remember when implementing generic libraries
 • Use `std::addressof` when you need the address of an object depending on a template parameter 
   to avoid surprises when it binds to a type with overloaded `operator&` (Section 11.2.2). 
 • For member function templates, 
-  ensure that they don’t match better than 
+  ensure that they don't match better than 
   the predefined copy/move constructor or assignment operator (Section 6.4). 
 • Consider using `std::decay` when template parameters might be string literals 
   and are not passed by value (Section 7.4 and Section D.4). 
@@ -7869,7 +7869,7 @@ Let’s list some things to remember when implementing generic libraries
   remember to SFINAE-out `const` template call arguments (see Section 7.2.2). 
 • Be prepared to deal with the side effects of template parameters being references
   (see Section 11.4 details and Section 19.6.1 for an example). 
-  In particular, you might want to ensure that the return type can’t become a reference 
+  In particular, you might want to ensure that the return type can't become a reference 
   (see Section 7.5). 
 • Be prepared to deal with incomplete types to support, 
   for example, recursive data structures (see Section 11.5).
@@ -7941,11 +7941,11 @@ template <template-parameter-list>
 ```
 Note that C++17 introduced another construct that is introduced with such a parameterization clause: 
 _deduction guides_ (see Section 2.9 and Section 15.12.1 ). 
-Those **aren’t** called templates (e.g., they are **not** instantiated), 
+Those **aren't** called templates (e.g., they are **not** instantiated), 
 but the syntax was chosen to be reminiscent of function templates. 
 
 
-We’ll come back to the actual template parameter declarations in a later section. 
+We'll come back to the actual template parameter declarations in a later section. 
 First, some examples illustrate the four kinds of templates. 
 They can occur in namespace scope (including global namespace scope) as follows:
 ```c++
@@ -8124,7 +8124,7 @@ void init(Array<Value> & a)
 In addition to the four fundamental kinds of templates declared inside a class,
 you can also have ordinary class members parameterized by being part of a class template. 
 They are occasionally (erroneously) also referred to as _member templates_.
-Although they can be parameterized, such definitions **aren’t** quite first-class templates. 
+Although they can be parameterized, such definitions **aren't** quite first-class templates. 
 Their parameters are entirely determined by the template of which they are members. 
 For example:
 ```c++
@@ -8173,7 +8173,7 @@ class CupBoard
 };
 ```
 Although such parameterized definitions are commonly called _templates_, 
-the term doesn’t quite apply to them. 
+the term doesn't quite apply to them. 
 A term that has been occasionally suggested for these entities is _temploid_. 
 Since C++17, the C++ standard does define the notion of a _templated entity_, 
 which includes templates and temploids as well as, 
@@ -8239,7 +8239,7 @@ class S;
 ```
 Template names have linkage, but they can **not** have C linkage. 
 Nonstandard linkages may have an implementation-dependent meaning 
-(however, we don’t know of an implementation that supports nonstandard name linkages for templates):
+(however, we don't know of an implementation that supports nonstandard name linkages for templates):
 ```c++
 // this is the default: 
 // the linkage specification could be left out
@@ -8324,7 +8324,7 @@ T zero = T {};
 ```
 All instantiations of `zero` have external linkage, 
 even something like `zero<int const>`. 
-That’s perhaps counter-intuitive given that
+That's perhaps counter-intuitive given that
 ```c++
 int const zero = int {};
 ```
@@ -8913,7 +8913,7 @@ If we had reversed the order of the template parameters in this example
 a call of `implicit_cast` would have to specify _both_ template arguments explicitly. 
 
 
-Moreover, such parameters can’t usefully 
+Moreover, such parameters can't usefully 
 be placed after a template parameter pack 
 or appear in a partial specialization, 
 because there would be **no** way to explicitly specify or deduce them.
@@ -8992,7 +8992,7 @@ void clear(T p)
 int main()
 {
     int a;
-    clear(a);  // ERROR: int doesn’t support the unary *
+    clear(a);  // ERROR: int doesn't support the unary *
 }
 ```
 
@@ -9080,8 +9080,8 @@ C<long, X {}> * c7;
 ```
 A general constraint of template arguments is that 
 a compiler or a linker must be able to express their value when the program is being built. 
-Values that aren’t known until a program is run (e.g., the address of local variables) 
-**aren’t** compatible with the notion that templates are instantiated when the program is built. 
+Values that aren't known until a program is run (e.g., the address of local variables) 
+**aren't** compatible with the notion that templates are instantiated when the program is built. 
 
 
 There are some constant values that are, **not** currently valid:
@@ -9131,10 +9131,10 @@ Base base;
 Derived derived;
 
 C<Base*, &derived> * err1;  // ERROR: derived-to-base conversions are not considered
-C<int &, base.i> * err2;    // ERROR: fields of variables aren’t considered to be variables
+C<int &, base.i> * err2;    // ERROR: fields of variables aren't considered to be variables
 
 int a[10];
-C<int *, &a[0]> * err3;     // ERROR: aren’t acceptable either
+C<int *, &a[0]> * err3;     // ERROR: aren't acceptable either
 ```
 
 ##### 12.3.4 Template Template Arguments
@@ -9200,7 +9200,7 @@ AlmostAnyTmpl<std::map> withMap;        // four type parameters
 
 // ERROR: 
 // A template type parameter pack
-// doesn’t match a non-type template parameter
+// doesn't match a non-type template parameter
 AlmostAnyTmpl<std::array> withArray;
 ```
 Prior to C++17, only the keyword `class` could be used to declare a template template parameter. 
@@ -9216,10 +9216,10 @@ for a template type parameter declared with the keyword `class`.
 
 Two sets of template arguments are equivalent 
 when values of the arguments are identical one-for-one. 
-For type arguments, type aliases **don’t** matter: 
+For type arguments, type aliases **don't** matter: 
 It is the type ultimately underlying the type alias declaration that is compared. 
 For integer non-type arguments, the value of the argument is compared. 
-How that value is expressed **doesn’t** matter:
+How that value is expressed **doesn't** matter:
 ```c++
 // Note NO template definition is needed 
 // to establish template equivalence!
@@ -9259,7 +9259,7 @@ the declarations include functionally equivalent expressions that are not actual
 
 
 However, such an error need **not** be diagnosed by your compiler. 
-That’s because some compilers may 
+That's because some compilers may 
 internally represent `N + 1 + 1` in exactly the same way as `N + 2`, 
 whereas other compilers may not. 
 Rather than impose a specific implementation approach, 
@@ -9292,13 +9292,13 @@ This can be good and bad:
 
 
 Variadic templates are templates that contain at least one template parameter pack. 
-The term variadic is borrowed from C’s variadic functions, 
+The term variadic is borrowed from C's variadic functions, 
 which accept a variable number of function arguments. 
 Variadic templates also borrowed from C the use of the ellipsis to denote zero or more arguments 
-and are intended as a typesafe replacement for C’s variadic functions for some applications. 
+and are intended as a typesafe replacement for C's variadic functions for some applications. 
 
 
-Variadic templates are useful when a template’s behavior 
+Variadic templates are useful when a template's behavior 
 can be generalized to any number of arguments. 
 The `Tuple` class template introduced in Section 12.2.4 is one such type, 
 because a tuple can have any number of elements, 
@@ -9354,7 +9354,7 @@ class MyTuple : public Tuple<Types ...> {};
 
 MyTuple<int, float> t2;  // inherits from Tuple<int, float>
 ```
-Note that you **can’t** access the individual elements of a parameter pack directly by name, 
+Note that you **can't** access the individual elements of a parameter pack directly by name, 
 because names for individual elements are **not** defined in a variadic template.
 If you need the types, the only thing you can do is to pass them (recursively) to another class or function. 
 
@@ -9393,7 +9393,7 @@ including:
 - In using declarations `(since C++17)`. 
 
 
-We’ve already mentioned `sizeof...` as a pack-expansion mechanism 
+We've already mentioned `sizeof...` as a pack-expansion mechanism 
 that does **not** actually produce a list. 
 C++17 also adds _fold expressions_, 
 which are another mechanism that does **not** produce a comma-separated list.
@@ -9801,7 +9801,7 @@ class Mixer
 Note that we can **not** define a template instance (at most, we can define a specialization), 
 and hence a friend declaration that names an instance can **not** be a definition.
 If the name is **not** followed by angle brackets, there are two possibilities:
-1. If the name isn’t qualified (in other words, it doesn’t contain `::`), 
+1. If the name isn't qualified (in other words, it doesn't contain `::`), 
    it **never** refers to a template instance. 
    If no matching non-template function is visible at the point of the friend declaration, 
    the friend declaration is the first declaration of that function. 
@@ -9932,7 +9932,7 @@ are automatically considered friends too.
 
 When a C++ compiler encounters a name, 
 it must "look it up" to identify the entity being referred. 
-From an implementer’s point of view, C++ is a hard language in this respect. 
+From an implementer's point of view, C++ is a hard language in this respect. 
 Consider the C++ statement `x * y;`. 
 If `x` and `y` are the names of variables, this statement is a multiplication, 
 but if `x` is the name of a type, then the statement declares `y` as a pointer to an entity of type `x`. 
@@ -10284,7 +10284,7 @@ whereas the function `::f()` returns the size of the variable `C`
 
 
 Class templates also have injected class names. 
-However, they’re stranger than ordinary injected class names: 
+However, they're stranger than ordinary injected class names: 
 They can be followed by template arguments (in which case they are injected class _template_ names), 
 But, when they are **not** followed by template arguments, 
 depending on the context, they could represent:
@@ -10306,7 +10306,7 @@ class C
 ```
 The injected class name for a variadic template has an additional wrinkle: 
 If the injected class name were directly formed 
-by using the variadic template’s template parameters as the template arguments, 
+by using the variadic template's template parameters as the template arguments, 
 the injected class name would contain template parameter packs that have **not** been expanded. 
 Therefore, when forming the injected class name for a variadic template, 
 the template argument that corresponds to a template parameter pack 
@@ -10496,7 +10496,7 @@ Note the double parentheses to avoid parsing `(Invert<1>)0` as a cast operation,
 yet another source of syntactic ambiguity. 
 
 
-The tokenizer isn’t spared problems with the angle-bracket notation either.
+The tokenizer isn't spared problems with the angle-bracket notation either.
 For example, in
 ```
 List<List<int>> a;
@@ -10765,7 +10765,7 @@ public:
 };
 ```
 By now you can probably perceive the problem when a using declaration brings in a name from a dependent class. 
-Although we know about the name, we **don’t** know whether it’s the name of a type, a template, or something else:
+Although we know about the name, we **don't** know whether it's the name of a type, a template, or something else:
 ```c++
 template <typename T>
 class BXT 
@@ -10853,7 +10853,7 @@ void g(N::X * xp)
     select<3>(xp);
 }
 ```
-Even though it **doesn’t** make any sense for the call `select<3>(xp)`, 
+Even though it **doesn't** make any sense for the call `select<3>(xp)`, 
 the presence of this function template ensures that `select<3>` will be parsed as a `template-id`. 
 ADL will then find the function template `N::select`, and the call will succeed.
 
@@ -10973,7 +10973,7 @@ at the time that the template is parsed.
 
 A C++ compiler is permitted (but **not** required!) to diagnose errors at the time the template is parsed 
 when all of the instantiations of the template would produce that error. 
-Let’s expand on the `f(x)` example from the previous section to explore this further:
+Let's expand on the `f(x)` example from the previous section to explore this further:
 ```c++
 void f() {}
 
@@ -11009,7 +11009,7 @@ Class templates can inherit or be inherited from.
 For many purposes, there is nothing significantly different between the template and non-template scenarios. 
 However, there is one important subtlety 
 when deriving a class template from a base class referred to by a dependent name. 
-Let’s first look at the somewhat simpler case of non-dependent base classes.
+Let's first look at the somewhat simpler case of non-dependent base classes.
 
 ##### 13.4.1 Non-dependent Base Classes
 
@@ -11287,21 +11287,6 @@ The term _instantiation_ is sometimes also used to refer to the creation of obje
 In this book, however, it always refers to template instantiation.
 
 
-The concept of instantiation of C++ templates is fundamental but also somewhat intricate. 
-One of the underlying reasons for this intricacy is that the definitions of entities generated by a template 
-are no longer limited to a single location in the source code. 
-The location of the template, the location where the template is used,
-and the locations where the template arguments are defined all play a role in the meaning of the entity. m
-
-
-In this chapter we explain how we can organize our source code to enable proper template use. 
-In addition, we survey the various methods that are used by the most popular C++ compilers to handle template instantiation. 
-Although all these methods should be semantically equivalent, 
-it is useful to understand basic principles of the compiler’s instantiation strategy. 
-Each mechanism comes with its set of little quirks when building real-life software, 
-and conversely, each influenced the final specifications of standard C++. 
-
-
 #### 📌 14.1 On-Demand Instantiation
 
 
@@ -11422,6 +11407,1411 @@ Note also that the instantiation of `C<double>` could trigger an error, which ma
 #### 📌 14.2 Lazy Instantiation
 
 
+Requirements on templates are not fundamentally different from that when using non-template classes.  
+Many uses require a class type to be complete (see Section 10.3.1). 
+For the template case, the compiler will instantiate the template. 
+But a compiler should be "lazy" when instantiating templates, 
+only instantiating parts that are needed right away. 
+
+##### 14.2.1 Partial and Full Instantiation
+
+The compiler sometimes **doesn't** need to substitute the complete definition of a template. 
+```c++
+template <typename T> 
+T f (T p) 
+{ 
+    return 2 * p; 
+}
+
+decltype(f(2)) x = 2;
+```
+In this example, the type indicated by `decltype(f(2))` does **not** require 
+the complete instantiation of the function template `f`. 
+A compiler is therefore only permitted to substitute the _declaration_ of `f`, 
+but **not** its "body". 
+This is sometimes called _partial instantiation_. 
+
+
+Similarly, if an instance of a class template is referred to 
+without the need for that instance to be a complete type, 
+the compiler should **not** perform a complete instantiation of that class template instance: 
+```c++
+template <typename T> 
+class Q 
+{
+    using Type = typename T::Type;
+};
+
+Q<int> * p = 0;  // OK: the body of Q<int> is not substituted
+```
+Here, the full instantiation of `Q<int>` would trigger an error, 
+because `T::Type` doesn't make sense when `T` is `int`. 
+But because `Q<int>` need **not** be complete in this example, 
+**no** full instantiation is performed and the code is okay (albeit suspicious). 
+
+
+Variable templates also have a "full" vs. "partial" instantiation distinction: 
+```c++
+template <typename T> 
+T v = T::default_value();
+
+decltype(v<int>) s;  // OK: initializer of v<int> not instantiated
+```
+A full instantiation of `v<int>` would elicit an error, 
+but that is **not** needed if we only need the type of the variable template instance. 
+
+
+Alias templates do **not** have this distinction: 
+There are **no** two ways of substituting them.
+
+
+In C++, when speaking about "template instantiation" 
+without being specific about full or partial instantiation, the former is intended. 
+That is, instantiation is full instantiation by default. 
+
+##### 14.2.2 Instantiated Components
+
+When a class template is implicitly (fully) instantiated, 
+each declaration of its members is instantiated as well, 
+but the corresponding definitions are **not** (i.e., the member are _partially_ instantiated). 
+There are a few exceptions to this. 
+1. **Anonymous unions**: 
+   The members of that union's definition are also instantiated. 
+   Anonymous unions are always special in this way: 
+   Their members can be considered to be members of the enclosing class. 
+   An anonymous union is primarily a construct that says that some class members share the same storage. 
+2. **Virtual member functions**: 
+   Their definitions _may or may not_ be instantiated as a result of instantiating a class template. 
+   Many implementations will instantiate the definition 
+   because the internal structure that enables the virtual call mechanism
+  requires the virtual functions actually to exist as linkable entities. 
+
+
+Default function call arguments are considered separately when instantiating templates. 
+Specifically, they are **not** instantiated unless there is a call to that function (or member function) 
+that actually makes use of the default argument. 
+If, on the other hand, the function is called only with explicit arguments that override the default,
+then the default arguments are **not** instantiated. 
+
+
+Similarly, exception specifications and default member initializers are not instantiated unless they are needed.
+
+
+Let's put together some examples that illustrate some of these principles:
+```c++
+template <typename T>
+class Safe {};
+
+template <int N>
+class Danger
+{
+    int arr[N];                    // OK here, although would fail for N <= 0
+};
+
+template <typename T, int N>
+class Tricky
+{
+public:
+    void noBodyHere(Safe<T> = 3);  // OK until usage of default value results in an error
+
+    void inclass()
+    {
+        Danger<N> noBoomYet;       // OK until inclass is used with N <= 0
+    }
+
+    struct Nested 
+    {
+        Danger<N> pfew;            // OK until Nested is used with N <= 0
+    };  
+    
+    union                          // due anonymous union:
+    {
+        Danger<N> anonymous;       // OK until Tricky is instantiated with N <= 0
+        int align;
+    };
+
+    void unsafe(T (* p)[N]);       // OK until Tricky is instantiated with N <= 0
+
+    void error()
+    {
+        Danger<-1> boom;           // Always ERROR (which not all compilers detect)
+    }
+};
+```
+A standard C++ compiler will examine these template definitions 
+to check the syntax and general semantic constraints. 
+While doing so, it will "assume the best" when checking constraints involving template parameters. 
+For example, the parameter `N` in the member `Danger::arr` could be zero or negative (which would be invalid), 
+but it is assumed that this isn't the case.
+GCC allow zero-length arrays as extensions and may therefore accept this code even when `N` ends up being `0`.
+
+
+The definitions of `inclass`, struct `Nested`, and the anonymous union are thus not a problem. 
+For the same reason, the declaration of the member `unsafe(T (* p)[N])` is not a problem,
+as long as `N` is an unsubstituted template parameter. 
+
+
+The default argument specification (`Safe<T> = 3`) on the declaration of the member `noBodyHere`
+is suspicious because the template `Safe` isn't initializable with an integer,
+but the assumption is that either the default argument won't actually be needed for the generic definition of `Safe<T>` 
+or that `Safe<T>` will be specialized (see Chapter 16) to enable initialization with an integer value. 
+However, the definition of the member function `error` is an error even when the template is not instantiated, 
+because the use of `Danger<-1>` requires a complete definition of the class `Danger<-1>`, 
+and generating that class runs into an attempt to define an array with negative size. 
+Interestingly, while the standard clearly states that this code is invalid, 
+it also allows compilers **not** to diagnose the error when the template instance is not actually used. 
+That is, since `Tricky<T, N>::error` is **not** used for any concrete `T` and `N`, 
+a compiler is **not** required to issue an error for this case. 
+For example, GCC and Visual C++ do **not** diagnose this error at the time of this writing.
+
+
+Now let's analyze what happens when we add the following definition:
+```c++
+Tricky<int, -1> inst;
+```
+This causes the compiler to (fully) instantiate `Tricky<int, -1>` 
+by substituting `int` for `T` and `-1` for `N` in the definition of template `Tricky`. 
+Not all the member definitions will be needed, 
+but the default constructor and the destructor (both implicitly declared in this case) are definitely called, 
+and hence their definitions must be available somehow 
+(which is the case in our example, since they are implicitly generated). 
+As explained above, the members of `Tricky<int, -1>` are partially instantiated 
+(i.e., their declarations are substituted): 
+That process can potentially result in errors. 
+For example, the declaration of `unsafe(T (* p)[N])` creates an array type with a negative of number elements, 
+and that is an error.
+Similarly, the member anonymous now triggers an error, because type `Danger<-1>` can not be completed. 
+In contrast, the definitions of the members `inclass` and `struct Nested` are not yet instantiated, 
+and thus no errors occur from their need for the complete type `Danger<-1>` 
+(which contains an invalid array definition). 
+
+
+When instantiating a template, the definitions of virtual members should also be provided. 
+Otherwise, linker errors are likely to occur:
+```c++
+template <typename T>
+class VirtualClass
+{
+public:
+    virtual ~VirtualClass() {}
+
+    virtual T vmem();  // Likely ERROR if instantiated without definition
+};
+
+int main()
+{
+    VirtualClass<int> inst;
+}
+```
+Finally, a note about `operator->`. Consider:
+```c++
+template <typename T>
+class C 
+{
+public:
+    T operator->();
+};
+```
+Normally, `operator->` must return a pointer type or another class type to which `operator->` applies. 
+This suggests that the completion of `C<int>` triggers an error, 
+because it declares a return type of `int` for `operator->`. 
+However, certain natural class template definitions trigger these kinds of definitions, 
+typical examples are smart pointer templates (e.g., `std::unique_ptr<T>`). 
+Thus, the language rule is more flexible:
+Only when a user-defined `operator->` _is actually selected by overload resolution_, 
+it is required to return a type to which another `operator->` applies. 
+This is true even outside templates (although the relaxed behavior is less useful in those contexts).
+Hence, the declaration here triggers **no** error, even though `int` is substituted for the return type.
+
+
+#### 📌 14.3 The C++ Instantiation Model
+
+Template instantiation is the process of obtaining a regular type, function, or variable
+from a corresponding template entity by appropriately substituting the template parameters. 
+
+##### 14.3.1 Two-Phase Lookup
+
+In Chapter 13 we saw that dependent names can **not** be resolved when parsing templates. 
+Instead, they are looked up again at the point of instantiation.
+Non-dependent names, however, are looked up early so that many errors can be diagnosed when the template is first seen. 
+This leads to the concept of _two-phase lookup_ (_two-stage lookup_, _two-phase name lookup_): 
+The first phase is the parsing of a template, and the second phase is its instantiation:
+1. During the first phase, while _parsing_ a template: 
+   - Non-dependent names are looked up using both the _ordinary lookup rules_ and _Argument-Dependent Lookup (ADL)_; 
+   - Dependent unqualified names (all unqualified names are dependent) are looked up using the ordinary lookup rules, 
+     but the result of the lookup is **not** considered complete 
+     until an additional lookup is performed in the second phase (when the template is instantiated). 
+2. During the second phase, while _instantiating_ a template at a point called the _Point of Instantiation (POI)_: 
+   - Dependent qualified names are looked up 
+     with the template parameters replaced with the template arguments for that specific instantiation; 
+   - An additional ADL is performed for the unqualified dependent names 
+     that were looked up using ordinary lookup in the first phase. 
+
+
+For unqualified names (all unqualified names are dependent), 
+the initial ordinary lookup (while not complete) is used to decide whether the name is a template:
+```c++
+namespace N 
+{
+
+template <typename> void g() {}
+enum E { e };
+
+}  // namespace N
+
+template <typename> void f() {}
+
+template <typename T> 
+void h(T P) 
+{
+    f<int>(p);  // #1
+    g<int>(p);  // #2 ERROR
+}
+
+int main() 
+{
+    h(N::e);
+}
+```
+In line `#1`, when seeing the name `f` followed by a `<`, 
+the compiler has to decide whether that `<` is an angle bracket or a less-than sign. 
+That depends on whether `f` is known to be the name of a template or not. 
+In this case, ordinary lookup finds the declaration of `f`, 
+which is indeed a template, and so parsing succeeds with angle brackets.
+
+
+Line `#2` produces an error because **no** template `g` is found using ordinary lookup.
+The `<` is thus treated as a less-than sign, which is a syntax error in this example. 
+If we could get past this issue, we'd eventually find the template `N::g` using ADL 
+when instantiating `h` for `T = N::E` (since `N` is a namespace associated with `E`), 
+but we can **not** get that far until we successfully parse the generic definition of `h`. 
+
+##### 14.3.2 Points of Instantiation
+
+A _Point of Instantiation (POI)_ is created when a code construct refers to a template specialization
+in such a way that the definition of the corresponding template needs to be instantiated to create that specialization. 
+The POI is a point in the source where the substituted template could be inserted:
+```c++
+class MyInt
+{
+public:
+    MyInt(int i);
+};
+
+MyInt operator-(MyInt const &);
+
+bool operator>(MyInt const &, MyInt const &);
+
+using Int = MyInt;
+
+template <typename T>
+void f(T i)
+{
+    if (i > 0)
+    {
+        g(-i);
+    }
+}
+
+// #1
+void g(Int)
+{
+    // #2
+    f<Int>(42);  // point of call
+    // #3
+}
+// #4
+```
+When a C++ compiler sees the call `f<Int>(42)`, 
+it knows the template `f` will need to be instantiated 
+for `T` substituted with `MyInt`: 
+A POI is created. 
+
+
+Points `#2` and `#3` are very close to the point of call, 
+but they can **not** be POIs because C++ does **not** allow us to insert the definition of `::f<Int>(Int)` there. 
+The essential difference between point `#1` and point `#4` is that at point `#4` the function `g(Int)` is visible, 
+and hence the template-dependent call `g(-i)` can be resolved. 
+However, if point `#1` were the POI, then that call could **not** be resolved because `g(Int)` is **not** yet visible. 
+Fortunately, C++ defines the POI "for a reference to a function template specialization" 
+to be _immediately after the nearest namespace scope declaration or definition that contains that reference_. 
+In our example, this is point `#4`.
+
+
+You may wonder why this example involved the type `MyInt` rather than simple `int`. 
+The answer lies in the fact that the second lookup performed at the POI
+(after instantiating `f`, at `#4`) is only an ADL. 
+Because `int` has **no** associated namespace, 
+the POI lookup would therefore **not** take place and would **not** find function `g`. 
+Hence, if we were to replace the type alias declaration for `Int` with
+```c++
+using Int = int;
+```
+the previous example would no longer compile. 
+The following example suffers from a similar problem:
+```c++
+template <typename T>
+void f1(T x)
+{
+    g1(x);  // #1
+}
+
+void g1(int) {}
+
+int main()
+{
+    f1(7);  // ERROR: g1 not found!
+}
+// #2 POI for f1<int>(int)
+```
+The call `f1(7)` creates a POI for `f1<int>(int)` just outside of `main` at point `#2`. 
+In this instantiation, the key issue is the lookup of function `g1`. 
+When the definition of the template `f1` is first encountered, 
+it is noted that the unqualified name `g1` is dependent 
+because it is the name of a function in a function call with dependent arguments 
+(the type of the argument `x` depends on the template parameter `T`). 
+Therefore, `g1` is looked up at point `#1` using ordinary lookup rules. 
+However, **no** `g1` is visible at this point. 
+At point `#2`, the POI, the function is looked up again via ADL in associated namespaces and classes, 
+but the only argument type is `int`, and it has **no** associated namespaces and classes. 
+Therefore, `g1` is **never** found even though ordinary lookup at the POI would have found `g1`. 
+
+
+The point of instantiation for variable templates is handled similarly to that of function templates. 
+Surprisingly, this is not clearly specified in the standard at the time of this writing. 
+However, it is not expected to be a controversial issue. 
+
+
+For class template specializations, the situation is different:
+```c++
+template <typename T>
+class S 
+{
+public:
+    T m;
+};
+
+// #1
+unsigned long h()
+{
+    // #2
+    return static_cast<std::size_t>(sizeof(S<int>));
+    // #3
+}
+// #4
+```
+Again, the function scope points `#2` and `#3` can **not** be POIs 
+because a definition of a namespace scope class `S<int>` can **not** appear there. 
+Generally, templates can generally **not** appear in function scope,
+yet the call operator of generic lambdas are a subtle exception to that observation. 
+
+
+If we were to follow the rule for function template instances, the POI would be at point `#4`, 
+but then the expression `sizeof(S<int>)` is invalid 
+because the size of `S<int>` can **not** be determined until point `#4` is reached. 
+Therefore, the POI for a reference to a generated class instance is defined to be 
+_the point immediately before the nearest namespace scope declaration or definition 
+that contains the reference to that instance_. 
+In our example, this is point `#1`. 
+
+
+When a template is actually instantiated, the need for additional instantiations may appear: 
+```c++
+template <typename T>
+class S
+{
+public:
+    using I = int;
+};
+
+// #1
+template <typename T>
+void f()
+{
+    S<char>::I var1 = 41;
+    typename S<T>::I var2 = 42;
+}
+
+int main()
+{
+    f<double>();
+}
+// #2 : #2a , #2b
+```
+Our preceding discussion already established that the POI for `f<double>` is at point `#2`. 
+The function template `f` also refers to the class specialization `S<char>` with a POI that is therefore at point `#1`. 
+It references `S<T>` too, but because this is still dependent, we can **not** really instantiate it at this point. 
+However, if we instantiate `f<double>` at point `#2`, 
+we notice that we also need to instantiate the definition of `S<double>`. 
+Such secondary or transitive POIs are defined slightly differently. 
+For function templates, the secondary POI is exactly the same as the primary POI. 
+For class entities, the secondary POI immediately precedes (in the nearest enclosing namespace scope) the primary POI. 
+In our example, this means that the POI of `f<double>` can be placed at point `#2b`, 
+and just before it is the secondary POI for `S<double>` at `#2a`. 
+Note how this differs from the POI for `S<char>`. 
+
+
+A translation unit often contains multiple POIs for the same instance. 
+For class template instances, only the first POI in each translation unit is retained, 
+and the subsequent ones are ignored (they are **not** really considered POIs). 
+For instances of function and variable templates, all POIs are retained. 
+In either case, the _One-Definition Rule (ODR)_ requires 
+that the instantiations occurring at any of the retained POIs be equivalent, 
+but a C++ compiler does not need to verify and diagnose violations of this rule. 
+This allows a C++ compiler to pick just one non-class POI to perform the actual instantiation 
+without worrying that another POI might result in a different instantiation. 
+
+
+In practice, most compilers delay the actual instantiation of most function templates 
+to the end of the translation unit.
+This effectively moves the POIs of the corresponding template specializations to the end of the translation unit,
+which is permitted by the C++ standard as an alternative POI.
+
+
+Some instantiations can **not** be delayed,
+including cases where instantiation is needed to determine a deduced return type 
+(see Section 15.10.1 and Section 15.10.4) 
+and cases where the function is `constexpr` and must be evaluated to produce a constant result.
+
+
+Some compilers instantiate inline functions when they're first used 
+to potentially inline the call right away.
+In modern compilers the inlining of calls is typically handled 
+by a mostly language-independent component of the compiler dedicated to optimizations 
+(a "back end" or "middle end"). 
+However, C++ "front ends" (the C++-specific part of the C++ compiler) 
+that were designed in the earlier days of C++ may also have the ability to expand calls inline
+because older back ends were too conservative when considering calls for inline expansion. 
+
+##### 14.3.3 The Inclusion Model
+
+Whenever a POI is encountered, the definition of the corresponding template must somehow be accessible. 
+For class specializations, this means that 
+the class template definition must have been seen earlier in the translation unit.
+This is also needed for the POIs of function templates and variable templates 
+(and member functions and static data members of class templates), 
+and typically template definitions are simply added to header files that are `#included` into the translation unit, 
+even when they’re non-type templates. 
+This source model for template definitions is called the _inclusion model_, 
+and it is the only automatic source model for templates supported by the current C++ standard. 
+
+
+Although the inclusion model encourages programmers to place all their template definitions in header files 
+so that they are available to satisfy any POIs that may arise, 
+it is also possible to explicitly manage instantiations using 
+_explicit instantiation declarations_ and _explicit instantiation definitions_ (see Section 14.5). 
+Doing so is logistically not trivial and most of the time 
+programmers will prefer to rely on the automatic instantiation mechanism instead. 
+One challenge for an implementation with the automatic scheme is to 
+deal with the possibility of having POIs for the same specialization of a function or variable templates 
+(or the same member function or static data member of a class template instance) across different translation units. 
+We discuss approaches to this problem next. 
+
+
+#### 📌 14.4 Implementation Schemes
+
+
+In this section we review some ways in which C++ implementations support the inclusion model. 
+All these implementations rely on two classic components: 
+a compiler and a linker. 
+The compiler translates source code to object files, 
+which contain machine code with symbolic annotations (cross-referencing other object files and libraries). 
+The linker creates executable programs or libraries 
+by combining the object files and resolving the symbolic cross-references they contain. 
+
+
+In what follows, we assume such a model, 
+even though it is entirely possible (but not popular) to implement C++ in other ways, 
+such as _C++ interpreters_ like [Cling](https://root.cern/cling/). 
+
+
+When a class template specialization is used in multiple translation units, 
+a compiler will repeat the instantiation process in every translation unit. 
+This poses very few problems because class definitions do not directly create low-level code. 
+They are used only internally by a C++ implementation 
+to verify and interpret various other expressions and declarations. 
+In this regard, the multiple instantiations of a class definition are **not** materially different
+from the multiple (header-file) inclusions of a class definition in various translation units. 
+
+
+However, if you instantiate a (non-inline) function template, the situation may be different. 
+If you were to provide multiple definitions of an ordinary non-inline function, you would violate the ODR. 
+Assume, for example, that you compile and link a program consisting of two definitions of one ordinary function:
+```c++
+/// "a.cpp"
+int main() {}
+
+/// "b.cpp"
+int main() {}
+```
+C++ compilers will compile each module separately without any problems 
+because indeed they are valid C++ translation units. 
+However, your linker will most likely protest if you try to link the two together: 
+Duplicate definitions are **not** allowed.
+
+
+In contrast, consider the template case:
+```c++
+/// "t.hpp"
+/// common header (inclusion model)
+template <typename T>
+class S
+{
+public:
+    void f();
+};
+
+template <typename T>
+void S::f() {}
+
+void helper(S<int> *);
+
+/// "a.cpp"
+#include "t.hpp"
+
+void helper(S<int> * s)
+{
+    s->f();  // #1 first point of instantiation of S::f
+    
+}
+
+/// "b.cpp"
+#include "t.hpp"
+
+int main()
+{
+    S<int> s;
+    helper(&s);
+    s.f();   // #2 second point of instantiation of S::f
+}
+```
+If the linker treats instantiated member functions of class templates 
+just like it does for ordinary functions or member functions, 
+the compiler needs to ensure that it generates code at only one of the two POIs: 
+at points `#1` or `#2`, but **not** both. 
+To achieve this, a compiler has to carry information from one translation unit to the other, 
+and this is something C++ compilers were **never** required to do prior to the introduction of templates. 
+In what follows, we discuss the three broad classes of solutions that have been used by C++ implementers. 
+
+
+Note that the same problem occurs with all linkable entities produced by template instantiation: 
+instantiated function templates and member function templates, 
+as well as instantiated static data members and instantiated variable templates. 
+
+##### 14.4.1 Greedy Instantiation
+
+The first C++ compilers that popularized greedy instantiation were produced by a company called Borland. 
+It has grown to be by far the most commonly used technique among the various C++ systems. 
+
+
+Greedy instantiation assumes that the linker is aware that linkable template instantiations 
+may in fact appear in duplicate across the various object files and libraries. 
+The compiler will typically mark these entities in a special way. 
+When the linker finds multiple instances, it keeps one and discards all the others. 
+There is not much more to it than that.
+
+
+Greedy instantiation has some serious drawbacks:
+- The compiler may be wasting time on generating and optimizing `N` instantiations,
+  of which only one will be kept.
+- Linkers typically do **not** check that two instantiations are identical 
+  because some insignificant differences in generated code can validly occur 
+  for multiple instances of one template specialization. 
+  - These small differences should **not** cause the linker to fail. 
+    These differences could result from tiny differences 
+    in the state of the compiler at the instantiation times.
+  - However, this often also results in the linker **not** noticing more substantial differences, 
+    such as when one instantiation was compiled with strict floating-point math rules.  
+    whereas the other was compiled with relaxed, higher-performance floating-point math rules. 
+  - Current systems have grown to detect certain other differences.
+    For example, they might report if one instantiation has associated debugging information and another does not.
+- The sum of all the object files could potentially be much larger than with alternatives 
+  because the same code may be duplicated many times. 
+
+
+Greedy instantiation has the following merits:
+- The traditional source-object dependency is preserved. 
+  In particular, one translation unit generates but one object file, 
+  and each object file contains compiled code for all the linkable definitions 
+  in the corresponding source file, which includes the instantiated definitions. 
+- All function template instances are candidates for inlining 
+  without resorting to expensive “link-time” optimization mechanisms 
+  (and, in practice, function template instances are often small functions that benefit from inlining). 
+  The other instantiation mechanisms treat _inline_ function template instances specially 
+  to ensure they can be expanded inline. 
+  However, greedy instantiation allows even non-inline function template instances to be expanded inline. 
+
+
+The linker mechanism that allows duplicate definitions of linkable entities 
+is also typically used to handle 
+- Duplicate _spilled inlined functions_: 
+  - When a compiler is unable to "inline" every call 
+    to a function that you marked with the keyword `inline`,
+    a separate copy of the function is emitted in the object file. 
+    This may happen in multiple object files. 
+- _Virtual function dispatch tables_: 
+  - Virtual function calls are usually implemented as indirect calls 
+    through a table of pointers to functions.
+
+
+If this mechanism is not available, 
+the alternative is usually to emit these items with internal linkage, 
+at the expense of generating larger code. 
+The requirement that an inline function have a single address makes it difficult 
+to implement that alternative in a standard-conforming way. 
+
+##### 14.4.2 Queried Instantiation
+
+In the mid-1990s, a company called _Sun Microsystems_ (later acquired by Oracle) 
+released a reimplementation of its C++ compiler (version 4.0) 
+with a new and interesting solution of the instantiation problem, 
+which we call _queried instantiation_. 
+Queried instantiation is conceptually remarkably simple and elegant, 
+and yet it is chronologically the most recent class of instantiation schemes that we review here. 
+This scheme maintains a database shared by the compilations of all translation units. 
+This database keeps track of which specializations have been instantiated and on what source code they depend. 
+The generated specializations themselves are typically stored with this information in the database. 
+Whenever a point of instantiation for a linkable entity is encountered, 
+one of three things can happen: 
+1. No specialization is available: 
+   In this case, instantiation occurs, and the resulting specialization is entered in the database.
+2. A specialization is available 
+   but is out of date because source changes have occurred since it was generated. 
+   Here, too, instantiation occurs, but the resulting specialization replaces the old one. 
+3. An up-to-date specialization is available in the database. 
+   Nothing needs to be done. 
+
+
+Although conceptually simple, this design presents a few implementation challenges:
+- It is **not trivial** to maintain correctly the dependencies of the database contents 
+  with respect to the state of the source code. 
+  Although it is not incorrect to mistake the third case for the second, 
+  doing so increases the amount of work done by the compiler (and hence overall build time). 
+- It is quite common to compile multiple source files concurrently. 
+  Hence, an industrial-strength implementation needs to provide 
+  the appropriate amount of concurrency control in the database.
+
+
+Unfortunately, the use of a database may also present some problems to the programmer. 
+The origin of most of these problems lies in that fact that 
+the traditional compilation model inherited from most C compilers no longer applies: 
+A single translation unit no longer produces a single standalone object file. 
+Assume that you wish to link your final program. 
+This link operation needs not only the contents of each of the object files associated with your various translation units, 
+but also the object files stored in the database. 
+Similarly, if you create a binary library, you need to ensure that the tool that creates that library 
+(typically a linker or an archiver) is aware of the database contents. 
+More generally, any tool that operates on object files may need to be made aware of the contents of the database. 
+Many of these problems can be alleviated by not storing the instantiations in the database, 
+but instead by emitting the object code in the object file that caused the instantiation in the first place. 
+
+
+Libraries present yet another challenge. 
+A number of generated specializations may be packaged in a library. 
+When the library is added to another project, 
+that project’s database may need to be made aware of the instantiations that are already available. 
+If not, and if the project creates some of its own points of instantiation 
+for the specializations present in the library, 
+duplicate instantiation may occur.
+A possible strategy to deal with such situations 
+is to use the same linker technology that enables greedy instantiation:
+Make the linker aware of generated specializations and have it weed out duplicates 
+(which should nonetheless occur much less frequently than with greedy instantiation). 
+Various other subtle arrangements of sources, object files, and libraries 
+can lead to frustrating problems such as missing instantiations
+because the object code containing the required instantiation 
+was not linked in the final executable program.
+
+
+Ultimately, queried instantiation did **not** survive in the marketplace, 
+and even Sun’s compiler now uses greedy instantiation. 
+
+##### 14.4.3 Iterated Instantiation
+
+The first compiler to support C++ templates was Cfront 3.0, 
+a direct descendant of the compiler that Bjarne Stroustrup wrote to develop the language.
+Do **not** let this phrase mislead you into thinking that Cfront was an academic prototype: 
+It was used in industrial contexts and formed the basis of many commercial C++ compiler offerings. 
+Release 3.0 appeared in 1991 but was plagued with bugs. 
+Version 3.0.1 followed soon thereafter and made templates usable. 
+
+An inflexible constraint on Cfront was that it had to be very portable from platform to platform, 
+and this meant that it 
+1. Used the C language as a common target representation across all target platforms;
+2. Used the local target linker. 
+
+
+In particular, this implied that the linker was **not** aware of templates. 
+In fact, Cfront emitted template instantiations as ordinary C functions, 
+and therefore it had to avoid duplicate instantiations. 
+Although the Cfront source model was different from the standard inclusion model, 
+its instantiation strategy can be adapted to fit the inclusion model. 
+As such, it also merits recognition as the first incarnation of _iterated instantiation_. 
+
+
+The Cfront iteration can be described as follows: 
+1. Compile the sources **without** instantiating any required linkable specializations; 
+2. Link the object files using a _prelinker_; 
+3. The prelinker invokes the linker and parses its error messages to determine 
+   whether any are the result of missing instantiations. 
+   If so, the prelinker invokes the compiler on sources that contain the needed template definitions, 
+   with options to generate the missing instantiations. 
+4. Repeat step 3 if any definitions are generated. 
+
+
+The need to iterate step 3 is prompted by the observation that 
+the instantiation of one linkable entity may lead to the need 
+for another such entity that was not yet instantiated. 
+Eventually the iteration will “converge”, and the linker will succeed in building a complete program.
+
+
+The drawbacks of the original Cfront scheme are quite severe: 
+- The perceived time to link is augmented not only by the prelinker overhead 
+  but also by the cost of every required recompilation and relinking. 
+  Some users of Cfront-based systems reported link times of “a few days” 
+  compared with “about an hour” with the alternative schemes reported earlier. 
+- Diagnostics (errors, warnings) are delayed until link time. 
+  This is especially painful when linking becomes expensive 
+  and the developer must wait hours just to find out about a typo in a template definition. 
+- Special care must be taken to remember where the source containing a particular definition is located (step 1). 
+  Cfront in particular used a central repository, 
+  which had to deal with some of the challenges of the central database in the queried instantiation approach. 
+  In particular, the original Cfront implementation was **not** engineered to support concurrent compilations.
+
+
+The iteration principle was subsequently refined both by the Edison Design Group’s (EDG) implementation and by HP’s aC++, 
+eliminating some of the drawbacks of the original Cfront implementation. 
+In practice, these implementations work quite well, and,
+although a build “from scratch” is typically more time consuming than the alternative schemes, 
+subsequent build times are quite competitive. 
+Still, relatively few C++ compilers use iterated instantiation anymore. 
+HP's aC++ also added greedy instantiation made that the default mechanism. 
+
+
+#### 📌 14.5 Explicit Instantiation
+
+
+It is possible to create explicitly a point of instantiation for a template specialization. 
+The construct that achieves this is called an _explicit instantiation directive_. 
+Syntactically, it consists of the keyword `template` followed by a declaration of the specialization to be instantiated. 
+```c++
+template <typename T>
+void f(T) {}
+
+// four valid explicit instantiations:
+template void f<int>(int);
+template void f<>(float);
+template void f(long);
+template void f(char);
+```
+Note that every instantiation directive is valid. 
+Template arguments can be deduced (see Chapter 15). 
+
+
+Members of class templates can also be explicitly instantiated in this way:
+```c++
+template <typename T>
+class S 
+{
+public:
+    void f() {}
+};
+
+template void S<int>::f();
+template class S<void>;
+```
+Furthermore, all the members of a class template specialization can be explicitly instantiated 
+by explicitly instantiating the class template specialization. 
+Because these explicit instantiation directives ensure that 
+a definition of the named template specialization (or member thereof) is created, 
+the explicit instantiation directives above are more accurately referred to as _explicit instantiation definitions_. 
+A template specialization that is explicitly instantiated should **not** be explicitly specialized, 
+and vice versa, because that would imply that the two definitions could be different (thus violating the ODR). 
+
+##### 14.5.1 Manual Instantiation
+
+Many C++ programmers have observed that 
+automatic template instantiation has a nontrivial negative impact on build times. 
+This is particularly true with compilers that implement greedy instantiation (Section 14.4.1),
+because the same template specializations may be instantiated and optimized in many different translation units.
+
+
+A technique to improve build times consists in 
+_manually instantiating_ those template specializations that the program requires in a single location 
+and _inhibiting_ the instantiation in all other translation units. 
+One portable way to ensure this _inhibition_ is to **not** provide the template definition 
+except in the translation unit where it is explicitly instantiated.
+In the 1998 and 2003 C++ standards, 
+this was the only portable way to inhibit instantiation in other translation units.
+```c++
+/// translation unit 1:
+// no definition: prevents instantiation in this translation unit
+template <typename T>
+void f(); 
+
+void g()
+{
+    f<int>();
+}
+
+/// translation unit 2:
+template <typename T>
+void f()
+{
+    // implementation
+}
+
+// manual instantiation
+template void f<int>();
+
+void g();
+
+int main()
+{
+    g();
+}
+```
+In the first translation unit, the compiler can **not** see the definition of the function template `f`, 
+so it can **not** produce an instantiation of `f<int>`. 
+The second translation unit provides the definition of `f<int>` via an explicit instantiation definition.  
+Without it, the program would **fail** to link. 
+
+
+Manual instantiation has a clear disadvantage: 
+We must carefully keep track of which entities to instantiate. 
+For large projects this quickly becomes an excessive burden, 
+hence we do **not** recommend it. 
+We have worked on several projects that initially underestimated this burden, 
+and we came to regret our decision as the code matured. 
+
+
+However, manual instantiation also has a few advantages 
+because the instantiation can be tuned to the needs of the program. 
+Clearly, the overhead of large headers is avoided, 
+as is the overhead of repeatedly instantiating the same templates
+with the same arguments in multiple translation units. 
+Moreover, the source code of template definition can be kept hidden, 
+but then **no** additional instantiations can be created by a client program.
+
+
+Some of the burden of manual instantiation can be alleviated
+by placing the template definition into a third source file,
+conventionally with the extension `.tpp`.
+For our function `f`, this breaks down into:
+```c++
+/// "f.hpp"
+// no definition: prevents instantiation
+template <typename T>
+void f(); 
+
+/// "f.tpp"
+#include "f.hpp"
+
+//definition
+template <typename T>
+void f()
+{
+    // implementation
+}
+
+// "f.cpp"
+#include "f.tpp"
+
+// manual instantiation
+template void f<int>();
+```
+This structure provides some flexibility. 
+One can include only `f.hpp` to get the declaration of `f`, with **no** automatic instantiation. 
+Explicit instantiations can be manually added to `f.cpp` as needed. 
+Or, if manual instantiations become too onerous, one can also include `f.tpp` to enable automatic instantiation. 
+
+##### 14.5.2 Explicit Instantiation Declarations
+
+A more targeted approach to the elimination of redundant automatic instantiations 
+is the use of an _explicit instantiation declaration_, 
+which is an explicit instantiation directive prefixed by the keyword `extern`. 
+An explicit instantiation declaration _generally_ suppresses automatic instantiation 
+of the named template specialization,
+because it declares that the named template specialization will be defined somewhere in the program 
+(by an explicit instantiation definition). 
+We say _generally_, because there are many **exceptions** to this:
+- Inline functions can still be instantiated for the purpose of expanding them inline
+  (but no separate object code is generated).
+- Variables with deduced `auto` or `decltype(auto)` types 
+  and functions with deduced return types 
+  can still be instantiated to determine their types.
+- Variables whose values are usable as constant-expressions 
+  can still be instantiated so their values can be evaluated. 
+- Variables of reference types can still be instantiated 
+  so the entity they reference can be resolved.
+- Class templates and alias templates can still be instantiated to check the resulting types.
+
+
+Using explicit instantiation declarations, 
+we can provide the template definition for `f` in the header (`t.hpp`), 
+then suppress automatic instantiation for commonly used specializations, as follows:
+```c++
+/// "t.hpp"
+template <typename T> 
+void f() {}
+
+// declared but not defined
+extern template void f<int>();
+extern template void f<float>(); 
+
+/// "t.cpp"
+// definition
+template void f<int>();
+template void f<float>();
+```
+Each explicit instantiation declaration must be paired with a corresponding explicit instantiation definition, 
+which must follow the explicit instantiation declaration.
+Omitting the definition will result in a linker error. 
+
+
+Explicit instantiation declarations can be used to improve compile or link times
+when certain specializations are used in many different translation units. 
+Unlike with manual instantiation, which requires manually updating 
+the list of explicit instantiation definitions each time a new specialization is required, 
+explicit instantiation declarations can be introduced as an optimization at any point. 
+However, the compile-time benefits may not be as significant as with manual instantiation, 
+both because some redundant automatic instantiation is likely to occur 
+and because the template definitions are still parsed as part of the header.
+
+
+An interesting part of this optimization problem is to determine exactly 
+which specializations are good candidates for explicit instantiation declarations. 
+Low-level utilities such as the common Unix tool `nm` can be useful 
+in identifying which automatic instantiations actually made it into the object files that comprise a program.
+
+
+#### 📌 14.6 Compile-Time `if` Statements
+
+
+As introduced in Section 8.5, 
+C++17 added a new statement kind that turns out to be remarkably useful when writing templates: 
+compile-time `if`. 
+It also introduces a new wrinkle in the instantiation process.
+
+
+The following example illustrates its basic operation:
+```c++
+template <typename T>
+bool f(T p)
+{
+    if constexpr (sizeof(T) <= sizeof(long long))
+    {
+        return 0 < p;
+    }
+    else
+    {
+        return 0 < p.compare(0);
+    }
+}
+
+bool g(int n)
+{
+    return f(n);  // OK
+}
+```
+Prior to C++17 and its `constexpr if` statements, 
+avoiding such errors required explicit template specialization or overloading (see Chapter 16) 
+to achieve similar effects.
+The example above, in C++14, might be implemented as follows:
+```c++
+template <bool>
+struct Dispatch
+{
+    template <typename T>
+    static bool f(T p)
+    {
+        return 0 < p.compare(0);
+    }
+};
+    
+template <>
+struct Dispatch<true>
+{
+    template <typename T>
+    static bool f(T p)
+    {
+        return 0 < p;
+    }
+};
+
+template <typename T>
+bool f(T p)
+{
+    return Dispatch<sizeof(T) <= sizeof(long long)>::f(p);
+}
+
+bool g(int n)
+{
+    return f(n);  // OK
+}
+```
+Clearly, the `constexpr if` alternative expresses our intention far more clearly and concisely. 
+However, it requires implementations to refine the unit of instantiation: 
+Whereas previously function definitions were always instantiated as a whole, 
+now it must be possible to inhibit the instantiation of parts of them. 
+
+
+Another very handy use of `constexpr if` is expressing the recursion needed to handle function parameter packs. 
+To generalize the example, introduced in Section 8.5:
+```c++
+template <typename Head, typename ... Remainder>
+void f(Head && h, Remainder && ... r)
+{
+    doSomething(std::forward<Head>(h));
+    
+    if constexpr (sizeof...(r) != 0)
+    {
+        // handle the remainder recursively (perfectly forwardingthe arguments):
+        f(std::forward<Remainder>(r)...);
+    }
+}
+```
+Without `constexpr if` statements, this requires an additional overload of the `f` template 
+to ensure that recursion terminates.
+```c++
+template <typename Head, typename ... Remainder>
+void f(Head && h, Remainder && ... r)
+{
+    doSomething(std::forward<Head>(h));
+    f(std::forward<Remainder>(r)...);
+}
+
+// explicit specialization of f for end of recursion
+template <typename Head>
+void f(Head && h)
+{
+    doSomething(std::forward<Head>(h));
+}
+```
+Even in non-template contexts, `constexpr if` statements have a somewhat unique effect:
+```c++
+void h();  // no definition!
+
+void g() 
+{
+    if constexpr (sizeof(int) == 1) 
+    {
+        h();
+    }
+}
+```
+On most platforms, the condition in `g` is `false` and the call to `h` is therefore discarded. 
+As a consequence, `h` need **not** necessarily be defined at all (unless it is used elsewhere, of course). 
+Had the keyword `constexpr` been omitted in this example, 
+a lack of a definition for `h` would often elicit an error at link time.
+Optimization may nonetheless mask the error. 
+With `constexpr if` the problem is guaranteed not to exist. 
+
+
+#### 📌 14.7 In the Standard Library
+
+
+The C++ standard library includes a number of templates that are only commonly used with a few basic types. 
+For example, the `std::basic_string` class template is most commonly used with `char` 
+(because `std::string` is a type alias of `std::basic_string<char>`) or `wchar_t`, 
+although it is possible to instantiate it with other character-like types. 
+Therefore, it is common for standard library implementations to introduce explicit instantiation declarations 
+for these common cases. 
+```c++
+namespace std
+{
+
+template <typename charT, 
+          typename traits = char_traits<charT>,
+          typename Allocator = allocator<charT>>
+class basic_string
+{
+    // ...
+};
+
+extern template class basic_string<char>;
+
+extern template class basic_string<wchar_t>;
+
+}  // namespace std
+```
+The source files implementing the standard library will then contain the
+corresponding explicit instantiation definitions, 
+so that these common implementations can be shared among all users of the standard library. 
+Similar explicit instantiations often exist for the various stream classes,
+such as `std::basic_iostream`, `std::basic_istream`, and so on.
+
+
+
+
+
+
+### 🎯 Chapter 15 Template Argument Deduction
+
+
+#### 📌 15.1 The Deduction Process
+
+
+The basic deduction process 
+compares the types of an argument of a function call with the corresponding parameterized type of a function template 
+and attempts to conclude the correct substitution for one or more of the deduced parameters. 
+Each argument-parameter pair is analyzed independently, 
+and if the conclusions differ in the end, the deduction process fails:
+```c++
+template <typename T>
+T max (T a, T b)
+{
+    return b < a ? a : b;
+}
+
+auto g = max(1, 1.0);  // ERROR
+```
+Here the first call argument is of type `int`, 
+so the parameter `T` of our original `max` template is tentatively deduced to be `int`. 
+The second call argument is a `double`, however, and so `T` should be `double` for this argument: 
+This conflicts with the previous conclusion. 
+Note that we say that “the deduction process fails”, 
+not that “the program is invalid”. 
+After all, it is possible that the deduction process would succeed for another template named `max` 
+(function templates can be overloaded much like ordinary functions. See Section 1.5 and Chapter 16). 
+
+
+If all the deduced template parameters are consistently determined, 
+the deduction process can still fail if substituting the arguments 
+in the rest of the function declaration results in an invalid construct: 
+```c++
+template <typename T>
+typename T::ElementT at(T a, int i)
+{
+    return a[i];
+}
+
+void f(int * p)
+{
+    int x = at(p, 7);
+}
+```
+Here `T` is concluded to be `int *` 
+(there is only one parameter type where `T` appears,
+so there are obviously no analysis conflicts). 
+However, substituting `int *` for `T` in the return type `T::ElementT` is clearly invalid C++, 
+and the deduction process fails.
+In this case, deduction failure follows the SFINAE principle (see Section 8.4): 
+If there were another function for which deduction succeeds, the code could be valid. 
+
+
+We still need to explore how argument-parameter matching proceeds. 
+We describe it in terms of 
+matching a type `A` (derived from the call argument type) 
+to a parameterized type `P` (derived from the call parameter declaration). 
+If the call parameter is declared with a reference declarator, 
+`P` is taken to be the type referenced, and `A` is the type of the argument. 
+Otherwise, `P` is the declared parameter type, 
+and `A` is obtained from the type of the argument 
+by _decaying_ array and function types to pointer types 
+(_decay_ is the term used to refer to the implicit conversion of function and array types to pointer types),
+ignoring top-level `const` and `volatile` qualifiers:
+```c++
+// parameterized type P is T
+template <typename T>
+void f(T) {}
+
+// parameterized type P is T
+template <typename T>
+void g(T &) {}
+
+double arr[20];
+int const seven = 7;
+
+f(arr);    // T = double *
+g(arr);    // T = double [20]
+f(seven);  // T = int
+g(seven);  // T = const int
+f(7);      // T = int
+g(7);      // T = int, ERROR: can't bind 7 to int &
+```
+The fact that **no** decay occurs for arguments bound to reference parameters
+can be surprising when the arguments are string literals. 
+Reconsider our `max` template declared with references:
+```c++
+template <typename T>
+T const & max(T const & a, T const & b);
+```
+It would be reasonable to expect that for the expression `max("Apple", "Pie")`, 
+`T` is deduced to be `char const *`. 
+However, the type of `"Apple"` is `char const[6]`, and the type of `"Pie"` is `char const[4]`.
+**No** array-to-pointer decay occurs (because the deduction involves reference parameters), 
+and therefore `T` would have to be both `char[6]` and `char[4]` for deduction to succeed. 
+That is, of course, impossible. 
+See Section 7.4 for a discussion about how to deal with this situation. 
+
+
+#### 📌 15.2 Deduced Contexts
+
+
+Parameterized types that are considerably more complex than just `T` 
+can be matched to a given argument type:
+```c++
+template <typename T>
+void f1(T *);
+
+template <typename E, int N>
+void f2(E (&)[N]);
+
+template <typename T1, typename T2, typename T3>
+void f3(T1 (T2::*)(T3 *));
+
+class S
+{
+public:
+    void f(double *);
+};
+
+void g(int *** ppp)
+{
+    bool b[42];
+    f1(ppp);    // deduces T to be int **
+    f2(b);      // deduces E to be bool and N to be 42
+    f3(&S::f);  // deduces T1 = void, T2 = S, and T3 = double
+}
+```
+Complex type declarations are built from more elementary constructs 
+(pointer, reference, array, and function declarators; pointer-to-member declarators; template-ids; and so forth), 
+and the matching process proceeds from the top-level construct and recurses through the composing elements. 
+It is fair to say that most type declaration constructs can be matched in this way, 
+and these are called _deduced contexts_. 
+However, a few constructs are 
+[Non-Deduced Contexts](https://en.cppreference.com/w/cpp/language/template_argument_deduction#Non-deduced_contexts). 
+For example:
+- **Qualified type names**.  
+  For example, a type name like `Q<T>::X` will **never** be used to deduce a template parameter `T`. 
+- **Non-type expressions that are not just a non-type parameter**.  
+  For example, a type name like `S<I + 1>` will **never** be used to deduce `I`. 
+  **Neither** will `T` be deduced by matching against a parameter of type `int (&)[sizeof(S<T>)]`. 
+- ...
+
+
+These limitations should come as no surprise because the deduction would, 
+in general, not be unique (or even finite), 
+although this limitation of qualified type names is sometimes easily overlooked. 
+A non-deduced context does not automatically imply that the program is in error 
+or even that the parameter being analyzed can not participate in type deduction. 
+To illustrate this, consider the following, more intricate example:
+```c++
+template <int N>
+class X
+{
+public:
+    using I = int;
+
+    void f(int) {}
+};
+
+template <int N>
+void fppm(void (X<N>::* p)(typename X<N>::I));
+
+int main()
+{
+    // fine: N deduced to be 33
+    fppm(&X<33>::f);
+}
+```
+In the function template `fppm`, the subconstruct `X<N>::I` is a non-deduced context. 
+However, the member-class component `X<N>` of the pointer-to-member type is a deducible context, 
+and when the parameter `N`, which is deduced from it, is plugged in the non-deduced context, 
+a type compatible with that of the actual argument `&X<33>::f` is obtained. 
+The deduction therefore succeeds on that argument-parameter pair. 
+
+
+Conversely, it is possible to deduce contradictions for a parameter type entirely built from deduced contexts. 
+For example, assuming suitably declared class templates `X` and `Y`:
+```c++
+template <typename, typename> 
+class X {};
+
+template <typename> 
+class Y {};
+
+template <typename T>
+void f(X<Y<T>, Y<T>>) {}
+
+void g()
+{
+    f(X<Y<int>, Y<int>>());   // OK
+    f(X<Y<int>, Y<char>>());  // ERROR: deduction fails
+}
+```
+The problem with the second call to the function template `f` is that
+the two arguments deduce different arguments for the parameter `T`, which is not valid. 
+In both cases, the function call argument is a temporary object 
+obtained by calling the default constructor of the class template `X`.
+
+ 
+#### 📌 15.3 Special Deduction Situations
+
+
+There are several situations in which the pair `(A, P)` used for deduction 
+is **not** obtained from the arguments to a function call and the parameters of a function template. 
+The first situation occurs when the address of a function template is taken. 
+In this case, `P` is the type of the function template declaration, 
+and `A` is the function type underlying the pointer that is initialized or assigned to: 
+```c++
+template <typename T>
+void f(T, T) {}
+
+void (*pf)(char, char) = &f;
+```
+In this example, `P` is `void (T, T)` and `A` is `void (char, char)`. 
+Deduction succeeds with `T` substituted with `char`, 
+and `pf` is initialized to the address of the specialization `f<char>`. 
+
+
+Similarly, function types are used for `P` and `A` for a few other special situations:
+- Determining a partial ordering between overloaded function templates;
+- Matching an explicit specialization to a function template;
+- Matching an explicit instantiation to a template;
+- Matching a friend function template specialization to a template;
+- Matching a placement `operator delete` or `operator delete[]` 
+  to a corresponding placement `operator new` template or `operator new[]` template. 
+
+
+Some of these topics, along with the use of template argument deduction for class template partial specializations, 
+are further developed in Chapter 16.
+
+
+Another special situation occurs with conversion function templates:
+```c++
+class S 
+{
+public:
+    template <typename T> 
+    operator T&();
+};
+```
+In this case, the pair `(P, A)` is obtained as if it involved: 
+- an argument of the conversion-target type; 
+- a parameter type that is the return type of the conversion function. 
+The following code illustrates one variation:
+```c++
+void f(int (&)[20]) {}
+
+void g(S s)
+{
+    f(s);
+}
+```
+Here we are attempting to convert `S` to `int (&)[20]`. 
+Type `A` is therefore `int [20]` and type `P` is `T`. 
+The deduction succeeds with `T` substituted with `int [20]`. 
+
+
+Some special treatment is also needed for the deduction of the `auto` placeholder type. 
+That is discussed in Section 15.10.4.
+
+
+#### 📌 15.4 Initializer Lists
+
+
 
 
 
@@ -11432,54 +12822,85 @@ Note also that the instantiation of `C<double>` could trigger an error, which ma
 
 
 
-3 Anonymous unions are always special in this way: Their members can be
-considered to be members of the enclosing class. An anonymous union is
-primarily a construct that says that some class members share the same storage.
-4 Some compilers, such as GCC, allow zero-length arrays as extensions and may
-therefore accept this code even when N ends up being 0.
-5 Typical examples are smart pointer templates (e.g., the standard
-std::unique_ptr<T>).
-6 Besides two-phase lookup, terms such as two-stage lookup or two-phase name
-lookup are also used.
-7 Surprisingly, this is not clearly specified in the standard at the time of this writing.
-However, it is not expected to be a controversial issue.
-8 The call operator of generic lambdas are a subtle exception to that observation.
-9 In modern compilers the inlining of calls is typically handled by a mostly
-language-independent component of the compiler dedicated to optimizations (a
-“back end” or “middle end”). However, C++ “front ends” (the C++-specific part
-of the C++ compiler) that were designed in the earlier days of C++ may also have
-the ability to expand calls inline because older back ends were too conservative
-when considering calls for inline expansion.
-10 The original C++98 standard also provided a separation model. It never gained
-popularity and was removed just before publishing the C++11 standard.
-11 Current systems have grown to detect certain other differences, however. For
-example, they might report if one instantiation has associated debugging
-information and another does not.
-12 When a compiler is unable to “inline” every call to a function that you marked
-with the keyword inline, a separate copy of the function is emitted in the objectfile. This may happen in multiple object files.
-13 Virtual function calls are usually implemented as indirect calls through a table of
-pointers to functions. See [LippmanObjMod] for a thorough study of such
-implementation aspects of C++.
-14 Sun Microsystems was later acquired by Oracle.
-15 Do not let this phrase mislead you into thinking that Cfront was an academic
-prototype: It was used in industrial contexts and formed the basis of many
-commercial C++ compiler offerings. Release 3.0 appeared in 1991 but was
-plagued with bugs. Version 3.0.1 followed soon thereafter and made templates
-usable.
-16 HP’s aC++ was grown out of technology from a company called Taligent (later
-absorbed by International Business Machines, or IBM). HP also added greedy
-instantiation to aC++ and made that the default mechanism.
-17 In the 1998 and 2003 C++ standards, this was the only portable way to inhibit
-instantiation in other translation units.
-18 An interesting part of this optimization problem is to determine exactly which
-specializations are good candidates for explicit instantiation declarations. Low-
-level utilities such as the common Unix tool nm can be useful in identifying which
-automatic instantiations actually made it into the object files that comprise a
-program.
-19 Although the code reads if constexpr, the feature is called constexpr if,
-because it is the “constexpr” form of if.
-20 Optimization may nonetheless mask the error. With constexpr if the problem is
-guaranteed not to exist.
+
+2 
+3 If a pack expansion occurs anywhere else in a function parameter list or template
+argument list, that pack expansion is considered a nondeduced context.
+4 Reference collapsing was introduced into the C++ 2003 standard when it was
+noted that the standard pair class template would not work with reference types.
+The 2011 standard extended reference collapsing further by incorporating rules for
+rvalue references.5
+Bit fields are an exception.
+Treating a parameter of rvalue reference type as an lvalue is intended as a safety
+feature, because anything with a name (like a parameter) can easily be referenced
+multiple times in a function. If each of those references could be implicitly treated
+as an rvalue, its value could be destroyed unbeknownst to the programmer.
+Therefore, one must explicitly state when a named entity should be treated as an
+rvalue. For this purpose, the C++ standard library function std::move treats any
+value as an rvalue (or, more precisely, an xvalue; see Appendix B for details).
+7 SFINAE also applies to the substitution of partial class template specializations.
+See Section 16.4 on page 347.
+8 The immediate context includes many things, including various kinds of lookup,
+alias template substitutions, overload resolution, etc. Arguably the term is a bit of
+a misnomer, because some of the activities it includes are not closely tied to the
+function template being substituted.
+9 Although C++14 introduced deduced return types in general, they were already
+available to C++11 lambdas using a specification that was not worded in terms of
+deduction. In C++14, that specification was updated to use the general auto
+deduction mechanism (from a programmer’s point of view, there is no difference).
+10 The same technique can be used to extract the associated member type: Instead of
+using Type = C; use using Type = M;.
+11 As mentioned elsewhere, treating a parameter of rvalue reference type as an
+lvalue rather than an xvalue is intended as a safety feature, because anything with
+a name (like a parameter) can easily be referenced multiple times in a function. If
+it were an xvalue, its first use might cause its value to be “moved away,” causing
+surprising behavior for every subsequent use. See Section 6.1 on page 91 and
+Section 15.6.3 on page 280.
+12 When we used the latter formulation in our introductory example of auto, we
+implicitly assumed that the iterators produced references to some underlying
+storage. While this is generally true for container iterator (and required by the
+standard containers other than vector<bool>), it is not the case for all
+iterators.
+13 This example does not use our usual style for placing the * immediately adjacent
+to the auto, because it could mislead the reader into thinking we are declaring
+two pointers. On the other hand, the opacity of these declarations is a good
+argument for being conservative when declaring multiple entities in a single
+declaration.
+14 The term structured bindings was used in the original proposal for the feature and
+was also eventually used for the formal specification in the language. Briefly,
+6however, that specification used the term decomposition declarations instead.
+15 The other two places where built-in arrays are copied are lambda captures and
+generated copy constructors.
+16 This translation model of lambdas is actually used in the specification of the C++
+language, making it both a convenient and an accurate description of the
+semantics. Captured variables become data members, the conversion of a
+noncapturing lambda to a function pointer is modeled as a conversion function in
+the class, and so on. And because lambdas are function objects, whenever rules
+for function objects are defined, they also apply to lambdas.
+17 Note the distinction between a placeholder type, which is auto or
+decltype(auto) and can resolve to any kind of type, and a placeholder class
+type, which is a template name and can only resolve to a class type that is an
+instance of the indicated template.
+18 As with ordinary function template deduction, SFINAE could apply if, for
+example, substituting the deduced arguments in the guided type failed. That is not
+the case in this simple example.
+19 Chapter 16 introduces the ability to “specialize” class templates in various ways.
+Such specializations do not participate in class template argument deduction.
+
+
+### 🎯
+
+#### 📌
+
+
+
+
+
+
+
+
+
+20 
 21 Ironically, EDG was the most vocal opponent of the feature when it was added to
 the working paper for the original standard.
 
