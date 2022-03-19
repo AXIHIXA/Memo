@@ -12900,12 +12900,6 @@ Such specializations do not participate in class template argument deduction.
 
 
 
-20 
-21 Ironically, EDG was the most vocal opponent of the feature when it was added to
-the working paper for the original standard.
-
-
-
 
 ### 🎯
 
