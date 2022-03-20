@@ -7914,6 +7914,8 @@ C++ currently supports four fundamental kinds of templates:
 - Function templates; 
 - Variable templates; 
 - Alias templates.
+
+
 Each of these template kinds can appear in namespace scope,
 but also in class scope.
 In class scope, they become 
@@ -10836,7 +10838,7 @@ the expression is parsed as `(select < 3) > (xp)`, which makes no sense.
 
 
 This example may give the impression that ADL is disabled for `template-id`s, but it is **not**. 
-The code can be fixed by introducing a function template named select that is visible at the call:
+The code can be fixed by introducing a declaration of function template `select` that is visible at the call:
 ```c++
 void g(N::X * xp)
 {
@@ -11083,31 +11085,29 @@ public:
     int basefield;
 };
 
-// dependent base
 template <typename T>
-class DD : public Base<T>
+class DD : public Base<T>  // dependent base
 {
 public:
     void f()
     {
-        basefield = 0;  // #1 ERROR: use of undeclared identifier basefield
+        basefield = 0;     // #1 ERROR: use of undeclared identifier basefield
     }
 };
 
-// explicit specialization
 template <>
-class Base<bool>
+class Base<bool>           // explicit specialization
 {
 public:
     enum
     {
-        basefield = 42  // #2
+        basefield = 42     // #2
     };
 };
 
 void g(DD<bool> & d)
 {
-    d.f();              // #3
+    d.f();                 // #3
 }
 ```
 At point `#1` we find our reference to a non-dependent name `basefield`: 
@@ -11631,6 +11631,7 @@ This leads to the concept of _two-phase lookup_ (_two-stage lookup_, _two-phase 
 The first phase is the parsing of a template, and the second phase is its instantiation:
 1. During the first phase, while _parsing_ a template: 
    - Non-dependent names are looked up using both the _ordinary lookup rules_ and _Argument-Dependent Lookup (ADL)_; 
+     - Non-dependent names are **not** looked up in dependent base classes (Section 13.4.2). 
    - Dependent unqualified names (all unqualified names are dependent) are looked up using the ordinary lookup rules, 
      but the result of the lookup is **not** considered complete 
      until an additional lookup is performed in the second phase (when the template is instantiated). 
@@ -12946,9 +12947,9 @@ it will pick the overload from the overload set according to the following rules
   1. The operator that takes a `long double`, 
   2. The _raw_ literal operator that takes a `const char *`, 
   3. The literal operator template.
-- **For character literals**, it calls the appropriate operator, 
+- **For character literals**, it calls the appropriate _cooked_ operator, 
   depending on the character type (`char`, `wchar_t`, `char16_t`, and `char32_t`). 
-- **For string literals**, it calls the appropriate operator, 
+- **For string literals**, it calls the appropriate _cooked_ operator, 
   that takes a pointer to the string of characters and the size, 
   depending on the string type. 
 
@@ -12982,11 +12983,11 @@ int operator "" _B7()
 will output `'1' '2' '1' '.' '5'` for `121.5_B7`. 
 Note that raw literal operators are _only supported for valid numeric (integral and floating-point) literals_: 
 ```c++
-auto b = 01.3_B7;    // OK: deduces {'0', '1', '.', '3'}
-auto c = 0xFF00_B7;  // OK: deduces {'0', 'x', 'F', 'F', '0', '0'}
-auto d = 0815_B7;       // ERROR: invalid digit '8' in octal constant
-auto e = hello_B7;      // ERROR: use of undeclared identifier hello_B7
-auto f = "hello"_B7;    // ERROR: no matching operator "" _B7
+auto b = 01.3_B7;     // OK: deduces {'0', '1', '.', '3'}
+auto c = 0xFF00_B7;   // OK: deduces {'0', 'x', 'F', 'F', '0', '0'}
+auto d = 0815_B7;     // ERROR: invalid digit '8' in octal constant
+auto e = hello_B7;    // ERROR: use of undeclared identifier hello_B7
+auto f = "hello"_B7;  // ERROR: no matching operator "" _B7
 ```
 See Section 25.6 for an application of the feature to compute integral literals at compile time. 
 
@@ -13290,19 +13291,10 @@ Arguably the term is a bit of a misnomer,
 because some of the activities it includes are not closely tied to the function template being substituted. 
 
 
-Only the failures in the types and expressions in the _immediate context_ of:
+SFINAE errors are only the failures in the types and expressions in the _immediate context_ of:
 - The function type; 
 - Its template parameter types;
 - Its [explicit specifier](https://en.cppreference.com/w/cpp/language/explicit)
-are SFINAE errors.
-
-
-If the evaluation of a substituted type/expression causes a side effect such as 
-- Instantiation of some template specialization;
-- Generation of an implicitly-defined member function;
-- ...
-errors _in_ those side effects are treated as hard errors.
-A lambda expression is **not** considered part of the _immediate context_. 
 
 
 Specifically, the following errors are **not** covered by SFINAE (and thus result in compilation errors):
@@ -14847,6 +14839,223 @@ just by swapping the internal data pointers,
 as is done in the member function `exchangeWith`. 
 
 ##### 16.1.1 Transparent Customization
+
+In our previous example, the member function `exchangeWith` provides 
+an efficient alternative to the generic `exchange` function, 
+but the need to use a different function is inconvenient in several ways:
+1. Users of the `Array` class have to remember an extra interface and must be careful to use it when possible; 
+2. Generic algorithms can generally **not** discriminate between various possibilities.
+```c++
+template <typename T>
+void genericAlgorithm(T * x, T * y)
+{
+    exchange(x, y);  // How do we select the right algorithm?
+}
+```
+Because of these considerations, C++ templates provide ways to customize function templates and class templates transparently. 
+For function templates, this is achieved through the overloading mechanism. 
+For example, we can write an overloaded set of `quickExchange` function templates as follows:
+```c++
+// #1
+template <typename T>
+void quickExchange(T * a, T * b)
+{
+    T tmp(*a);
+    *a = *b;
+    *b = tmp;
+}
+
+// #2
+template <typename T>
+void quickExchange(Array<T> * a, Array<T> * b)
+{
+    a->exchangeWith(b);
+}
+
+void demo(Array<int> * p1, Array<int> * p2)
+{
+    int x = 42;
+    int y = -7;
+    quickExchange(&x, &y);  // uses #1
+    quickExchange(p1, p2);  // uses #2
+}
+```
+
+##### 16.1.2 Semantic Transparency
+
+Although both the generic algorithm and the one customized for `Array<T>` types
+end up swapping the values that are being pointed to, 
+the _side effects_ of the operations are very different. 
+```c++
+struct S 
+{
+    int x;
+};
+
+S s1;
+S s2;
+
+void distinguish(Array<int> a1, Array<int> a2)
+{
+    int * p = &a1[0];
+    int * q = &s1.x;
+    a1[0] = s1.x = 1;
+    a2[0] = s2.x = 2;
+    quickExchange(&a1, &a2);  // *p == 1 after this (still)
+    quickExchange(&s1, &s2);  // *q == 2 after this
+}
+```
+This example shows that a pointer `p` into the first `Array`
+becomes a pointer into the _second_ array after `quickExchange` is called. 
+However, the pointer into the non-Array `s1` remains pointing into `s1` even after the exchange operation: 
+Only the values that were pointed to were exchanged. 
+The difference is significant enough that it may confuse clients of the template implementation. 
+
+
+However, the original generic `exchange` template can still have a useful optimization for `Array<T>`s:
+```c++
+template <typename T>
+void exchange(Array<T> * a, Array<T> * b)
+{
+    T * p = &(*a)[0];
+    T * q = &(*b)[0];
+    
+    for (std::size_t k = a->size(); k-- != 0;)
+    {
+        exchange(p++, q++);
+    }
+}
+```
+The advantage of this version over the generic code is that **no** (potentially) large temporary `Array<T>` is needed. 
+The `exchange` template is called recursively so that good performance is achieved
+even for types such as `Array<Array<char>>`. 
+Note also that the more specialized version of the template is **not** declared `inline` 
+because it does a considerable amount of work of its own, 
+whereas the original generic implementation is `inline` 
+because it performs only a few operations (each of which is potentially expensive). 
+
+
+#### 📌 16.2 Overloading Function Templates
+
+
+Two function templates with the same name can coexist, 
+even though they may be instantiated so that both have identical parameter types:
+```c++
+template <typename T>
+int f(T)
+{
+    return 1;
+}
+
+template <typename T>
+int f(T *)
+{
+    return 2;
+}
+
+void foo()
+{
+    f<int *>(static_cast<int *>(nullptr));  // int f(T) [with T = int *]
+    f<int>(static_cast<int *>(nullptr));    // int f(T *) [with T = int]
+}
+```
+
+##### 16.2.1 Signatures
+
+Two functions can coexist in a program if they have distinct signatures. 
+We define the signature of a function as the following information:
+1. The unqualified name of the function 
+   (or the name of the function template from which it was generated); 
+2. The class or namespace scope of that name,  
+   and, if the name has internal linkage, the translation unit in which the name is declared; 
+3. The `cv` and value category qualification of the function 
+   (if it is a member function with such a qualifier);
+4. The types of the function parameters 
+   (before template parameters are substituted if the function is generated from a function template);
+5. Its **return type**, if the function is generated from a function template; 
+6. The template parameters and the template arguments, 
+   if the function is generated from a function template. 
+
+
+In principle, the following templates and their instantiations could coexist in the same program:
+```c++
+template <typename T1, typename T2>
+void f1(T1, T2) {}
+
+template <typename T1, typename T2>
+void f1(T2, T1) {}
+
+template <typename T>
+long f2(T) {}
+
+template <typename T>
+char f2(T) {}
+```
+However, they can **not** always be used when they’re _declared in the same scope_
+because instantiating both creates an overload ambiguity:  
+```c++
+void foo()
+{
+    f1<char, char>('a', 'b');  // ERROR: ambiguous
+    f2(42);                    // ERROR: ambiguous
+}
+```
+If the templates appear in different translation units, 
+then the two instantiations can actually exist in the same program 
+(and the linker should **not** complain about duplicate definitions 
+because the signatures of the instantiations are distinct): 
+```c++
+/// "a.cpp"
+template <typename T1, typename T2>
+void f1(T1, T2) {}
+
+int main()
+{
+    f1('a', 'b');
+    return EXIT_SUCCESS;
+}
+
+/// "b.cpp"
+template <typename T1, typename T2>
+void f1(T2, T1) {}
+
+int main()
+{
+    f1('a', 'b');
+    return EXIT_SUCCESS;
+}
+```
+
+##### 16.2.2 Partial Ordering of Overloaded Function Templates
+
+The function generated from the more specialized template is preferred: 
+```c++
+template <typename T>
+void f(T)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+template <typename T>
+void f(T *)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+void foo()
+{
+    f(0);                                 // void f(T) [with T = int]
+    f(NULL);                              // void f(T) [with T = long int]
+    f(nullptr);                           // void f(T) [with T = std::nullptr_t]
+    f(static_cast<int *>(nullptr));       // void f(T *) [with T = int]
+    f(reinterpret_cast<int *>(nullptr));  // ERROR: reinterpret_cast from std::nullptr_t to int * is not allowed
+}
+```
+
+##### 16.2.3 Formal Ordering Rules
+
+
+
 
 
 

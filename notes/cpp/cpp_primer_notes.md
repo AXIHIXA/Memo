@@ -2306,11 +2306,13 @@ Both `prvalues` and `xvalues` are `rvalue` expressions.
 
 ### 🌱 类型转换（Type Conversions, Type cast）
 
+
 - 所有`cast<T>`的结果的 *值类别* （value category）是
-    - *左值* ，如果`T`为 *左值引用* 或 *函数类型的右值引用*  
-    - *将亡值* ，如果`T`为 *对象类型的右值引用*
-    - *纯右值* ，其他情况。此时生成转换结果需要一次 *拷贝构造* 
-- See Effective Cpp Notes Item 27: Minimize casting for common pitfalls!
+    - *左值* `lvalue`，如果`T`为 *左值引用* 或 *函数类型的右值引用*  
+    - *将亡值* `xvalue`，如果`T`为 *对象类型的右值引用*
+    - *纯右值* `prvalue`，其他情况。此时生成转换结果需要一次 *拷贝构造* 
+- See [Effective Cpp Notes Item 27: Minimize casting](./effective_cpp_notes_01_effective_cpp.md#-item-27-minimize-casting) for common pitfalls. 
+
 
 #### [`static_cast`](https://en.cppreference.com/w/cpp/language/static_cast)
 
@@ -2320,6 +2322,98 @@ Both `prvalues` and `xvalues` are `rvalue` expressions.
             - 即强制截取整数部分，有精度损失
         - `void *`强转`T *`
             - 其实这一条其实也可以用`reinterpret_cast`，因为`void *`强转`T *`的语义就是强行按照`T *`解释那块内存
+
+Only the following conversions can be done with `static_cast`, 
+**except** when such conversions would cast away const-ness or volatility.
+1. If `T` is a reference or pointer to class `D` 
+   and `expr` is <`lvalue` reference or `prvalue` pointer> of `D`'s non-virtual base `B`: 
+   - `static_cast` performs a _downcast_. 
+   - This downcast is ill-formed if `B` is ambiguous, inaccessible, or virtual base (or a base of a virtual base) of `D`. 
+   - Such a downcast makes **no** runtime checks to ensure that the object's runtime type is actually `D`, 
+     and may only be used safely if this precondition is guaranteed by other means, 
+     such as when implementing [static polymorphism](https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern#Static_polymorphism). 
+   - Safe _downcast_ may be done with `dynamic_cast`. 
+2. If `T` is an `rvalue` reference type:   
+   - `static_cast` converts the value of `glvalue`, class `prvalue`, or any `lvalue` expression 
+     to `xvalue` referring to the same object as the expression, 
+     or to its base sub-object (depending on `T`). 
+     - If the target type is an inaccessible or ambiguous base of the type of the expression, the program is ill-formed. 
+     - If the expression is a bit field `lvalue`, it is first converted to `prvalue` of the underlying type. 
+     - This type of `static_cast` is used to implement move semantics in `std::move`. 
+3. If there is an implicit conversion sequence from `expr` to `T`, 
+   or if overload resolution for a direct initialization of an object or reference of type `T` from `expr` 
+   would find at least one viable function: 
+   - `static_cast<T>(expr)` returns the imaginary variable `tep` initialized as if by `T tmp(expr);`, 
+     which may involve implicit conversions, a call to the constructor of `T`, or a call to a user-defined conversion operator. 
+     - For non-reference `T`, the result object of the `static_cast` `prvalue` expression is what's direct-initialized. 
+4. If `T` is the type `void` (possibly `cv`-qualified): 
+   - `static_cast` discards the value of `expr` after evaluating it. 
+5. If a standard conversion sequence from `T` to the type of `expr` exists, 
+   that does **not** include `lvalue`-to-`rvalue`, 
+   array-to-pointer, function-to-pointer, null pointer, null member pointer, function pointer or boolean conversion:  
+   - `static_cast` can perform the inverse of that implicit conversion. 
+6. If conversion of `expr` to `T` involves `lvalue`-to-`rvalue`, array-to-pointer, or function-to-pointer conversion, 
+   it can be performed explicitly by `static_cast`.
+7. Scoped enumeration type can be converted to an integer or floating-point type: 
+   - The result is the same as [implicit conversion](https://en.cppreference.com/w/cpp/language/implicit_conversion) 
+     from the enum's underlying type to the destination type. 
+8. Numeric type to complete enumeration type:
+   - A value of integer or enumeration type can be converted to any complete enumeration type. 
+     - If the underlying type of the enumeration is **not** fixed, 
+       the behavior is _undefined_ 
+       if the value of expression is out of range 
+       (the range is all values possible for the smallest bit field
+       large enough to hold all enumerators of the target enumeration). 
+     - If the underlying type of the enumeration is fixed,
+       the result is the same as converting the original value 
+       first to the underlying type of the enumeration
+       and then to the enumeration type.
+   - A value of a floating-point type can also be converted to any complete enumeration type.
+     - The result is the same as converting the original value 
+       first to the underlying type of the enumeration, 
+       and then to the enumeration type.
+9. A pointer to member of some class `D` can be _upcast_ to 
+   a pointer to member of its unambiguous, accessible base class `B`. 
+   - This `static_cast` makes **no** checks to ensure 
+     the member actually exists in the runtime type of the pointed-to object. 
+10. A `prvalue` of type `void *` (possibly `cv`-qualified) can be converted to pointer to any object type. 
+    - If the original pointer value represents an address of a byte in memory 
+      that does **not** satisfy the alignment requirement of the target type, 
+      then the resulting pointer value is unspecified. 
+    - Otherwise:
+      - If the original pointer value points to an object `a`, 
+        and there is an object `b` of the target type (ignoring `cv`-qualification) 
+        that is _pointer-interconvertible_ with `a`, the result is a pointer to `b`. 
+      - Otherwise, the pointer value is unchanged. 
+    - Conversion of any pointer to `void *` and back to pointer to the original (or more `cv`-qualified) type 
+      preserves its original value.
+
+
+As with all cast expressions, the result is:
+- An `lvalue` if `T` is an `lvalue` reference type, or an `rvalue` reference to function type;
+- An `xvalue` if `T` is an `rvalue` reference to object type;
+- A `prvalue` otherwise. In this case, a copy is made. 
+
+
+Two objects `a` and `b` are _pointer-interconvertible_ if one of these applies:
+- They are the same object;
+- One is a union object and the other is a non-static data member of that object;
+- One is a [standard-layout](https://en.cppreference.com/w/cpp/language/data_members#Standard_layout) class object 
+  and the other is the first non-static data member of that object.  
+  Or, if the object has **no** non-static data members, any base class sub-object of that object;
+- There exists an object `c` such that `a` and `c` are pointer-interconvertible, 
+  and `c` and `b` are pointer-interconvertible. 
+
+
+**Notes**: 
+`static_cast` may also be used to _disambiguate_ function overloads 
+by performing a function-to-pointer conversion to specific type 
+```c++
+std::for_each(files.begin(), 
+              files.end(),
+              static_cast<std::ostream & (*)(std::ostream &)>(std::flush));
+```
+
 
 #### [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
 
@@ -2367,16 +2461,19 @@ Only the following conversions can be done with `dynamic_cast`,
    If T is not a pointer or reference to the constructor's/destructor's own class or one of its bases, 
    the behavior is undefined.
 
-Similar to other cast expressions, the result is:
-- An lvalue if `T` is an lvalue reference type (`expr` must be an lvalue)
-- An xvalue if `T` is an rvalue reference type 
-  (`expr` must be a glvalue (prvalues are materialized `since C++17`) of a complete class type)
-- A prvalue if `T` is a pointer type
 
 A _downcast_ can also be performed with `static_cast`, 
 which avoids the cost of the runtime check, 
 but it's only safe if the program can guarantee (through some other logic) 
 that the object pointed to by expression is definitely `Derived`. 
+
+
+Similar to other cast expressions, the result is:
+- An `lvalue` if `T` is an `lvalue` reference type (`expr` must be an lvalue)
+- An `xvalue` if `T` is an `rvalue` reference type
+  (`expr` must be a `glvalue` (`prvalues` are materialized `since C++17`) of a complete class type)
+- A `prvalue` if `T` is a pointer type
+
 
 Some forms of `dynamic_cast` rely on _Runtime Type Identification (RTTI)_, 
 that is, information about each polymorphic class in the compiled program. 
@@ -2403,6 +2500,39 @@ Compilers typically have options to disable the inclusion of this information.
     auto s1 = static_cast<std::string>(pc);                      // 正确，字符串字面值转换为std::string
     auto s2 = const_cast<std::string>(pc);                       // 错误，const_cast只能用于去除const
     ```
+
+Only the following conversions can be done with `const_cast`. 
+In particular, only `const_cast` may be used to _cast away_ (remove) const-ness or volatility. 
+1. Two possibly multilevel pointers to the same type may be converted between each other, 
+   **regardless of** cv-qualifiers at each level;
+2. To reference types:
+   - A `lvalue` reference of any type `T` may be converted to 
+     a more or less cv-qualifie `lvalue` or `rvalue` reference to the same type `T`.
+   - A `prvalue` of class type or an `xvalue` of any type may be converted 
+     to a more or less cv-qualified `rvalue` reference. 
+   - The result of a reference `const_cast` refers to the original object if `expr` is a `glvalue`, 
+     and to the materialized temporary otherwise.
+3. Same rules apply to possibly multilevel pointers to data members 
+   and possibly multilevel pointers to arrays of known and unknown bound 
+   (arrays to cv-qualified elements are considered to be cv-qualified themselves). 
+4. Null pointer value may be converted to the null pointer value of `T`. 
+
+
+As with all cast expressions, the result is:
+- An `lvalue` if `T` is an `lvalue` reference type, or an `rvalue` reference to function type;
+- An `xvalue` if `T` is an `rvalue` reference to object type;
+- A `prvalue` otherwise. In this case, a copy is made.
+
+
+**Notes**.
+- Pointers to functions and pointers to member functions are **not** subject to `const_cast`.
+- `const_cast` makes it possible to form 
+  a reference or pointer to non-const type that is actually referring to a const object, 
+  or a reference or pointer to non-volatile type that is actually referring to a volatile object. 
+  Modifying a const object through a non-const access path 
+  and referring to a volatile object through a non-volatile `glvalue` 
+  results in _undefined behavior_.
+
 
 #### [`reinterpret_cast`](https://en.cppreference.com/w/cpp/language/reinterpret_cast)
 
@@ -2447,6 +2577,85 @@ Compilers typically have options to disable the inclusion of this information.
         size_t b2 = static_cast<size_t>(p);                      // 错误：int *转换为size_t是没有明确定义的
         size_t b3 = reinterpret_cast<size_t>(p);                 // 正确
         ```
+
+Unlike `static_cast`, but like `const_cast`, 
+the `reinterpret_cast` expression does **not** compile to any CPU instructions 
+(**except** when converting between integers and pointers 
+or on obscure architectures where pointer representation depends on its type). 
+It is purely a compile-time directive which instructs the compiler 
+to treat `expr` as if it had the type `T`. 
+
+
+Only the following conversions can be done with `reinterpret_cast`, 
+**except** when such conversions would cast away const-ness or volatility.
+1. `expr` of integral, enumeration, pointer, or pointer-to-member type can be converted to its own type. 
+   The resulting value is the same as the value of `expr`. 
+2. A pointer can be converted to any integral type large enough to hold all values of its type (e.g. to `std::uintptr_t`). 
+3. A value of any integral or enumeration type can be converted to a pointer type. 
+   - A pointer converted to an integer of sufficient size and back to the same pointer type is guaranteed to have its original value.
+   - The round-trip conversion in the opposite direction is **not** guaranteed,  
+     because the same pointer may have multiple integer representations. 
+   - The null pointer constant `NULL` or integer zero is also **not** guaranteed 
+     to yield the null pointer value of the target type. 
+     `static_cast` or implicit conversion should be used for this purpose. 
+4. Any value of type `std::nullptr_t`, including `nullptr`, 
+   can be converted to any integral type as if it were `(void *) 0`, 
+   but **no** value, not even `nullptr` can be converted to `std::nullptr_t`. 
+   - The null pointer constant `NULL` or integer zero is also **not** guaranteed
+     to yield the null pointer value of the target type.
+   - `static_cast` or implicit conversion should be used for this purpose.
+5. Any object pointer type `T1 *` can be converted to another object pointer type cv `T2 *`. 
+   - This is exactly equivalent to `static_cast<cv T2 *>(static_cast<cv void *>(expr))`,  
+     which implies that if `T2`'s alignment requirement is **not** stricter than `T1`'s, 
+     the value of the pointer does **not** change 
+     and conversion of the resulting pointer back to its original type yields the original value. 
+   - In any case, the resulting pointer may only be de-referenced safely if allowed by the _type aliasing rules_. 
+6. An `lvalue` reference of type `T1` can be converted to reference to another type `T2`. 
+   - The result is an `lvalue` or `xvalue` referring to the same object as the original lvalue, but with a different type. 
+   - **No** temporary is created, **no** copy is made, **no** constructors or conversion functions are called. 
+   - The resulting reference can only be accessed safely if allowed by the _type aliasing rules_. 
+7. Any pointer to function can be converted to a pointer to a different function type. 
+   - Calling the function through a pointer to a different function type is _undefined_, 
+     but converting such pointer back to pointer to the original function type 
+     yields the pointer to the original function. 
+8. On some implementations (in particular, on any POSIX compatible system as required by dlsym), 
+   a function pointer can be converted to `void *` or any other object pointer, or vice versa. 
+   - If the implementation supports conversion in both directions, 
+     conversion to the original type yields the original value.
+9. The null pointer value of any pointer type can be converted to any other pointer type, 
+   resulting in the null pointer value of that type. 
+   - Note that the null pointer constant `nullptr` or any other value of type `std::nullptr_t` 
+     can **not** be converted to a pointer with `reinterpret_cast`. 
+     Implicit conversion or `static_cast` should be used for this purpose. 
+10. A pointer to member function can be converted to pointer to a different member function of a different type. 
+    - Conversion back to the original type yields the original value.
+11. A pointer to data member of some class `T1` can be converted to a pointer to another data member of another class `T2`. 
+    - If `T2`'s alignment is **not** stricter than `T1`'s, 
+      conversion back to the original type `T1` yields the original value.
+
+
+As with all cast expressions, the result is:
+- An `lvalue` if `T` is an `lvalue` reference type, or an `rvalue` reference to function type;
+- An `xvalue` if `T` is an `rvalue` reference to object type;
+- A `prvalue` otherwise. In this case, a copy is made.
+
+
+**Type Aliasing**.  
+Whenever an attempt is made to read or modify the stored value of an object of type `DynamicType` 
+through a `glvalue` of type `AliasedType`, 
+the behavior is _undefined_ unless one of the following is true:
+- `AliasedType` and `DynamicType` are _similar_. 
+  - Two types are _similar_ if, ignoring top-level cv-qualification:
+    - They are the same type;
+    - They are both pointers, and the pointed-to types are similar; 
+    - They are both pointers to member of the same class, 
+      and the types of the pointed-to members are similar; 
+    - They are both arrays of the same size or at least one of them is array of unknown bound, 
+      and the array element types are similar.
+- `AliasedType` is the (possibly cv-qualified) signed or unsigned variant of `DynamicType`. 
+- `AliasedType` is [`std::byte`](https://en.cppreference.com/w/cpp/types/byte), `char`, or `unsigned char`: 
+  this permits examination of the object representation of any object as an array of bytes. 
+
 
 #### [旧式强制类型转换](https://en.cppreference.com/w/cpp/language/explicit_cast)
 
