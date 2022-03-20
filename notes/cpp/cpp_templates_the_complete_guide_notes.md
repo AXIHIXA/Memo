@@ -68,23 +68,19 @@ Implement each template inside a header file.
 
 ##### Type Conversions During Type Deduction
 
-- During template type deduction, 
-  arguments will _decay_ **unless** they're used to initialize references. 
+- During template type deduction,
+  arguments will _decay_ **unless** they are used to initialize references. 
   - Functions and arrays decay to corresponding pointer types;
   - Arguments' reference-ness and cv-constraints are removed.
 - When deducing types for universal reference parameters,
   reference collapse may occur.
-- Automatic type conversions are limited during type deduction:
-  - When declaring call parameters by reference,
-    even trivial conversions do **not** apply to type deduction.
-    Two arguments declared with the same template parameter `T` must match exactly.
-  - When declaring call parameters by value,
-    only trivial conversions that decay are supported:
-    Qualifications with `const` or `volatile` are ignored, 
-    references convert to the referenced type, 
-    and raw arrays or functions convert to the corresponding pointer type. 
-    For two arguments declared with the same template parameter `T`, 
-    the _decayed_ types must match. 
+- Only the following implicit conversions are allowed when deducing a parameterized type: 
+  - _Qualification conversion_ (adding `cv`-qualifiers).
+    - Only bottom-level cv for reference and pointer parameter types.
+    - Regular types only have top-level cv, which is decayed.
+  - _Derived-to-base conversion_ (for regular types or pointer types),  
+    **unless** deduction occurs for a conversion operator template.
+  - If a parameterized type does **not** need to be deduced, all implicit conversions apply. 
 
 
 Three ways to handle type deduction failures dur to argument type mismatch:
@@ -13053,12 +13049,1194 @@ void g()
     f(2);  // T = int
 }
 ```
+The deduction of `T` as a reference type can have some interesting effects on the instantiation of the template. 
+For example, a local variable declared with type `T` will, after instantiation for an lvalue, 
+have reference type and will therefore require an initializer: 
+```c++
+template <typename T> 
+void f(T &&)
+{
+    T x;  // ERROR for lvalue arguments
+}
+```
+Solution:
+```c++
+template <typename T> 
+void f(T &&)
+{
+    std::remove_reference_t<T> x;  // ERROR again for array arguments...
+}
+```
+
+##### 15.6.3 Perfect Forwarding
+
+Forwarding reference parameters accept almost any argument (bit fields are an exception) 
+and captures its salient properties (both its _type_ and its _value category_). 
+```c++
+class C {};
+
+void g(C &) {}
+void g(C const &) {}
+void g(C &&) {}
+
+template <typename T>
+void forwardToG(T && x)
+{
+    g(static_cast<T &&>(x));
+}
+
+void foo()
+{
+    C v;
+    C const c;
+    
+    forwardToG(v);             // g(C &)
+    forwardToG(c);             // g(const C &)
+    forwardToG(C());           // g(C &&)
+    forwardToG(std::move(v));  // g(C &&)
+}
+```
+The use of `static_cast` within the function `forwardToG` requires some additional explanation. 
+In each instantiation of `forwardToG`, 
+the type of expression `x` could either be lvalue reference type or rvalue reference type. 
+Regardless, the value category of expression `x` will always be an lvalue.
 
 
+Treating a parameter of rvalue reference type as an lvalue is intended as a safety feature, 
+because anything with a name (like a parameter) can easily be referenced multiple times in a function. 
+If each of those references could be implicitly treated as an rvalue, 
+its value could be _destroyed_ unbeknownst to the programmer. 
+Therefore, one must explicitly state when a named entity should be treated as an rvalue. 
+For this purpose, the C++ standard library function `std::move` treats any value as an rvalue 
+(or, more precisely, an xvalue. See Appendix B for details). 
 
 
+The `static_cast` casts `x` to its original type and value category. 
+The type `T &&` will either collapse to an lvalue reference 
+(if the original argument was an lvalue causing `T` to be an lvalue reference) 
+or will be an rvalue reference (if the original argument was an rvalue), 
+so the result of the `static_cast` has the same type and value category as the original argument, 
+thereby achieving perfect forwarding. 
 
 
+The C++ standard library provides a function template `std::forward` in header `<utility>`
+that should be used in place of `static_cast` for perfect forwarding. 
+Using that utility template better documents the programmer's intent 
+than the arguably opaque `static_cast` constructs shown above 
+and prevents errors such as omitting one `&`. 
+```c++
+template <typename T>
+void forwardToG(T && x)
+{
+    g(std::forward<T>(x));
+}
+```
+Perfect forwarding is **not** “perfect” and has several failure cases.  
+Refer to [Effective Modern C++ Notes Item 30](./effective_cpp_notes_04_effective_modern_cpp.md#-item-30-familiarize-yourself-with-perfect-forwarding-failure-cases).
+- Perfect forwarding fails when template type deduction fails or when it deduces the wrong type.
+  The kinds of arguments that lead to perfect forwarding failure are:
+    - braced initializers (decreed failure, create a temp var via auto);
+    - null pointers expressed as `0` or `NULL` (deduces "wrong" type `int`, use `nullptr`);
+    - declaration-only integral const static data members (no address, not referencable, provide definition);
+    - template and overloaded function names (fails, explicitly cast to desired function pointer type);
+    - bitfields (address not aligned, not non-const referencable, create a temp copy).
+
+
+For example, it does **not** distinguish whether an lvalue is a bit-field lvalue,
+**nor** does it capture whether the expression has a specific constant value.
+The latter causes problems particularly when we’re dealing with the null pointer constant `NULL`,
+which is a value of integral type that evaluates to the constant value zero.
+Since the constant value of an expression is **not** captured by perfect forwarding,
+overload resolution in the following example will behave differently
+for the direct call to `g` than for the forwarded call to `g`:
+```c++
+void g(int);
+void g(int *);
+
+template <typename T> 
+void forwardToG(T && x)
+{
+    g(std::forward<T>(x));
+}
+
+void foo()
+{
+    g(NULL);           // g(int *) 
+    forwardToG(NULL);  // g(int) !
+}
+```
+This is yet another reason to use `nullptr` (introduced in C++11) instead of null pointer constants:
+```c++
+g(nullptr);           // g(int *) 
+forwardToG(nullptr);  // g(int *)
+```
+
+##### Perfect Forwarding for Variadic Templates
+
+```c++
+template <typename ... Ts> 
+void forwardToG(Ts && ... xs)
+{
+    g(std::forward<Ts>(xs)...);
+}
+```
+All of our examples of perfect forwarding have focused on forwarding the function arguments
+while maintaining their _precise_ type (**not** decayed!) and value categories. 
+The same problem occurs when forwarding the return value of a call to another function, 
+with precisely the same type and value category.
+```c++
+// C++11
+template <typename ... Ts>
+auto forwardToG(Ts && ... xs) -> decltype(g(std::forward<Ts>(xs)...))
+{
+    return g(std::forward<Ts>(xs)...);  // forward all xs to g()
+}
+
+// C++14
+template <typename ... Ts>
+decltype(auto) forwardToG(Ts && ... xs)
+{
+    return g(std::forward<Ts>(xs)...);  // forward all xs to g()
+}
+```
+
+##### 15.6.4 Deduction Surprises
+
+The results of the special deduction rule for rvalue references are very useful for perfect forwarding. 
+However, they can come as a surprise, because function templates typically generalize the types in the function signature
+**without** affecting what kinds of arguments (lvalue or rvalue) it allows:
+```c++
+void int_lvalues(int &);
+
+template <typename T>
+void lvalues(T &);
+
+void int_rvalues(int &&);
+
+template <typename T>
+void anything(T &&);  // SURPRISE: accepts lvalues and rvalues of any type
+```
+Programmers who are simply abstracting a concrete function like `int_rvalues` to its template equivalent 
+would likely be surprised by the fact that the function template `anything` accepts lvalues. 
+Fortunately, this deduction behavior only applies 
+when the function parameter is written specifically with the form `T &&`, 
+is part of a function template, 
+and the named template parameter is declared by that function template. 
+Therefore, this deduction rule does **not** apply in any of the following situations:
+```c++
+template <typename T>
+class X
+{
+public:
+    X(X &&);     // X is not a template parameter
+
+    X(T &&);     // this constructor is not a function template
+
+    template <typename Other>
+    X(X<U> &&);  // X<U> is not a template parameter
+
+    template <typename U>
+    X(U, T &&);  // T is a template parameter from an outer template
+}
+```
+One can use a combination of SFINAE (see Section 8.4 and Section 15.7) 
+and type traits such as `std::enable_if` (see Section 6.3 and Section 20.3) 
+to restrict the template to rvalues:
+```c++
+template <typename T>
+std::enable_if_t<!std::is_lvalue_reference_v<T>>
+rvalues(T &&) {}
+```
+
+
+#### 📌 15.7 SFINAE (Substitution Failure Is Not An Error)
+
+
+The SFINAE (Substitution Failure Is Not An Error) principle is an important aspect of template argument deduction 
+that prevents unrelated function templates from causing errors during overload resolution. 
+SFINAE also applies to the substitution of partial class template specializations (see Section 16.4). 
+```c++
+template <typename T, unsigned N>
+T * begin(T (& array)[N])
+{
+    return array;
+}
+
+template <typename Container>
+typename Container::iterator begin(Container & c)
+{
+    return c.begin();
+}
+
+int main()
+{
+    std::vector<int> v;
+    int a[10];
+    ::begin(v);  // OK: only container begin matches, because the first deduction fails
+    ::begin(a);  // OK: only array begin matches, because the second substitution fails
+}
+```
+
+##### 15.7.1 Immediate Context
+
+SFINAE protects against attempts to form invalid types or expressions, 
+including errors due to ambiguities or access control violations,
+that occur within the _immediate context_ of the function template substitution. 
+
+
+The _immediate context_ includes many things, 
+including various kinds of lookup, alias template substitutions, overload resolution, etc. 
+Arguably the term is a bit of a misnomer, 
+because some of the activities it includes are not closely tied to the function template being substituted. 
+
+
+Only the failures in the types and expressions in the _immediate context_ of:
+- The function type; 
+- Its template parameter types;
+- Its [explicit specifier](https://en.cppreference.com/w/cpp/language/explicit)
+are SFINAE errors.
+
+
+If the evaluation of a substituted type/expression causes a side effect such as 
+- Instantiation of some template specialization;
+- Generation of an implicitly-defined member function;
+- ...
+errors _in_ those side effects are treated as hard errors.
+A lambda expression is **not** considered part of the _immediate context_. 
+
+
+Specifically, the following errors are **not** covered by SFINAE (and thus result in compilation errors):
+- Anything that happens _during the instantiation_ of
+  - The definition of a class template (i.e., its "body" and list of base classes);
+  - The definition of a function template ("body" and, in the case of a constructor, its constructor-initializers);
+  - The initializer of a variable template;
+  - A default argument;
+  - A default member initializer;
+  - An exception specification;
+- Any implicit definition of special member functions triggered by the substitution process. 
+
+
+So if substituting the template parameters of a function template declaration 
+requires the _instantiation_ of the body of a class template because a member of that class is being referred to, 
+an error during that instantiation is **not** in the _immediate context_ of the function template substitution, 
+and is therefore a real error (even if another function template matches without error):
+```c++
+
+template <typename T>
+class Array
+{
+public:
+    using iterator = T *;
+};
+
+template <typename T>
+void f(Array<T>::iterator first, Array<T>::iterator last);
+
+template <typename T>
+void f(T *, T *);
+
+int main()
+{
+    f<int &>(0, 0);  // ERROR: substituting int & for T in the first function template
+}
+// Instantiation of Array<int &> fails
+// Error happens in the instantiation of Array, so not SFINAE
+```
+The main difference between a SFINAE error and a hard error and  is _where the failure occurs_.
+- Consider `typename std::enable_if<Cond>::type`. 
+  The _instantiation_ of `std::enable_if` _always succeed_. 
+  An error will happen when accessing its `type` member for an already-instantiated `std::enable_if<false>` class. 
+- In this example, the failure occurs _in_ the _instantiation_ of `Array<int &>`,
+  which actually occurs in the context of the class template `Array`,
+  although `Array` was triggered from `f`'s context. 
+  Therefore, the SFINAE principle does **not** apply, and the compiler will produce an error.   
+
+
+Here is a C++14 example relying on deduced return types (see Section 15.10.1) 
+that involves an error during the instantiation of a function template definition:
+```c++
+template <typename T> 
+auto f(T p) 
+{
+    return p->m;
+}
+
+int f(...);
+
+template <typename T> 
+auto g(T p) -> decltype(f(p));
+
+int main()
+{
+    g(42);
+}
+```
+The call `g(42)` deduces `T` to be i`n`t. 
+Making that substitution in the declaration of `g` requires us to determine the type of `f(p)`
+(where `p` is now known to be of type `int`) and therefore to determine the return type of `f`. 
+There are two candidates for `f`. 
+The non-template candidate is a match, but not a very good one because it matches with an ellipsis parameter. 
+Unfortunately, the template candidate has a deduced return type, 
+and so we must instantiate its definition to determine that return type. 
+That instantiation **fails** because `p->m` is **not** valid when `p` is an `int`, 
+and since the failure is outside the _immediate context_ of the substitution 
+(because it’s in a subsequent instantiation of a function definition), 
+the failure produces an error. 
+Because of this, we recommend avoiding deduced return types 
+if they can easily be specified explicitly.
+
+
+SFINAE was originally intended to eliminate surprising errors 
+due to unintended matches with function template overloading, 
+as with the container `begin` example. 
+However, the ability to detect an invalid expression or type enables remarkable compile-time techniques, 
+allowing one to determine whether a particular syntax is valid. 
+These techniques are discussed in Section 19.4. 
+
+
+See especially Section 19.4.4 for an example of making a type trait _SFINAE-friendly_ 
+to avoid problems due to the _immediate context_ issue. 
+
+
+#### 📌 15.8 Limitations of Deduction
+
+
+##### 15.8.1 Allowable Argument Conversions
+
+Normally, template deduction attempts to find a substitution of the function template parameters 
+that make the parameterized type `P` identical to type `A`. 
+However, when this is **not** possible, the following differences are tolerable: 
+- _Qualification conversion_ (adding `cv`-qualifiers). 
+  - Only bottom-level cv for reference and pointer parameter types. 
+  - Regular types only have top-level cv, which is decayed. 
+- _Derived-to-base conversion_ (for regular types or pointer types),  
+  **unless** deduction occurs for a conversion operator template. 
+```c++
+template <typename T>
+class B {};
+
+template <typename T>
+class D : public B<T> {};
+
+template <typename T> 
+void f(B<T> *) {}
+
+void g(D<long> dl)
+{
+    f(&dl);  // deduction succeeds with T substituted with long
+}
+```
+If `P` does **not** contain _a template parameter in a deduced context_, 
+then all implicit conversion are permissible:
+```c++
+template <typename T>
+void f(T, typename T::X) {}
+
+struct V
+{
+    struct X { X(double) {} };
+
+    V() = default;
+};
+
+// OK:
+// T is deduced to V through the first parameter,
+// which causes the second parameter to have type V::X (not deduced because already clear),
+// which can be constructed from a double value
+f(V {}, 7.0);
+```
+
+##### 15.8.2 Class Template Arguments
+
+Prior to C++17, template argument deduction applied 
+exclusively to function templates and member function templates. 
+The arguments for a class template were **not** deduced: 
+```c++
+template <typename T>
+class S
+{
+public:
+    S(T b) : a {b} {}
+
+private:
+    T a;
+};
+
+// ERROR before C++17: 
+// the class template parameter T was not deduced
+// from the constructor call argument 12
+S x(12);
+```
+
+##### 15.8.3 Default Call Arguments
+
+Default function call arguments can be specified in function templates
+just as they are in ordinary functions.
+The default function call argument can depend on a template parameter. 
+Such a dependent default argument is instantiated only if **no** explicit argument is provided:
+```c++
+template <typename T>
+void init(T * loc, T const & val = T())
+{
+    *loc = val;
+}
+
+class S
+{
+public:
+    S(int, int);
+};
+
+S s(0, 0);
+
+int main()
+{
+    // T() is invalid for T = S, 
+    // but the default call argument T() needs no instantiation
+    // because an explicit argument is given
+    init(&s, S(7, 42));
+}
+```
+Even when a default call argument is **not** dependent, 
+it can **not** be used to deduce template arguments:
+```c++
+template <typename T>
+void f (T x = 42) {}
+
+f<int>();  // OK: T = int
+f();       // ERROR: can not deduce T from default call argument
+```
+
+##### 15.8.4 Exception Specifications
+
+Exception specifications are also only instantiated when they are needed. 
+This means that they do **not** participate in template argument deduction.
+```c++
+// #1
+template <typename T>
+void f(T, int) noexcept(nonexistent(T()));
+
+// #2 (C-style vararg function)
+template <typename T>
+void f(T, ...);
+
+void test(int i)
+{
+    // ERROR: chooses #1 , but the expression nonexistent(T()) is ill-formed
+    f(i, i);
+}
+```
+The noexcept specification in function `#1` tries to call a nonexistent function. 
+Normally, such an error directly within the declaration of the function template 
+would trigger a template argument deduction failure (SFINAE), 
+allowing the call `f(i, i)` to succeed by selecting function `#2`. 
+However, because exception specifications do **not** participate in template argument deduction, 
+overload resolution selects `#1` and the program becomes ill-formed 
+when the noexcept specification is later instantiated. 
+
+
+The same rules apply to exception specifications that list the potential exception types:
+```c++
+// #1
+template <typename T>
+void g(T, int) throw(typename T::Nonexistent);
+
+// #2
+template <typename T>
+void g(T, ...);
+
+void test(int i)
+{
+    // ERROR: chooses #1, but the type T::Nonexistent is ill-formed
+    g(i, i);
+}
+```
+However, dynamic exception specifications have been deprecated since C++11 and were removed in C++17. 
+
+
+#### 📌 15.9 Explicit Function Template Arguments
+
+
+It is possible to explicitly specify it following the function template name.
+This is useful when a function template argument can **not** be deduced: 
+```c++
+template <typename T>
+void compute(T p) {}
+
+template <typename T>
+T default_value()
+{
+    return T {};
+}
+
+int main(int argc, char * argv[])
+{
+    compute<double>(2);    // 2 implicitly converted to double; 
+                           // not possible without explicit specification
+    default_value<int>();  // non-deductible
+    
+    return EXIT_SUCCESS;
+}
+```
+Once a template argument is explicitly specified, 
+its corresponding parameter is no longer subject to deduction. 
+That, allows conversions to take place on the function call parameter 
+that would **not** be possible in a deduced call. 
+In the example above, the argument `2` in the call `compute<double>(2)` 
+will be implicitly converted to `double`.
+
+
+It is possible to explicitly specify some template arguments while having others be deduced. 
+However, the explicitly specified ones are always matched left-to-right with the template parameters. 
+Therefore, parameters that can **not** be deduced (or that are likely to be specified explicitly) 
+should be specified first.
+```c++
+template <typename Out, typename In>
+Out convert(In p) { /* ... */ }
+
+int main()
+{
+    // the type of parameter p is deduced,
+    // but the return type is explicitly specified
+    auto x = convert<double>(42);
+}
+```
+It is occasionally useful to specify an empty template argument list 
+to ensure the selected function is a template instance 
+while still using deduction to determine the template arguments:
+```c++
+int f(int) {}  
+
+template <typename T>
+T f(T) {}
+
+int main()
+{
+    auto x = f(42);    // f(int)
+    auto y = f<>(42);  // f(T) [with T = int]
+}
+```
+In the context of friend function declarations,
+the presence of an explicit template argument list has an interesting effect:
+```c++
+void f();
+
+template <typename>
+void f();
+
+namespace N
+{
+
+class C
+{
+    friend int f();    // OK
+
+    friend int f<>();  // ERROR: return type conflict
+};
+
+}  // namespace N
+```
+When a plain identifier is used to name a friend function, 
+that function is only looked up within the nearest enclosing scope, 
+and if it is not found there, a new entity is _declared_ in that scope 
+(but it remains "invisible" except when looked up via ADL). 
+That is what happens with our first friend declaration above: 
+No `f` is declared within namespace `N`, and so a new `N::f` is "invisibly" declared.
+
+
+However, when the identifier naming the friend is followed by a template argument list, 
+a template must be visible through normal lookup at that point, 
+and normal lookup will go up any level of (enclosing) scopes. 
+So, our second declaration above will find the global function template `f`, 
+but the compiler will then issue an error because the return types do **not** match 
+(since no ADL is performed here, the declaration of `f` one line above is not found). 
+
+
+Explicitly specified template arguments are substituted using SFINAE principles: 
+If the substitution leads to an error in the immediate context of that substitution, 
+the function template is discarded, but other templates may still succeed:
+```c++
+template <typename T> 
+typename T::EType f() {}  // #1
+
+template <typename T> 
+T f() {}                  // #2
+
+int main() 
+{
+    auto x = f<int *>();
+}
+```
+```c++
+template <typename T> 
+void f(T) {}
+
+template <typename T> 
+void f(T, T) {}
+
+int main() 
+{
+    auto x = f<int *>;  // ERROR: Ambiguous. Two possible f<int *> here
+}
+```
+is invalid because `f<int *>` does **not** identify a single function in that case.
+
+
+Variadic function templates can also be used with explicit template arguments.
+```c++
+template <typename ... Ts>
+void f(Ts ... ps);
+
+void foo()
+{
+    f<double, double, int>(1, 2, 3);
+}
+```
+A pack can be partially explicitly specified and partially deduced.
+```c++
+template <typename ... Ts>
+void f(Ts ... ps);
+
+void foo()
+{
+    f<double, int>(1, 2, 3);
+}
+```
+
+
+#### 📌 15.10 Deduction from Initializers and Expressions
+
+
+##### 15.10.1 `auto` And `decltype`
+
+Refer to Effective Modern C++ for details.  
+
+##### Deducible Non-type Parameters
+
+Prior to C++17, non-type template arguments had to be declared with a specific type. 
+That type could be a template parameter type: 
+```c++
+// Prior to C++17
+template <typename T, T V> 
+struct S {};
+
+S<int, 42> s;
+```
+C++17 added the ability to declare non-type template parameters 
+whose actual types are deduced from the corresponding template argument:
+```c++
+template <auto V> 
+struct S {};
+
+S<42> s;
+```
+Here the type of `V` for `S<42>` is deduced to be `int` because `42` has type `int`. 
+Had we written `S<42U>` instead, the type of `V` would have been deduced to be `unsigned int`.
+
+
+Note that the general constraints on the type of non-type template parameters remain in effect:
+```c++
+S<3.14> d;  // ERROR: floating-point non-type argument not allowed
+```
+A template definition with that kind of deducible non-type parameter
+often also needs to express the actual type of the corresponding argument. 
+That is easily done using the `decltype` construct:
+```c++
+template <auto V> 
+struct Value 
+{
+    using ArgType = decltype(V);
+};
+```
+`auto` non-type template parameters are also useful 
+to parameterize templates on members of classes:
+```c++
+template <typename>
+struct PMClassT {};
+
+template <typename C, typename M>
+struct PMClassT<M C::*>
+{
+    using Type = C;
+};
+
+template <typename PM> 
+using PMClass = typename PMClassT<PM>::Type;
+
+template <auto PMD>
+class CounterHandle
+{
+public:
+    CounterHandle(PMClass<decltype(PMD)> & c) : c(c) {}
+
+    void incr() { ++(c.*PMD); }
+    
+private:
+    PMClass<decltype(PMD)> & c;
+};
+
+struct S
+{
+    int i;
+};
+
+int main()
+{
+    S s {41};
+    CounterHandle<&S::i> h(s);
+    h.incr();  // increases s.i
+    
+    return EXIT_SUCCESS;
+}
+```
+Prior to C++17, we also have to specify a pointer-member-type
+```c++
+OldCounterHandle<int S::*, &S::i>
+```
+This feature can also be used for non-type parameter packs:
+```c++
+template <auto ... VS>
+struct Values {};
+
+Values<1, 2, 3> beginning;
+Values<1, 'x', nullptr> triplet;
+```
+The triplet example shows that each non-type parameter element of the pack 
+can be deduced to a distinct type.
+
+
+If we want to force a homogeneous pack of non-type template parameters, 
+that is possible too: 
+```c++
+template <auto V1, decltype(V1) ... VRest> 
+struct HomogeneousValues {};
+```
+However, the template argument list can **not** be empty in that particular case. 
+
+##### 15.10.2 Expressing the Type of an Expression with `decltype`
+
+The `decltype` keyword allows a programmer to express the _precise_ type of an expression or declaration. 
+However, programmers should be careful about a subtle difference in what `decltype` produces, 
+depending on whether the passed argument is a declared entity or an expression:
+- If `e` is the name of an entity (such as a variable, function, enumerator, or data member) or a class member access, 
+  `decltype(e)` yields the declared type of that entity or the denoted class member.
+- Otherwise, if `e` is any other expression, 
+  `decltype(e)` produces a type that reflects the type and value category of that expression as follows:
+  - If `e` is an `lvalue` of type `T`, `decltype(e)` produces `T &`.
+  - If `e` is an `xvalue` of type `T`, `decltype(e)` produces `T &&`.
+  - If `e` is a `prvalue` of type `T`, `decltype(e)` produces `T`.
+```c++
+void g(std::string && s)
+{
+    // check the type of s: 
+    std::is_lvalue_reference_v<decltype(s)>;        // false
+    std::is_rvalue_reference_v<decltype(s)>;        // true
+    std::is_same_v<decltype(s), std::string &>;     // false
+    std::is_same_v<decltype(s), std::string &&>;    // true
+
+    // check the value category of s used as expression: 
+    std::is_lvalue_reference_v<decltype((s))>;      // true
+    std::is_rvalue_reference_v<decltype((s))>;      // false
+    std::is_same_v<decltype((s)), std::string &>;   // true
+    std::is_same_v<decltype((s)), std::string &&>;  // false
+}
+```
+
+##### 15.10.3 `decltype(auto)`
+
+Since C++17, `decltype(auto)` can also be used for deducible non-type parameters. 
+```c++
+template <decltype(auto) Val> 
+class S {};
+
+constexpr int c = 42;
+extern int v = 42;
+
+S<c> sc;    // #1 produces S<42>
+S<(v)> sv;  // #2 produces S<static_cast<int &>(v)>
+```
+`decltype` as call parameter is non-deduced context:
+```c++
+template <auto V> 
+int f(decltype(V) p) {}
+
+int r1 = f<42>(42);  // OK
+int r2 = f(42);      // ERROR: decltype(V) is a non-deduced context
+```
+In this case, `decltype(V)` is a non-deduced context: 
+There is **no** unique value of `V` that matches the argument `42` 
+(e.g., `decltype(7)` produces the same type as `decltype(42)`). 
+Therefore, the non-type template parameter must be specified explicitly to be able to call this function. 
+
+##### 15.10.4 Special Situations for `auto` Deduction
+
+`auto` with initializer list:
+```c++
+template <typename T>
+void deduceT (T) {}
+
+deduceT({2, 3, 4});  // ERROR
+deduceT({1});        // ERROR
+```
+```c++
+template <typename T>
+void deduceInitList(std::initializer_list<T>);
+
+deduceInitList({2, 3, 5, 7});  // OK: T deduced as int
+```
+Copy-initializing an `auto` variable with an initializer list 
+is therefore defined in terms of that more specific parameter:
+```c++
+auto primes = {2, 3, 5, 7};  // OK: primes is std::initializer_list<int>
+deduceT(primes);             // OK: T deduced as std::initializer_list<int>
+```
+Before C++17, the corresponding direct-initialization of `auto` variables was also handled that way, 
+but this was changed in C++17 to better match the behavior expected by most programmers:
+```c++
+auto oops {0, 8, 15};  // ERROR in C++17
+auto val {2};          // OK: val has type int in C++17
+```
+Prior to C++17, both initializations were valid, 
+initializing both `oops` and `val` of type `initializer_list<int>`. 
+
+
+It is invalid to return a braced initializer list for a function with a _deducible placeholder type_:
+```c++
+auto subtleError() 
+{
+    return {1, 2, 3};
+}
+```
+That is because an initializer list in function scope 
+is an object that _points to_ an underlying stack array object
+(that expires when the function returns). 
+Allowing the construct would thus encourage what is in effect a _dangling reference_.
+
+
+Another special situation occurs when multiple variable declarations share the same `auto`:
+```c++
+auto first = container.begin(), last = container.end();
+```
+In such cases, deduction is performed independently for each declaration. 
+In other words, there is an invented template type parameter `T1` for first 
+and another invented template type parameter `T2` for last. 
+Only if both deductions succeed, and the deductions for `T1` and `T2` are the same type, 
+are the declarations well-formed. This can produce some interesting cases: 
+```c++
+char c;
+auto * cp = &c, d = c;  // OK
+auto e = c, f = c + 1;  // ERROR
+```
+A somewhat parallel special situation can also occur with placeholders for deduced return types.
+```c++
+auto f(bool b) 
+{
+    if (b) 
+    {
+        return 42.0;  // deduces return type double
+    }
+    else 
+    {
+        return 0;     // deduces return type double
+    }
+}
+```
+If the returned expression calls the function recursively, 
+deduction can **not** occur and the program is invalid 
+unless a prior deduction already determined the return type: 
+```c++
+auto f(int n)
+{
+    if (n > 1)
+    {
+        return n * f(n - 1);  // ERROR: type of f(n-1) unknown
+    }
+    else
+    {
+        return 1;
+    }
+}
+```
+but the following otherwise equivalent code is fine:
+```c++
+auto f(int n)
+{
+    if (n <= 1)
+    {
+        return 1;             // return type is deduced to be int
+    }
+    else
+    {
+        return n * f(n - 1);  // OK: type of f(n-1) is int and so istype of n*f(n-1)
+    }
+}
+```
+Deduced return types have another special case with no counterpart
+in deduced variable types or deduced non-type parameter types:
+```c++
+auto f1() {}           // OK: return type is void
+auto f2() { return; }  // OK: return type is void
+```
+However, if the return type pattern can **not** match `void`, such cases are invalid:
+```c++
+auto * f3() {}         //ERROR: auto * can not deduce as void
+```
+Any use of a function template with a deduced return type 
+requires the _immediate instantiation of that template_ 
+to determine the return type with certainty. 
+This instantiation is **not** in the _immediate context of the function call_ 
+and is thus **not** covered by SFINAE: 
+```c++
+template <typename T, typename U>
+auto addA(T t, U u) -> decltype(t + u)
+{
+    return t + u;
+}
+
+void addA(...) {}
+
+template <typename T, typename U>
+auto addB(T t, U u) -> decltype(auto)
+{
+    return t + u;
+}
+
+void addB(...) {}
+
+struct X {};
+
+// OK: AddResultA is void
+using AddResultA = decltype(addA(X(), X()));
+
+// ERROR: 
+// Instantiation of addB<X, X> is ill-formed because there is no operator+(const X &, const X &). 
+// This error is NOT covered by SFINAE so results in compiling error (even though there is another match)! 
+using AddResultB = decltype(addB(X(), X()));
+```
+Here, the use of `decltype(auto)` rather than `decltype(t + u)` for `addB` 
+causes an error during overload resolution: 
+The function body of the `addB` template must be fully instantiated to determine its return type. 
+That instantiation **isn’t** in the immediate context of the call to `addB`, 
+and therefore **doesn’t** fall under the SFINAE filter but results in an outright error. 
+
+
+Deduced return types should be used with care, 
+that they **shouldn’t** be called in the signatures 
+of other function templates that would count on SFINAE properties. 
+
+##### 15.10.5 Structured Bindings
+
+Syntactically, a structured binding must always have an `auto` type 
+optionally extended by `cv` qualifiers, `&` or `&&`, 
+but **not** a `*` pointer declarator or some other declarator construct. 
+It is followed by a bracketed list containing at least one identifier. 
+That in turn has to be followed by an initializer.
+
+
+Three different kinds of entities can initialize a structured binding:
+1. **Simple class type, where all the non-static data members are public**. 
+   - All the nonstatic data members have to be public 
+     (either all directly in the class itself 
+     or all in the same unambiguous public base class. 
+     No anonymous unions may be involved). 
+   - The number of bracketed identifiers must equal the number of members.  
+   - Using one of these identifiers within the scope of the structured bindings 
+     amounts to using the corresponding member of the object, 
+     with all the associated properties. 
+     - E.g., if the corresponding member is a bit field, it is invalid to take its address. 
+2. **Arrays**. 
+   - The bracketed initializers are just shorthand for the corresponding elements of the unnamed array variable. 
+   - The number of array elements must equal the number of bracketed initializers. 
+   ```c++
+   double pt[3];
+   auto & [x, y, z] = pt;
+   x = 3.0; y = 4.0; z = 0.0;
+   ```
+   ```c++
+   auto f() -> int (&)[2]; 
+   auto [x, y] = f();       // #1
+   auto & [r, s] = f();     // #2
+   ```
+   Line `#1` is special: 
+   Ordinarily, the entity `e` would be deduced like this:
+   ```c++
+   auto e = f();
+   ```
+   However, that would deduce the _decayed_ pointer to the array, 
+   which is **not** what happens when performing the structured binding of an array. 
+   Instead, `e` is deduced to be a variable of type corresponding to the type of the initializer. 
+   Then that array is _copied_ from the initializer, element by element: 
+   That is a somewhat unusual concept for built-in arrays. 
+   The other two places where built-in arrays are copied are lambda captures and generated copy constructors.
+   Finally, `x` and `y` become aliases for the expressions `e[0]` and `e[1]`, respectively.   
+   Line `#2`, does **not** involve array copying and follows the usual rules for `auto`. 
+   So the hypothetical `e` is declared as follows:
+   ```c++
+   auto & e = f();
+   ```
+   which yields a reference to an array, 
+   and `x` and `y` again become aliases for the expressions `e[0]` and `e[1]`.
+3. **`std::tuple`-like classes**. 
+   - Decomposed through a template-based protocol using `get`. 
+   - Let `E` be `std::remove_reference_t<decltype((e))>` with `e` declared as above. 
+     If the expression `std::tuple_size<E>::value` is a valid integral constant expression, 
+     it must equal the number of bracketed identifiers. 
+   - Denote the bracketed identifiers by `n0`, `n1`, `n2`, and so forth. 
+     - If `e` has any member named `get`, then the behavior is as if these identifiers are declared as:
+       - If `e` was deduced to have a reference type
+       ```c++
+       std::tuple_element<i, E>::type & ni = e.get<i>();
+       ```
+       - Otherwise
+       ```c++
+       std::tuple_element<i, E>::type && ni = e.get<i>();
+       ```
+     - If `e` has **no** member `get`, then the corresponding declarations become one of the following:
+     ```c++
+     std::tuple_element<i, E>::type & ni = get<i>(e);
+     std::tuple_element<i, E>::type && ni = get<i>(e);
+     ```
+     where `get` is only looked up in associated classes and namespaces. 
+     (In all cases, `get` is assumed to be a template and therefore the `<` follows is an angle bracket.)
+   - The `std::tuple`, `std::pair`, and `std::array` templates all implement this protocol
+   ```c++
+   std::tuple<bool, int> bi{true, 42};
+   auto [b, i] = bi;
+   int r = i;
+   // initializes r to 42
+   ```
+However, it is not difficult to add specializations of `std::tuple_size`, `std::tuple_element`, 
+and a function template or member function template `get` 
+that will make this mechanism work for an arbitrary class or enumeration type:
+```c++
+enum M {};
+
+template <>
+class std::tuple_size<M>
+{
+public:
+    // map M to a pair of values
+    static unsigned const value = 2; 
+};
+
+template <>
+class std::tuple_element<0, M>
+{
+public:
+    // the first value will have type int
+    using type = int;
+    
+};
+
+template <>
+class std::tuple_element<1, M>
+{
+public:
+    // the second value will have type double
+    using type = double;
+};
+
+template <int>
+auto get(M);
+
+template <>
+auto get<0>(M)
+{
+    return 42;
+}
+
+template <>
+auto get<1>(M)
+{
+    return 7.0;
+}
+
+// as if: int && i = 42; double && d = 7.0;
+auto [i, d] = M(); 
+```
+In addition, note that the third case above (using the tuple-like protocol) 
+performs an actual initialization of the bracketed initializers 
+and the bindings are actual reference variables. 
+They are **not** just aliases for another expression 
+(unlike the first two cases using simple class types and arrays). 
+
+
+That’s of interest because that reference initialization could go wrong. 
+For example, it might throw an exception, and that exception is now unavoidable. 
+
+##### 15.10.6 Generic Lambdas
+
+Within templates, lambdas can become fairly verbose
+due to the need to spell out the parameter and result types. 
+```c++
+// C++11
+template <typename Iter>
+Iter findNegative(Iter first, Iter last)
+{
+    return std::find_if(first, last, [](typename std::iterator_traits<Iter>::value_type value)
+    {
+        return value < 0;
+    });
+}
+
+// C++14
+template <typename Iter>
+Iter findNegative(Iter first, Iter last)
+{
+    return std::find_if(first, last, [](auto value)
+    {
+        return value < 0;
+    });
+}
+```
+An `auto` in a parameter of a lambda is handled similarly to 
+an `auto` in the type of a variable with an initializer: 
+It is replaced by an invented template type parameter `T`. 
+
+
+However, unlike in the variable case, the deduction **isn’t** performed immediately
+because the argument **isn’t** known at the time the lambda is created. 
+Instead, the lambda itself becomes generic (if it wasn’t already), 
+and the invented template type parameter is added to its template parameter list. 
+Thus, the lambda above can be invoked with any argument type, 
+so long as that argument type supports the `< 0` operation whose result is convertible to `bool`. 
+For example, this lambda could be called with either an `int` or a `float` value.
+
+
+Given the lambda
+```c++
+[] (int i) 
+{
+    return i < 0;
+}
+```
+the C++ compiler translates this expression into an instance of a newly invented class specific to this lambda. 
+This instance is called a _closure_ or _closure object_, and the class is called a _closure type_. 
+The closure type has a function call operator, and hence the closure is a function object.
+This translation model of lambdas is actually used in the specification of the C++ language, 
+making it both a convenient and an accurate description of the semantics. 
+Captured variables become data members, 
+the conversion of a non-capturing lambda to a function pointer is modeled 
+as a conversion function in the class, and so on. 
+And because lambdas are function objects, 
+whenever rules for function objects are defined, they also apply to lambdas. 
+
+
+For this lambda, the closure type would look something like the following 
+(leaving out the conversion function to a pointer-to-function value):
+```c++
+class SomeCompilerSpecificNameX
+{
+public:
+    // only callable by the compiler
+    SomeCompilerSpecificNameX(); 
+    
+    bool operator()(int i) const
+    {
+        return i < 0;
+    }
+};
+```
 
 
 
@@ -13072,59 +14250,10 @@ void g()
 
 
 
-2 
-3 
-4 Reference collapsing was introduced into the C++ 2003 standard when it was
-noted that the standard pair class template would not work with reference types.
-The 2011 standard extended reference collapsing further by incorporating rules for
-rvalue references.5
-Bit fields are an exception.
-Treating a parameter of rvalue reference type as an lvalue is intended as a safety
-feature, because anything with a name (like a parameter) can easily be referenced
-multiple times in a function. If each of those references could be implicitly treated
-as an rvalue, its value could be destroyed unbeknownst to the programmer.
-Therefore, one must explicitly state when a named entity should be treated as an
-rvalue. For this purpose, the C++ standard library function std::move treats any
-value as an rvalue (or, more precisely, an xvalue; see Appendix B for details).
-7 SFINAE also applies to the substitution of partial class template specializations.
-See Section 16.4 on page 347.
-8 The immediate context includes many things, including various kinds of lookup,
-alias template substitutions, overload resolution, etc. Arguably the term is a bit of
-a misnomer, because some of the activities it includes are not closely tied to the
-function template being substituted.
-9 Although C++14 introduced deduced return types in general, they were already
-available to C++11 lambdas using a specification that was not worded in terms of
-deduction. In C++14, that specification was updated to use the general auto
-deduction mechanism (from a programmer's point of view, there is no difference).
-10 The same technique can be used to extract the associated member type: Instead of
-using Type = C; use using Type = M;.
-11 As mentioned elsewhere, treating a parameter of rvalue reference type as an
-lvalue rather than an xvalue is intended as a safety feature, because anything with
-a name (like a parameter) can easily be referenced multiple times in a function. If
-it were an xvalue, its first use might cause its value to be “moved away,” causing
-surprising behavior for every subsequent use. See Section 6.1 on page 91 and
-Section 15.6.3 on page 280.
-12 When we used the latter formulation in our introductory example of auto, we
-implicitly assumed that the iterators produced references to some underlying
-storage. While this is generally true for container iterator (and required by the
-standard containers other than vector<bool>), it is not the case for all
-iterators.
-13 This example does not use our usual style for placing the * immediately adjacent
-to the auto, because it could mislead the reader into thinking we are declaring
-two pointers. On the other hand, the opacity of these declarations is a good
-argument for being conservative when declaring multiple entities in a single
-declaration.
-14 The term structured bindings was used in the original proposal for the feature and
-was also eventually used for the formal specification in the language. Briefly,
-6however, that specification used the term decomposition declarations instead.
-15 The other two places where built-in arrays are copied are lambda captures and
-generated copy constructors.
-16 This translation model of lambdas is actually used in the specification of the C++
-language, making it both a convenient and an accurate description of the
-semantics. Captured variables become data members, the conversion of a
-noncapturing lambda to a function pointer is modeled as a conversion function in
-the class, and so on. And because lambdas are function objects, whenever rules
-for function objects are defined, they also apply to lambdas.
+
+
+15 
+16 
 17 Note the distinction between a placeholder type, which is auto or
 decltype(auto) and can resolve to any kind of type, and a placeholder class
 type, which is a template name and can only resolve to a class type that is an

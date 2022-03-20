@@ -1072,7 +1072,7 @@ Class::Class() : member(args, ...) { ... }                    (6)
 
 #### [拷贝初始化](https://en.cppreference.com/w/cpp/language/copy_initialization)
 
-- 从 *另一对象* 初始化对象
+- 从 *另一对象* 初始化对象，但只考虑非`explicit`构造函数
 ```
 T object = other;                                             (1)     
 T object = {other} ;                                          (2)

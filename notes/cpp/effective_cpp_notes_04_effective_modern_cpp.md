@@ -19,41 +19,19 @@
 
 ### 📌 Item 1: Understand template type deduction
 
-- Decay 
-  - A concept inherited from C, done in the following steps: 
-    1. Remove reference; 
-    2. Branch: 
-       1. Not array, not function: remove cv;
-       2. Array: decay to pointer to its first element;
-       3. Function: decay to pointer to the function. 
-- During template type deduction, 
-  arguments will _decay_ **unless** they're used to initialize references. 
+- During template type deduction,
+  arguments will _decay_ **unless** they are used to initialize references. 
   - Functions and arrays decay to corresponding pointer types;
   - Arguments' reference-ness and cv-constraints are removed.
 - When deducing types for universal reference parameters,
   reference collapse may occur.
-- Automatic type conversions are limited during type deduction:
-  - When declaring call parameters by reference,
-    even trivial conversions do **not** apply to type deduction.
-    Two arguments declared with the same template parameter `T` must match exactly.
-  - When declaring call parameters by value,
-    only trivial conversions that decay are supported:
-    Qualifications with `const` or `volatile` are ignored, 
-    references convert to the referenced type, 
-    and raw arrays or functions convert to the corresponding pointer type. 
-    For two arguments declared with the same template parameter `T`, 
-    the _decayed_ types must match. 
-- Automatic type conversions are limited during type deduction:
-  - When declaring call parameters by reference,
-    even trivial conversions do not apply to type deduction.
-    Two arguments declared with the same template parameter `T` must match exactly.
-  - When declaring call parameters by value,
-    only trivial conversions that decay are supported:
-    Qualifications with `const` or `volatile` are ignored,
-    references convert to the referenced type,
-    and raw arrays or functions convert to the corresponding pointer type.
-    For two arguments declared with the same template parameter `T`,
-    the _decayed_ types must match.
+- Only the following implicit conversions are allowed when deducing a parameterized type: 
+  - _Qualification conversion_ (adding `cv`-qualifiers).
+    - Only bottom-level cv for reference and pointer parameter types.
+    - Regular types only have top-level cv, which is decayed.
+  - _Derived-to-base conversion_ (for regular types or pointer types),  
+    **unless** deduction occurs for a conversion operator template.
+  - If a parameterized type does **not** need to be deduced, all implicit conversions apply. 
 
 
 If you’re willing to overlook a pinch of pseudocode, we can think of a function template as looking like this:
