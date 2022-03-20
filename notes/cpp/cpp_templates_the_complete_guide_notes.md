@@ -14203,28 +14203,18 @@ so long as that argument type supports the `< 0` operation whose result is conve
 For example, this lambda could be called with either an `int` or a `float` value.
 
 
-Given the lambda
+C++ compiler translates a lambda expression into a _closure_ or _closure object_, 
+and the class is called a _closure type_.
+The closure type has a function call operator, 
+and hence the closure is a function object.
 ```c++
 [] (int i) 
 {
     return i < 0;
 }
 ```
-the C++ compiler translates this expression into an instance of a newly invented class specific to this lambda. 
-This instance is called a _closure_ or _closure object_, and the class is called a _closure type_. 
-The closure type has a function call operator, and hence the closure is a function object.
-This translation model of lambdas is actually used in the specification of the C++ language, 
-making it both a convenient and an accurate description of the semantics. 
-Captured variables become data members, 
-the conversion of a non-capturing lambda to a function pointer is modeled 
-as a conversion function in the class, and so on. 
-And because lambdas are function objects, 
-whenever rules for function objects are defined, they also apply to lambdas. 
-
-
-For this lambda, the closure type would look something like the following 
-(leaving out the conversion function to a pointer-to-function value):
 ```c++
+// leaving out the conversion function to a pointer-to-function value
 class SomeCompilerSpecificNameX
 {
 public:
@@ -14238,31 +14228,627 @@ public:
 };
 ```
 
+This translation model of lambdas is actually used in the specification of the C++ language, 
+making it both a convenient and an accurate description of the semantics. 
+Captured variables become data members, 
+the conversion of a non-capturing lambda to a function pointer is modeled 
+as a conversion function in the class, and so on. 
+
+
+Because lambdas are function objects, 
+whenever rules for function objects are defined, they also apply to lambdas.
+E.g., if you check the type category for a lambda, `std::is_class` will yield `true`. 
+
+
+If the lambda were to capture local variables,
+those captures would be modeled as initializing members of the associated class type:
+```c++
+int x, y;
+
+[x, y](int i) 
+{
+    return x < i && i < y;
+}
+```
+```c++
+class SomeCompilerSpecificNameY
+{
+public:
+    // only callable by compiler
+    SomeCompilerSpecificNameY(int x, int y) : _x(x), _y(y) {}
+
+    bool operator()(int i) const
+    {
+        return i > _x && i < _y;
+    }
+
+private:
+    int _x, _y;
+};
+```
+For a generic lambda, the function call operator becomes a member function template: 
+```c++
+[] (auto i) 
+{
+    return i < 0;
+}
+```
+```c++
+class SomeCompilerSpecificNameZ
+{
+public:
+    // only callable by compiler
+    SomeCompilerSpecificNameZ() = default;
+    
+    template <typename T>
+    auto operator()(T i) const
+    {
+        return i < 0;
+    }
+};
+```
+The member function template is instantiated when the closure is invoked, 
+which is usually **not** at the point where the lambda expression appears:
+```c++
+template <typename F, typename ... Ts>
+void invoke(F f, Ts ... ps)
+{
+    f(ps...);
+}
+
+int main()
+{
+    invoke([](auto x, auto y)
+           {
+               std::cout << x + y << '\n';
+           },
+           21, 21);
+}
+```
+Here the lambda expression appears in `main`, and that’s where an associated closure is created. 
+However, the call operator of the closure **isn’t** instantiated at that point. 
+Instead, the `invoke` function template is instantiated with the closure type
+as the first parameter type and `int` (the type of `21`) as a second and third parameter type. 
+That instantiation of invoke is called with a _copy_ of the closure 
+(which is still a closure associated with the original lambda), 
+and it instantiates the `operator()` template of the closure to satisfy the instantiated call `f(ps...)`. 
+
+
+#### 📌 15.11 Alias Templates
+
+
+Alias templates are transparent with respect to deduction.
+That means that wherever an alias template appears with some template arguments, 
+that alias’s definition (i.e., the type to the right of the `=`) is substituted with the arguments, 
+and the resulting pattern is what is used for the deduction.
+They can be used to clarify and simplify code, but have **no** effect on how deduction operates.
+```c++
+template <typename T, typename Cont>
+class Stack {};
+
+template <typename T>
+using DequeStack = Stack<T, std::deque<T>>;
+
+template <typename T, typename Cont>
+void f1(Stack<T, Cont>) {}
+
+template <typename T>
+void f2(DequeStack<T>) {}
+
+template <typename T>
+void f3(Stack<T, std::deque<T>>) {}
+
+void test(DequeStack<int> intStack)
+{
+    f1(intStack);  // OK: T deduced to int, Cont deduced to std::deque<int>
+    f2(intStack);  // OK: T deduced to int
+    f3(intStack);  // OK: T deduced to int
+}
+```
+For the purposes of template argument deduction, template aliases are transparent: 
+They can be used to clarify and simplify code but have **no** effect on how deduction operates. 
+Note that this is possible because alias templates can **not** be specialized 
+(see Chapter 16 for details on the topic of template specialization). 
+Suppose the following were possible:
+```c++
+template <typename T> 
+using A = T;
+
+template <> 
+using A<int> = void;  // ERROR, but suppose it were possible...
+```
+Then we would **not** be able to match `A<T>` against type `void` and conclude that `T` must be `void`
+because both `A<int>` and `A<void>` are equivalent to `void`. 
+The fact that this is **not** possible guarantees that 
+each use of an alias can be generically expanded according to its definition, 
+which allows it to be transparent for deduction.
+
+
+#### 📌 15.12 Class Template Argument Deduction
+
+
+C++17 introduces a new kind of deduction: 
+Deducing the template parameters of a class type 
+from the arguments specified in an initializer of a variable declaration 
+or a functional-notation type conversion:
+```c++
+template <typename T1, typename T2, typename T3 = T2>
+class C
+{
+public:
+    // constructor for 0, 1, 2, or 3 arguments:
+    C(T1 x = T1 {}, T2 y = T2 {}, T3 z = T3 {});
+};
+
+C c1(22, 44.3, "hi");  // OK in C++17: T1 is int, T2 is double, T3 is char const *
+C c2(22, 44.3);        // OK in C++17: T1 is int, T2 and T3 are double
+C c3("hi", "guy");     // OK in C++17: T1, T2, and T3 are char const *
+C c4;                  // ERROR: T1 and T2 are undefined
+C c5("hi");            // ERROR: T2 is undefined
+```
+Note that _all_ parameters must be determined by the deduction process or from default arguments. 
+It is **not** possible to explicitly specify a few arguments and deduce others:
+```c++
+C<std::string> c10("hi","my", 42);           // ERROR: only T1 explicitly specified, T2 not deduced
+C<> c11(22, 44.3, 42);                       // ERROR: neither T1 nor T2 explicitly specified
+C<std::string, std::string> c12("hi","my");  // OK: T1 and T2 are deduced, T3 has default
+```
+
+##### 15.12.1 Deduction Guides
+
+```c++
+template <typename T>
+class S
+{
+public:
+    S(T b) : a {b} {}
+
+private:
+    T a;
+};
+
+template <typename T>
+S(T) -> S<T>;     // deduction guide
+
+S x {12};         // OK since C++17, same as: S<int> x {12};
+S y(12);          // OK since C++17, same as: S<int> y(12);
+auto z = S {12};  // OK since C++17, same as: auto z = S<int> {12};
+```
+Note in particular the addition of a new template-like construct called a _deduction guide_. 
+It looks a little like a function template, 
+but it differs syntactically from a function template in a few ways: 
+- The part that looks like a trailing return type can **not** be written as a traditional return type. 
+  We call the type it designates (`S<T>` in our example) as the _guided type_. 
+- There is **no** leading `auto` keyword to indicate that a trailing return type follows. 
+- The name of a deduction guide must be the unqualified name of a class template declared earlier in the same scope. 
+- The guided type of the guide must be a `template-id` whose template name corresponds to the guide name. 
+- It can be declared with the `explicit` specifier.
+
+
+In the declaration `S x(12);` the specifier `S` is called a _placeholder class type_.
+Note the distinction between a _placeholder type_, 
+which is `auto` or `decltype(auto)` and can resolve to any kind of type. 
+A _placeholder class type_, 
+which is a template name and can only resolve to a class type 
+that is an instance of the indicated template.
+
+
+When such a placeholder is used, the name of the variable being declared
+must follow immediately and that in turn must be followed by an initializer: 
+```c++
+S * p = &x;  // ERROR: syntax not permitted
+```
+With the guide as written in the example, 
+the declaration `S x(12);` deduces the type of the variable 
+by treating the deduction guides associated with class `S` as an overload set 
+and attempting overload resolution with the initializer against that overload set. 
+In this case, the set has only one guide in it, 
+and it successfully deduces `T` to be `int` and the guide’s guided type to be `S<int>`. 
+That guided type is therefore selected as the type of the declaration.
+
+
+As with ordinary function template deduction, 
+SFINAE could apply if, for example, substituting the deduced arguments in the guided type failed.
+That is not the case in this simple example.
+
+
+Note that in the case of multiple declarators following a class template name requiring deduction, 
+the initializer for each of those declarators has to produce the same type:
+```c++
+S s1(1), s2(2.0);  // ERROR: deduces S both as S<int> and S<double>
+```
+This is similar to the constraints when deducing the C++11 placeholder type `auto`. 
+
+
+In the previous example, there is an implicit connection 
+between the deduction guide we declared and the constructor `S(T b)` declared in class `S`. 
+However, such a connection is **not** required, 
+which means that deduction guides can be used with aggregate class templates:
+```c++
+template <typename T>
+struct A
+{
+    T val;
+};
+
+template <typename T> 
+A(T) -> A<T>;  // deduction guide
+```
+**Without** the deduction guide, we are _always required_ (even in C++17) to specify explicit template arguments. 
+```c++
+A<int> a1 {42};    // OK
+A<int> a2(42);     // ERROR: not aggregate initialization
+A<int> a3 = {42};  // OK
+
+A a4 = {42};       // OK
+A a5(42);          // ERROR: not aggregate initialization
+A a6 = 42;         // ERROR: not aggregate initialization
+```
+
+##### 15.12.2 Implicit Deduction Guides
+
+Quite often, a deduction guide is desirable for every constructor in a class template. 
+There is thus an _implicit_ mechanism for the deduction. 
+It is equivalent to introducing for every _constructor_ 
+and _constructor template of the primary class template_ 
+an implicit deduction guide as follows.
+(Chapter 16 introduces the ability to “specialize” class templates in various ways.
+Such specializations do **not** participate in class template argument deduction.)
+- The template parameter list for the implicit guide 
+  consists of the template parameters for the class template. 
+  - In the constructor template case, 
+    it is followed by the template parameters of the constructor template. 
+    The template parameters from the constructor template retain any default arguments. 
+- The "function-like" parameters of the guide 
+  are copied from the constructor or constructor template. 
+- The guided type of the guide is the name of the template 
+  with arguments that are the template parameters taken from the class template.
+```c++
+template <typename T>
+class S
+{
+public:
+    S(T b) : a {b} {}
+
+private:
+    T a;
+};
+
+// implicitly defined deduction guide from constructors:
+// template <typename T>
+// S(T b) -> S<T>;
+```
+The template parameter list is typename `T`, 
+the function-like parameter list becomes just `(T b)`, 
+and the guided type is then `S<T>`. 
+Thus, we obtain a guide that’s equivalent to the user-declared guide we wrote earlier: 
+That guide was therefore **not** required to achieve our desired effect! 
+That is, with just the simple class template as originally written (and **no** deduction guide), 
+we can validly write `S x(12);` with the expected result that `x` has type `S<int>`.
+
+
+Deduction guides have an unfortunate ambiguity: 
+```c++
+S s1 {12};  // s1 has type S<int>
+S x {s1};
+S y(s1);
+```
+We already saw that `s1` has type `S<int>`, but what should the type of `x` and `y` be?
+The two types that arise intuitively are `S<S<int>>` and `S<int>`. 
+The C++ standard determines controversially that it should be `S<int>` in both cases. 
+Why is this controversial? Consider a similar example with a `std::vector` type:
+```c++
+std::vector v {1, 2, 3};  // std::vector<int>
+std::vector w2 {v, v};    // std::vector<std::vector<int>>
+std::vector w1 {v};       // std::vector<int>!
+```
+In other words, a braced initializer with one element 
+deduces differently from a braced initializer with multiple elements. 
+Often, the one-element outcome is what is desired, but the inconsistency is somewhat subtle. 
+In generic code, however, it is easy to miss the subtlety:
+```c++
+template <typename T, typename ... Ts>
+auto f(T p, Ts ... ps)
+{
+    std::vector v {p, ps...};  // type depends on pack length!
+}
+```
+Here it is easy to forget that if `T` is deduced to be a vector type, 
+the type of `v` will be _fundamentally different_ depending on whether `ps` is an empty pack. 
+
+
+The addition of implicit template guides themselves was **not** without controversy. 
+The main argument against their inclusion is that the feature automatically adds interfaces to existing libraries. 
+To understand this, consider once more our simple class template `S` above. 
+Its definition has been valid since templates were introduced in C++. 
+Suppose, however, that the author of `S` expands library causing `S` to be defined in a more elaborate way: 
+```c++
+template <typename T>
+struct ValueArg
+{
+    using Type = T;
+};
+
+template <typename T>
+class S
+{
+public:
+    using ArgType = typename ValueArg<T>::Type;
+
+    S(ArgType b) : a {b} {}
+    
+private:
+    T a;
+};
+```
+Prior to C++17, transformations like these (which are **not** uncommon) did **not** affect existing code. 
+However, in C++17 they disable implicit deduction guides. 
+To see this, let’s write a deduction guide corresponding to the one 
+produced by the implicit deduction guide construction process outlined above: 
+The template parameter list and the guided type are unchanged, 
+but the function-like parameter is now `typename ValueArg<T>::Type`:
+```c++
+// before: ok
+template <typename T>
+S(T b) -> S<T>;
+
+// after: non-deduced context!
+template <typename T>
+S(typename ValueArg<T>::Type) -> S<T>;
+```
+Recall from Section 15.2 that a name qualifier like `ValueArg<T>::` is **not** a deduced context. 
+So a deduction guide of this form is useless and will **not** resolve a declaration like `S x(12);`. 
+In other words, a library writer performing this kind of transformation is likely to break client code in C++17. 
+
+
+What is a library writer to do given that situation? 
+Our advice is to carefully consider for each constructor 
+whether you want to offer it as a source for an implicit deduction guide 
+for the remainder of the library’s lifetime. 
+If **not**, replace each instance of a deducible constructor parameter of type `X` 
+by something like `typename ValueArg<X>::Type`. 
+There is unfortunately no simpler way to “opt out” of implicit deduction guides.
+(P.S. Hope we could have `= delete;` specifier for deduction guides in the future.)
+
+
+#### 📌 15.12.3 Other Subtleties
+
+##### Class Template Argument Deduction Disabled for Injected Class Names
+
+In order to maintain backward compatibility,
+class template argument deduction is **disabled**
+if the name of the template is an _injected class name_. 
+```c++
+template <typename T>
+struct X
+{
+    template <typename Iter>
+    X(Iter b, Iter e) {}
+
+    template <typename Iter>
+    auto f(Iter b, Iter e)
+    {
+        return X(b, e);  // What is this?
+    }
+};
+```
+This code is valid C++14: 
+The `X` in `X(b, e)` is the injected class name and is equivalent to `X<T>` in this context (see Section 13.2.3). 
+The rules for class template argument deduction, however, would naturally make that `X` equivalent to `X<Iter>`. 
+Thus class template argument deduction is **disabled** in such cases. 
+
+##### Implicit Deduction Guides Disabled for Forwarding References of Class Template Parameters
+
+```c++
+template <typename T>
+struct Y
+{
+    Y(T const &);
+
+    Y(T &&);
+};
+
+void g(std::string s)
+{
+    Y y = s;
+}
+```
+Clearly, the intent here is that we deduce `T` to be `std::string` 
+through the implicit deduction guide associated with the copy constructor.
+However, that would **not** happen:
+```c++
+template <typename T>
+Y(T const &) -> Y(T);  // #1, implicitly defined by compiler
+
+template <typename T>
+Y(T &&) -> Y(T);       // #2, implicitly defined by compiler
+```
+Forwarding reference `T &&` behaves specially during template argument deduction: 
+It causes `T` to be deduced to a _reference type_ if the corresponding call argument is an `lvalue`. 
+
+
+In our example above, the argument in the deduction process is the expression `s`, which is an `lvalue`.
+Implicit guide `#1` deduces `T` to be `std::string` 
+but requires the argument to be adjusted from `std::string` to `std::string const`. 
+Guide `#2`would normally deduce `T` to be a reference type `std::string &` 
+and produce a parameter of that same type (because of the reference collapsing rule), 
+which is a better match because no const must be added for type adjustment purposes. 
+
+
+This outcome would likely result in instantiation errors 
+(when the class template parameter is used in contexts that do **not** permit reference types) 
+or, worse, silent production of misbehaving instantiations (e.g., producing dangling references). 
+
+
+The C++ standardization committee therefore decided to **disable** the special deduction rule for `T &&` 
+when performing deduction for implicit deduction guides if the `T` was originally a class template parameter
+(as opposed to a constructor template parameter. For those, the special deduction rule remains). 
+The example above thus deduces `T` to be `std::string`, as would be expected. 
+
+##### The `explicit` Keyword
+
+A deduction guide can be declared with the keyword `explicit`. 
+It is then considered only for direct-initialization cases, **not** for copy-initialization cases. 
+```c++
+template <typename T, typename U>
+struct Z
+{
+    Z(T const &);
+
+    Z(T &&);
+};
+
+template <typename T> 
+Z(T const &) -> Z<T, T &>;    // #1
+
+template <typename T> 
+explicit Z(T &&) -> Z<T, T>;  // #2
+
+Z z1 = 1;  // only considers #1; same as: Z<int, int&> z1 = 1;
+Z z2 {2};  // prefers #2; same as: Z<int, int> z2 {2};
+```
+
+##### Copy Construction and Initializer Lists
+
+```c++
+template <typename ... Ts>
+struct Tuple
+{
+    Tuple(Ts ...);
+
+    Tuple(Tuple<Ts ...> const &);
+};
+```
+To understand the effect of the implicit guides, 
+let’s write them as explicit declarations:
+```c++
+template <typename ... Ts> 
+Tuple(Ts ...) -> Tuple<Ts ...>;
+
+template <typename ... Ts> 
+Tuple(Tuple<Ts ...> const &) -> Tuple<Ts ...>;
+```
+Now consider some examples:
+```c++
+auto x = Tuple {1, 2};
+```
+This clearly selects the first guide (as it has **two** arguments) and therefore the first constructor: 
+`x` is therefore a `Tuple<int, int>`. 
+Let’s continue with some examples that use syntax that is suggestive of copying `x`:
+```c++
+Tuple a = x;
+Tuple b(x);
+```
+For both `a` and `b`, both guides match. 
+The first guide selects type `Tuple<Tuple<int, int>>`, 
+whereas the guide associated with the copy constructor produces `Tuple<int, int>`. 
+Fortunately, the second guide is a better match (more specialized than the first one), 
+and therefore both `a` and `b` are copy-constructed from `x`.
+
+
+Now, consider some examples using braced initializer lists:
+```c++
+Tuple c {x, x};
+Tuple d {x};
+```
+The first of these examples `x` can only match the first guide,
+and so produces `Tuple<Tuple<int, int>, Tuple<int, int>>`. 
+That is entirely intuitive and **not** a surprise. 
+That would suggest that the second example should deduce `d` to be of type `Tuple<Tuple<int>>`. 
+Instead, it is treated as a _copy construction_ (because the second implicit guide is preferred). 
+This also happens with functional-notation casts:
+```c++
+auto e = Tuple {x};
+```
+Here, `e` is deduced to be a `Tuple<int, int>`, **not** a `Tuple<Tuple<int, int>>`.
+
+##### Guides Are for Deduction Only
+
+Deduction guides are **not** function templates: 
+They are only used to deduce template parameters and are **not** “called”. 
+That means that the difference between passing arguments by reference or by value 
+is **not** important for guiding declarations.
+```c++
+template <typename T>
+struct X {};
+
+template <typename T>
+struct Y
+{
+    Y(X<T> const &);
+
+    Y(X<T> &&);
+};
+
+template <typename T>
+Y(X<T>) -> Y<T>;
+```
+Note how the deduction guide does **not** quite correspond to the two constructors of `Y`. 
+However, that does **not** matter, because the guide is only used for deduction. 
+Given a value `x` of type `X<T>`, no matter it is  `lvalue` or `rvalue`, 
+it will select the deduced type `Y<T>`. 
+Then, initialization will perform overload resolution on the constructors of `Y<T>` 
+to decide which one to call (which will depend on whether `x` is an `lvalue` or an `rvalue`).
 
 
 
 
-### 🎯
-
-#### 📌
 
 
+### 🎯 Chapter 16 Specialization and Overloading
 
 
+#### 📌 16.1 When “Generic Code” Doesn’t Quite Cut It
 
 
+```c++
+template <typename T>
+class Array
+{
+public:
+    Array(Array<T> const &);
 
-15 
-16 
-17 Note the distinction between a placeholder type, which is auto or
-decltype(auto) and can resolve to any kind of type, and a placeholder class
-type, which is a template name and can only resolve to a class type that is an
-instance of the indicated template.
-18 As with ordinary function template deduction, SFINAE could apply if, for
-example, substituting the deduced arguments in the guided type failed. That is not
-the case in this simple example.
-19 Chapter 16 introduces the ability to “specialize” class templates in various ways.
-Such specializations do not participate in class template argument deduction.
+    Array<T> & operator=(Array<T> const &);
+
+    void exchangeWith(Array<T> * b)
+    {
+        T * tmp = data;
+        data = b->data;
+        b->data = tmp;
+    }
+
+    T & operator[](std::size_t k)
+    {
+        return data[k];
+    }
+
+private:
+    T * data;
+};
+
+template <typename T>
+inline void exchange(T * a, T * b)
+{
+    T tmp(*a);
+    *a = *b;
+    *b = tmp;
+}
+```
+For simple types, the generic implementation of `exchange` works well. 
+However, for types with expensive copy operations, 
+the generic implementation may be much more expensive, 
+both in terms of machine cycles and in terms of memory usage, 
+than an implementation that is tailored to the particular, given structure. 
+In our example, the generic implementation requires 
+one call to the copy constructor of `Array<T>` and two calls to its copy-assignment operator. 
+For large data structures these copies can often involve copying relatively large amounts of memory. 
+However, the functionality of `exchange` could presumably often be replaced 
+just by swapping the internal data pointers, 
+as is done in the member function `exchangeWith`. 
+
+##### 16.1.1 Transparent Customization
+
+
 
 
 ### 🎯
