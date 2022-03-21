@@ -3117,12 +3117,12 @@ std::cout << s2.get<bool>() << '\n';  // true
 
 #### Special Member Function Templates
 
-Special member functions (default constructor, destructor, copy/move constructor and assignment operator)
-can also be member function templates.
-Member templates **don't** count as _the_ special member functions that copy or move objects.
-These template versions also **don't** count as user-defined versions. 
-In this example, for assignments of stacks of the same type, 
-the default assignment operator is still called. 
+Template member functions can be used wherever special member functions allow copying or moving objects. 
+Similar to assignment operators as defined above, they can also be constructors. 
+However, note that template constructors or template assignment operators 
+**don’t** replace predefined (compiler-generated) constructors or assignment operators. 
+Member templates **don’t** count as _the_ special member functions that copy or move objects. 
+In this example, for assignments of stacks of the same type, the default assignment operator is still called. 
 
 
 This effect can be good and bad:
@@ -3786,52 +3786,8 @@ See Section 15.6 on page 280 for details of perfect forwarding.
 #### 📌 6.2 Special Member Function Templates
 
 
-Member function templates can also be used as special member functions, 
-including as a constructor, which, however, might lead to surprising behavior.
-
-
-Consider the following example:
-```c++
-class Person
-{
-public:
-    explicit Person(std::string n) : name(std::move(n))
-    {
-        std::cout << __PRETTY_FUNCTION__ << '\n';
-    }
-
-    explicit Person(std::string && n) : name(std::move(n))
-    {
-        std::cout << __PRETTY_FUNCTION__ << '\n';
-    }
-    
-    Person(const Person & p) : name(p.name)
-    {
-        std::cout << __PRETTY_FUNCTION__ << '\n';
-    }
-
-    Person(Person && p) noexcept : name(std::move(p.name))
-    {
-        std::cout << __PRETTY_FUNCTION__ << '\n';
-    }
-
-private:
-    std::string name;
-};
-
-std::string s = "sname";
-Person p1(s);              // Person::Person(const string &)      
-Person p2("tmp");          // Person::Person(std::string &&)
-Person p3(p1);             // Person::Person(const Person &)
-Person p4(std::move(p1));  // Person::Person(Person &&)
-```
-Here, we have a class `Person` with a `std::string` member `name` 
-for which we provide initializing constructors. 
-To support move semantics, we overload the constructor taking a `std::string`. 
-
-
-Now let's replace the two `std::string` constructors 
-with one generic constructor perfect forwarding the passed argument to the member `name`:
+Member function templates can also be used as special member functions, including as a constructor. 
+While, a constructor template with forwarding reference could hide the copy constructor.
 ```c++
 class Person
 {
@@ -3876,7 +3832,7 @@ const Person p2c("ctmp");
 Person p3c(p2c);           // Person::Person(const Person&)
 ```
 The problem is that, according to the overload resolution rules of C++ (see Section 16.2), 
-for a non-`const` lvalue `Person` `p`, the member template
+for a non-`const` lvalue `Person p`, the member template
 ```c++
 template <typename String>
 explicit Person(String && n) : name(std::forward<String>(n))

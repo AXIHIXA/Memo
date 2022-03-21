@@ -7177,18 +7177,888 @@ void foo()
 
 ##### 16.2.3 Formal Ordering Rules
 
+We describe the exact procedure to determine 
+whether one function template participating in an overload set 
+is more specialized than the other. 
+
+
+Note that these are _partial_ ordering rules: 
+It is possible that given two templates, **neither** can be considered more specialized than the other. 
+If overload resolution must select between two such templates, 
+**no** decision can be made, and the program contains an ambiguity error.
+
+
+Assume we are comparing two identically named function templates `f1` and `f2`. 
+Overload resolution is decided as follows: 
+- Function call parameters that are covered by a default argument 
+  and ellipsis parameters that are not used 
+  might or might not be ignored in what follows. 
+  - Depends on whether they are needed during the template argument deduction process specified as follows. 
+- We then synthesize two lists of call argument types of `f1` and `f2`
+  (or for conversion function templates, a return type) 
+  by substituting every template parameter as follows: 
+  1. Replace each template type parameter with a unique invented type. 
+  2. Replace each template template parameter with a unique invented class template. 
+  3. Replace each non-type template parameter with a unique invented value of the appropriate type. 
+     (Types, templates, and values that are invented in this context are distinct from 
+     any other types, templates, or values that 
+     either the programmer used or the compiler synthesized in other contexts.)
+- If `f1`'s call argument type list is an exact match on `f2` in terms of template argument deduction, 
+  but **not** vice versa, then `f1` is more specialized than `f2`.
+  If no deduction succeeds or both succeed, there is **no** ordering between `f1` and `f2`. 
+```c++
+// #1
+// Call argument type list: A1 *, A1 const *
+// Not an exact match on #2
+template <typename T>
+void t(T *, T const * = nullptr, ...) {}
+
+// #2
+// Call argument type list: A2 const *, A2 *
+// Not an exact match on #1
+template <typename T>
+void t(T const *, T *, T * = nullptr) {}
+
+void example(int * p)
+{
+    t(p, p);  // ERROR: ambiguous
+}
+```
+The synthesized lists of argument types are `(A1 *, A1 const *)` and `(A2 const *, A2 *)`.
+Template argument deduction of `(A1 *, A1 const *)` versus `#2` succeeds with the substitution of `T = A1 const`, 
+but the resulting match is **not** exact because a qualification adjustment is needed to call 
+```c++
+t<A1 const>(A1 const *, A1 const *, A1 const * = nullptr)
+```
+with arguments of types `(A1 *, A1 const *)`. 
+Similarly, **no** exact match can be found by deducing template arguments for the `#1` 
+from the argument type list `(A2 const *, A2 *)`. 
+Therefore, there is **no** ordering relationship between the two templates, and the call is ambiguous.
+
+
+The formal ordering rules generally result in the intuitive selection of function templates. 
+However, under several cases, the rules do **not** select the intuitive choice. 
+It is therefore possible that the rules will be revised to accommodate those examples in the future. 
+
+##### 16.2.4 Templates and Non-templates
+
+Function templates can be overloaded with non-template functions. 
+All else being equal, the non-template function is preferred during overload resolution. 
+```c++
+template <typename T>
+void f(T) {}
+
+void f(int &) {}
+
+void foo()
+{
+    int x = 7;
+    f(x);       // void f(int &)
+}
+```
+Overload resolution prefers better match over specialization. 
+When `const` and reference qualifiers differ, priorities for overload resolution can change.
+```c++
+template <typename T>
+void f(T) {}
+
+void f(const int &) {}
+
+void foo()
+{
+    int x = 7;
+    const int y = x;
+    
+    f(x);             // void f(T) [with T = int]
+    f(y);             // void f(const int &)
+}
+```
+For this reason, it’s a good idea to declare the member function template as
+```c++
+template <typename T>
+void f(const T &);
+```
+Nevertheless, this effect can easily occur accidentally and cause surprising behavior 
+when member functions are defined that accept the same arguments as copy or move constructors. 
+```c++
+class C
+{
+public:
+    C() = default;
+    C(C const &) { std::cout << __PRETTY_FUNCTION__ << '\n'; }
+    C(C &&) { std::cout << __PRETTY_FUNCTION__ << '\n'; }
+
+    template <typename T>
+    C(T &&) { std::cout << __PRETTY_FUNCTION__ << '\n'; }
+};
+
+void foo()
+{
+    C x;
+    C const c;
+    
+    C x2 {x};             // C::C(T &&) [with T = C &]
+    C x3 {std::move(x)};  // C(C &&)
+    C x4 {c};             // C(const C &)
+}
+```
+Thus, the member function template is a better match for copying a `C` than the copy constructor. 
+And for `std::move(c)`, which yields type `C const &&` 
+(a type that is possible but usually **doesn’t** have meaningful semantics), 
+the member function template also is a better match than the move constructor. 
+
+
+For this reason, usually you have to partially disable such member function templates 
+when they might hide copy or move constructors via SFINAE. 
+Note providing a non-const copy constructor is **no** solution 
+because forwarding reference is still a better match for derived class objects. 
+This is explained in Section 6.4.
+
+##### 16.2.5 Variadic Function Templates
+
+```c++
+template <typename T>
+void f(T *)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+template <typename ... Ts>
+void f(Ts ...)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+template <typename ... Ts>
+void f(Ts * ...)
+{
+    std::cout << __PRETTY_FUNCTION__ << '\n';
+}
+
+void foo()
+{
+    f(0, 0.0);                                                       // void f(Ts ...) [with Ts = {int, double}]
+    f(static_cast<int *>(nullptr), static_cast<double *>(nullptr));  // void f(Ts * ...) [with Ts = {int, double}]
+    f(static_cast<int *>(nullptr));                                  // void f(T *) [with T = int]
+}
+```
+When applying the formal ordering rules described in Section 16.2.3 to a variadic template, 
+each template _parameter pack_ is replaced by a _single_ made-up type, class template, or value. 
+For example, this means that the synthesized argument types for the second and third function templates 
+are `(A1)` and `(A2 *)`, respectively, where `A1` and `A2` are unique, made-up types. 
+Deduction of the second template against the third’s list of argument types 
+succeeds by substituting the single-element sequence `(A2* )` for the parameter pack `Ts`. 
+However, there is no way to make the pattern `Ts *` of the third template’s parameter pack match the non-pointer type `A1`, 
+so the third function template (which accepts pointer arguments) 
+is considered more specialized than the second function template (which accepts any arguments).
+
+
+#### 📌 16.3 Explicit Specialization
+
+
+The ability to overload function templates, 
+combined with the partial ordering rules to select the “best” matching function template, 
+allows us to add more specialized templates to a generic implementation 
+to tune code transparently for greater efficiency. 
+
+
+However, class templates and variable templates can **not** be overloaded. 
+Instead, another mechanism was chosen to enable transparent customization of class templates: 
+_explicit specialization_. 
+The standard term _explicit specialization_ refers to 
+a language feature that we call _full specialization_ instead. 
+It provides an implementation for a template with template parameters that are fully substituted: 
+**No** template parameters remain. 
+
+
+Class templates, function templates, and variable templates can be fully specialized.
+So can members of class templates that may be defined outside the body of a class definition
+(i.e., member functions, nested classes, static data members, and member enumeration types).
+
+
+Alias templates are the only form of template that can **not** be specialized, 
+either by a full specialization or a partial specialization. 
+This restriction is necessary to make the use of template aliases 
+transparent to the template argument deduction process (Section 15.11). 
+
+
+In a later section, we will describe _partial specialization_. 
+This is similar to full specialization, 
+but instead of fully substituting the template parameters, 
+some parameterization is left in the alternative implementation of a template. 
+Full specializations and partial specializations are both equally “explicit” in our source code, 
+which is why we avoid the term _explicit specialization_ in our discussion. 
+
+
+**Neither** full **nor** partial specialization introduces a totally new template or template instance. 
+Instead, these constructs provide alternative definitions for instances 
+that are already implicitly declared in the generic (or unspecialized) template. 
+This is a relatively important conceptual observation, and it is a key difference with overloaded templates.
+
+##### 16.3.1 Full Class Template Specialization
+
+A full specialization is introduced with a sequence of three tokens: 
+```c++
+template <>
+```
+The same prefix is also needed to declare full function template specializations. 
+Earlier designs of the C++ language did **not** include this prefix, 
+but the addition of member templates required additional syntax to disambiguate complex specialization cases. 
+```c++
+template <typename T>
+class S
+{
+public:
+    void info() {}
+};
+
+template <>
+class S<void>
+{
+public:
+    void msg() {}
+};
+```
+The implementation of the full specialization 
+does **not** need to be related in any way to the generic definition:
+This allows us to have member functions of different names (`info` versus `msg`). 
+The connection is solely determined by the name of the class template.
+
+
+The list of specified template arguments must correspond to the list of template parameters. 
+For example, it is **not** valid to specify a non-type value for a template type parameter. 
+However, template arguments for parameters with default template arguments are optional. 
+```c++
+template <typename T>
+class Types
+{
+public:
+    using I = int;
+};
+
+// #1
+template <typename T, typename U = typename Types<T>::I>
+class S;
+
+// #2, aka S<void, int>
+template <>
+class S<void>
+{
+public:
+    void f();
+};
+
+// #3
+template <>
+class S<char, char>;
+
+// ERROR: 0 can not substitute type parameter U
+template <>
+class S<char, 0>;
+
+void foo()
+{
+    S<int> * pi;       // OK: uses #1, no definition needed
+    S<int> e1;         // ERROR: uses #1, but no definition available
+    S<void> * pv;      // OK: used #2, no definition needed
+    S<void, int> sv;   // OK: uses #2, definition available
+    S<void, char> e2;  // ERROR: uses #1, but no definition available
+    S<char, char> e3;  // ERROR: uses #3, but no definition available at present
+}
+
+// definition for #3, comes too late
+template <>
+class S<char, char> {};
+```
+Declarations of full specializations (and of templates) 
+do **not** necessarily have to be definitions. 
+However, when a full specialization is declared, 
+the generic definition is **never** used for the given set of template arguments. 
+Hence, if a definition is needed but **none** is provided, the program is in **error**. 
+
+
+For class template specialization, it is sometimes useful to “forward declare” types 
+so that mutually dependent types can be constructed. 
+A _full specialization declaration_ is identical to a normal class declaration 
+in this way (it is **not** a template declaration). 
+The only differences are the syntax and the fact that the declaration must match a previous template declaration. 
+Because it is **not** a template declaration, the members of a full class template specialization 
+can be defined using the ordinary out-of-class member definition syntax 
+(in other words, the `template <>` prefix can **not** be specified):
+```c++
+
+template <typename T>
+class S;
+
+template <>
+class S<char **>
+{
+public:
+    // templated entity, not a template!
+    void print() const;
+};
+
+// the following definition can not be preceded by template<>
+void S<char **>::print() const {}
+```
+```c++
+template <typename T>
+class Outside
+{
+public:
+    template <typename U>
+    class Inside {};
+};
+
+
+template <>
+class Outside<void>
+{
+    // there is no special connection 
+    // between the following nested class
+    // and the one defined in the generic template
+    template <typename U>
+    class Inside
+    {
+    private:
+        static int count;
+    };
+};
+
+// the following definition can not be preceded by template <> 
+template <typename U>
+int Outside<void>::Inside<U>::count = 1;
+```
+A full specialization is a replacement for the instantiation of a certain generic template, 
+and it is **not** valid to have both the explicit and the generated versions of a template present in the same program. 
+An attempt to use both in the same file is usually caught by a compiler:
+```c++
+template <typename T>
+class Invalid {};
+
+// Use of class template
+// causes the instantiation of Invalid<double>,
+Invalid<double> x1;
+
+// Manual instantiation (explicit instantiation definition)
+// also causes the instantiation of Invalid<double>
+template class Invalid<double>;
+
+// ERROR: Invalid<double> already instantiated
+template <>
+class Invalid<double>;
+```
+Unfortunately, if the uses occur in different translation units, 
+the problem may **not** be caught so easily. 
+The following invalid C++ example consists of two files and compiles and links on many implementations, 
+but it is invalid and dangerous:
+```c++
+/// "a.cpp"
+template <typename T>
+class Danger
+{
+public:
+    enum { max = 10 };
+};
+
+// uses generic value
+char buffer[Danger<void>::max];
+
+extern void clear(char *);
+
+int main()
+{
+    clear(buffer);
+}
+
+/// "b.cpp"
+template <typename T>
+class Danger;
+
+template <>
+class Danger<void>
+{
+public: 
+    enum { max = 100 };
+};
+
+void clear(char * buf)
+{
+    // mismatch in array bound:
+    for (int k = 0; k < Danger<void>::max; ++k)
+    {
+        buf[k] = '\0';
+    }
+}
+```
+Care must be taken to ensure that the declaration of the specialization 
+is visible to all the users of the generic template. 
+In practical terms, this means that a declaration of the specialization 
+should normally follow the declaration of the template in its header file. 
+When the generic implementation comes from an external source 
+(such that the corresponding header files should **not** be modified), 
+this is **not** necessarily practical, 
+but it may be worth creating a header including the generic template 
+followed by declarations of the specializations to avoid these hard-to-find errors. 
+In general, it is better to **avoid** specializing templates coming from an external source 
+**unless** it is clearly marked as being designed for that purpose. 
+
+##### 16.3.2 Full Function Template Specialization
+
+The syntax and principles behind (explicit) full function template specialization
+are much the same as those for full class template specialization, 
+but overloading and argument deduction come into play. 
+
+
+The full specialization declaration can omit explicit template arguments 
+when the template being specialized can be determined via argument deduction 
+(using as argument types the parameter types provided in the declaration) and partial ordering. 
+```c++
+// #1
+template <typename T>
+void f(T) {}
+
+// #2
+template <typename T>
+void f(T *) {}
+
+// #3, OK: specialization of #1, template argument emitted
+template <>
+void f(int) {}
+
+// #4, OK: specialization of #2, template argument emitted
+template <>
+void f(int *) {}
+```
+A full function template specialization can **not** include default call arguments. 
+However, any default arguments that were specified for the template being specialized 
+remain applicable to the explicit specialization:
+```c++
+template <typename T>
+int f(T, T x = 42)
+{
+    return x;
+}
+
+// ERROR
+template <> 
+int f(int, int = 35)
+{
+    return 0;
+}
+```
+(That is because a full specialization provides an _alternative definition_, 
+but **not** an alternative declaration. 
+At the point of a call to a function template, 
+the call is entirely resolved based on the function template. 
+The only difference happens when the compiler instantiate the function template, 
+and find there is one full specialization.)
+
+
+A full specialization is in many ways similar to a normal declaration
+(or rather, a normal redeclaration). 
+In particular, it does **not** declare a template, 
+and therefore only _one definition_ of a non-inline full function template specialization should appear in a program. 
+However, we must still ensure that a declaration of the full specialization
+follows the template to prevent attempts at using the function generated from the template.
+The declarations for a template `g` and one full specialization 
+would therefore typically be organized in two files as follows:
+- The interface file contains the definitions of primary templates and partial specializations, 
+  but declares only the full specializations:
+```c++
+#ifndef TEMPLATE_G_HPP
+#define TEMPLATE_G_HPP
+
+// template definition should appear in header file:
+template <typename T>
+int g(T, T x = 42)
+{
+    return x;
+}
+
+// specialization declaration inhibits instantiations of the template;
+// definition should not appear here to avoid multiple definition errors
+template <> 
+int g(int, int y);
+
+#endif  // TEMPLATE_G_HPP
+```
+- The corresponding implementation file defines the full specialization:
+```c++
+#include "template_g.hpp"
+
+template <> 
+int g(int, int y)
+{
+    return y / 2;
+}
+```
+Alternatively, the specialization could be made `inline`,
+in which case its definition can be (and should be) placed in the header file. 
+
+##### 16.3.3 Full Variable Template Specialization
+
+Variable templates can also be fully specialized. 
+```c++
+template <typename T> 
+constexpr std::size_t SZ = sizeof(T);
+
+template <> 
+constexpr std::size_t SZ<void> = 0;
+```
+The specialization can provide an initializer that is distinct from that resulting from the template. 
+A variable template specialization is **not** required to have a type matching that of the template being specialized:
+```c++
+template <typename T> 
+typename T::iterator null_iterator;
+
+// BitIterator doesn’t match T::iterator, and that is fine
+template <> 
+BitIterator null_iterator<std::bitset<100>>;
+```
+
+##### 16.3.4 Full Member Specialization
+
+Not only member templates, but also ordinary static data members and member functions of class templates, can be fully specialized. 
+The syntax requires `template <>` prefix for every enclosing class template. 
+If a member template is being specialized, a `template <>` must also be added to denote that it is being specialized. 
+```c++
+template <typename T>
+class Outer
+{
+public:
+    template <typename U>
+    class Inner
+    {
+    private:
+        static int count;
+    };
+
+    static int code;
+
+    void print() const {}
+};
+
+template <typename T>
+int Outer<T>::code = 6;
+
+template <typename T>
+template <typename U>
+int Outer<T>::Inner<U>::count = 7;
+
+template <>
+class Outer<bool>
+{
+public:
+    template <typename U>
+    class Inner
+    {
+    private:
+        static int count;
+    };
+
+    void print() const {}
+};
+
+template <>
+int Outer<void>::code = 12;
+
+template <>
+void Outer<void>::print() const {}
+```
+These definitions are used over the generic ones for class `Outer<void>`, 
+but other members of class `Outer<void>` are still generated from the primary template. 
+Note that after these declarations, it is no longer valid to provide an explicit specialization for `Outer<void>`.
+
+
+Just as with full function template specializations, 
+we need a way to declare the specialization of an ordinary member of a class template
+without specifying a definition (to prevent multiple definitions). 
+Although _non-defining out-of-class declarations_ are **not** allowed in C++ 
+for member functions and static data members of ordinary classes, 
+they are fine _when specializing members of class templates_.  
+The previous definitions could be declared with
+```c++
+template <>
+int Outer<void>::code;
+
+template <>
+void Outer<void>::print() const;
+```
+The attentive reader might point out that the non-defining declaration of the full specialization of `Outer<void>::code` 
+looks exactly like a definition to be initialized with a default constructor. 
+This is indeed so, but such declarations are always interpreted as non-defining declarations. 
+For a full specialization of a static data member with a type that can only be initialized using a default constructor, 
+we must resort to initializer list syntax:
+```c++
+class DefaultInitOnly
+{
+public:
+    DefaultInitOnly() = default;
+    DefaultInitOnly(DefaultInitOnly const &) = delete;
+};
+
+template <typename T>
+class Statics
+{
+private:
+    static T sm;
+};
+
+// declaration
+template <>
+DefaultInitOnly Statics<DefaultInitOnly>::sm;
+
+// a definition calling the default constructor
+template <>
+DefaultInitOnly Statics<DefaultInitOnly>::sm {};
+```
+Prior to C++11, this was **not** possible. 
+Default initialization was thus **not** available for such specializations. 
+Typically, an initializer copying a default value was used:
+```c++
+template <>
+DefaultInitOnly Statics<DefaultInitOnly>::sm = DefaultInitOnly();
+```
+Unfortunately, for our example that was **not** possible 
+because the copy constructor is deleted. 
+However, C++17 introduced _mandatory copy-elision_ rules, 
+which make that alternative valid, 
+because **no** copy constructor invocation is involved anymore. 
+
+
+The member template `Outer<T>::Inner` can also be specialized for a given template argument
+**without** affecting the other members of the specific instantiation of `Outer<T>`,
+for which we are specializing the member template. 
+Again, because there is one enclosing template, we will need one `template <>` prefix.
+```c++
+template <>
+template <typename X>
+class Outer<wchar_t>::Inner
+{
+public:
+    static long count;  // member type changed
+};
+
+template <>
+template <typename X>
+long Outer<wchar_t>::Inner<X>::count;
+```
+The template `Outer<T>::Inner` can also be fully specialized, 
+but only for a given instance of `Outer<T>`. 
+We now need two `template <>` prefixes: 
+one because of the enclosing class 
+and one because we’re fully specializing the (inner) template:
+```c++
+template <>
+template <>
+class Outer<char>::Inner<wchar_t>
+{
+public:
+    enum { count = 1 };
+};
+
+// the following is not valid C++:
+// template <> cannot follow a template parameter list
+template <typename X>
+template <>
+class Outer<X>::Inner<void>;  // ERROR
+```
+Contrast this with the specialization of the member template of `Outer<bool>`. 
+Because the latter is already fully specialized, there is **no** enclosing template, 
+and we need only one `template <>` prefix:
+```c++
+template <>
+class Outer<bool>::Inner<wchar_t>
+{
+public:
+    enum { count = 2 };
+};
+```
+
+
+#### 📌 16.4 Partial Class Template Specialization
+
+
+```c++
+// primary template
+template <typename T>
+class List
+{
+public:
+    void append(T const &);
+    inline std::size_t length() const;
+};
+
+// partial specialization
+template <typename T>
+class List<T *>
+{
+public:
+    inline void append(T * p)
+    {
+        impl.append(p);
+    }
+
+    inline std::size_t length() const
+    {
+        return impl.length();
+    }
+
+private:
+    List<void *> impl;
+};
+
+template <>
+class List<void *>
+{
+    void append(void * p);
+    inline std::size_t length() const;
+};
+```
+All member functions of `List`s of pointers are forwarded (through easily inlineable functions)
+to the implementation of `List<void *>`. 
+This is an effective way to combat _code bloat_ (of which C++ templates are often accused).
+
+
+There exist several limitations on the parameter and argument lists of partial specialization declarations. 
+Some of them are as follows: 
+1. The arguments of the partial specialization must match in kind (type, non-type, or template)
+   the corresponding parameters of the primary template. 
+2. The parameter list of the partial specialization can **not** have default arguments. 
+   The default arguments of the primary class template are used instead. 
+3. The non-type arguments of the partial specialization should be 
+   either non-dependent values or plain non-type template parameters. 
+   They can **not** be more complex dependent expressions like `2 * N` 
+   (where `N` is a template parameter). 
+4. The list of template arguments of the partial specialization 
+   should **not** be identical (ignoring renaming) to the list of parameters of the primary template. 
+5. If one of the template arguments is a pack expansion, 
+6. it must come at the end of a template argument list.
+```c++
+// primary template
+template <typename T, int I = 3>
+class S;
+
+// ERROR: parameter kind mismatch
+template <typename T>
+class S<int, T>;
+
+// ERROR: no default arguments allowed for specializations
+template <typename T = int>
+class S<T, 10>;
+
+// ERROR: no non-type expressions allowed for specializations
+template <int I>
+class S<int, I * 2>;
+
+// ERROR: no significant difference from primary template
+template <typename U, int K>
+class S<U, K>;
+
+template <typename ... Ts>
+class Tuple;
+
+// ERROR: pack expansion not at the end
+template <typename Tail, typename... Ts>
+class Tuple<Ts ..., Tail>;
+
+// OK: pack expansion is at the end of a nested template argument list
+template <typename Tail, typename... Ts>
+class Tuple<Tuple<Ts ...>, Tail>; 
+```
+Every partial specialization, like every full specialization, 
+is associated with the primary template. 
+When a template is used, the primary template is always the one that is looked up, 
+but then the arguments are also matched against those of the associated specializations 
+(using template argument deduction, as described in Chapter 15) 
+to determine which template implementation is picked. 
+
+
+Just as with function template argument deduction, the SFINAE principle applies here: 
+If, while attempting to match a partial specialization an invalid construct is formed, 
+that specialization is silently abandoned and another candidate is examined if one is available. 
+If **no** matching specializations is found, the primary template is selected. 
+If multiple matching specializations are found, 
+the most specialized one (in the sense defined for overloaded function templates) is selected; 
+if none can be called most specialized, the program contains an ambiguity error. 
+
+
+Finally, we should point out that it is entirely possible for a class template partial specialization 
+to have more or fewer parameters than the primary template. 
+```c++
+// partial specialization for any pointer-to-void* member
+template <typename C>
+class List<void * C::*>
+{
+public:
+    using ElementType = void * C::*;
+
+    void append(ElementType pm);
+
+    inline std::size_t length() const;
+};
+
+// Partial specialization for any pointer-to-member-pointer type 
+// except pointer-to-void * member, which is handled earlier. 
+// (Note that this partial specialization has two template parameters,
+// whereas the primary template only has one parameter.)
+// This specialization makes use of the prior one to achieve the desired optimization. 
+template <typename T, typename C>
+class List<T * C::*>
+{
+public:
+    using ElementType = T * C::*;
+
+    inline void append(ElementType pm)
+    {
+        impl.append((void * C::*) pm);
+    }
+
+    inline std::size_t length() const
+    {
+        return impl.length();
+    }
+
+private:
+    List<void * C::*> impl;
+};
+```
+
+
+#### 📌 16.5 Partial Variable Template Specialization
+
+
+The syntax is similar to full variable template specialization,
+except that `template <>` is replaced by an actual template declaration header, 
+and the template argument list following the variable template name must depend on template parameters: 
+```c++
+template <typename T> 
+constexpr std::size_t SZ = sizeof(T);
+
+template <typename T> 
+constexpr std::size_t SZ<T &> = sizeof(void *);
+```
+As with the full specialization of variable templates, 
+the type of a partial specialization is **not** required to match that of the primary template:
+```c++
+template <typename T> 
+typename T::iterator null_iterator;
+
+// T * doesn’t match T::iterator, and that is fine
+template <typename T, std::size_t N> 
+T * null_iterator<T[N]> = nullptr;
+```
+The rules regarding the kinds of template arguments 
+that can be specified for a variable template partial specialization 
+are identical to those for class template specializations. 
+Similarly, the rules to select a specialization for a given list of concrete template arguments are identical too.
 
 
 
 
 
 
-### 🎯
+### 🎯 Chapter 17 Future Directions
 
-#### 📌
-
-
-
-
-
-
+N/A. 
