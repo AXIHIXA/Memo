@@ -2269,13 +2269,9 @@ Both `prvalues` and `xvalues` are `rvalue` expressions.
 
 #### [`static_cast`](https://en.cppreference.com/w/cpp/language/static_cast)
 
-- `static_cast<T>(expr)`
-    - 用于任何具有明确定义的不包含底层`const`的强制类型转换。结果的值和被转换对象的值可能不同。例如
-        - `double`强转`int`
-            - 即强制截取整数部分，有精度损失
-        - `void *`强转`T *`
-            - 其实这一条其实也可以用`reinterpret_cast`，因为`void *`强转`T *`的语义就是强行按照`T *`解释那块内存
-
+```c++
+static_cast<T>(expr)
+```
 Only the following conversions can be done with `static_cast`, 
 **except** when such conversions would cast away const-ness or volatility.
 1. If `T` is a reference or pointer to class `D` 
@@ -2367,7 +2363,6 @@ std::for_each(files.begin(),
               static_cast<std::ostream & (*)(std::ostream &)>(std::flush));
 ```
 
-
 #### [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
 
 - `dynamic_cast<T>(expr)`
@@ -2434,26 +2429,9 @@ Compilers typically have options to disable the inclusion of this information.
 
 #### [`const_cast`](https://en.cppreference.com/w/cpp/language/const_cast)
 
-- `const_cast<T>(expr)`
-    - 用于且只有它能用于改变运算对象的**底层**`const`（cast away the `const`）
-        - 即：只能用于指针或引用
-        ```
-        int b = 2;
-        const int c0 = const_cast<const int>(b);                 // 错误：const int类型不是指针或引用
-        const int & c1 = const_cast<const int &>(b);             // 正确
-        const int & c2 = static_cast<const int &>(b);            // 正确
-        const int & c3 = b;                                      // 正确
-        ```
-    - 只能用于更改`const`属性，不能更改类型
-    - 如果`expr`指向的对象**本身不是常量**，则通过`const_cast`获取写权限是合法行为；但如果对象本身是常量，则结果 *未定义* 
-    ```
-    const char * pc;
-    char * p = const_cast<char *>(pc);                           // 正确，但通过p写值是未定义的行为
-    char * q = static_cast<char *>(pc);                          // 错误，static_cast不能用于去除const
-    auto s1 = static_cast<std::string>(pc);                      // 正确，字符串字面值转换为std::string
-    auto s2 = const_cast<std::string>(pc);                       // 错误，const_cast只能用于去除const
-    ```
-
+```c++
+const_cast<T>(expr)
+```
 Only the following conversions can be done with `const_cast`. 
 In particular, only `const_cast` may be used to _cast away_ (remove) const-ness or volatility. 
 1. Two possibly multilevel pointers to the same type may be converted between each other, 
@@ -2489,48 +2467,10 @@ As with all cast expressions, the result is:
 
 #### [`reinterpret_cast`](https://en.cppreference.com/w/cpp/language/reinterpret_cast)
 
-- `reinterpret_cast<T>(expr)`
-    - 强制编译器按照`T`类型（注意`T`不一定是指针类型）重新解读一块内存
-    ```
-    int * a = new int(1);
-    char * pc = reinterpret_cast<char *>(a);                     // 正确
-    std::string s(pc);                                           // 可能会RE，（取决于从a开始多久出现0？）
-    ```
-    - 需要使用`reinterpret_cast`的典型场景（这些场景不能用`static_cast`）
-        - 将指针强转成指针
-            - 解析二进制数据流
-            ```
-            uint8_t dat[12] = {0};                               // 假设这是小端机上的二进制数据流
-            dat[0] = 1U;
-            dat[4] = 2U;
-            dat[8] = 3U;
-            uint32_t * arr = reinterpret_cast<uint32_t *>(dat);  // 正确
-            uint32_t * arr2 = static_cast<uint32_t *>(dat);      // 错误：uint8_t *转换为uint32_t *是没有明确定义的
 
-            for (size_t i = 0; i < 3; ++i)
-            {
-                printf("%p %u\n", arr + i, arr[i]);              // 输出：1, 2, 3
-            }
-            ```
-            - 探究数据在内存中的二进制存储
-            ```
-            float pi = 3.14159;
-            int * p1 = reinterpret_cast<int *>(&pi);     
-            printf("0x%x\n", *p1);                               // 0x40490fd0
-            
-            uint32_t r = 0x40490fd0;   
-            float * p2 = reinterpret_cast<float *>(&r);
-            printf("%f\n", *p2);                                 // 3.141590
-            ```
-        - 将指针强转成数字（获取具体的地址）
-        ```
-        int a = 1, 
-        int * p = &a;
-        size_t b = (size_t) p;                                   // 正确：人见人爱的C风格强转
-        size_t b2 = static_cast<size_t>(p);                      // 错误：int *转换为size_t是没有明确定义的
-        size_t b3 = reinterpret_cast<size_t>(p);                 // 正确
-        ```
-
+```c++
+reinterpret_cast<T>(expr)
+```
 Unlike `static_cast`, but like `const_cast`, 
 the `reinterpret_cast` expression does **not** compile to any CPU instructions 
 (**except** when converting between integers and pointers 
