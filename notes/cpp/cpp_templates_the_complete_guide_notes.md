@@ -1,9 +1,12 @@
 # _C++ Templates: The Complete Guide_ Notes
 
-- _**C++ Templates**: The Complete Guide_ Second Edition
-- David Vandevoorde
-- Nicolai M. Josuttis
-- Douglas Gregor
+- _**C++ Templates**: The Complete Guide_ Second Edition by
+  - David Vandevoorde
+  - Nicolai M. Josuttis
+  - Douglas Gregor
+- Contents
+    - **Part I The Basics & Part II Templates In Depth**
+    - [Part III Templates and Design](./cpp_templates_the_complete_guide_notes_part_3.md)
 
 
 
@@ -15077,12 +15080,6 @@ void foo()
 
 #### 📌
 
-
-## 🌱 Part III Templates and Design
-
-### 🎯
-
-#### 📌 
 
 
 

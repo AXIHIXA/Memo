@@ -4,7 +4,9 @@
 
 - `C/C++`
     - *[C++ Primer](./notes/cpp/cpp_primer_notes.md)*
-    - *[C++ Templates: The Complete Guide](./notes/cpp/cpp_templates_the_complete_guide_notes.md)*
+    - *C++ Templates: The Complete Guide*
+        - *[Part I & Part II](./notes/cpp/cpp_templates_the_complete_guide_notes.md)*
+        - *[Part III](./notes/cpp/cpp_templates_the_complete_guide_notes_part_3.md)*
     - *Effective C++*
         1. *[Effective C++](./notes/cpp/effective_cpp_notes_01_effective_cpp.md)*
         2. *[More Effective C++](./notes/cpp/effective_cpp_notes_02_more_effective_cpp.md)*
