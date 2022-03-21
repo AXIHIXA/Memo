@@ -1,21 +1,6 @@
 # *C++ Primer* Notes
 
 
-
-
-
-
-- 记录一些对`C++`理解得不到位的地方
-- 基于`C++11`的内容提示，例如`(since C++11)`，一般不再明确标注
-- `(until C++11)`、即`C++11`中已经移除的内容，不予收录
-- 这玩意收录好多[`cppreference`](https://en.cppreference.com)上的内容，该部分内容是打算当字典看的，总体来讲似乎比`C++ Primer`更不适合初学者看了
-    - `C++`标准库泛型算法速查：[`Algorithms library - cppreference.com`](https://en.cppreference.com/w/cpp/algorithm)
-    - `C++`标准库`<type_traits>`速查：[`Standard library header <type_traits>`](https://en.cppreference.com/w/cpp/header/type_traits)
-
-
-
-
-
 ### 🌱 一句话
 
 - 常见规则
@@ -1719,38 +1704,6 @@ for (std::size_t n : l) std::cout << n << std::endl;  // 1 2 3
 
 - 若指针声明中`cv`在`*` *之前* 出现，则它是 *声明说明符序列* 的一部分，并应用到 *被指向的对象* 
 - 若指针声明中`cv`在`*` *之后* 出现，则它是 *声明符* 的一部分，并应用到 *所声明的指针自身*  
-```
-const T *        // pointer to const T
-T const *        // pointer to const T
-T * const        // const pointet to T
-const T * const  // const pointer to const T
-T const * const  // const pointet to const T
-```
-```
-// pc is a non-const pointer to const int
-// cpc is a const pointer to const int
-// ppc is a non-const pointer to non-const pointer to const int
-const int ci = 10, *pc = &ci, *const cpc = pc, **ppc;
-// p is a non-const pointer to non-const int
-// cp is a const pointer to non-const int
-int i, *p, *const cp = &i;
- 
-i = ci;    // okay: value of const int copied into non-const int
-*cp = ci;  // okay: non-const int (pointed-to by const pointer) can be changed
-pc++;      // okay: non-const pointer (to const int) can be changed
-pc = cpc;  // okay: non-const pointer (to const int) can be changed
-pc = p;    // okay: non-const pointer (to const int) can be changed
-ppc = &pc; // okay: address of pointer to const int is pointer to pointer to const int
- 
-ci = 1;    // error: const int cannot be changed
-ci++;      // error: const int cannot be changed
-*pc = 2;   // error: pointed-to const int cannot be changed
-cp = &ci;  // error: const pointer (to non-const int) cannot be changed
-cpc++;     // error: const pointer (to const int) cannot be changed
-p = pc;    // error: pointer to non-const int cannot point to const int
-ppc = &p;  // error: pointer to pointer to const int cannot point to
-           // pointer to non-const int
-```
 
 
 
