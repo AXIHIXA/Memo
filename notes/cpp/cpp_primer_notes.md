@@ -17993,7 +17993,7 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             - 也就是说这俩要抛出、初始化时必须传参（`C`风格字符串或`std::string`）
             - 由于`what`是虚函数，因此对`what`的调用将执行与异常对象动态类型相对应的版本
     - 自定义异常类
-    ```
+    ```c++
     // hypothetical exception classes for a bookstore application
     class out_of_stock : public std::runtime_error 
     {
@@ -19415,74 +19415,13 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
             - 程序员必须清楚地知道转换的目标类型，并且必须检查类型转换是否被成功执行
     - 使用`RTTI`运算符必须倍加小心。在可能的情况下，最好定义虚函数而非直接接管类型管理的责任
 - [`dynamic_cast`](https://en.cppreference.com/w/cpp/language/dynamic_cast)
-    - 常常用于 *向下转换* （downcasting）
-        - 指 *多态基类* （带有虚函数）的引用或指针向其 *派生类* 的引用或指针的类型转换
-        - *向下转换* 也能通过`static_cast`实现
-            - `static_cast`**不**进行 *运行时类型检查* （runtime type check）
-            - 虽然节省时间，但程序员必须自行保证被转换的引用或指针的动态类型必须就是目标类型或其公有派生类型，否则程序不安全
-    - 使用形式
-    ```
-    dynamic_cast<Type *>(e)     (1)
-    dynamic_cast<Type &>(e)     (2)
-    dynamic_cast<Type &&>(e)    (3)
-    ```
-    - 其中
-        - `Type`必须是一个 *类类型* ，并且通常情况下应当含有 *虚函数* 
-        - 在形式`(1)`中，`e`必须是一个 *合法指针* 的 *纯右值* ，转换结果为 *纯右值* 
-        - 在形式`(2)`中，`e`必须是一个 *泛左值* ，转换结果为 *左值* 
-        - 在形式`(3)`中，`e`必须是一个`左值或右值 (until C++17)` `泛左值 (since C++17)`，转换结果为 *将亡值* 
-        - 在上面所有形式中，`e`的 *动态类型* 必须符合以下三个条件中的任意一个
-            - `e`的类型是`Type`的 *公有派生类* 
-            - `e`的类型就是`Type`
-        - 如果符合，则转换可以成功；否则，转换失败
-            - 如果目标是 *指针* 类型，则结果为`0`
-            - 如果目标是 *引用* 类型，则还会抛出`std::bad_cast`异常
-        - 执行 *向下转换* 时，`e`的静态类型必须是多态的，否则会报编译错误
-    - 指针类型的`dynamic_cast`
-        - 例如
-            - `class Base`至少含有一个虚函数
-            - `class Derived : public Base`
-            - 如果有`Base * bp`，则可在运行时将其转换成`Derived *`
-            ```
-            if (Derived * dp = dynamic_cast<Derived *>(bp))
-            {
-                // use the Derived object to which dp points
-            } 
-            else 
-            { 
-                // bp points at a Base object
-                // use the Base object to which bp points
-            }
-            ```
-            - 如果`bp`实际指向`Derived`对象，则上述类型转换初始化`dp`并令其指向`bp`所指的`Derived`对象
-                - 此时，`if`语句内部使用`Derived`操作的代码时安全的
-            - 否则，类型转换的结果为`0`，意味着条件失败，此时`else`执行相应的`Base`操作
-        - 我们可以对 *空指针* 执行`dynamic_cast`，结果是所需类型的空指针
-        - *在条件部分执行`dynamic_cast`* 定义`dp`的好处
-            - 是可以在一个操作中同时完成类型转换和条件检查两项任务
-            - `dp`在`if`语句外不可访问，一旦转换失败，即使后面的代码忘了做判断，也不会接触到这个野指针，从而确保程序安全
-    - 引用类型的`dynamic_cast`
-        - 引用类型的`dynamic_cast`和指针类型的`dynamic_cast`在表示错误发生的方式上略有不同
-        - 因为不存在所谓的空引用，所以对于引用类型来说**无法**适用于指针类型完全相同的错误报告策略
-        - 当对引用类型的类型转换失败时，程序抛出一个`std::bad_cast`异常
-        ```
-        try 
-        {
-            const Derived & d = dynamic_cast<const Derived &>(b);
-            // use the Derived object to which b referred
-        } 
-        catch (std::bad_cast & e) 
-        {
-            // handle the fact that the cast failed
-        }
-        ```
 - [`typeid`](https://en.cppreference.com/w/cpp/language/typeid)
     - 使用形式
     ```
     typeid(e)
     ```
     - 其中，`e`可以是任意类型的表达式或类型的名字
-    - `typeid`返回值类型为`const std::type_info &`，或`std::type_info`的公有派生类型的常引用 => 19.2.4
+    - `typeid`返回值类型为`const std::type_info &`，或`std::type_info`的公有派生类型的常引用
         - 顶层`const`将被忽略
         - 对于引用，返回值代表其所绑定到的对象的类型
         - 对于数组或函数，**不会**执行向指针的隐式类型转换，例如`int a[10]`，则`typeid(a)`是数组类型而**不是**指针
@@ -19580,33 +19519,6 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
         - 因此，无法定义或拷贝`std::type_info`类的对象，也不能对其赋值
         - 唯一获取途径就是`typeid`运算符
     - `demangle`：`gcc`的实现中，`std::type_info::name`是经过特殊编码的，需要 *还原* （demangle）才能使人可读
-    ```
-    // typename demangle is needed for gcc
-    
-    #include <bits/stdc++.h>
-    #include <boost/core/demangle.hpp>
-              
-    struct A            { virtual void fun() {} };
-    struct B : public A {                       };
-    struct C            {                       };
-    struct D : public C {                       };
-    
-    A * p1 = new B();
-    std::cout << boost::core::demangle(typeid( p1).name()) << '\n';  // A*
-    std::cout << boost::core::demangle(typeid(*p1).name()) << '\n';  // B
-    
-    C * p2 = new D();
-    std::cout << boost::core::demangle(typeid( p2).name()) << '\n';  // C*
-    std::cout << boost::core::demangle(typeid(*p2).name()) << '\n';  // C
-    
-    auto t0 = std::make_tuple(10, "hehe", 3.14);
-    std::cout << boost::core::demangle(typeid(t0).name()) 
-              << '\n';  // std::tuple<int, char const*, double>
-
-    auto t1 = std::forward_as_tuple(10, "hehe", 3.14);
-    std::cout << boost::core::demangle(typeid(t1).name()) 
-              << '\n';  // std::tuple<int&&, char const (&) [5], double&&>
-    ```
 
 #### 枚举（enumeration）
 
@@ -19787,200 +19699,61 @@ std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).coun
 
 #### 类成员指针（Pointer to Class Member）
 
-- *成员指针* （pointer to member）是指可以指向类的非静态成员的指针
-    - 一般情况下，指针指向对象
-    - 成员指针指向的是对象的成员，而不是对象本身
-    - 类的静态成员**不**属于任何对象因此无须特殊的指向静态成员的指针，普通指针即可胜任
-- 成员指针的类型囊括了类的类型以及成员的类型
-    - 初始化一个这样的指针时，我们令其指向类的某个成员，但是不指定该成员所属的对象
-    - 直到使用成员指针时，才提供成员所属的对象
-- 示例类
-```
-class Screen 
-{
-public:
-    typedef std::string::size_type pos;
-    
-    char get_cursor() const { return contents[cursor]; }
-    char get() const;
-    char get(pos ht, pos wd) const;
-
-private:
-    std::string contents;
-    pos cursor;
-    pos height, width;
-};
-```
-- *数据成员指针* （Pointers to Data Members）
-    - 定义
-        - 定义指向`const std::string`的`Screen`类数据成员指针
-        ```
-        const std:string Screen::* pdata;
-        ```
-        - 初始化或赋值时需指定它所指的成员
-        ```
-        pdata = &Screen::contents;
-        ```
-        - 还可以使用`auto`或`decltype`
-        ```
-        auto pdata = &Screen::contents;
-        ```
-    - 使用
-        - 当初始化成员指针或为其赋值时，它**并未**指向任何数据
-            - 成员指针定义了成员而非该成员所属的对象
-            - 只有当需要解引用成员指针时，我们才需要提供对象
-        - *成员指针访问运算符* `.*` `->*`
-        ```
-        Screen myScreen, 
-        // .* dereferences pdata to fetch the contents member from the object myScreen
-        const std::string s1 = myScreen.*pdata;
+- *成员指针函数表* （Pointer-to-Member Function Tables）
+    - 对于普通函数指针和成员函数指针来说，一种常见的用法是将其存入一个 *函数表* 当中
+        - 如果一个类含有几个相同类型的成员，则这样一张表可以帮助我们从这些成员中选择一个
+    ```
+    class Screen 
+    {
+    public:
+        // other interface and implementation members as before
         
-        // ->* dereferences pdata to fetch contents from the object to which pScreen points
-        Screen * pScreen = &myScreen;
-        const std::string s2 = pScreen->*pdata;
-        ```
-    - 返回数据成员指针的函数
-        - 常规的访问控制规则对成员指针同样有效
-            - 例如，先前的`Screen`类的`content`成员为私有的，因此之前对于`pdata`的使用必须位于`Screen`类内部或其友元中，否则将报错
-        - 获取私有数据成员指针
-            - 因为数据成员一般是私有的，所以我们通常不能直接获取数据成员的指针
-            - 如果一个像`Screen`这样的类希望我们可以访问它的`content`成员，最好定义一个函数，令其返回值是指向该成员的指针
-            ```
-            class Screen 
-            {
-            public:
-                // data is a static member that returns a pointer to member
-                static const std::string Screen::* data() { return &Screen::contents; }
-                // other members as before
-            };
-            
-            // data() returns a pointer to the contents member of class Screen
-            const std::string Screen::* pdata = Screen::data();
-            // fetch the contents of the object named myScreen
-            std::string s = myScreen.*pdata;
-            ```
-- *成员函数指针* （Pointers to Member Functions）
-    - 定义
-        - 使用`auto`或显式接收
-            - 如果 *成员函数存在重载* 的问题，则必须显式声明函数类型以明确指出想要使用的是哪个函数
-        ```
-        // pmf is a pointer that can point to a Screen member function that is const
-        // that returns a char and takes no arguments
-        auto pmf = &Screen::get_cursor;
-
-        char (Screen::* pmf2)(Screen::pos, Screen::pos) const;
-        pmf2 = &Screen::get;
-        ```
-        - 由于优先级问题，和普通函数指针一样，括号必不可少
-        ```
-        // error: 
-        // nonmember function p(Screen::pos, Screen::pos) returning char Screen::* 
-        // cannot have a const qualifier
-        char Screen::* p(Screen::pos, Screen::pos) const;
-        ```
-        - 成员函数和指向该成员的指针之间**不**存在自动转换规则
-        ```
-        // pmf points to a Screen member that takes no arguments and returns char
-        pmf = &Screen::get;  // must explicitly use the address-of operator
-        pmf = Screen::get;   // error: no conversion to pointer for member functions
-        ```
-    - 使用
-        - 同样使用 *成员指针访问运算符* `.*` `->*`作用于指向成员函数的指针，以及调用类的成员函数
-        ```
-        // passes the arguments 0, 0 to the two-parameter version of get on the object myScreen
-        Screen myScreen；
-        char c1 = (myScreen.*pmf2)(0, 0);
+        // Action is a pointer that can be assigned any of the cursor movement members
+        using Action = Screen & (Screen::*)();
         
-        // call the function to which pmf points on the object to which pScreen points
-        Screen * pScreen = &myScreen;
-        char c2 = (pScreen->*pmf)();
-        ```
-        - 同样，由于优先级问题，括号必不可少
-        ```
-        // this one
-        myScreen.*pmf()
-        
-        // is equivalent to
-        myScreen.*(pmf())
-        ```
-        - 因为函数调用优先级比交个哦，所以在声明指向成员的函数指针并使用这样的指针进行函数调用时，括号必不可少
-            - `(C::*p)(params)`
-            - `(obj.*p)(params)`
-    - 成员指针类型别名
-        - 使用`typedef`或 *类型别名* 可以让成员指针更容易理解
-        ```
-        // Action is a type that can point to a member function of Screen
-        // that returns a char and takes two pos arguments
-        using Action = char (Screen::*)(Screen::pos, Screen::pos) const;
-        
-        // get points to the get member of Screen
-        Action get = &Screen::get;
-        
-        // action takes a reference to a Screen and a pointer to a Screen member function
-        Screen & action(Screen &, Action = &Screen::get);
-        
-        Screen myScreen;
-        
-        // equivalent calls:
-        action(myScreen);                // uses the default argument
-        action(myScreen, get);           // uses the variable get that we previously defined
-        action(myScreen, &Screen::get);  // passes the address explicitly
-        ```
-    - *成员指针函数表* （Pointer-to-Member Function Tables）
-        - 对于普通函数指针和成员函数指针来说，一种常见的用法是将其存入一个 *函数表* 当中
-            - 如果一个类含有几个相同类型的成员，则这样一张表可以帮助我们从这些成员中选择一个
-        ```
-        class Screen 
-        {
-        public:
-            // other interface and implementation members as before
-            
-            // Action is a pointer that can be assigned any of the cursor movement members
-            using Action = Screen & (Screen::*)();
-            
-            // specify which direction to move
-            enum Directions 
-            { 
-                HOME, 
-                FORWARD, 
-                BACK, 
-                UP, 
-                DOWN 
-            };
-        
-        public:
-            Screen & move(Directions cm)
-            {
-                // run the element indexed by cm on this object
-                return (this->*Menu[cm])();  // Menu[cm] points to a member function
-            }
-        
-        private:
-            // cursor movement functions
-            Screen & home();     
-            Screen & forward();
-            Screen & back();
-            Screen & up();
-            Screen & down();
-            
-        private: 
-            // function table
-            static Action Menu[];
-        };
-        
-        Screen::Action Screen::Menu[] = 
+        // specify which direction to move
+        enum Directions 
         { 
-            &Screen::home,
-            &Screen::forward,
-            &Screen::back,
-            &Screen::up,
-            &Screen::down,
+            HOME, 
+            FORWARD, 
+            BACK, 
+            UP, 
+            DOWN 
         };
+    
+    public:
+        Screen & move(Directions cm)
+        {
+            // run the element indexed by cm on this object
+            return (this->*Menu[cm])();  // Menu[cm] points to a member function
+        }
+    
+    private:
+        // cursor movement functions
+        Screen & home();     
+        Screen & forward();
+        Screen & back();
+        Screen & up();
+        Screen & down();
         
-        Screen myScreen;
-        myScreen.move(Screen::HOME);  // invokes myScreen.home
-        myScreen.move(Screen::DOWN);  // invokes myScreen.down
-        ```
+    private: 
+        // function table
+        static Action Menu[];
+    };
+    
+    Screen::Action Screen::Menu[] = 
+    { 
+        &Screen::home,
+        &Screen::forward,
+        &Screen::back,
+        &Screen::up,
+        &Screen::down,
+    };
+    
+    Screen myScreen;
+    myScreen.move(Screen::HOME);  // invokes myScreen.home
+    myScreen.move(Screen::DOWN);  // invokes myScreen.down
+    ```
 - 将成员函数用作 *可调用对象* 
     - 成员指针**不是** *可调用对象* 
         - 要想通过一个指向成员函数的指针进行函数调用，必须首先利用 *成员指针访问运算符* `.*` `->*`将该指针绑定到特定对象上
@@ -20043,33 +19816,6 @@ private:
             // fp takes a pointer to string and uses the ->* to call empty
             std::find_if(pvec.begin(), pvec.end(), fp);
             ```
-    - 使用[`std::mem_fn`](https://en.cppreference.com/w/cpp/utility/functional/mem_fn)生成可调用对象
-        - 使用`std::mem_fn`来从成员函数指针生成函数对象，且成员类型由编译器自动推断，无需用户自行指定
-        ```
-        std::find_if(svec.begin(), svec.end(), std::mem_fn(&std::string::empty));
-        ```
-        - `std::mem_fn`生成的可调用对象可以通过对象调用，也可以通过指针调用
-        ```
-        auto f = mem_fn(&string::empty);  // f takes a std::string or a std::string *
-        f(*svec.begin());                 // ok: passes std::string &; f uses .* to call empty
-        f(&svec[0]);                      // ok: passes std::string *; f uses .-> to call empty
-        ```
-        - 实际上，我们可以认为`std::mem_fn`生成的可调用对象含有一对 *重载的函数调用运算符* 
-            - 一个接受`std::string &`实参
-            - 另一个接受`std::string *`实参
-    - 使用[`std::bind`](https://en.cppreference.com/w/cpp/utility/functional/bind)生成可调用对象
-        - 还可以使用`std::bind`从成员函数生成可调用对象
-        ```
-        // bind each string in the range to the implicit first argument to empty
-        auto it = std::find_if(svec.begin(), svec.end(), std::bind(&std::string::empty, std::placeholders_1));
-        ```
-        - 和`std::function`类似的地方是，当我们使用`std::bind`时，必须将函数中用于表示执行对象的隐式形参转换成显式的
-        - 和`std::mem_fn`类似的地方是，`std::bind`生成的可调用对象的第一个实参既可以是`std::string &`，又可以是`std::string *`
-        ```
-        auto f = std::bind(&std::string::empty, std::placeholders::_1);
-        f(*svec.begin());  // ok: argument is std::string &, f will use .* to call empty
-        f(&svec[0]);       // ok: argument is std::string *, f will use .-> to call empty
-        ```
 
 #### 嵌套类（Nested Class）
 
