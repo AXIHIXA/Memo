@@ -3,6 +3,7 @@ project(BoostFSDemo)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(fmt REQUIRED)
 
 set(MAIN
         src/main.cpp
@@ -19,6 +20,7 @@ set(ALL_INCLUDE_DIRS
 
 set(ALL_LIBRARIES
         Boost::filesystem
+        fmt::fmt
         )
 
 set(ALL_COMPILE_DEFS
