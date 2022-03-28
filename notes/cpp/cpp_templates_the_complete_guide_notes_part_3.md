@@ -1552,16 +1552,160 @@ struct TypeT
 template <typename T>
 constexpr auto type = TypeT<T> {};
 
-// helper to unwrap a wrapped type in unevaluated contexts
-// no definition needed
+// Helper to unwrap a wrapped type in unevaluated contexts. 
+// No definition needed. 
 template <typename T>
 T valueT(TypeT<T>);
 ```
-One typical use of `isValid`:
-```c++
 
+
+#### 📌 19.4.4 SFINAE-Friendly Traits
+
+
+A type trait should be able to answer a particular query 
+**without** causing the program to become ill-formed. 
+SFINAE-based traits address this problem by carefully trapping potential problems within a SFINAE context, 
+turning those would-be errors into negative results. 
+
+
+However, some traits presented thus far do not behave well in the presence of errors.
+```c++
+template <typename T1, typename T2>
+struct PlusResultT
+{
+    using Type = decltype(std::declval<T1>() + std::declval<T2>());
+};
+
+// For simplicity, the return value just uses `PlusResultT<T1, T2>::Type`. 
+// In practice, the return type should also be computed using `RemoveReferenceT` and `RemoveCVT` 
+// to avoid that references are returned.
+template <typename T1, typename T2>
+using PlusResult = typename PlusResultT<T1, T2>::Type;
+```
+In this definition, the `+` is used in a context that is **not** protected by SFINAE. 
+Therefore, if a program attempts to evaluate `PlusResultT` for types that do **not** have a suitable `operator+`, 
+the evaluation of `PlusResultT` itself will cause the program to become ill-formed. 
+```c++
+class A {};
+
+class B {};
+
+void addAB(Array<A> arrayA, Array<B> arrayB)
+{
+    // ERROR: fails in instantiation of PlusResultT<A, B>
+    auto sum = arrayA + arrayB;
+}
+```
+The practical problem is not that this failure occurs with code that is clearly ill-formed like this 
+(there is no way to add an array of `A` to an array of `B`) 
+but that it occurs during template argument deduction for `operator+`, 
+deep in the instantiation of `PlusResultT<A, B>`.
+
+
+This has a remarkable consequence: 
+It means that the program may **fail** to compile
+even if we add a specific overload to adding `A` and `B` arrays, 
+because C++ does **not** specify whether the types in a function template are actually instantiated 
+if another overload would be better:
+```c++
+// declare generic + for arrays of different element types:
+template <typename T1, typename T2>
+Array<typename PlusResultT<T1, T2>::Type>
+operator+(Array<T1> const &, Array<T2> const &);
+
+// overload + for concrete types:
+Array<A> operator+(Array<A> const & arrayA, Array<B> const & arrayB);
+
+void addAB(Array<A> const & arrayA, Array<B> const & arrayB) 
+{
+    // ERROR?: depends on whether the compiler instantiates PlusResultT<A, B>
+    auto sum = arrayA + arrayB; 
+}
+```
+If the compiler can determine that the second declaration of `operator+` is a better match 
+without performing deduction and substitution on the first (template) declaration of `operator+`, 
+it will accept this code.
+
+
+However, while deducing and substituting a function template candidate, 
+anything that happens during the instantiation of the definition of a class template 
+is **not** part of the _immediate context_ of that function template substitution, 
+and SFINAE does **not** protect us from attempts to form invalid types or expressions there. 
+Instead of just discarding the function template candidate, 
+an error is issued right away. 
+
+
+To solve this problem, we have to make the `PlusResultT` _SFINAE-friendly_,
+which means to make it more resilient by giving it a suitable definition 
+even when its `decltype` expression is ill-formed.
+```c++
+// primary template:
+template <typename, typename, typename = std::void_t<>>
+struct HasPlusT : std::false_type {};
+
+// partial specialization (may be SFINAE’d away):
+template <typename T1, typename T2>
+struct HasPlusT<T1, T2, std::void_t<decltype(std::declval<T1>() + std::declval<T2>())>>
+        : std::true_type {};
+
+// primary template, used when HasPlusT yields true
+template <typename T1, typename T2, bool = HasPlusT<T1, T2>::value>
+struct PlusResultT
+{ 
+    using Type = decltype(std::declval<T1>() + std::declval<T2>());
+};
+
+// partial specialization, used otherwise
+template <typename T1, typename T2>
+struct PlusResultT<T1, T2, false> {};
 ```
 
+
+#### 📌 19.5 `IsConvertibleT`
+
+
+```c++
+template <typename FROM, 
+          typename TO, 
+          bool = std::is_void_v<TO> || std::is_array_v<TO> || std::is_function_v<TO>>
+struct IsConvertibleHelper
+{
+public:
+    using Type = std::bool_constant<std::is_void_v<TO> && std::is_void_v<FROM>>;
+};
+
+template <typename FROM, typename TO>
+struct IsConvertibleHelper<FROM, TO, false>
+{
+public:
+    using Type = decltype(test<FROM>(nullptr));
+
+private:
+    // test() trying to call the helper aux(TO) for a FROM passed as F :
+    static void aux(TO);
+
+    template <typename F,
+              typename T,
+              typename = decltype(aux(std::declval<F>()))>
+    static std::true_type test(void *);
+
+    // test() fallback:
+    template <typename, typename>
+    static std::false_type test(...);
+};
+
+template <typename FROM, typename TO>
+struct IsConvertibleT : IsConvertibleHelper<FROM, TO>::Type {};
+
+template <typename FROM, typename TO>
+using IsConvertible = typename IsConvertibleT<FROM, TO>::Type;
+
+template <typename FROM, typename TO>
+constexpr bool isConvertible = IsConvertibleT<FROM, TO>::value;
+```
+
+
+#### 📌 19.6 Detecting Members
 
 
 
@@ -1588,9 +1732,7 @@ One typical use of `isValid`:
 heart of advanced libraries such as Boost.Hana!
 19 This code is not valid C++ because a lambda expression cannot appear directly in a
 decltype operand for compiler-technical reasons, but the meaning is clear.
-20 For simplicity, the return value just uses PlusResultT<T1,T2>::Type. In
-practice, the return type should also be computed using RemoveReferenceT<>
-and RemoveCVT<> to avoid that references are returned.
+20 
 21 At the time of this writing, the C++ standardization committee is exploring ways to
 “reflect” various program entities (like class types and their members) in ways that
 the program can explore. See Section 17.9 on page 363.
