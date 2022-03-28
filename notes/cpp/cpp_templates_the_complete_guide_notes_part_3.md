@@ -104,7 +104,7 @@ void foo()
 
 
 Templates can also be used to implement polymorphism. 
-However, they **don’t** rely on the factoring of common behavior in base classes. 
+However, they **don't** rely on the factoring of common behavior in base classes. 
 Instead, the commonality is implicit in that: 
 the different “shapes” of an application must support operations using common syntax 
 (i.e., the relevant functions must have the same names). 
@@ -301,7 +301,7 @@ Instead, the algorithms are written in a generic way so that they can be used by
 To do this, the designers of STL identified an abstract concept of _iterators_ 
 that can be provided for any kind of linear collection.
 Essentially, the collection-specific aspects of container operations 
-have been factored out into the iterators’ functionality. 
+have been factored out into the iterators' functionality. 
 
 
 As a consequence, we can implement an operation such as computing the maximum value in a sequence 
@@ -387,8 +387,8 @@ The template `AccumulationTraits` is called a _traits template_
 because it holds a _trait_ (characteristic) of its parameter type.
 (In general, there could be more than one trait and more than one parameter.)
 We chose **not** to provide a generic definition of this template
-because there **isn’t** a great way to select a good accumulation type
-when we don’t know what the type is. 
+because there **isn't** a great way to select a good accumulation type
+when we don't know what the type is. 
 ```c++
 template <typename T>
 struct AccumulationTraits;
@@ -539,7 +539,7 @@ struct AccumulationTraits<BigInt>
 };
 ```
 An alternative that works prior to C++17 is to use _inline member functions_ 
-for value traits that **won’t** always yield integral values. 
+for value traits that **won't** always yield integral values. 
 Again, such a function can be declared `constexpr` if it returns a literal type.
 Most modern C++ compilers can “see through” calls of simple inline functions.
 Additionally, the use of `constexpr` makes it possible to use the value traits 
@@ -713,7 +713,7 @@ We could generalize this to a policy parameter,
 which could be a class (as discussed) or a pointer to a function. 
 
 
-However, the output of this program **isn’t** what we would like (outputs `0`). 
+However, the output of this program **isn't** what we would like (outputs `0`). 
 The problem here is caused by our choice of initial value: 
 Although `0` works well for summation, it does **not** work for multiplication 
 (a zero initial value forces a zero result for accumulated multiplications). 
@@ -728,7 +728,7 @@ Other alternatives are not to be forgotten:
 For example, the `std::accumulate` function of the C++ standard library 
 takes the initial value and the accumulation policy as the third and fourth (function call) argument. 
 
-##### 19.2.1 Traits and Policies: What’s the Difference?
+##### 19.2.1 Traits and Policies: What's the Difference?
 
 We therefore use the following definitions:
 - **Traits** represent natural additional properties of a template parameter; 
@@ -744,7 +744,7 @@ For traits, we make the following observations:
 
 
 For policy classes, we make the following observations:
-- Policy classes **don’t** contribute much if they aren’t passed as template parameters. 
+- Policy classes **don't** contribute much if they aren't passed as template parameters. 
 - Policy parameters need **not** have default values and are often specified explicitly 
   (although many generic components are configured with commonly used default policies).
 - Policy parameters are mostly orthogonal to other parameters of a template.
@@ -1275,7 +1275,7 @@ void foo(T t) { fooImpl(std::is_same_v<T, int>, t); }
 
 Another example of type functions that deal with multiple types are _result type traits_.
 They are very useful when writing operator templates. 
-To motivate the idea, let’s write a function template that allows us to add two `Array` containers:
+To motivate the idea, let's write a function template that allows us to add two `Array` containers:
 ```c++
 template <typename T>
 Array<T> operator+(Array<T> const &, Array<T> const &);
@@ -1371,13 +1371,207 @@ typename std::add_rvalue_reference<T>::type declval() noexcept;
   Both are rvalues (if `T` is an object type), while lvalue reference types are unchanged due to reference collapsing. 
   - Still, the difference between the return types `T` and `T &&` is discoverable 
     by direct use of `decltype`. 
-    However, given `declval`’s limited use, this is not of practical interest.
+    However, given `declval`'s limited use, this is not of practical interest.
 - The `noexcept` exception specification documents that `declval` itself 
   does **not** cause an expression to be considered to throw exceptions. 
   It becomes useful when `declval` is used in the context of the `noexcept` operator (Section 19.7.2).
 
 
 #### 📌 19.4 SFINAE-Based Traits
+
+
+The SFINAE principle turns potential errors 
+during the formation of invalid types and expressions 
+during template argument deduction (which would cause the program to be ill-formed) 
+into simple deduction failures, 
+allowing overload resolution to select a different candidate. 
+While originally intended to avoid spurious failures with function template overloading, 
+SFINAE also enables remarkable compile-time techniques 
+that can determine if a particular type or expression is valid.
+This allows us to write traits that determine, 
+for example, whether a type has a specific member, supports a specific operation, or is a class.
+The two main approaches for SFINAE-based traits are to 
+SFINAE out functions overloads 
+and to SFINAE out partial specializations.
+
+##### 19.4.1 SFINAE Out Function Overloads
+
+The usual approach to implement a SFINAE-base trait with function overloading
+is to declare two overloaded function templates named `test` with different return types:
+```c++
+template <typename T>
+struct IsDefaultConstructibleT
+{
+private:
+    // test() trying substitute call of a default constructor for T passed as U :
+    template <typename U, typename = decltype(U())>
+    static char test(void *);
+
+    // test() fallback:
+    template <typename>
+    static long test(...);
+
+public:
+    static constexpr bool value = std::is_same_v<decltype(test<T>(nullptr)), char>;
+};
+```
+Our “return value” value depends on which overloaded test member is selected.
+- The first overload is designed to match only if the requested check succeeds.
+- The second overload is the fallback. 
+  It always matches the call, but because it matches "with ellipsis" (i.e., a vararg parameter), 
+  any other match would be preferred (see Section C.2).
+  The fallback declaration can sometimes be a plain member function declaration 
+  instead of a member function template. 
+```c++
+struct S 
+{
+    S() = delete;
+};
+
+std::cout << IsDefaultConstructibleT<int>::value << '\n';  // yields true
+std::cout << IsDefaultConstructibleT<S>::value << '\n';    // yields false
+```
+
+##### Alternative Implementation Strategies for SFINAE-based Traits
+
+The key to the approach always consisted in 
+declaring two overloaded function templates returning different return types:
+```c++
+template <...> static char test(void *);
+template <...> static long test(...);
+```
+On old platforms before C++11 (no `nullptr` and no `constexpr`):
+```c++
+enum { value = sizeof(test<...>(0)) == 1 };
+```
+On some platforms, it might happen that `sizeof(char) == sizeof(long)`.
+```c++
+// either
+using Size1T = char;
+using Size2T = struct { char a[2]; };
+
+// or
+using Size1T = char (&)[1];
+using Size2T = char (&)[2];
+```
+```c++
+template <...> static Size1T test(void *);
+template <...> static Size2T test(...);
+```
+Note also that the type of the call argument passed to `func`() **doesn't** matter. 
+All that matters is that the passed argument matches the expected type. 
+```c++
+template <...> static Size1T test(int);
+template <...> static Size2T test(...);
+
+enum { value = sizeof(test<...>(42)) == 1 };
+```
+
+##### Making SFINAE-based Traits Predicate Traits
+
+A predicate trait, which returns a Boolean value, 
+should return a value derived from `std::true_type` or `std::false_type`. 
+This way, we can also solve the problem that on some platforms `sizeof(char) == sizeof(long)`. 
+```c++
+template <typename T>
+struct IsDefaultConstructibleHelper
+{
+public:
+    using Type = decltype(test<T>(nullptr));
+
+private:
+    // test() trying substitute call of a default constructor for T passed as U:
+    template <typename U, typename = decltype(U())>
+    static std::true_type test(void *);
+
+    // test() fallback:
+    template <typename>
+    static std::false_type test(...);
+};
+
+template <typename T>
+struct IsDefaultConstructibleT : IsDefaultConstructibleHelper<T>::Type {};
+```
+
+
+#### 📌 19.4.2 SFINAE Out Partial Specializations
+
+
+```c++
+// helper to ignore any number of template parameters:
+template <typename...> using VoidT = void;
+
+// primary template:
+template <typename, typename = VoidT<>>
+struct IsDefaultConstructibleT : std::false_type {};
+
+// partial specialization (may be SFINAE'd away):
+template <typename T>
+struct IsDefaultConstructibleT<T, VoidT<decltype(T())>> : std::true_type {};
+```
+
+
+#### 📌 19.4.3 Using Generic Lambdas for SFINAE
+
+
+Whichever technique we use, some boilerplate code is always needed to define traits: 
+- Overloading and calling two `test` member functions; 
+- Implementing multiple partial specializations. 
+
+
+Next, we will show how in C++17, we can minimize this boilerplate
+by specifying the condition to be checked in a generic lambda. 
+```c++
+// helper: checking validity of f(args...) for F f and Args ... args:
+template <typename F, 
+          typename ... Args,
+          typename = decltype(std::declval<F>()(std::declval<Args &&>()...))>
+std::true_type isValidImpl(void *);
+
+// fallback if helper SFINAE'd out:
+template <typename F, typename ... Args>
+std::false_type isValidImpl(...);
+
+// define a lambda that takes a lambda f and returns whether calling f with args is valid
+inline constexpr auto isValid = [](auto f)
+{
+    return [](auto && ... args)
+    {
+        return decltype(isValidImpl<decltype(f), decltype(args) && ...>(nullptr)) {};
+    };
+};
+
+// helper template to represent a type as a value
+template <typename T>
+struct TypeT
+{
+    using Type = T;
+};
+
+// helper to wrap a type as a value
+template <typename T>
+constexpr auto type = TypeT<T> {};
+
+// helper to unwrap a wrapped type in unevaluated contexts
+// no definition needed
+template <typename T>
+T valueT(TypeT<T>);
+```
+One typical use of `isValid`:
+```c++
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1390,21 +1584,6 @@ typename std::add_rvalue_reference<T>::type declval() noexcept;
 
 
 
-
-11 
-12 The fallback declaration can sometimes be a plain member function declarationinstead of a member function template.
-13 However, the SFINAE rules were more limited back then: When substitution of
-template arguments resulted in a malformed type construct (e.g., T::X where T is
-int), SFINAE worked as expected, but if it resulted in an invalid expression (e.g.,
-sizeof(f()) where f() returns void), SFINAE did not kick in and an error
-was issued right away.
-14 The first edition of this book was perhaps the first source for this technique.
-15 Defining void_t inside namespace std is formally invalid: User code is not
-permitted to add declarations to namespace std. In practice, no current compiler
-enforces that restriction, nor do they behave unexpectedly (the standard indicates
-that doing this leads to “undefined behavior,” which allows anything to happen).
-16 At the time of this writing, Microsoft Visual C++ is the unfortunate exception.
-17 Thanks to Louis Dionne for pointing out the technique described in this section.
 18 This very simple pair of helper templates is a fundamental technique that lies at the
 heart of advanced libraries such as Boost.Hana!
 19 This code is not valid C++ because a lambda expression cannot appear directly in a
@@ -1420,7 +1599,7 @@ void return type to be complete, unlike call expressions in other contexts. Usin
 decltype(std::declval<T>().begin(), 0) instead does add the
 requirement that the return type of the call is complete, because the returned value
 is no longer the result of the decltype operand.
-23 Prior to C++11’s expansion of SFINAE to cover arbitrary invalid expressions, the
+23 Prior to C++11's expansion of SFINAE to cover arbitrary invalid expressions, the
 techniques for detecting the validity of specific expressions centered on
 introducing a new overload for the function being tested (e.g., <) that had an
 overly permissive signature and a strangely sized return type to behave as a
