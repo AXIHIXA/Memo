@@ -1721,7 +1721,7 @@ struct HasSizeTypeT : std::false_type {};
 
 // partial specialization (may be SFINAE’d away):
 template <typename T>
-struct HasSizeTypeT<T, std::void_t<typename T::size_type>> : std::true_type {};
+struct HasSizeTypeT<T, std::void_t<typename std::remove_reference_t<T>::size_type>> : std::true_type {};
 
 
 std::cout << HasSizeTypeT<int>::value << '\n';  // false
@@ -1733,11 +1733,29 @@ struct CX
 
 std::cout << HasSizeType<CX>::value << '\n';    // true
 ```
+As usual for predicate traits, 
+we define the general case to be derived from `std::false_type`, 
+because by default a type doesn’t have the member `size_type`.
+In this case, we only need one construct , `typename T::size_type`,
+which is valid if and only if type `T` has a member type `size_type`, 
+If, for a specific `T`, the construct is invalid (i.e., type `T has` no member type `size_type`), 
+SFINAE causes the partial specialization to be discarded, and we fall back to the primary template. 
+Otherwise, the partial specialization is valid and preferred.
 
+##### Dealing with Reference Types
 
+Without the `remove_reference` trait, this member-type-detection trait may fail on references: 
+```c++
+struct CXR 
+{
+    using size_type = char &;                     // Note: type size_type is a reference type
+};
 
+std::cout << HasSizeTypeT<CXR>::value << '\n';    // OK: prints true
 
-
+std::cout << HasSizeTypeT<CX &>::value << '\n';   // OOPS: prints false
+std::cout << HasSizeTypeT<CXR &>::value << '\n';  // OOPS: prints false
+```
 
 
 

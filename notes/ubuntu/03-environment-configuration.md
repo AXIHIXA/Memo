@@ -276,6 +276,9 @@ Press <enter> to keep the current choice[*], or type selection number:
 ### Libraries
 
 ```
+# fmtlib https://fmt.dev/latest/index.html
+sudo apt install libfmt-dev
+
 # Eigen, OpenCV, TBB, Boost
 sudo apt update
 sudo apt install libeigen3-dev libopencv-dev libtbb-dev libboost-all-dev 
