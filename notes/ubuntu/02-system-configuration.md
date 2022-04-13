@@ -23,8 +23,8 @@ chmod 644 ~/.bashrc ~/.bash_history
 ## 🌱 dependencies
 
 ```
-# do NOT install tmux mlocate xfce4-terminal filemanager-actions nautilus-actions in WSL! 
-sudo apt install tmux mlocate xfce4-terminal filemanager-actions nautilus-actions
+# do NOT install these in WSL! 
+sudo apt install tmux mlocate xfce4-terminal filemanager-actions nautilus-actions p7zip-full p7zip-rar
 
 sudo apt install build-essential git gcc g++ gdb make cmake clang vim
 

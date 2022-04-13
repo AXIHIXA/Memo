@@ -1677,9 +1677,6 @@ public:
 template <typename FROM, typename TO>
 struct IsConvertibleHelper<FROM, TO, false>
 {
-public:
-    using Type = decltype(test<FROM>(nullptr));
-
 private:
     // test() trying to call the helper aux(TO) for a FROM passed as F :
     static void aux(TO);
@@ -1692,6 +1689,9 @@ private:
     // test() fallback:
     template <typename, typename>
     static std::false_type test(...);
+
+public:
+    using Type = decltype(test<FROM, TO>(nullptr));
 };
 
 template <typename FROM, typename TO>
@@ -1706,6 +1706,33 @@ constexpr bool isConvertible = IsConvertibleT<FROM, TO>::value;
 
 
 #### 📌 19.6 Detecting Members
+
+
+Another foray into SFINAE-based traits involves creating a trait (or, rather, a set of traits) 
+that can determine whether a given type `T` has a member of a given name `X` (a type or a non-type member).
+
+##### 19.6.1 Detecting Member Types
+
+Determine whether a given type `T` has a member type `size_type`:
+```c++
+// primary template:
+template <typename, typename = std::void_t<>>
+struct HasSizeTypeT : std::false_type {};
+
+// partial specialization (may be SFINAE’d away):
+template <typename T>
+struct HasSizeTypeT<T, std::void_t<typename T::size_type>> : std::true_type {};
+
+
+std::cout << HasSizeTypeT<int>::value << '\n';  // false
+
+struct CX 
+{
+    using size_type = std::size_t;
+};
+
+std::cout << HasSizeType<CX>::value << '\n';    // true
+```
 
 
 
