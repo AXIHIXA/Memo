@@ -1828,7 +1828,7 @@ int main()
 
 ##### 19.6.5 Check If A Type Is Hashable
 
-Whether hashable as well as customized hash functions: 
+Whether hashable as well as customized hash functions (DIRTY!): 
 ```c++
 #include <pair>
 #include <tuple>
@@ -1855,11 +1855,11 @@ constexpr bool isHashableV = IsHashable<T>::value;
 template <>
 struct std::hash<std::tuple<int, int>>
 {
-    std::size_t operator()(const std::tuple<int, int> & tup) const
+    std::size_t operator()(const std::tuple<int, int> & t) const
     {
         std::size_t seed {0};
-        boost::hash_combine(seed, std::get<0>(tup));
-        boost::hash_combine(seed, std::get<1>(tup));
+        boost::hash_combine(seed, std::get<0>(t));
+        boost::hash_combine(seed, std::get<1>(t));
         return seed;
     }
 };
@@ -1885,8 +1885,12 @@ int main(int argc, char * argv[])
 References: 
 - [cpprefernece `std::unordered_map`](https://en.cppreference.com/w/cpp/container/unordered_map)
 - [cppreference `std::hash`](https://en.cppreference.com/w/cpp/utility/hash)
-- [`Boost.ContainerHash` `boost::hash_combine`](https://www.boost.org/doc/libs/1_79_0/libs/container_hash/doc/html/hash.html#combine)
+- [`Boost.ContainerHash` "Combining hash values"](https://www.boost.org/doc/libs/1_79_0/libs/container_hash/doc/html/hash.html#combine)
 - [StackOverflow "Check if a type is hashable"](https://stackoverflow.com/questions/12753997/check-if-type-is-hashable)
+
+
+
+
 
 
 
