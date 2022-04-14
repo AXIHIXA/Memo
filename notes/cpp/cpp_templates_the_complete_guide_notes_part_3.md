@@ -1746,16 +1746,78 @@ Otherwise, the partial specialization is valid and preferred.
 
 Without the `remove_reference` trait, this member-type-detection trait may fail on references: 
 ```c++
-struct CXR 
+struct CX 
 {
-    using size_type = char &;                     // Note: type size_type is a reference type
+    using size_type = std::size_t;
 };
 
+struct CXR 
+{
+    using size_type = char &;
+};
+
+std::cout << HasSizeType<CX>::value << '\n';      // OK: prints true
 std::cout << HasSizeTypeT<CXR>::value << '\n';    // OK: prints true
 
 std::cout << HasSizeTypeT<CX &>::value << '\n';   // OOPS: prints false
 std::cout << HasSizeTypeT<CXR &>::value << '\n';  // OOPS: prints false
 ```
+It is true that a reference type has **not** members per se, 
+but whenever we use references, 
+the resulting expressions have the underlying type, 
+and so perhaps it would be preferable to consider the underlying type in that case. 
+Here, that could be achieved by using the `std::remove_reference` trait. 
+
+##### Injected Class Names
+
+It’s also worth noting that our traits technique to detect member types
+will also produce a `true` value for injected class names: 
+```c++
+struct size_type {};
+
+struct Sizeable : size_type {};
+
+static_assert(HasSizeTypeT<Sizeable>::value, "Compiler bug: Injected class name missing");
+```
+The latter static assertion succeeds 
+because `size_type` introduces its own name as a member type, 
+and that name is inherited. 
+If it didn’t succeed, we would have found a defect in the compiler.
+
+##### 19.6.2 Detecting Arbitrary Member Types
+
+Defining a trait such as `HasSizeTypeT` raises the question of 
+how to parameterize the trait to be able to check for any member type name.
+
+Unfortunately, this can currently be achieved only via macros, 
+because there is no language mechanism to describe a "potential" name. 
+The closest we can get for the moment without using macros is to use generic lambdas, 
+as illustrated in Section 19.6.4. 
+
+The following macro would work.
+Each use of `DEFINE_HAS_TYPE(MemberType)` defines a new `HasType_MemberType` trait: 
+```c++
+#ifndef DEFINE_HAS_TYPE
+#define DEFINE_HAS_TYPE(MemType) \
+template <typename, typename = std::void_t<>> \
+struct HasType_##MemType : std::false_type {}; \
+template <typename T> \
+struct HasType_##MemType<T, std::void_t<typename T::MemType>> : std::true_type {}  // ; intentionally skipped
+#endif  // DEFINE_HAS_TYPE
+
+DEFINE_HAS_TYPE(value_type);
+DEFINE_HAS_TYPE(char_type);
+
+int main()
+{
+    std::cout << HasType_value_type<int>::value << '\n';               // false
+    std::cout << HasType_value_type<std::vector<int>>::value << '\n';  // true
+    std::cout << HasType_value_type<std::iostream>::value << '\n';     // false
+    std::cout << HasType_char_type<std::iostream>::value << '\n';      // true
+}
+```
+
+##### 19.6.3 Detecting Non-type Members
 
 
 
@@ -1764,6 +1826,67 @@ std::cout << HasSizeTypeT<CXR &>::value << '\n';  // OOPS: prints false
 
 
 
+##### 19.6.5 Check If A Type Is Hashable
+
+Whether hashable as well as customized hash functions: 
+```c++
+#include <pair>
+#include <tuple>
+#include <type_traits>
+#include <vector>
+
+#include <boost/container_hash/hash.hpp>
+#include <fmt/core.h>
+#include <fmt/format.h>
+
+
+template <typename T, typename = std::void_t<>>
+struct IsHashable : std::false_type {};
+
+
+template <typename T>
+struct IsHashable<T, std::void_t<decltype( std::declval<std::hash<T>>()( std::declval<T>() ) )>> : std::true_type {};
+
+
+template <typename T>
+constexpr bool isHashableV = IsHashable<T>::value;
+
+
+template <>
+struct std::hash<std::tuple<int, int>>
+{
+    std::size_t operator()(const std::tuple<int, int> & tup) const
+    {
+        std::size_t seed {0};
+        boost::hash_combine(seed, std::get<0>(tup));
+        boost::hash_combine(seed, std::get<1>(tup));
+        return seed;
+    }
+};
+
+
+template <>
+struct std::hash<std::pair<int, int>> : std::hash<std::tuple<int, int>>
+{
+    using std::hash<std::tuple<int, int>>::operator();
+};
+
+
+int main(int argc, char * argv[])
+{
+    fmt::print(FMT_STRING("{}\n"), isHashableV<int>);                   // true
+    fmt::print(FMT_STRING("{}\n"), isHashableV<std::tuple<int, int>>);  // true
+    fmt::print(FMT_STRING("{}\n"), isHashableV<std::pair<int, int>>);   // true
+    fmt::print(FMT_STRING("{}\n"), isHashableV<std::vector<int>>);      // false
+
+    return EXIT_SUCCESS;
+}
+```
+References: 
+- [cpprefernece `std::unordered_map`](https://en.cppreference.com/w/cpp/container/unordered_map)
+- [cppreference `std::hash`](https://en.cppreference.com/w/cpp/utility/hash)
+- [`Boost.ContainerHash` `boost::hash_combine`](https://www.boost.org/doc/libs/1_79_0/libs/container_hash/doc/html/hash.html#combine)
+- [StackOverflow "Check if a type is hashable"](https://stackoverflow.com/questions/12753997/check-if-type-is-hashable)
 
 
 
@@ -1772,15 +1895,6 @@ std::cout << HasSizeTypeT<CXR &>::value << '\n';  // OOPS: prints false
 #### 📌 
 
 
-
-18 This very simple pair of helper templates is a fundamental technique that lies at the
-heart of advanced libraries such as Boost.Hana!
-19 This code is not valid C++ because a lambda expression cannot appear directly in a
-decltype operand for compiler-technical reasons, but the meaning is clear.
-20 
-21 At the time of this writing, the C++ standardization committee is exploring ways to
-“reflect” various program entities (like class types and their members) in ways that
-the program can explore. See Section 17.9 on page 363.
 22 Except that decltype(call-expression) does not require a nonreference, non-
 void return type to be complete, unlike call expressions in other contexts. Using
 decltype(std::declval<T>().begin(), 0) instead does add the
