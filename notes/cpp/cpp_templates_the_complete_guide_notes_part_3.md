@@ -1830,6 +1830,7 @@ int main()
 
 Whether hashable as well as customized hash functions (DIRTY!): 
 ```c++
+#include <cstdlib>
 #include <pair>
 #include <tuple>
 #include <type_traits>
