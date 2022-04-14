@@ -4,8 +4,15 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Boost REQUIRED)
 find_package(fmt REQUIRED)
+find_package(OpenCV REQUIRED)
+
+set(UTIL
+        include/util/TimerGuard.h
+        src/util/TimerGuard.cpp
+        )
 
 set(MAIN
+        include/S35.h
         src/main.cpp
         )
 
@@ -16,16 +23,19 @@ set(TBB_LIBRARIES
         )
 
 set(ALL_SOURCE_FILES
+        ${UTIL}
         ${MAIN}
         )
 
 set(ALL_INCLUDE_DIRS
         ${Boost_INCLUDE_DIRS}
+        ${OpenCV_INCLUDE_DIRS}
         include
         )
 
 set(ALL_LIBRARIES
         fmt::fmt
+        ${OpenCV_LIBS}
         ${TBB_LIBRARIES}
         )
 
