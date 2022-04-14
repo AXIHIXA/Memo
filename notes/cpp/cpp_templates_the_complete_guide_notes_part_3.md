@@ -1800,9 +1800,9 @@ Each use of `DEFINE_HAS_TYPE(MemberType)` defines a new `HasType_MemberType` tra
 #ifndef DEFINE_HAS_TYPE
 #define DEFINE_HAS_TYPE(MemType) \
 template <typename, typename = std::void_t<>> \
-struct HasType_##MemType : std::false_type {}; \
+struct HasTypeT_##MemType : std::false_type {}; \
 template <typename T> \
-struct HasType_##MemType<T, std::void_t<typename T::MemType>> : std::true_type {}  // ; intentionally skipped
+struct HasTypeT_##MemType<T, std::void_t<typename T::MemType>> : std::true_type {}  // ; intentionally skipped
 #endif  // DEFINE_HAS_TYPE
 
 DEFINE_HAS_TYPE(value_type);
@@ -1810,47 +1810,151 @@ DEFINE_HAS_TYPE(char_type);
 
 int main()
 {
-    std::cout << HasType_value_type<int>::value << '\n';               // false
-    std::cout << HasType_value_type<std::vector<int>>::value << '\n';  // true
-    std::cout << HasType_value_type<std::iostream>::value << '\n';     // false
-    std::cout << HasType_char_type<std::iostream>::value << '\n';      // true
+    std::cout << HasTypeT_value_type<int>::value << '\n';               // false
+    std::cout << HasTypeT_value_type<std::vector<int>>::value << '\n';  // true
+    std::cout << HasTypeT_value_type<std::iostream>::value << '\n';     // false
+    std::cout << HasTypeT_char_type<std::iostream>::value << '\n';      // true
 }
 ```
 
 ##### 19.6.3 Detecting Non-type Members
 
+```c++
+#ifndef DEFINE_HAS_MEMBER
+#define DEFINE_HAS_MEMBER(Member) \
+template <typename, typename = std::void_t<>> \
+struct HasMemberT_##Member : std::false_type {}; \
+template <typename T> \
+struct HasMemberT_##Member<T, std::void_t<decltype(&T::Member)>> : std::true_type {}  // ; intentionally skipped
+#endif  // DEFINE_HAS_MEMBER
+
+DEFINE_HAS_MEMBER(size);
+DEFINE_HAS_MEMBER(first);
+
+int main()
+{
+    std::cout << HasMemberT_size<int>::value << '\n';                   // false
+    std::cout << HasMemberT_size<std::vector<int>>::value << '\n';      // true
+    std::cout << HasMemberT_first<std::pair<int, int>>::value << '\n';  // true
+}
+```
+Here, we use SFINAE to disable the partial specialization when `&T::Member` is not valid. 
+For that construct to be valid, all of the following must be true:
+- Member must unambiguously identify a member of `T` 
+  (e.g., it can not be an overloaded member function name, 
+  or the name of multiple inherited members of the same name);
+- The member must be accessible;
+- The member must be a non-type, none-numerator member (otherwise the prefix `&` would be invalid);
+- If `T::Member` is a static data member, its type must not provide 
+  an `operator&`that makes `&T::Member` invalid 
+  (e.g., by making that operator inaccessible). 
 
 
+It would not be difficult to modify the partial specialization 
+to exclude cases where `&T::Member` is not a pointer-to-member type 
+(via `std::is_member_pointer`, which amounts to excluding static data members). 
+Similarly, a pointer-to-member function could be excluded or required 
+to limit the trait to data members or member functions. 
+
+##### Detecting Member Functions
+
+Note that the `HasMember` trait only checks whether a _single_ member with the corresponding name exists. 
+The trait also will fail if two members exists, which might happen if we check for overloaded member functions.
+```c++
+DEFINE_HAS_MEMBER(begin);
+
+std::cout << HasMemberT_begin<std::vector<int>>::value << '\n'; // false
+```
+Fortunately, SFINAE principle protects against attempts 
+to create both invalid _types_ and _expressions_ in a function template declaration, 
+allowing the overloading technique above to extend to testing whether arbitrary expressions are well-formed. 
 
 
+That is, we can simply check whether we can call a function of interest in a specific way 
+and that can succeed even if the function is overloaded. 
+As with the `IsConvertibleT` trait in Section 19.5, 
+the trick is to formulate the expression that checks whether we can call `begin()` 
+inside a `decltype` expression (or other unevaluated contexts) 
+for the default value of an additional function template parameter:
+```c++
+// primary template:
+template <typename, typename = std::void_t<>>
+struct HasBeginT : std::false_type {};
+
+// partial specialization (may be SFINAE’d away):
+template <typename T>
+struct HasBeginT<T, std::void_t<decltype(std::declval<T>().begin())>> : std::true_type {};
+```
+Here, we use `decltype(std::declval<T>().begin())` to test whether, 
+given a value/object of type `T` (using `std::declval` to avoid any constructor being required), 
+calling a member `begin()` is valid.
+**Except** that, `decltype(call-expression)` does not require a non-reference, non-void return type to be complete, 
+unlike call expressions in other contexts. 
+Using `decltype(std::declval<T>().begin(), 0)` instead does add the requirement 
+that the return type of the call is complete, 
+because the returned value is no longer the result of the `decltype` operand. 
+
+##### Detecting Other Expressions
+
+We can use the technique above for other kinds of expressions and even combine multiple expressions. 
+For example, we can test whether, given types `T1` and `T2`,
+there is a suitable `<` operator defined for values of these types:
+```c++
+// primary template:
+template <typename, typename, typename = std::void_t<>>
+struct HasLessT : std::false_type {};
+
+// partial specialization (may be SFINAE’d away):
+template <typename T1, typename T2>
+struct HasLessT<T1, T2, std::void_t<decltype(std::declval<T1>() < std::declval<T2>())>> : std::true_type {};
+
+void foo()
+{
+    std::cout << HasLessT<int, char>::value << '\n';                                   // true
+    std::cout << HasLessT<std::string, std::string>::value << '\n';                    // true
+    std::cout << HasLessT<std::string, int>::value << '\n';                            // false
+    std::cout << HasLessT<std::string, char *>::value << '\n';                         // true
+    std::cout << HasLessT<std::complex<double>, std::complex<double>>::value << '\n';  // false
+}
+```
+As always, the challenge is to define a valid expression for the condition to check 
+and use decltype to place it in a SFINAE context, 
+where it will cause a fallback to the primary template if the expression isn’t valid:
+```c++
+decltype(std::declval<T1>() < std::declval<T2>())
+```
+Traits that detect valid expressions in this manner are fairly robust: 
+They will evaluate `true` only when the expression is well-formed 
+and will correctly return `false` when the `<` operator is ambiguous, deleted, or inaccessible.
 
 
+P.S. Prior to C++11's expansion of SFINAE to cover arbitrary invalid expressions, 
+the techniques for detecting the validity of specific expressions 
+centered on introducing a new overload for the function being tested (e.g., `<`) 
+that had an overly permissive signature and a strangely sized return type 
+to behave as a fallback case. 
+However, such approaches were prone to ambiguities and caused errors due to access control violations. 
 
-##### 19.6.5 Check If A Type Is Hashable
+
+##### Check If A Type Is Hashable
 
 Whether hashable as well as customized hash functions (DIRTY!): 
 ```c++
-#include <cstdlib>
-#include <pair>
-#include <tuple>
-#include <type_traits>
-#include <vector>
-
 #include <boost/container_hash/hash.hpp>
 #include <fmt/core.h>
 #include <fmt/format.h>
 
 
 template <typename T, typename = std::void_t<>>
-struct IsHashable : std::false_type {};
+struct is_hashable : std::false_type {};
 
 
 template <typename T>
-struct IsHashable<T, std::void_t<decltype( std::declval<std::hash<T>>()( std::declval<T>() ) )>> : std::true_type {};
+struct is_hashable<T, std::void_t<decltype(std::declval<std::hash<T>>()(std::declval<T>()))>> : std::true_type {};
 
 
 template <typename T>
-constexpr bool isHashableV = IsHashable<T>::value;
+constexpr bool is_hashable_v = is_hashable<T>::value;
 
 
 template <>
@@ -1875,10 +1979,10 @@ struct std::hash<std::pair<int, int>> : std::hash<std::tuple<int, int>>
 
 int main(int argc, char * argv[])
 {
-    fmt::print(FMT_STRING("{}\n"), isHashableV<int>);                   // true
-    fmt::print(FMT_STRING("{}\n"), isHashableV<std::tuple<int, int>>);  // true
-    fmt::print(FMT_STRING("{}\n"), isHashableV<std::pair<int, int>>);   // true
-    fmt::print(FMT_STRING("{}\n"), isHashableV<std::vector<int>>);      // false
+    fmt::print(FMT_STRING("{}\n"), is_hashable_v<int>);                   // true
+    fmt::print(FMT_STRING("{}\n"), is_hashable_v<std::tuple<int, int>>);  // true
+    fmt::print(FMT_STRING("{}\n"), is_hashable_v<std::pair<int, int>>);   // true
+    fmt::print(FMT_STRING("{}\n"), is_hashable_v<std::vector<int>>);      // false
 
     return EXIT_SUCCESS;
 }
@@ -1900,17 +2004,8 @@ References:
 #### 📌 
 
 
-22 Except that decltype(call-expression) does not require a nonreference, non-
-void return type to be complete, unlike call expressions in other contexts. Using
-decltype(std::declval<T>().begin(), 0) instead does add the
-requirement that the return type of the call is complete, because the returned value
-is no longer the result of the decltype operand.
-23 Prior to C++11's expansion of SFINAE to cover arbitrary invalid expressions, the
-techniques for detecting the validity of specific expressions centered on
-introducing a new overload for the function being tested (e.g., <) that had an
-overly permissive signature and a strangely sized return type to behave as a
-fallback case. However, such approaches were prone to ambiguities and caused
-errors due to access control violations.
+
+
 24 In C++11 and C++14, we have to specify the base class as
 std::integral_constant<bool,…> instead of
 std::bool_constant<…>.25

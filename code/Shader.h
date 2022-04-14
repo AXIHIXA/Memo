@@ -52,15 +52,13 @@ public:
         // 2. compile Shader
 
         // vertexShader shader
-        unsigned int vertexShader;
-        vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertShaderPtr, nullptr);
         glCompileShader(vertexShader);
         checkCompileErrors(vertexShader, "VERTEX");
 
         // fragmentShader shader
-        unsigned int fragmentShader;
-        fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragmentShader, 1, &fragShaderPtr, nullptr);
         glCompileShader(fragmentShader);
         checkCompileErrors(fragmentShader, "FRAGMENT");
@@ -77,10 +75,7 @@ public:
         glDeleteShader(fragmentShader);
     }
 
-    Shader(const char * vertShaderPath,
-           const char * ctrlShaderPath,
-           const char * evalShaderPath,
-           const char * fragShaderPath)
+    Shader(const char * vertShaderPath, const char * ctrlShaderPath, const char * evalShaderPath, const char * fragShaderPath)
     {
         // 1. retrieve the vertShader/fragShader source code from filePath
 
@@ -145,29 +140,25 @@ public:
         // 2. compile Shader
 
         // vertShader shader
-        GLuint vertShader;
-        vertShader = glCreateShader(GL_VERTEX_SHADER);
+        GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertShader, 1, &vertShaderPtr, nullptr);
         glCompileShader(vertShader);
         checkCompileErrors(vertShader, "VERTEX");
 
         // tessellation control shader
-        GLuint ctrlShader;
-        ctrlShader = glCreateShader(GL_TESS_CONTROL_SHADER);
+        GLuint ctrlShader = glCreateShader(GL_TESS_CONTROL_SHADER);
         glShaderSource(ctrlShader, 1, &ctrlShaderPtr, nullptr);
         glCompileShader(ctrlShader);
-        checkCompileErrors(ctrlShader, "TESS_CONTROL");
+        checkCompileErrors(ctrlShader, "TESSELLATION CONTROL");
 
         // tessellation evaluation shader
-        GLuint evalShader;
-        evalShader = glCreateShader(GL_TESS_EVALUATION_SHADER);
+        GLuint evalShader = glCreateShader(GL_TESS_EVALUATION_SHADER);
         glShaderSource(evalShader, 1, &evalShaderPtr, nullptr);
         glCompileShader(evalShader);
-        checkCompileErrors(evalShader, "TESS_EVALUATION");
+        checkCompileErrors(evalShader, "TESSELLATION EVALUATION");
 
         // fragShader shader
-        GLuint fragShader;
-        fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+        GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragShader, 1, &fragShaderPtr, nullptr);
         glCompileShader(fragShader);
         checkCompileErrors(fragShader, "FRAGMENT");
@@ -195,15 +186,15 @@ public:
 
     void setBool(const std::string & name, bool value) const
     {
-        glUniform1i(glGetUniformLocation(shaderProgram, name.c_str()), (int) value);
+        glUniform1i(glGetUniformLocation(shaderProgram, name.c_str()), static_cast<GLint>(value));
     }
 
-    void setInt(const std::string & name, int value) const
+    void setInt(const std::string & name, GLint value) const
     {
         glUniform1i(glGetUniformLocation(shaderProgram, name.c_str()), value);
     }
 
-    void setFloat(const std::string & name, float value) const
+    void setFloat(const std::string & name, GLfloat value) const
     {
         glUniform1f(glGetUniformLocation(shaderProgram, name.c_str()), value);
     }
@@ -213,7 +204,7 @@ public:
         glUniform2fv(glGetUniformLocation(shaderProgram, name.c_str()), 1, &value[0]);
     }
 
-    void setVec2(const std::string & name, float x, float y) const
+    void setVec2(const std::string & name, GLfloat x, GLfloat y) const
     {
         glUniform2f(glGetUniformLocation(shaderProgram, name.c_str()), x, y);
     }
@@ -223,7 +214,7 @@ public:
         glUniform3fv(glGetUniformLocation(shaderProgram, name.c_str()), 1, &value[0]);
     }
 
-    void setVec3(const std::string & name, float x, float y, float z) const
+    void setVec3(const std::string & name, GLfloat x, GLfloat y, GLfloat z) const
     {
         glUniform3f(glGetUniformLocation(shaderProgram, name.c_str()), x, y, z);
     }
@@ -233,7 +224,7 @@ public:
         glUniform4fv(glGetUniformLocation(shaderProgram, name.c_str()), 1, &value[0]);
     }
 
-    void setVec4(const std::string & name, float x, float y, float z, float w) const
+    void setVec4(const std::string & name, GLfloat x, GLfloat y, GLfloat z, GLfloat w) const
     {
         glUniform4f(glGetUniformLocation(shaderProgram, name.c_str()), x, y, z, w);
     }
@@ -265,9 +256,9 @@ public:
 
 private:
     // utility function for checking shader compilation/linking errors.
-    static void checkCompileErrors(unsigned int shader, const std::string & type)
+    static void checkCompileErrors(GLuint shader, const std::string & type)
     {
-        int success;
+        GLint success;
         char infoLog[1024];
 
         if (type != "PROGRAM")
@@ -303,7 +294,8 @@ private:
     }
 
 private:
-    unsigned int shaderProgram;
+    GLuint shaderProgram;
 };
 
-#endif // LEARNOPENGL_SHADER_H
+
+#endif  // LEARNOPENGL_SHADER_H
