@@ -27,6 +27,9 @@ private:
     std::FILE * stream;
 };
 
+
+extern template class TimerGuard<std::chrono::high_resolution_clock, std::chrono::milliseconds>;
+
 }  // namespace XH
 
 

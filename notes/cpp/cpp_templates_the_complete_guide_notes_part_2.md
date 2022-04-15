@@ -7655,6 +7655,28 @@ The only difference happens when the compiler instantiate the function template,
 and find there is one full specialization.)
 
 
+A full function template specialiation only provides an alternative definition but **not** an alternative declaration.
+For this reason, the signature (including the return type) must match exactly:
+```c++
+template <typename T> 
+auto foo();
+
+// ERROR
+template <> 
+int foo<int>() 
+{ 
+    return 42; 
+}
+
+// OK
+template <> 
+auto foo<int>() 
+{ 
+    return 42; 
+}
+```
+
+
 A full specialization is in many ways similar to a normal declaration
 (or rather, a normal redeclaration). 
 In particular, it does **not** declare a template, 
@@ -7694,7 +7716,7 @@ int g(int, int y)
 }
 ```
 Alternatively, the specialization could be made `inline`,
-in which case its definition can be (and should be) placed in the header file. 
+in which case its definition can be (and should be) placed in the header file.
 
 ##### 16.3.3 Full Variable Template Specialization
 

@@ -1556,8 +1556,105 @@ constexpr auto type = TypeT<T> {};
 // No definition needed. 
 template <typename T>
 T valueT(TypeT<T>);
-```
 
+inline constexpr auto isDefaultConstructible = isValid([](auto x) -> decltype((void) decltype(valueT(x))()) {});
+
+void foo()
+{
+    std::cout << isDefaultConstructible(type<int>) << '\n';    // true (int is default-constructible)
+    std::cout << isDefaultConstructible(type<int &>) << '\n';  // false (references are not default-constructible)
+}
+```
+Let’s start with the definition of `isValid`: 
+It is a `constexpr` variable whose type is a lambda's closure type. 
+The declaration must necessarily use a placeholder type (`auto` in our code) 
+because C++ has no way to express closure types directly. 
+Prior to C++17, lambda expressions could not appear in constant-expressions, 
+which is why this code is only valid in C++17. 
+Since `isValid` has a closure type, it can be _invoked_ (i.e., called), 
+but the item that it returns is itself an object of a lambda closure type, 
+produced by the inner lambda expression. 
+
+
+We already know that `isDefaultConstructible` has a lambda closure type
+and it is a function object that checks the trait of a type being default-constructible. 
+In other words, `isValid` is a _traits factory_: 
+A component that generates traits checking objects from its argument. 
+
+
+The type helper variable template allows us to represent a type as a value. 
+A value `x` obtained that way can be turned back into the original type with `decltype(valueT(x))`, 
+and that’s exactly what is done in the lambda passed to `isValid` above. 
+If that extracted type cannot be default-constructed, `decltype(valueT(x))()` is invalid, 
+and we will either get a compiler error, 
+or an associated declaration will be "SFINAE'd out"  
+(and the latter effect is what we’ll achieve thanks to the details of the definition of `isValid`).
+
+
+To see how all the pieces work together,
+consider what the inner lambda expression in `isValid` becomes 
+with `isValid`'s parameter `f` bound to 
+the generic lambda argument specified in the definition of `isDefaultConstructible`. 
+By performing the substitution in `isValid`'s definition, we get the equivalent of:
+(P.S. Just for understanding, this code snippet is invalid in terms of C++17 syntax.)
+```c++
+constexpr auto isDefaultConstructible = [](auto && ... args) 
+{
+    // default template argument (3rd template argument) of isValidImpl omitted; see later
+    return decltype(isValidImpl<decltype([](auto x) -> decltype((void) decltype(valueT(x))())), 
+                                decltype(args) && ...>
+                               (nullptr)
+                   ) {};
+};
+```
+If we look back at the first declaration of `isValidImpl()` above, 
+we note that it includes a default template argument of the form
+```c++
+decltype(std::declval<F>()(std::declval<Args &&>()...))>
+```
+which attempts to invoke a value of the type of its first template argument, 
+which is the closure type of the lambda in the definition of `isDefaultConstructible`, 
+with values of the types of the arguments (`decltype(args) && ...`) passed to `isDefaultConstructible`. 
+As there is only one parameter `x` in the lambda,
+`args` must expand to only one argument; 
+in our `static_assert` examples above, 
+that argument has type `TypeT<int>` or `TypeT<int &>`. 
+In the `TypeT<int &>` case, `decltype(valueT(x)) `is `int &` which makes `decltype(valueT(x))()` invalid, 
+and thus the substitution of the default template argument in the first declaration of `isValidImpl` 
+fails and is SFINAE’d out. 
+That leaves just the second declaration (which would otherwise be a lesser match),
+which produces a `std::false_type` value.
+Overall, `isDefaultConstructible` produces `std::false_type` when `type<int &>` is passed. 
+If instead `type<int>` is passed, the substitution does not fail, 
+and the first declaration of `isValidImpl` is selected, producing a `std::rue_type` value.
+
+
+Recall that for SFINAE to work, substitutions have to happen _in the immediate context_ of the substituted templates. 
+In this case, the substituted templates are the first declaration of `isValidImpl` 
+and the call operator of the generic lambda passed to `isValid`. 
+Therefore, the construct to be tested has to appear in the return type of that lambda, not in its body!
+
+
+Our `isDefaultConstructible` trait is a little different from previous traits implementations 
+in that it requires function-style invocation instead of specifying template arguments. 
+That is arguably a more readable notation, but the prior style can be obtained also:
+```c++
+template <typename T>
+using IsDefaultConstructibleT = decltype(isDefaultConstructible(std::declval<T>()));
+```
+Since this is a traditional template declaration, however, it can only appear in namespace scope, 
+whereas the definition of `isDefaultConstructible` could conceivably have been introduced in block scope. 
+
+
+So far, this technique might not seem compelling 
+because both the expressions involved in the implementation and the style of use 
+are more complex than the previous techniques. 
+However, once `isValid` is in place and understood, many traits can be implement with just one declaration. 
+For example, testing for access to a member named first, 
+is rather clean (see Section 19.6.4 for the complete example):
+```c++
+constexpr auto hasFirst = isValid([](auto x) -> decltype((void) valueT(x).first) {});
+```
 
 #### 📌 19.4.4 SFINAE-Friendly Traits
 
@@ -1936,6 +2033,30 @@ to behave as a fallback case.
 However, such approaches were prone to ambiguities and caused errors due to access control violations. 
 
 
+we can use this trait to require that a template parameter `T` supports `operator<`:
+```c++
+template <typename T>
+class C
+{
+    static_assert(HasLessT<T>::value, "Class C requires comparable elements");
+    ...
+};
+```
+
+```c++
+template <typename, typename = std::void_t<>>
+struct HasVariousT : std::false_type {};
+
+// partial specialization (may be SFINAE’d away):
+template <typename T>
+struct HasVariousT<T, std::void_t<decltype(std::declval<T>().begin()),
+                                  typename T::difference_type,
+                                  typename T::iterator>>
+        : std::true_type
+{
+};
+```
+
 ##### Check If A Type Is Hashable
 
 Whether hashable as well as customized hash functions (DIRTY!): 
@@ -1992,6 +2113,9 @@ References:
 - [cppreference `std::hash`](https://en.cppreference.com/w/cpp/utility/hash)
 - [`Boost.ContainerHash` "Combining hash values"](https://www.boost.org/doc/libs/1_79_0/libs/container_hash/doc/html/hash.html#combine)
 - [StackOverflow "Check if a type is hashable"](https://stackoverflow.com/questions/12753997/check-if-type-is-hashable)
+
+##### 19.6.4 Using Generic Lambdas to Detect Members
+
 
 
 
