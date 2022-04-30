@@ -15,6 +15,8 @@ template <typename Clock = std::chrono::high_resolution_clock, typename Duration
 class TimerGuard
 {
 public:
+    using TimePoint = typename Clock::time_point;
+
     explicit TimerGuard(std::FILE * stream_ = stdout) : startTime(Clock::now()), stream(stream_) {}
 
     ~TimerGuard()
@@ -23,7 +25,7 @@ public:
     }
 
 private:
-    typename Clock::time_point startTime;
+    TimePoint startTime;
     std::FILE * stream;
 };
 

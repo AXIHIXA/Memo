@@ -46,7 +46,7 @@
     - [OpenGL Shader](./code/Shader.h)
     - [pipe_demo.c](./code/pipe_demo.c)
     - [TimerGuard](./code/TimerGuard)
-        - [h (explicit instantiation declaration](./code/TimerGuard/include/util/TimerGuard.h)
+        - [h (explicit instantiation declaration)](./code/TimerGuard/include/util/TimerGuard.h)
         - [cpp (explicit instantiation definition)](./code/TimerGuard/src/util/TimerGuard.cpp)
     - [variadic.cpp](./code/variadic.cpp)
 
