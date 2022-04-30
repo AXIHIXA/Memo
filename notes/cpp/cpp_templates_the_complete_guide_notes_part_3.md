@@ -1042,6 +1042,17 @@ using add_lvalue_reference_t = typename add_lvalue_reference<_Tp>::type;
 template <typename _Tp>
 using add_rvalue_reference_t = typename add_rvalue_reference<_Tp>::type;
 ```
+There are two things to note with the definition of `RemoveCVT`. 
+1. It is making use of both `RemoveConstT` and the related `RemoveVolatileT`, 
+   first removing the volatile (if present) and then passing the resulting type to `RemoveConstT`.
+2. It is using _metafunction forwarding_ to inherit the `Type` member from `RemoveConstT` 
+   rather than declaring its own `Type` member 
+   that is identical to the one in the `RemoveConstT` specialization. 
+
+Here, metafunction forwarding is used simply to reduce the amount of typing in the definition of `RemoveCVT`.
+However, metafunction forwarding is also useful 
+when the metafunction is not defined for all inputs, 
+a technique that will be discussed further in Section 19.4. 
 ```c++
 /// <bits/c++config.h>
 
@@ -2116,6 +2127,954 @@ References:
 
 ##### 19.6.4 Using Generic Lambdas to Detect Members
 
+The `isValid` lambda introduced in Section 19.4.3 
+provides a more compact technique to define traits that check for members, 
+helping is to avoid the use of macros to handle members if arbitrary names.
+
+
+The following example illustrates how to define traits 
+checking whether a data or type member such as `first` or `size_type` exists 
+or whether `operator<` is defined for two objects of different types:
+```c++
+// define to check for data member first:
+constexpr auto hasFirst = isValid([](auto x) -> decltype((void) valueT(x).first) {});
+std::cout << "hasFirst: " << hasFirst(type<std::pair<int, int>>) << '\n';  // true
+
+// define to check for member type size_type:
+constexpr auto hasSizeType = isValid([](auto x) -> typename decltype(valueT(x))::size_type {});
+
+struct CX
+{
+    using size_type = std::size_t;
+};
+
+std::cout << "hasSizeType: " << hasSizeType(type<CX>) << '\n';  // true
+
+if constexpr(!hasSizeType(type<int>))
+{
+    std::cout << "int has no size_type\n";
+}
+
+// define to check for <:
+constexpr auto hasLess = isValid([](auto x, auto y) -> decltype(valueT(x) < valueT(y)) {});
+
+std::cout << hasLess(42, type<char>) << '\n';                        // true
+std::cout << hasLess(type<std::string>, type<std::string>) << '\n';  // true
+std::cout << hasLess(type<std::string>, type<int>) << '\n';          // false
+std::cout << hasLess(type<std::string>, "hello") << '\n';            // true
+```
+Note again that `hasSizeType` uses `std::decay` to remove the references from the passed `x` 
+because you can’t access a type member from a reference. 
+If you skip that, the traits will always yield `false`
+because the second overload of `isValidImpl` is used. 
+
+
+To be able to use the common generic syntax, taking types as template parameters,
+we can again define additional helpers. 
+```c++
+constexpr auto hasFirst = isValid([](auto && x) -> decltype((void) &x.first) {});
+
+template <typename T>
+using HasFirstT = decltype(hasFirst(std::declval<T>()));
+
+constexpr auto hasSizeType = isValid([](auto && x) -> typename std::decay_t<decltype(x)>::size_type {});
+
+template <typename T>
+using HasSizeTypeT = decltype(hasSizeType(std::declval<T>()));
+
+constexpr auto hasLess = isValid([](auto && x, auto && y) -> decltype(x < y) {});
+
+template <typename T1, typename T2>
+using HasLessT = decltype(hasLess(std::declval<T1>(), std::declval<T2>()));
+```
+
+
+#### 📌 19.7 Other Traits Techniques
+
+##### 19.7.1 If-Then-Else
+
+```c++
+template <bool COND, typename TrueType, typename FalseType>
+struct IfThenElseT
+{
+    using Type = TrueType;
+};
+
+// partial specialization: false yields third argument
+template <typename TrueType, typename FalseType>
+struct IfThenElseT<false, TrueType, FalseType>
+{
+    using Type = FalseType;
+};
+
+template <bool COND, typename TrueType, typename FalseType>
+using IfThenElse = typename IfThenElseT<COND, TrueType, FalseType>::Type;
+
+template <auto N>
+struct SmallestIntT
+{
+    using Type = IfThenElse<N <= std::numeric_limits<char>::max(),
+                            char,
+                            IfThenElse<N <= std::numeric_limits<short>::max(),
+                                       short,
+                                       IfThenElse<N <= std::numeric_limits<int>::max(),
+                                                  int,
+                                                  IfThenElse<N <= std::numeric_limits<long>::max(), 
+                                                             long,
+                                                             IfThenElse<N <= std::numeric_limits<long long>::max(),
+                                                                        long long, 
+                                                                        void  //then fallback
+                                                                        >
+                                                             >
+                                                  >
+                                       >
+                            >;
+};
+
+template <auto N>
+using SmallestInt = typename SmallestIntT<N>::Type;
+```
+Note that, unlike a normal C++ if-then-else statement, 
+the template arguments for both the “then” and “else” branches are evaluated before the selection is made, 
+so **neither** branch may ~~contain ill-formed code~~, otherwise, the program is likely to be ill-formed.
+For example, consider a trait that yields the corresponding unsigned type for a given signed type. 
+There is a standard trait `std::make_unsigned` which does this conversion, 
+but it requires that the passed type is a signed integral type and no bool; 
+otherwise its use results in undefined behavior.
+So it might be a good idea to implement a trait that yields the corresponding unsigned type 
+if this is possible and the passed type otherwise 
+(thus, avoiding undefined behavior if an inappropriate type is given). 
+The naive implementation does **not** work:
+```c++
+// ERROR: undefined behavior if T is bool or no integral type:
+template <typename T>
+struct UnsignedT 
+{
+    using Type = IfThenElse<std::is_integral<T>::value && !std::is_same<T, bool>::value,
+                            typename std::make_unsigned<T>::type, 
+                            T>;
+};
+```
+The instantiation of `UnsignedT<bool>` is _still undefined behavior_, 
+because the compiler will still attempt to form the type from `typename std::make_unsigned<T>::type`. 
+To address this problem, we need to add an additional level of indirection:
+```c++
+// yield T when using member Type:
+template <typename T>
+struct IdentityT 
+{
+    using Type = T;
+};
+
+// to make unsigned after IfThenElse was evaluated:
+template <typename T>
+struct MakeUnsignedT 
+{
+    using Type = typename std::make_unsigned<T>::type;
+};
+
+template <typename T>
+struct UnsignedT 
+{
+    using Type = typename IfThenElse<std::is_integral<T>::value && !std::is_same<T, bool>::value,
+                                     MakeUnsignedT<T>,
+                                     IdentityT<T>>::Type;
+};
+```
+In this definition of `UnsignedT`, the type arguments to `IfThenElse` are both instances of type functions themselves. 
+However, the type functions are **not** actually evaluated before `IfThenElse` selects one. 
+Instead, `IfThenElse` selects the type function instance (of either `MakeUnsignedT` or `IdentityT`). 
+The `::Type` then evaluates the selected type function instance to produce `Type`. 
+
+
+It is worth emphasizing here that this relies entirely on the fact that 
+the not-selected wrapper type in the `IfThenElse` construct is **never** fully instantiated. 
+In particular, the following does **not** work:
+```c++
+// DOES NOT WORK!
+template <typename T>
+struct UnsignedT
+{
+    using Type = IfThenElse<std::is_integral<T>::value && !std::is_same<T, bool>::value,
+                            typename MakeUnsignedT<T>::Type,
+                            T>;
+};
+```
+Instead, we have to apply the `::Type` for `MakeUnsignedT<T>` _later_, 
+which means that we need the `IdentityT` helper to also apply `::Type` later for `T` in the _else_ branch.
+
+
+This also means that in this context, we can **not** use something like
+```c++
+template <typename T>
+using Identity = typename IdentityT<T>::Type;
+```
+We can declare such an alias template, and it may be useful elsewhere, 
+but we can **not** make effective use of it in the definition of `IfThenElse`
+because any use of `Identity<T>` immediately causes 
+the full instantiation of `IdentityT<T>` to retrieve its `Type` member. 
+The `IfThenElseT` template is available in the C++ standard library as 
+[`std::conditional`](https://en.cppreference.com/w/cpp/types/conditional). 
+With it, the `UnsignedT` trait would be defined as follows:
+```c++
+template <typename T>
+struct IdentityT 
+{
+    using Type = T;
+};
+
+template <typename T>
+struct MakeUnsignedT 
+{
+    using Type = typename std::make_unsigned<T>::type;
+};
+
+template <typename T>
+struct UnsignedT 
+{
+    using Type = typename std::conditional_t<std::is_integral<T>::value && !std::is_same<T, bool>::value,
+                                             MakeUnsignedT<T>,
+                                             IdentityT<T>>::Type;
+};
+```
+
+##### 19.7.2 Detecting Non-throwing Operations
+
+It is occasionally useful to determine whether a particular operation can throw an exception. 
+For example, a _move constructor_ should be marked `noexcept`,
+indicating that it does not throw exceptions, whenever possible. 
+However, whether a move constructor for a particular class throws exceptions 
+often depends on whether the move constructors of its members and bases throw.
+```c++
+template <typename T1, typename T2>
+class Pair
+{
+public:
+    Pair(Pair && other)
+    noexcept(std::is_nothrow_move_constructible_v<T1> && 
+             std::is_nothrow_move_constructible_v<T2>)
+            : first(std::forward<T1>(other.first)),
+              second(std::forward<T2>(other.second))
+    {
+    }
+
+private:
+    T1 first;
+    T2 second;
+};
+```
+`Pair`’s move constructor can throw exceptions
+when the move operations of either `T1` or `T2` can throw.
+we can express this property by using a computed `noexcept` exception specification in `Pair`’s move constructor.
+```c++
+// NOT SFINAE-FRIENDLY!
+template <typename T>
+struct IsNothrowMoveConstructibleT : std::bool_constant<noexcept(T(std::declval<T &&>()))>
+{};
+```
+Here, the operator version of `noexcept` is used, 
+which determines whether an expression is non-throwing.
+Because the result is a Boolean value, we can pass it directly to define the base class `std::bool_constant`, 
+which is used to define `std::true_type` and `std::false_type`.
+(P.S. In C++11 and C++14, we have to specify the base class as 
+`std::integral_constant<bool, ...>` instead of `std::bool_constant<...>`.)
+
+
+However, this implementation should be improved because it is **not** SFINAE-friendly: 
+If the trait is instantiated with a type that does not have a usable move or copy constructor, 
+which makes the expression `T(std::declval<T &&>())` invalid, 
+the entire program will be ill-formed:
+```c++
+class E 
+{
+public:
+    E(E &&) = delete;
+};
+
+std::cout << IsNothrowMoveConstructibleT<E>::value << '\n';  // compile-time ERROR
+```
+Instead of aborting the compilation, the type trait should yield a value of `false`.
+
+
+As discussed in Section 19.4.4, 
+we have to check whether the expression computing the result is valid before it is evaluated. 
+Here, we have to find out whether move construction is valid before checking whether it is `noexcept`:
+```c++
+// primary template:
+template <typename T, typename = std::void_t<>>
+struct IsNothrowMoveConstructibleT : std::false_type
+{};
+
+// partial specialization (may be SFINAE’d away):
+template <typename T>
+struct IsNothrowMoveConstructibleT<T, std::void_t<decltype(T(std::declval<T>()))>>
+        : std::bool_constant<noexcept(T(std::declval<T>()))>
+{};
+```
+If the substitution of `std::void_t` in the partial specialization is valid,
+that specialization is selected, 
+and the `noexcept` expression in the base class specifier can safely be evaluated. 
+Otherwise, the partial specialization is discarded without instantiating it, 
+and the primary template is instantiated instead (producing a `std::false_type` result).
+
+
+Note that there is **no** way to check whether a move constructor throws without being able to call it directly. 
+That is, it is not enough that the move constructor is public and not deleted, 
+it also requires that the corresponding type is no abstract class
+(references or pointers to abstract classes work fine). 
+For this reason, the type trait is named `IsNothrowMoveConstructible` instead of `HasNothrowMove-Constructor`. 
+For anything else, we’d need compiler support.
+
+##### 19.7.3 Traits Convenience
+
+One common complaint with type traits is their relative verbosity, 
+because each use of a type trait typically requires a trailing `::Type` and, 
+in a dependent context, a leading `typename` keyword, both of which are boilerplate. 
+When multiple type traits are composed, this can force some awkward formatting, 
+as in our running example of the array `operator+`, 
+if we would implement it correctly, ensuring that no constant or reference type is returned:
+```c++
+template <typename T1, typename T2>
+Array<typename RemoveCVT<typename RemoveReferenceT<typename PlusResultT<T1, T2>::Type>::Type>::Type> 
+operator+(Array<T1> const &, Array<T2> const &);
+```
+By using alias templates and variable templates, 
+we can make the usage of the traits, yielding types or values respectively more convenient. 
+However, note that in some contexts these shortcuts are not usable, 
+and we have to use the original class template instead. 
+We already discussed one such situation in our `UnsignedT` example, 
+but a more general discussion follows.
+
+##### Alias Templates and Traits
+
+There are downsides to using alias templates for type traits:
+1. Alias templates can **not** be specialized (as noted in Section 16.3), 
+   and since many of the techniques for writing traits depend on specialization, 
+   an alias template will likely need to redirect to a class template anyway.
+2. Some traits are meant to be specialized by users, 
+   such as a trait that describes whether a particular addition operation is commutative, 
+   and it can be confusing to specialize the class template when most uses involve the alias template.
+3. The use of an alias template _will always instantiate the type_ 
+   (e.g., the underlying class template specialization),
+   which makes it harder to avoid instantiating traits that don’t make sense for a given type 
+   (as discussed in Section 19.7.1).
+
+
+Another way to express this last point, 
+is that alias templates can **not** be used with _metafunction forwarding_ (see Section 19.3.2).
+
+
+Because the use of alias templates for type traits has both positive and negative aspects, 
+we recommend using them as we have in this section and as it is done in the C++ standard library: 
+Provide both class templates with a specific naming convention (we have chosen the `T` suffix and the `Type` type member) 
+and alias templates with a slightly different naming convention (we dropped the `T` suffix), 
+and have each alias template defined in terms of the underlying class template. 
+This way, we can use alias templates wherever they provide clearer code, 
+but fall back to class templates for more advanced uses.
+
+
+Note that for historical reasons, the C++ standard library has a different convention. 
+The type traits class templates yield a type in type and have no specific suffix (many were introduced in C++11). 
+Corresponding alias templates (that produce the type directly) started being introduced in C++14, 
+and were given a `_t` suffix, since the un-suffixed name was already standardized.
+
+##### Variable Templates and Traits
+
+Traits returning a value require a trailing `::value` (or similar member selection)
+to produce the result of the trait. 
+In this case, `constexpr` variable templates offer a way to reduce this verbosity.
+
+
+Again, for historical reasons, the C++ standard library has a different convention.
+The traits class templates producing a result in value have no specific suffix,
+and many of them were introduced in the C++11 standard. 
+The corresponding variable templates that directly produce the resulting value
+were introduced in C++17 with a `_v` suffix.
+
+
+The C++ standardization committee is further bound by a long-standing tradition
+that all standard names consist of lowercase characters and optional underscores to separate them. 
+That is, a name like `isSame` or `IsSame` is unlikely to ever be seriously considered for standardization. 
+
+
+#### 📌 19.8 Type Classification
+
+
+It is sometimes useful to be able to know whether a template parameter 
+is a built-in type, a pointer type, a class type, and so on. 
+In the following sections, we develop a suite of type traits that allow us to determine various properties of a given type. 
+As a result, we will be able to write code specific for some types:
+```c++
+if (IsClassT<T>::value) {}
+
+if constexpr (IsClass<T>) {}
+
+// primary template for the general case
+template <typename T, bool = IsClass<T>>
+class C {};
+
+// partial specialization for class types
+template <typename T>
+class C<T, true> {};
+```
+Furthermore, expressions such as `IsPointerT<T>::value` 
+will be Boolean constants that are valid non-type template arguments. 
+In turn, this allows the construction of more sophisticated and more powerful templates 
+that specialize their behavior on the properties of their type arguments. 
+
+##### 19.8.1 Determining Fundamental Types
+
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
+
+// composite type categories. 
+
+/// is_arithmetic
+template<typename _Tp>
+  struct is_arithmetic
+  : public __or_<is_integral<_Tp>, is_floating_point<_Tp>>::type
+  { };
+
+/// is_fundamental
+template<typename _Tp>
+  struct is_fundamental
+  : public __or_<is_arithmetic<_Tp>, is_void<_Tp>,
+         is_null_pointer<_Tp>>::type
+  { };
+
+// Primary type categories.
+
+template<typename>
+struct __is_null_pointer_helper
+: public false_type { };
+
+template<>
+struct __is_null_pointer_helper<std::nullptr_t>
+: public true_type { };
+
+/// is_null_pointer (LWG 2247).
+template<typename _Tp>
+struct is_null_pointer
+: public __is_null_pointer_helper<typename remove_cv<_Tp>::type>::type
+{ };
+
+/// __is_nullptr_t (extension).
+template<typename _Tp>
+struct __is_nullptr_t
+: public is_null_pointer<_Tp>
+{ };
+
+template<typename>
+struct __is_void_helper
+: public false_type { };
+
+template<>
+struct __is_void_helper<void>
+: public true_type { };
+
+/// is_void
+template<typename _Tp>
+struct is_void
+: public __is_void_helper<typename remove_cv<_Tp>::type>::type
+{ };
+
+/// is_integral
+/// is_integral_helper: brute-force enumeration
+template<typename _Tp>
+struct is_integral
+: public __is_integral_helper<typename remove_cv<_Tp>::type>::type
+{ };
+
+template<typename>
+struct __is_floating_point_helper
+: public false_type { };
+
+template<>
+struct __is_floating_point_helper<float>
+: public true_type { };
+
+template<>
+struct __is_floating_point_helper<double>
+: public true_type { };
+
+template<>
+struct __is_floating_point_helper<long double>
+: public true_type { };
+
+#if !defined(__STRICT_ANSI__) && defined(_GLIBCXX_USE_FLOAT128) && !defined(__CUDACC__)
+template<>
+struct __is_floating_point_helper<__float128>
+: public true_type { };
+#endif
+
+/// is_floating_point
+template<typename _Tp>
+struct is_floating_point
+: public __is_floating_point_helper<typename remove_cv<_Tp>::type>::type
+{ };
+```
+
+##### 19.8.2 Determining Compound Types
+
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
+
+// array
+
+/// is_array
+template<typename>
+struct is_array
+: public false_type { };
+
+template<typename _Tp, std::size_t _Size>
+struct is_array<_Tp[_Size]>
+: public true_type { };
+
+template<typename _Tp>
+struct is_array<_Tp[]>
+: public true_type { };
+
+// pointer
+
+template<typename>
+  struct __is_pointer_helper
+  : public false_type { };
+
+template<typename _Tp>
+  struct __is_pointer_helper<_Tp*>
+  : public true_type { };
+
+/// is_pointer
+template<typename _Tp>
+  struct is_pointer
+  : public __is_pointer_helper<typename remove_cv<_Tp>::type>::type
+  { };
+
+// reference
+
+/// is_lvalue_reference
+template<typename>
+  struct is_lvalue_reference
+  : public false_type { };
+
+template<typename _Tp>
+  struct is_lvalue_reference<_Tp&>
+  : public true_type { };
+
+/// is_rvalue_reference
+template<typename>
+  struct is_rvalue_reference
+  : public false_type { };
+
+template<typename _Tp>
+  struct is_rvalue_reference<_Tp&&>
+  : public true_type { };
+
+// pointer to member
+
+template<typename>
+struct __is_member_object_pointer_helper
+: public false_type { };
+
+template<typename _Tp, typename _Cp>
+struct __is_member_object_pointer_helper<_Tp _Cp::*>
+: public __not_<is_function<_Tp>>::type { };
+
+/// is_member_object_pointer
+template<typename _Tp>
+struct is_member_object_pointer
+: public __is_member_object_pointer_helper<
+typename remove_cv<_Tp>::type>::type
+{ };
+
+template<typename>
+struct __is_member_function_pointer_helper
+: public false_type { };
+
+template<typename _Tp, typename _Cp>
+struct __is_member_function_pointer_helper<_Tp _Cp::*>
+: public is_function<_Tp>::type { };
+
+/// is_member_function_pointer
+template<typename _Tp>
+struct is_member_function_pointer
+: public __is_member_function_pointer_helper<
+typename remove_cv<_Tp>::type>::type
+{ };
+```
+
+##### 19.8.3 Identifying Function Types
+
+```c++
+/// <c++config.h>
+/// g++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
+
+#define _GLIBCXX_NOEXCEPT_PARM , bool _NE
+#define _GLIBCXX_NOEXCEPT_QUAL noexcept (_NE)
+
+/// <type_traits>
+/// g++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
+
+/// is_function
+template<typename>
+  struct is_function
+  : public false_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) & _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) && _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) & _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) && _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) const _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) const & _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) const && _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) const _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) const & _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) const && _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) volatile _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) volatile & _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) volatile && _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) volatile _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) volatile & _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) volatile && _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) const volatile _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) const volatile & _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes...) const volatile && _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) const volatile _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) const volatile & _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+
+template<typename _Res, typename... _ArgTypes _GLIBCXX_NOEXCEPT_PARM>
+  struct is_function<_Res(_ArgTypes......) const volatile && _GLIBCXX_NOEXCEPT_QUAL>
+  : public true_type { };
+```
+
+##### 19.8.4 Determining Class Types && 19.8.5 Determining Enumeration Types
+
+Unlike the other compound types we have handled so far,
+we have **no** partial specialization patterns that match class types specifically.
+**Nor** is it feasible to enumerate all class types, as it is for fundamental types. 
+Instead, we need to use an indirect method to identify class types, 
+by coming up with some kind of type or expression that is valid for all class types (and not other type). 
+With that type or expression, we can apply the SFINAE trait techniques.
+
+
+The most convenient property of class types to utilize in this case is that 
+only class types can be used as the basis of pointer-to-member types. 
+That is, in a type construct of the form `X Y::*`, `Y` can only be a class type. 
+The following formulation of `IsClassT` exploits this property 
+(and picks `int` arbitrarily for type `X`):
+```c++
+// primary template: by default no class
+template <typename T, typename = std::void_t<>>
+struct IsClassT : std::false_type {};
+
+// classes can have pointer-to-member
+template <typename T>
+struct IsClassT<T, std::void_t<int T::*>> : std::true_type {};
+```
+The C++ language specifies that the type of a lambda expression is a 
+“unique, unnamed non-union class type.” 
+For this reason, lambda expressions yield `true` when examining whether they are class type objects:
+```c++
+auto l = [] {};
+static_assert(IsClassT<decltype(l)>::value, "");  // succeeds
+```
+Note also that the expression `int T::*` is also valid for union types 
+(they are also class types according to the C++ standard). 
+
+
+The C++ standard library provides the traits `std::is_class` and `std::is_union`. 
+However, these traits require special compiler support 
+because distinguishing class and struct types from union types
+can **not** currently be done using any standard core language techniques. 
+
+
+P.S. `libstdc++` implements this as black magic.
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
+
+/// is_enum
+template<typename _Tp>
+  struct is_enum
+  : public integral_constant<bool, __is_enum(_Tp)>
+  { };
+
+/// is_union
+template<typename _Tp>
+  struct is_union
+  : public integral_constant<bool, __is_union(_Tp)>
+  { };
+
+/// is_class
+template<typename _Tp>
+  struct is_class
+  : public integral_constant<bool, __is_class(_Tp)>
+  { };
+```
+
+
+#### 📌 19.9 Policy Traits
+
+##### 19.9.1 Read-Only Parameter Types
+
+Consider a function that maps an intended argument type `T` 
+onto the optimal parameter-type-for-copy-operations `T` or `T const &`. 
+
+
+As a first approximation, 
+the primary template can use by-value passing for types no larger than two pointers 
+and by reference-to-const for everything else:
+```c++
+template <typename T>
+struct RParam 
+{
+    using Type = std::conditional_t<sizeof(T) <= 2 * sizeof(void *), 
+                                    T,
+                                    T const &>;
+};
+```
+On the other hand, container types for which `sizeof` returns a small value may involve expensive copy constructors, 
+so we may need many specializations and partial specializations, such as the following:
+```c++
+template <typename T>
+struct RParam<Array<T>> 
+{
+    using Type = Array<T>const &;
+};
+```
+Because such types are common in C++, 
+it may be safer to mark only small types with trivial copy and move constructors as by value types 
+and then selectively add other class types when performance considerations dictate it:
+```c++
+template <typename T>
+struct RParam 
+{
+    using Type = typename std::conditional<sizeof(T) <= 2 * sizeof(void *) && 
+                                                   std::is_std::is_trivially_copy_constructible_v<T> && 
+                                                   std::is_std::is_trivially_move_constructible_v<T>, 
+                                           T,
+                                           T const &>::type;
+};
+```
+Either way, the policy can now be centralized in the traits template definition, 
+and clients can exploit it to good effect. 
+For example, let’s suppose we have two classes,
+with one class specifying that calling by value is better for read-only arguments:
+```c++
+class MyClass1
+{
+public:
+    MyClass1() {}
+
+    MyClass1(MyClass1 const &)
+    {
+        std::cout << "MyClass1(MyClass1 const &)\n";
+    }
+};
+
+class MyClass2
+{
+public:
+    MyClass2() {}
+
+    MyClass2(MyClass2 const &)
+    {
+        std::cout << "MyClass2(MyClass2 const &)\n";
+    }
+};
+
+// pass MyClass2 objects with RParam by value
+template <>
+class RParam<MyClass2>
+{
+public:
+    using Type = MyClass2;
+};
+```
+Now, we can declare functions that use `RParam` for read-only arguments and call these functions:
+```c++
+// function that allows parameter passing by value or by reference
+template <typename T1, typename T2>
+void foo(typename RParam<T1>::Type p1, typename RParam<T2>::Type p2)
+{
+    // ...
+}
+
+void bar()
+{
+    MyClass1 mc1;
+    MyClass2 mc2;
+    foo<MyClass1, MyClass2>(mc1, mc2);  // can NOT be called with deduction!
+}
+```
+Unfortunately, there are some significant **downsides** to using `RParam`. 
+1. The function declaration is significantly messier. 
+2. A function like `foo` can **not** be called with argument deduction 
+   because the template parameter appears only in the qualifiers of the function parameters. 
+   Call sites must therefore specify explicit template arguments.
+
+
+An unwieldy workaround for this option is the use of an inline wrapper function template
+that provides perfect forwarding, but it assumes the inline function will be elided by the compiler. 
+For example:
+```c++
+// function that allows parameter passing by value or by reference
+template <typename T1, typename T2>
+void foo_core(typename RParam<T1>::Type p1, typename RParam<T2>::Type p2)
+{
+    // ...
+}
+
+// wrapper to avoid explicit template parameter passing
+template <typename T1, typename T2>
+void foo(T1 && p1, T2 && p2)
+{
+    foo_core<T1, T2>(std::forward<T1>(p1), std::forward<T2>(p2));
+}
+
+void bar()
+{
+    MyClass1 mc1;
+    MyClass2 mc2;
+    foo(mc1, mc2);
+}
+```
+
+
+#### 📌 19.10 In the Standard Library
+
+
+With C++11, type traits became an intrinsic part of the C++ standard library. 
+They comprise more or less all type functions and type traits discussed in this chapter.
+However, for some of them, such as the trivial operation detection traits 
+and as discussed `std::is_union`, there are **no** known in-language solutions. 
+Rather, the compiler provides intrinsic support for those traits. 
+Also, compilers start to support traits even if there are in-language solutions to shorten compile time. 
+
+
+For this reason, if you need type traits, 
+we recommend that you use the ones from the C++ standard library whenever available. 
+They are all described in detail in Appendix D. 
+
+
+Note that (as discussed) some traits have potentially surprising behavior
+(at least for the naive programmer). 
+In addition to the general hints we give in Section 11.2.1 on and Section D.1.2, 
+also consider the specific descriptions we provide in Appendix D. 
+
+
+The C++ standard library also defines some policy and property traits:
+- The class template `std::char_traits` is used as a policy traits parameter by the string and I/O stream classes.
+- To adapt algorithms easily to the kind of standard iterators for which they are used,
+  a very simple `std::iterator_traits` property traits template is provided (and used in standard library interfaces).
+- The template `std::numeric_limits` can also be useful as a property traits template.
+- Memory allocation for the standard container types is handled using policy traits classes. 
+  Since C++98, the template `std::allocator` is provided as the standard component for this purpose. 
+  With C++11, the template `std::allocator_traits` was added 
+  to be able to change the policy/behavior of allocators
+  (switching between the classical behavior and scoped allocators; 
+  the latter could not be accommodated within the pre-C++11 framework). 
+
+
+
+
+
+
+### 🎯 Chapter 20 Overloading on Type Properties
+
+
+
+
+#### 📌 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2126,36 +3085,3 @@ References:
 ### 🎯
 
 #### 📌 
-
-
-
-
-24 In C++11 and C++14, we have to specify the base class as
-std::integral_constant<bool,…> instead of
-std::bool_constant<…>.25
-The C++ standardization committee is further bound by a long-standing tradition
-that all standard names consist of lowercase characters and optional underscores to
-separate them. That is, a name like isSame or IsSame is unlikely to ever be
-seriously considered for standardization (except for concepts, where this spelling
-style will be used).
-26 The use of “primary” vs. “composite” type categories should not be confused with
-the distinction between “fundamental” vs. “compound” types. The standard
-describes fundamental types (like int or std::nullptr_t) and compound
-types (like pointer types and class types). This is different from composite type
-categories (like arithmetic), which are categories that are the union of primary type
-categories (like floating-point).
-27 Specifically, when a function type is marked const, it refers to a qualifier on the
-object pointed to by the implicit parameter this, whereas the const on a
-const type refers to the object of that actual type.
-28 The latest count is 48.
-29 Most compilers support intrinsic operators like __is_union to help standard
-libraries implement various traits templates. This is true even for some traits that
-could technically be implemented using the techniques from this chapter, because
-the intrinsics can improve compilation performance.
-30 The first edition of this book described enumeration type detection in this way.
-However, it checked for an implicit conversion to an integral type, which sufficed
-for the C++98 standard. The introduction of scoped enumeration types into the
-language, which do not have such an implicit conversion, complicates the
-detection of enumeration types.
-31 A copy or move constructor is called trivial if, in effect, a call to it can be replaced
-by a simple copy of the underlying bytes.
