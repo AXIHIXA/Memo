@@ -8,6 +8,10 @@ select disk <num>
 detail disk
 ```
 
+REMEMBER TO TURN OFF FAST STARTUP FOR WINDOWS in `Control Panel/All COntrol Panel Items/Power Options/System Settings`
+
+
+
 # Ubuntu Installation
 
 Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note. 
