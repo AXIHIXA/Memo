@@ -314,6 +314,7 @@ sudo reboot
 
 ### `CUDA`
 
+- Install nvidia driver: Refer to [01-system-installation.md](./01-system-installation.md)
 - Install NVIDIA `CUDA` Toolkit: 
 ```
 sudo apt install nvidia-cuda-toolkit
@@ -321,6 +322,7 @@ sudo apt install nvidia-cuda-toolkit
 - Install `CUDNN`: Follow instructions on 
 [NVIDIA CUDNN DOCUMENTAZTION](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#installlinux-deb)
 (I am using Debian Installation. Do NOT use Package Manager Installation. )
+- CudaDemo: [CudaDemo](../../code/CudaDemo)
 
 ### `OpenMesh`
 
