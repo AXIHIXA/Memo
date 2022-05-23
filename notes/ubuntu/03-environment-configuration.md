@@ -235,42 +235,20 @@ gedit -idea64.vmoptions
 - `$ENV{USER}`： CMakeLists.txt 中调用系统变量
 - [Data flow analysis timeout](https://youtrack.jetbrains.com/issue/CPP-17623): press shift in CLion quickly twice, then we have a search window, search "Registry..." and change the timeout key. 
 
-### `gcc-9` on `ubuntu 18.04 LTS`
-
-```
-sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-sudo apt update
-sudo apt install gcc-9 g++-9
-```
-
 ### `gcc-11` on `ubuntu 20.04 LTS`
 
 ```bash
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-sudo apt-get update
-sudo apt-get install gcc-11 g++-11
+sudo apt update
+sudo apt install gcc g++ gcc-11 g++-11
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 --slave /usr/bin/g++ g++ /usr/bin/g++-9
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11 --slave /usr/bin/g++ g++ /usr/bin/g++-11
+sudo update-alternatives --config gcc
 ```
-After that which `gcc-11` should produce a path to `gcc-11`. 
+Do not use these commands as you would have to install all symbolic links again:
 ```bash
-$ which gcc-11
-/usr/bin/gcc-11
-```
-Update alternatives:
-```bash
-$ sudo update-alternatives --config gcc
-There are 6 choices for the alternative gcc (providing /usr/bin/gcc).
-
-  Selection    Path             Priority   Status
-------------------------------------------------------------
-* 0            /usr/bin/gcc-11   1010      auto mode
-  1            /usr/bin/gcc-10   1000      manual mode
-  2            /usr/bin/gcc-11   1010      manual mode
-  3            /usr/bin/gcc-5    40        manual mode
-  4            /usr/bin/gcc-7    700       manual mode
-  5            /usr/bin/gcc-8    800       manual mode
-  6            /usr/bin/gcc-9    900       manual mode
-
-Press <enter> to keep the current choice[*], or type selection number:
+sudo update-alternatives --remove-all gcc
+sudo update-alternatives --remove-all g++
 ```
 
 ### Libraries

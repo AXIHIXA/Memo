@@ -2,10 +2,7 @@
 #define XH_TIMER_GUARD_H
 
 #include <chrono>
-
-#include <fmt/chrono.h>
-#include <fmt/core.h>
-#include <fmt/format.h>
+#include <iostream>
 
 
 namespace XH
@@ -21,7 +18,7 @@ public:
 
     ~TimerGuard()
     {
-        fmt::print(stream, FMT_STRING("{}\n"), std::chrono::duration_cast<Duration>(Clock::now() - startTime));
+        std::cout << std::chrono::duration_cast<Duration>(Clock::now() - startTime) << '\n';
     }
 
 private:
