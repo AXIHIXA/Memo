@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
-project(CppDemo)
-set(CMAKE_CXX_STANDARD 17)
+project(TimerGuard)
+set(CMAKE_CXX_STANDARD 20)
+
+find_package(fmt REQUIRED)
 
 set(UTIL
         include/util/TimerGuard.h
@@ -13,6 +15,7 @@ set(MAIN
 
 set(ALL_SOURCE_FILES
         ${MAIN}
+        ${UTIL}
         )
 
 set(ALL_INCLUDE_DIRS
@@ -20,7 +23,7 @@ set(ALL_INCLUDE_DIRS
         )
 
 set(ALL_LIBRARIES
-        
+        fmt::fmt
         )
 
 set(ALL_COMPILE_DEFS
