@@ -2911,7 +2911,7 @@ so we may need many specializations and partial specializations, such as the fol
 template <typename T>
 struct RParam<Array<T>> 
 {
-    using Type = Array<T>const &;
+    using Type = Array<T> const &;
 };
 ```
 Because such types are common in C++, 
@@ -2922,8 +2922,8 @@ template <typename T>
 struct RParam 
 {
     using Type = typename std::conditional<sizeof(T) <= 2 * sizeof(void *) && 
-                                                   std::is_std::is_trivially_copy_constructible_v<T> && 
-                                                   std::is_std::is_trivially_move_constructible_v<T>, 
+                                                   std::is_trivially_copy_constructible_v<T> && 
+                                                   std::is_trivially_move_constructible_v<T>, 
                                            T,
                                            T const &>::type;
 };
@@ -3054,22 +3054,447 @@ The C++ standard library also defines some policy and property traits:
 
 ### 🎯 Chapter 20 Overloading on Type Properties
 
+#### 📌 20.1 Algorithm Specialization
+
+One of the common motivations behind overloading of function templates 
+is to provide more specialized versions of an algorithm 
+based on knowledge of the types involved.
+The design and optimization approach of introducing 
+more specialized variants of a generic algorithm 
+is called _algorithm specialization_. 
+```c++
+/// with C++20 concepts utilities
+
+template <std::input_iterator InputIterator>
+void advance(InputIterator & x, typename InputIterator::difference_type n)
+{
+    // linear time
+    while (0 < n)
+    {
+        ++x;
+        --n;
+    }
+}
+
+template <std::random_access_iterator RandomAccessIterator>
+void advance(RandomAccessIterator & x, typename RandomAccessIterator::difference_type n)
+{
+    // constant time
+    x += n;
+}
+```
+
+#### 📌 20.2 Tag Dispatching
+
+```c++
+template <typename Iterator, typename Distance>
+void advanceIter(Iterator & x, Distance n)
+{
+    advanceIterImpl(x, n, typename std::iterator_traits<Iterator>::iterator_category());
+}
+
+template <typename Iterator, typename Distance>
+void advanceIterImpl(Iterator & x, Distance n, std::input_iterator_tag)
+{
+    while (n > 0)
+    {
+        ++x;
+        --n;
+    }
+}
+
+template <typename Iterator, typename Distance>
+void advanceIterImpl(Iterator & x, Distance n, std::random_access_iterator_tag)
+{
+    x += n;
+}
+```
+
+#### 📌 20.3 Enabling/Disabling Function Templates
+
+```c++
+/// <type_traits>
+/// g++ (Ubuntu 11.1.0-1ubuntu1~20.04) 11.1.0
+
+// Primary template.
+/// Define a member typedef @c type only if a boolean constant is true.
+template <bool, typename T = void>
+struct enable_if {};
+
+// Partial specialization for true.
+template <typename T>
+struct enable_if<true, T>
+{
+    typedef T type;
+};
+
+/// Alias template for enable_if
+template <bool Cond, typename T = void>
+using enable_if_t = typename enable_if<Cond, T>::type;
+```
+
+#### 📌 20.4 Class Specialization
+
+#### 20.4.1 Enabling/Disabling Class Templates
+
+```c++
+template <typename T, typename = std::void_t<>>
+struct is_less_comparable : public std::false_type {};
+
+template <typename T>
+struct is_less_comparable<T, std::void_t< decltype(std::declval<T>() < std::declval<T>()) >> : public std::true_type {};
+
+template <typename T>
+constexpr bool is_less_comparable_v = is_less_comparable<T>::value;
+
+template <typename T, typename = std::void_t<>>
+struct is_hashable : public std::false_type {};
+
+template <typename T>
+struct is_hashable<T, std::void_t< decltype( std::declval< std::hash<T>()(std::declval<T>()) >() ) >> : public std::true_type {};
+
+template <typename T>
+constexpr bool is_hashable_v = is_hashable<T>::value;
+
+template <typename K, typename V, typename = void>
+class Dictionary
+{ 
+    // vector implementation
+};
+
+template <typename K, typename V>
+class Dictionary<K, V, std::enable_if_t<is_less_comparable_v<K> && !is_hashable_v<K>>>
+{
+    // tree implementation
+};
+
+template <typename K, typename V>
+class Dictionary<K, V, std::enable_if_t<is_hashable_v<K>>>
+{
+    // hash table implementation
+};
+```
+
+#### 20.4.2 Tag Dispatching for Class Templates
+
+```c++
+// construct a set of match() overloads for the types in Types…:
+template <typename ... Types>
+struct MatchOverloads;
+
+// basis case: nothing matched:
+template <>
+struct MatchOverloads<>
+{
+    static void match(...);
+};
+
+// recursive case: introduce a new match() overload:
+template <typename T1, typename ... Rest>
+struct MatchOverloads<T1, Rest...> : public MatchOverloads<Rest...>
+{
+    using MatchOverloads<Rest...>::match;  // collect overloads from bases
+    
+    static T1 match(T1);  // introduce overload for T1
+};
+
+// find the best match for T in Types...
+template <typename T, typename ... Types>
+struct BestMatchInSetT
+{
+    using Type = decltype(MatchOverloads<Types...>::match(declval<T>()));
+};
+
+template <typename T, typename ... Types>
+using BestMatchInSet = typename BestMatchInSetT<T, Types...>::Type;
+
+// primary template (intentionally undefined):
+template <typename Iterator,
+        typename Tag =
+        BestMatchInSet<
+                typename std::iterator_traits<Iterator>
+                ::iterator_category,
+                std::input_iterator_tag,
+                std::bidirectional_iterator_tag,
+                std::random_access_iterator_tag>>
+class Advance;
+
+// general, linear-time implementation for input iterators:
+template <typename Iterator>
+class Advance<Iterator, std::input_iterator_tag>
+{
+public:
+    using DifferenceType = typename std::iterator_traits<Iterator>::difference_type;
+
+    void operator()(Iterator & x, DifferenceType n) const
+    {
+        while (n > 0)
+        {
+            ++x;
+            --n;
+        }
+    }
+};
+
+// bidirectional, linear-time algorithm for bidirectional iterators:
+template <typename Iterator>
+class Advance<Iterator, std::bidirectional_iterator_tag>
+{
+public:
+    using DifferenceType = typename std::iterator_traits<Iterator>::difference_type;
+
+    void operator()(Iterator & x, DifferenceType n) const
+    {
+        if (n > 0)
+        {
+            while (n > 0)
+            {
+                ++x;
+                --n;
+            }
+        }
+        else
+        {
+            while (n < 0)
+            {
+                --x;
+                ++n;
+            }
+        }
+    }
+};
+
+// bidirectional, constant-time algorithm for random access iterators:
+template <typename Iterator>
+class Advance<Iterator, std::random_access_iterator_tag>
+{
+public:
+    using DifferenceType = typename std::iterator_traits<Iterator>::difference_type;
+
+    void operator()(Iterator & x, DifferenceType n) const
+    {
+        x += n;
+    }
+};
+```
+
+#### 📌 20.5 Instantiation-Safe Templates
+
+```c++
+template <typename T1, typename T2>
+class HasLess
+{
+private:
+    template <typename T>
+    struct Identity;
+
+    template <typename U1, typename U2>
+    static std::true_type
+    test(Identity<decltype(std::declval<U1>() < std::declval<U2>())> *);
+
+    template <typename U1, typename U2>
+    static std::false_type
+    test(...);
+
+public:
+    static constexpr bool value = decltype(test<T1, T2>(nullptr))::value;
+};
+
+template <typename T1, typename T2, bool HasLess>
+class LessResultImpl
+{
+public:
+    using Type = decltype(std::declval<T1>() < std::declval<T2>());
+};
+
+template <typename T1, typename T2>
+class LessResultImpl<T1, T2, false> {};
+
+template <typename T1, typename T2>
+class LessResultT : public LessResultImpl<T1, T2, HasLess<T1, T2>::value> {};
+
+template <typename T1, typename T2>
+using LessResult = typename LessResultT<T1, T2>::Type;
+
+template <typename T>
+std::enable_if_t<std::is_convertible_v<LessResult<T const &, T const &>, bool>, T const &>
+min(T const & x, T const & y)
+{
+    if (y < x) 
+    {
+        return y;
+    }
+    
+    return x;
+}
+
+struct X1 {};
+
+bool operator<(X1 const &, X1 const &)
+{
+    return true;
+}
+
+struct X2 {};
+
+bool operator<(X2, X2)
+{
+    return true;
+}
+
+struct X3 {};
+
+bool operator<(X3 &, X3 &)
+{
+    return true;
+}
+
+struct X4 {};
+
+struct BoolConvertible
+{
+    // implicit conversion to bool
+    operator bool() const
+    {
+        return true;
+    }
+};
+
+struct X5 {};
+
+BoolConvertible operator<(X5 const &, X5 const &)
+{
+    return BoolConvertible();
+}
+
+struct NotBoolConvertible
+{ 
+    // no conversion to bool
+};
+
+struct X6 {};
+
+NotBoolConvertible operator<(X6 const &, X6 const &)
+{
+    return NotBoolConvertible();
+}
+
+struct BoolLike
+{
+    // explicit conversion to bool
+    explicit operator bool() const
+    {
+        return true;
+    } 
+};
+
+struct X7 {};
+
+BoolLike operator<(X7 const &, X7 const &)
+{
+    return BoolLike();
+}
+
+void foo()
+{
+    min(X1(), X1());  // OK:    X1 can be passed to min()
+    min(X2(), X2());  // OK:    X2 can be passed to min()
+    min(X3(), X3());  // ERROR: X3 cannot be passed to min()
+    min(X4(), X4());  // ERROR: X4 can be passed to min()
+    min(X5(), X5());  // OK:    X5 can be passed to min()
+    min(X6(), X6());  // ERROR: X6 cannot be passed to min()
+    min(X7(), X7());  // UNEXPECTED ERROR: X7 cannot be passed to min()
+                      //                   std::is_convertible_to_v<BoolLike, bool> == false!
+}
+```
+`X7` illustrates some of the subtleties of  implementing instantiation-safe templates. 
+In particular, if `X7` is passed to the non-instantiation-safe `min`, instantiation will succeed. 
+However, the instantiation-safe `min` rejects it because `BoolLike` is **not** implicitly convertible to `bool`. 
+The distinction here is particularly subtle: 
+An `explicit` conversion to `bool` can be used _implicitly_ in certain contexts, 
+including in Boolean conditions for 
+control-flow statements (`if`, `while`, `for`, and `do while`), 
+the built-in `!`, `&&,` and `||` operators, 
+and the ternary operator `?:`. 
+In these contexts, the value is said to be contextually converted to `bool`. 
+
+
+However, our insistence on having a general, implicit conversion to `bool` has the effect 
+that our instantiation-safe template is _over-constrained_; 
+that is, its specified requirements (in the `enable_if`) are stronger than its actual requirements
+(what the template needs to instantiate properly). 
+If, on the other hand, we had entirely forgotten the conversion-to-bool requirement, 
+our `min` template would have been _under-constrained_, 
+and it would have allowed some template arguments that could cause an instantiation failure (such as `X6`). 
+
+
+To fix the instantiation-safe `min`, we need a trait to determine 
+whether a type `T`is contextually convertible to `bool`. 
+The control-flow statements are _not_ helpful in defining this trait,
+because statements can **not** occur within a SFINAE context, 
+**nor** are the logical operations, which can be overloaded for an arbitrary type. 
+Fortunately, the ternary operator `?:` is an expression and is not overloadable, 
+so it can be exploited to test whether a type is contextually convertible to `bool`:
+```c++
+template <typename T>
+class IsContextualBoolT
+{
+private:
+    template <typename U>
+    struct Identity;
+
+    template <typename U>
+    static std::true_type
+    test(Identity<decltype(declval<U>() ? 0 : 1)> *);
+
+    template <typename U>
+    static std::false_type
+    test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(nullptr))::value;
+};
+
+template <typename T>
+constexpr bool IsContextualBool = IsContextualBoolT<T>::value;
+
+template <typename T>
+std::enable_if_t<IsContextualBool<LessResult<T const &, T const &>, bool>, T const &>
+min(T const & x, T const & y)
+{
+    if (y < x) 
+    {
+        return y;
+    }
+    
+    return x;
+}
+```
 
 
 
-#### 📌 
+
+
+
+### 🎯 Chapter 21 Templates and Inheritance
+
+A priori, there might be no reason to think that templates and inheritance interact in interesting ways. 
+If anything, we know from Chapter 13 that deriving from dependent base classes 
+forces us to deal carefully with unqualified names. 
+However, it turns out that some interesting techniques combine these two features, 
+including the _Curiously Recurring Template Pattern (CRTP)_ and *mixin*s. 
+
+#### 📌 21.1 The Empty Base Class Optimization (EBCO)
 
 
 
 
 
+#### 📌
 
+#### 📌
 
-
-
-
-
-
+#### 📌
 
 
 
@@ -3084,4 +3509,14 @@ The C++ standard library also defines some policy and property traits:
 
 ### 🎯
 
-#### 📌 
+#### 📌
+
+
+#### 📌
+
+#### 📌
+
+#### 📌
+
+
+
