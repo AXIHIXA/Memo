@@ -3486,6 +3486,147 @@ including the _Curiously Recurring Template Pattern (CRTP)_ and *mixin*s.
 
 #### 📌 21.1 The Empty Base Class Optimization (EBCO)
 
+C++ classes are often "empty," which means that
+their internal representation does **not** require any bits of memory at run time. 
+This is the case typically for classes that contain only 
+type members, non-virtual function members, and static data members.
+Non-static data members, virtual functions, and virtual base classes, 
+on the other hand, do require some memory at running time.
+Even empty classes, however, have **non-zero** size. 
+```c++
+class S {};  // sizeof(S) == 1
+```
+
+#### 21.1.1 Layout Principles
+
+Zero-sized classes are avoided for various reasons, 
+one if for the compatibility with arrays (pointer arithmetic). 
+```c++
+ZeroSized z[10];
+std::cout << &z[2] - &z[0] << '\n';  // compute distance between pointers/addresses
+```
+Normally, the difference in the previous example is obtained by 
+dividing the number of bytes between the two addresses by the size of the type to which it is pointing, 
+but when that size is zero this is clearly not satisfactory.
+
+
+However, even though there are **no** zero-size types in C++, 
+the C++ standard does specify that when an empty class is used as a base class, 
+**no** space needs to be allocated for it 
+> provided that it does not cause it to be allocated to the same address 
+> as another object or subobject of the same type. 
+
+
+Let's look at some examples to clarify what this _empty base class optimization (EBCO)_ means in practice. 
+Consider the following program:
+```c++
+class Empty
+{
+    using Int = int;  // type alias members don't make a class nonempty
+};
+
+class EmptyTwo : public Empty {};
+
+class EmptyThree : public EmptyToo {};
+
+void foo()
+{
+    std::cout << "sizeof(Empty): " << sizeof(Empty) << '\n';            // 1
+    std::cout << "sizeof(EmptyTwo): " << sizeof(EmptyTwo) << '\n';      // 1
+    std::cout << "sizeof(EmptyThree): " << sizeof(EmptyThree) << '\n';  // 1
+}
+```
+If your compiler implements the EBCO, it will print the same size for every class,
+but none of these classes has size zero. 
+```
+┌────────────┐ ┐       ┐          ┐
+│            │ ├ Empty ├ EmptyTwo ├ EmptyThree
+└────────────┘ ┘       ┘          ┘
+```
+This means that within class `EmptyTwo`, the class `Empty` is not given any space. 
+Note also that an empty class with optimized empty bases (and no other bases) is also empty. 
+This explains why class `EmptyThree` can also have the same size as class `Empty`. 
+
+
+If your compiler does not implement the EBCO, it will print different sizes.
+```
+┌────────────┐ ┐       ┐          ┐ 
+│            │ ├ Empty │          │
+├────────────┤ ┘       ├ EmptyTwo │
+│            │         │          ├ EmptyThree
+├────────────┤         ┘          │ 
+│            │                    │
+└────────────┘                    ┘
+```
+Consider an example that runs into a constraint of the EBCO:
+```c++
+class Empty
+{
+    using Int = int;  // type alias members don't make a class nonempty
+};
+
+class EmptyTwo : public Empty {};
+
+class NonEmpty : public Empty, public EmptyTwo {};
+
+void foo()
+{
+    std::cout << "sizeof(Empty): " << sizeof(Empty) << '\n';        // 1
+    std::cout << "sizeof(EmptyTwo): " << sizeof(EmptyTwo) << '\n';  // 1
+    std::cout << "sizeof(NonEmpty): " << sizeof(NonEmpty) << '\n';  // 2
+}
+```
+It may come as a surprise that class `NonEmpty` is **not** an empty class. 
+After all, it does not have any members and neither do its base classes. 
+However, the base classes `Empty` and `EmptyTwo` of `NonEmpty` can **not** be allocated to the same address 
+because this would cause the base class `Empty` of `EmptyTwo` to end up at the same address 
+as the base class `Empty` of class `NonEmpty`. 
+In other words, two subobjects of the same type would end up at the same offset, 
+and this is **not** permitted by the object layout rules of C++. 
+It may be conceivable to decide that one of the `Empty` base subobjects is placed at offset “0 bytes” 
+and the other at offset “1 byte,” 
+but the complete `NonEmpty` object still can **not** have a size of `1` byte 
+because in an array of two `NonEmpty` objects, an `Empty` subobject of the first element 
+can **not** end up at the same address as an `Empty` subobject of the second element. 
+```
+┌────────────┐ ┐                  ┐
+│            │ ├ Empty            │
+├────────────┤ ┤       ┐          ├ NonEmpty
+│            │ ├ Empty ├ EmptyTwo │
+└────────────┘ ┘       ┘          ┘
+```
+The rationale for the constraint on the EBCO stems from the fact that
+it is desirable to be able to compare whether two pointers point to the same object. 
+Because pointers are nearly always internally represented as just addresses, 
+we must ensure that two different addresses (i.e., pointer values) correspond to two different objects.
+
+
+The constraint may not seem very significant. 
+However, in practice, it is often encountered because 
+many classes tend to inherit from a small set of empty classes
+that define some common type aliases. 
+When two subobjects of such classes are used in the same complete object, the optimization is inhibited.
+
+
+Even with this constraint, the EBCO is an important optimization for template libraries 
+because a number of techniques rely on the introduction of base classes 
+simply for the purpose of introducing new type aliases 
+or providing extra functionality without adding new data. 
+Several such techniques will be described in this chapter. 
+
+#### 21.1.2 Members as Base Classes
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
