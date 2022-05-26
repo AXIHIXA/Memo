@@ -3616,18 +3616,454 @@ Several such techniques will be described in this chapter.
 
 #### 21.1.2 Members as Base Classes
 
+The EBCO has **no** equivalent for data members because (among other things) 
+it would create some problems with the representation of pointers to members. 
+As a result, it is sometimes desirable to implement as a (private) base class 
+that would at first sight be thought of as a member variable. 
+However, this is not without its challenges. 
 
 
+The problem is most interesting in the context of templates 
+because template parameters are often substituted with empty class types, 
+but in general we can **not** rely on this rule. 
+If nothing is known about a template type parameter, the EBCO cannot easily be exploited. 
+Indeed, consider the following trivial example:
+```c++
+template <typename T1, typename T2>
+class MyClass
+{
+private:
+    T1 a;
+    T2 b;
+};
+```
+It is entirely possible that one or both template parameters are substituted by an empty class type. 
+If this is the case, then the representation of `MyClass<T1, T2>` may be suboptimal
+and may waste a word of memory for every instance of a `MyClass<T1, T2>`. 
 
 
+This can be avoided by making the template arguments base classes instead:
+```c++
+template <typename T1, typename T2>
+class MyClass : private T1, private T2 {};
+```
+However, this straightforward alternative has its own set of problems: 
+- It **doesn’t** work when `T1` or `T2` is substituted with a nonclass type or with a union type; 
+- It also **doesn’t** work when the two parameters are substituted with the same type 
+  (although this can be addressed fairly easily by adding another layer of inheritance); 
+- The class may be `final`, in which case attempts to inherit from it will cause an error. 
 
 
+Even if we satisfactorily addressed these problems, a very serious problem persists: 
+Adding a base class can fundamentally modify the interface of the given class. 
+For our `MyClass` class, this may not seem significant because there are very few interface elements to affect, 
+but as we see later in this chapter, inheriting from a template parameter can affect 
+whether a member function is virtual. 
+Clearly, this approach to exploiting the EBCO is fraught with all kinds of trouble. 
 
 
+A more practical tool can be devised for the common case when a template parameter 
+is known to be substituted by class types only and when another member of the class template is available. 
+The main idea is to “merge” the potentially empty type parameter with the other member using the EBCO. 
+For example, instead of writing
+```c++
+template <typename CustomClass>
+class Optimizable 
+{
+private:
+    CustomClass info;  // might be empty
+    void * storage;
+};
+```
+a template implementer would use the following:
+```c++
+template <typename CustomClass>
+class Optimizable 
+{
+private:
+    BaseMemberPair<CustomClass, void *> infoAndStorage;
+};
+```
+Even without seeing the implementation of the template `BaseMemberPair`,
+it is clear that its use makes the implementation of `Optimizable` more verbose. 
+However, various template library implementers have reported that the performance gains 
+(for the clients of their libraries) do justify the added complexity.
+We explore this idiom further in our discussion of tuple storage in Section 25.1.1. 
 
 
+The implementation of `BaseMemberPair` can be fairly compact:
+```c++
+template <typename Base, typename Member>
+class BaseMemberPair : private Base
+{
+public:
+    // constructor
+    BaseMemberPair(Base const & b, Member const & m) : Base(b), mem(m) {}
+
+    // access base class data via first()
+    Base const & base() const
+    {
+        return static_cast<Base const &>(*this);
+    }
+
+    Base & base()
+    {
+        return static_cast<Base &>(*this);
+    }
+
+    // access member data via second()
+    Member const & member() const
+    {
+        return this->mem;
+    }
+
+    Member & member()
+    {
+        return this->mem;
+    }
+
+private:
+    Member mem;
+};
+```
+An implementation needs to use the member functions `base` and `member` 
+to access the encapsulated (and possibly storage-optimized) data members. 
 
 
+#### 📌 21.2 The Curiously Recurring Template Pattern (CRTP)
+
+
+Another pattern is the _Curiously Recurring Template Pattern (CRTP)_. 
+This oddly named pattern refers to a general class of techniques that consists of 
+passing a derived class as a template argument to one of its own base classes. 
+In its simplest form, C++ code for such a pattern looks as follows:
+```c++
+template <typename Derived>
+class CuriousBase 
+{
+    // ...
+};
+
+class Curious : public CuriousBase<Curious> 
+{
+    // ...
+};
+```
+Our first outline of CRTP shows a nondependent base class: 
+The class `Curious` is not a template and is therefore immune to
+some of the name visibility issues of dependent base classes. 
+However, this is **not** an intrinsic characteristic of CRTP. 
+Indeed, we could just as well have used the following alternative outline:
+```c++
+template <typename Derived>
+class CuriousBase 
+{
+    // ...
+};
+
+template <typename T>
+class Curious : public CuriousBase<Curious<T>> 
+{
+    // ...
+};
+```
+By passing the derived class down to its base class via a template parameter, 
+the base class can customize its own behavior to the derived class 
+**without** requiring the use of virtual functions. 
+This makes CRTP useful to factor out implementations that can only be member functions 
+(e.g., constructor, destructors, and subscript operators) 
+or are dependent on the derived class’s identity.
+
+
+A simple application of CRTP consists of keeping track of 
+how many objects of a certain class type were created. 
+This is easily achieved by 
+incrementing an integral static data member in every constructor 
+and decrementing it in the destructor.
+However, having to provide such code in every class is tedious, 
+and implementing this functionality via a single (non-CRTP) base class 
+would confuse the object counts for different derived classes. 
+Instead, we can write the following template:
+```c++
+template <typename CountedType>
+class ObjectCounter
+{
+public:
+    // return number of existing objects:
+    static std::size_t live()
+    {
+        return count;
+    }
+    
+protected:
+    // default constructor
+    ObjectCounter()
+    {
+        ++count;
+    }
+
+    // copy constructor
+    ObjectCounter(ObjectCounter<CountedType> const &)
+    {
+        ++count;
+    }
+
+    // move constructor
+    ObjectCounter(ObjectCounter<CountedType> &&)
+    {
+        ++count;
+    }
+
+    // destructor
+    ~ObjectCounter()
+    {
+        --count;
+    }
+
+private:
+    inline static std::size_t count = 0;  // number of existing objects
+};
+```
+Note that we use `inline` to be able to define and initialize the count member inside the class structure. 
+Before C++17, we had to define it outside the class template:
+```c++
+template <typename CountedType>
+class ObjectCounter
+{
+private:
+    static std::size_t count; // number of existing objects
+    // ...
+};
+
+// initialize counter with zero:
+template <typename CountedType>
+std::size_t ObjectCounter<CountedType>::count = 0;
+```
+If we want to count the number of live (i.e., not yet destroyed) objects for a certain class type, 
+it suffices to derive the class from the `ObjectCounter` template. 
+For example, we can define and use a counted string class along the following lines:
+```c++
+template <typename CharT>
+class MyString : public ObjectCounter<MyString<CharT>>
+{
+    // ...
+};
+
+void foo()
+{
+    MyString<char> s1, s2;
+    MyString<wchar_t> ws;
+    std::cout << "num of MyString<char>: " << MyString<char>::live() << '\n';
+    std::cout << "num of MyString<wchar_t>: " << ws.live() << '\n';
+}
+```
+
+#### 21.2.1 The Barton-Nackman Trick
+
+In 1994, John J. Barton and Lee R. Nackman presented a template technique that
+they called _restricted template expansion_. 
+The technique was motivated in part by the fact that at the time, 
+function template overloading was severely limited and namespaces were not available in most compilers. 
+
+
+To illustrate this, suppose we have a class template `Array` for which we want to
+define the equality operator `operator==`. 
+One possibility is to declare the operator as a member of the class template, 
+but this is **not** good practice because the first argument (binding to the `this` pointer) 
+is subject to conversion rules that differ from the second argument. 
+Because `operator==` is meant to be symmetrical with respect to its arguments, 
+it is preferable to declare it as a namespace scope function. 
+An outline of a natural approach to its implementation may look like the following:
+```c++
+template <typename T>
+class Array
+{
+public:
+    // ...
+};
+
+template <typename T>
+bool operator==(Array<T> const & a, Array<T> const & b)
+{
+    // ...
+}
+```
+However, if function templates can **not** be overloaded, this presents a problem: 
+No other `operator==` template can be declared in that scope, 
+and yet it is likely that such a template would be needed for other class templates. 
+Barton and Nackman resolved this problem by defining the operator in the class as a normal friend function:
+```c++
+template <typename T>
+class Array
+{
+public:
+    friend bool operator==(Array<T> const & a, Array<T> const & b)
+    {
+        return areEqual(a, b);
+    }
+
+private:
+    static bool areEqual(Array<T> const & a, Array<T> const & b);
+};
+```
+Suppose this version of `Array` is instantiated for type `float`. 
+The friend operator function is then declared as a result of that instantiation, 
+but note that this function itself is **not** an instantiation of a function template.
+It is a normal nontemplate function that gets injected in the global scope 
+as a side effect of the instantiation process (i.e., a templified entity). 
+Because it is a nontemplate function, it could be overloaded with other declarations of `operator==` 
+even before overloading of function templates was added to the language. 
+Barton and Nackman called this _restricted template expansion_
+because it avoided the use of a template `operator==(T, T)` 
+that applied to all types `T` (in other words, unrestricted expansion). 
+
+
+Because `operator==(Array<T> const &, Array<T> const &)` is defined inside a class definition, 
+it is implicitly considered to be an `inline` function,
+and we therefore decided to delegate the implementation to a static member function `areEqual`, 
+which doesn’t need to be `inline`.
+
+
+Name lookup for friend function definitions has changed since 1994, 
+so the Barton-Nackman trick is not as useful in standard C++. 
+At the time of its invention, friend declarations would be visible 
+in the enclosing scope of a class template when that template was instantiated
+via a process called _friend name injection_. 
+Standard C++ instead finds friend function declarations via argument-dependent lookup 
+(ADL; see Section 13.2.2 for the specific details). 
+This means that at least one of the arguments of the function call 
+must already have the class containing the friend function as an associated class. 
+The friend function would **not** be found if the arguments were of an unrelated class type 
+that could be converted to the class containing the friend. 
+For example:
+```c++
+class S {};
+
+template <typename T>
+class Wrapper
+{
+public:
+    friend void foo(Wrapper<T> const &) {}
+    
+    // implicit conversion from T to Wrapper<T>
+    Wrapper(T obj) : object(obj) {}
+    
+private:
+    T object;
+};
+
+void bar()
+{
+    S s;
+    Wrapper<S> w(s);
+    foo(w);              // OK: Wrapper<S> is a class associated with w
+    foo(s);              // ERROR: Wrapper<S> is not associated with s
+}
+```
+Here, the call `foo(w)` is valid because the function `foo` is a friend declared in
+`Wrapper<S>` which is a class associated with the argument `w`.
+However, in the call `foo(s)`, the friend declaration of function `foo(Wrapper<S> const &)`
+is **not** visible because the class `Wrapper<S>` in which it is defined 
+is **not** associated with the argument `s` of type `S`. 
+Hence, even though there is a valid implicit conversion from type `S` to type `Wrapper<S>`
+(through the constructor of `Wrapper<S>`), 
+this conversion is **never** considered because the candidate function `foo` is **not** found in the first place. 
+At the time Barton and Nackman invented their trick, 
+friend name injection would have made the friend `foo` visible and the call `foo(s)` would succeed. 
+
+
+In modern C++, the only advantages to defining a friend function in a class template 
+over simply defining an ordinary function template are syntactic: 
+friend function definitions have access to the private and protected members of their enclosing class 
+and don’t need to restate all of the template parameters of enclosing class templates. 
+However, friend function definitions can be useful when combined with the Curiously Recurring Template Pattern (CRTP), 
+as illustrated in the operator implementations described in the following section. 
+
+#### 21.2.2 Operator Implementations
+
+When implementing a class that provides overloaded operators, 
+it is common to provide overloads for a number of different (but related) operators. 
+For example, a class that implements the equality operator `operator==` will likely 
+also implement the inequality operator `operator!=`, 
+and a class that implements the less-than operator `operator<` 
+will likely implement the other relational operators as well (`>`, `<=`, `>=`). 
+In many cases, the definition of only one of these operators is actually interesting, 
+while the others can simply be defined in terms of that one operator. 
+For example, the inequality operator for a class `X` is likely to be defined in terms of the equality operator:
+```c++
+bool operator!=(X const & x1, X const & x2)
+{
+    return !(x1 == x2);
+}
+```
+Given the large number of types with similar definitions of `!=`,
+it is tempting to generalize this into a template:
+```c++
+template <typename T>
+bool operator!=(T const & x1, T const & x2)
+{
+    return !(x1 == x2);
+}
+```
+In fact, the C++ standard library contains similar such definitions as part of the `<utility>` header.
+However, these definitions (for `!=`, `>`, `<=`, and `>=`)
+were relegated to the namespace `std::rel_ops` during standardization, 
+when it was determined that they caused problems when made available in namespace `std`. 
+Indeed, having these definitions visible makes it appear that
+any type has an `!=` operator (which may fail to instantiate), 
+and that operator will always be an exact match for both of its arguments. 
+While the first problem can be overcome through the use of SFINAE techniques (see Section 19.4), 
+such that this `!=` definition will only be instantiated for types with a suitable `operator==`, 
+the second problem remains: 
+The general `!=` definition above will be preferred over user-provided definitions that require, 
+for example, a derived-to-base conversion, which may come as a surprise.
+
+
+An alternative formulation of these operator templates based on CRTP 
+allows classes to opt in to the general operator definitions, 
+providing the benefits of increased code reuse **without** the side effects of an overly general operator:
+```c++
+template <typename Derived>
+class EqualityComparable
+{
+public:
+    friend bool operator!=(Derived const & x1, Derived const & x2)
+    {
+        return !(x1 == x2);
+    }
+};
+
+class X : public EqualityComparable<X>
+{
+public:
+    friend bool operator==(X const & x1, X const & x2)
+    {
+        // implement logic for comparing two objects of type X
+    }
+};
+
+void foo()
+{
+    X x1, x2;
+    
+    if (x1 != x2) {}
+}
+```
+Here, we have combined CRTP with the Barton-Nackman trick.
+`EqualityComparable` uses CRTP to provide an `operator!=` for its derived class 
+based on the derived class’s definition of `operator==`. 
+It actually provides that definition via a friend function definition (the Barton-Nackman trick),
+which gives the two parameters to `operator!=` equal behavior for conversions.
+
+
+CRTP can be useful when factoring behavior into a base class
+while retaining the identity of the eventual derived class. 
+Along with the Barton-Nackman trick, CRTP can provide general definitions 
+for a number of operators based on a few canonical operators. 
+These properties have made CRTP with the Barton-Nackman trick a favorite technique 
+for authors of C++ template libraries.
+
+#### 21.2.3 Facades
 
 
 
