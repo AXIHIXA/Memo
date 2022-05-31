@@ -2122,7 +2122,7 @@ In C++11, expressions that:
 - do not have identity and cannot be moved from are **not** used.
 
 The expressions that have identity are called `glvalue` expressions.
-Both lvalues and `xvalues` are `glvalue` expressions.
+Both `lvalues` and `xvalues` are `glvalue` expressions.
 
 
 The expressions that can be moved from are called `rvalue` expressions.

@@ -4065,9 +4065,507 @@ for authors of C++ template libraries.
 
 #### 21.2.3 Facades
 
+The use of CRTP and the Barton-Nackman trick to define some operators is a convenient shortcut. 
+We can take this idea further, such that the CRTP base class 
+defines most or all of the public interface of a class 
+in terms of a much smaller (but easier to implement) interface exposed by the CRTP derived class. 
+This pattern, called the _facade_ pattern, is particularly useful when defining new types 
+that need to meet the requirements of some existing interface, 
+e.g., numeric types, iterators, containers, and so on. 
 
 
-#### 📌
+To illustrate the facade pattern, we will implement a facade for iterators, 
+which drastically simplifies the process of writing an iterator 
+that conforms to the requirements of the standard library. 
+The required interface for an iterator type (particularly a random access iterator) is quite large. 
+The following skeleton for class template `IteratorFacade` demonstrates the requirements for an iterator interface:
+```c++
+template <typename Derived, typename Value, typename Category,
+          typename Reference = Value &, typename Distance = std::ptrdiff_t>
+class IteratorFacade
+{
+public:
+    using value_type = typename std::remove_const<Value>::type;
+    using reference = Reference;
+    using pointer = Value *;
+    using difference_type = Distance;
+    using iterator_category = Category;
+
+    // input iterator interface:
+    reference operator*() const
+    {
+        return asDerived().dereference();
+    }
+    
+    pointer operator->() const { /* ... */ }
+    
+    Derived & operator++()
+    {
+        asDerived().increment();
+        return asDerived();
+    }
+    
+    Derived operator++(int)
+    {
+        Derived result(asDerived());
+        asDerived().increment();
+        return result;
+    }
+    
+    friend bool operator==(IteratorFacade const & lhs, IteratorFacade const & rhs)
+    {
+        return lhs.asDerived().equals(rhs.asDerived());
+    }
+        
+    /* ... */
+    
+    // bidirectional iterator interface:
+    Derived & operator--() { /* ... */ }
+
+    Derived operator--(int) { /* ... */ }
+
+    // random access iterator interface:
+    reference operator[](difference_type n) const { /* ... */ }
+
+    Derived & operator+=(difference_type n) { /* ... */ }
+
+    /* ... */
+    
+    friend difference_type operator-(IteratorFacade const & lhs, IteratorFacade const & rhs) { /* ... */ }
+
+    friend bool operator<(IteratorFacade const & lhs, IteratorFacade const & rhs) { /* ... */ }
+    
+    /* ... */
+    
+private:
+    Derived & asDerived()
+    {
+        return *static_cast<Derived *>(this);
+    }
+    
+    Derived const & asDerived() const
+    {
+        return *static_cast<Derived const *>(this);
+    }
+};
+```
+
+#### Defining a Linked-List Iterator
+
+```c++
+template <typename T>
+class ListNode
+{
+public:
+    ~ListNode()
+    {
+        delete next;
+    }
+    
+    T value;
+    ListNode<T> * next = nullptr;
+};
+
+template <typename T>
+class ListNodeIterator : public IteratorFacade<ListNodeIterator<T>, T, std::forward_iterator_tag>
+{
+public:
+    ListNodeIterator(ListNode<T> * current = nullptr) : current(current) {}
+    
+    T & dereference() const
+    {
+        return current->value;
+    }
+
+    void increment()
+    {
+        current = current->next;
+    }
+
+    bool equals(ListNodeIterator const & other) const
+    {
+        return current == other.current;
+    }
+    
+private:
+    ListNode<T> * current = nullptr;
+};
+```
+
+#### Hiding the interface
+
+One downside to our implementation of `ListNodeIterator` is that 
+we were required to expose as a public interface the operations `dereference`, `advance`, and `equals`. 
+To eliminate this as-public requirement, we can rework `IteratorFacade` 
+to perform all of its operations on the derived CRTP class through a separate _access_ class, 
+which we call `IteratorFacadeAccess`:
+```c++
+// ‘friend’ this class to allow IteratorFacade access to core iterator operations: 
+class IteratorFacadeAccess
+{
+    // only IteratorFacade can use these definitions
+    template <typename Derived, typename Value, typename Category, typename Reference, typename Distance>
+    friend class IteratorFacade;
+
+    // required of all iterators:
+    template <typename Reference, typename Iterator>
+    static Reference dereference(Iterator const & i)
+    {
+        return i.dereference();
+    }
+
+    // ... 
+    
+    // required of bidirectional iterators:
+    template <typename Iterator>
+    static void decrement(Iterator & i)
+    {
+        return i.decrement();
+    }
+
+    // required of random-access iterators:
+    template <typename Iterator, typename Distance>
+    static void advance(Iterator & i, Distance n)
+    {
+        return i.advance(n);
+    }
+    
+    // ... 
+};
+
+template <typename T>
+class ListNodeIterator : public IteratorFacade<ListNodeIterator<T>, T, std::forward_iterator_tag>
+{
+public:
+    friend class IteratorFacadeAccess;
+    
+    ListNodeIterator(ListNode<T> * current = nullptr) : current(current) {}
+
+private:
+    T & dereference() const
+    {
+        return current->value;
+    }
+    
+    void increment()
+    {
+        current = current->next;
+    }
+    
+    bool equals(ListNodeIterator const & other) const
+    {
+        return current == other.current;
+    }
+    
+    ListNode<T> * current = nullptr;
+};
+```
+This class provides static member functions for each of the core iterator operations,
+calling the corresponding (nonstatic) member function of the provided iterator. 
+All of the static member functions are _private_, 
+with the access only granted to `IteratorFacade` itself. 
+Therefore, our `ListNodeIterator` can make `IteratorFacadeAccess` a friend 
+and keep private the interface needed by the facade.
+
+#### Iterator Adapters
+
+Our `IteratorFacade` makes it easy to build an iterator _adapter_ 
+that takes an existing iterator and exposes a new iterator 
+that provides some transformed view of the underlying sequence. 
+```c++
+struct Person
+{
+    friend std::ostream & operator<<(std::ostream & strm, Person const & p)
+    {
+        return strm << p.lastName << ", " << p.firstName;
+    }
+
+    std::string firstName;
+    std::string lastName;
+};
+
+template <typename Iterator, typename T>
+class ProjectionIterator
+        : public IteratorFacade<
+                ProjectionIterator<Iterator, T>,                             // derived
+                T,                                                           // value_type
+                typename std::iterator_traits<Iterator>::iterator_category,  // iterator_category
+                T &,                                                         // reference_type
+                typename std::iterator_traits<Iterator>::difference_type>    // difference_type
+{
+private:
+    using Base = typename std::iterator_traits<Iterator>::value_type;
+    using Distance = typename std::iterator_traits<Iterator>::difference_type;
+    
+public:
+    friend class IteratorFacadeAccess;
+    
+    // implement core iterator operations for IteratorFacade
+    ProjectionIterator(Iterator iter, T Base::* member) : iter(iter), member(member) {}
+    
+private:
+    T & dereference() const
+    {
+        return (*iter).*member;
+    }
+    
+    void increment()
+    {
+        ++iter;
+    }
+    
+    bool equals(ProjectionIterator const & other) const
+    {
+        return iter == other.iter;
+    }
+    
+    void decrement()
+    {
+        --iter;
+    }
+    
+    Iterator iter;
+    T Base::* member;
+};
+
+template <typename Iterator, typename Base, typename T>
+auto project(Iterator iter, T Base::* member)
+{
+    return ProjectionIterator<Iterator, T>(iter, member);
+}
+
+std::vector<Person> authors = { {"David", "Vandevoorde"},
+                                {"Nicolai", "Josuttis"},
+                                {"Douglas", "Gregor"} };
+std::copy(project(authors.begin(), &Person::firstName),
+          project(authors.end(), &Person::firstName),
+          std::ostream_iterator<std::string>(std::cout, "\n"));
+```
+Each projection iterator stores two values: 
+`iter`, which is the iterator into the  underlying sequence (of `Base` values), 
+and `member`, a pointer-to-data member describing which member to project through. 
+With that in mind, we consider the template arguments provided to the `IteratorFacade` base class. 
+The first is the `ProjectionIterator` itself (to enable CRTP). 
+The second (`T`) and fourth (`T &`) arguments are the value and reference types of our projection iterator, 
+defining this as a sequence of `T` values.
+The third and fifth arguments merely pass through the category and difference types of the underlying iterator. 
+Therefore, our projection iterator will be an input iterator when `Iterator` is an input iterator, 
+a bidirectional iterator when `Iterator` is a bidirectional iterator, and so on. 
+A `project` function makes it easy to build projection iterators.
+
+#### 📌 21.3 Mixins
+
+```c++
+class Point
+{
+public:
+    Point() : x(0.0), y(0.0) {}
+    Point(double x, double y) : x(x), y(y) {}
+
+    double x, y;
+};
+
+class Polygon
+{
+public:
+    // public operations here
+
+private:
+    std::vector<Point> points;
+};
+```
+This `Polygon` class would be more useful if the user could extend 
+the set of information associated with each `Point` to include application-specific data
+such as the color of each point, or perhaps associate a label with each point. 
+One option to make this extension possible would be to parameterize `Polygon` 
+based on the type of the point.
+Users could conceivably create their own `Point`-like data type 
+that provided the same interface as `Point` but includes other application-specific data, 
+using inheritance:
+```c++
+template <typename P>
+class Polygon
+{
+public:
+    // public operations here
+
+private:
+    std::vector<P> points;
+};
+
+class LabeledPoint : public Point
+{
+public:
+    LabeledPoint() : Point(), label("") { }
+    
+    LabeledPoint(double x, double y) : Point(x, y), label("") {}
+    
+    std::string label;
+};
+```
+This implementation has its shortcomings. 
+For one, it requires that the type `Point` be exposed to the user so that the user can derive from it. 
+Also, the author of `LabeledPoint` needs to be careful to provide exactly the same interface as `Point` 
+(e.g., inheriting or providing all of the same constructors as `Point`), 
+or `LabeledPoint` will not work with `Polygon`. 
+This constraint becomes more problematic if `Point` changes from one version of the `Polygon` template to another: 
+The addition of a new `Point` constructor could require each derived class to be updated.
+
+
+_Mixins_ provide an alternative way to customize the behavior of a type without inheriting from it. 
+Mixins essentially invert the normal direction of inheritance, 
+because the new classes are “mixed in” to the inheritance hierarchy as base classes of a class template
+rather than being created as a new derived class. 
+This approach allows the introduction of new data members and other operations 
+without requiring any duplication of the interface.
+
+
+A class template that supports mixins will typically accept 
+an arbitrary number of extra classes from which it will derive.
+Now, we can “mix in” base classes:
+```c++
+template <typename ... Mixins>
+class Point : public Mixins ...
+{
+public:
+    Point() : Mixins()..., x(0.0), y(0.0) {}
+
+    Point(double x, double y) : Mixins()..., x(x), y(y) {}
+
+    double x, y;
+};
+
+class Label
+{
+public:
+    Label() : label("") {}
+    
+    std::string label;
+};
+
+using LabeledPoint = Point<Label>;
+
+class Color
+{
+public:
+    unsigned char red = 0, green = 0, blue = 0;
+};
+
+using MyPoint = Point<Label, Color>;
+```
+With this mixin-based `Point`, 
+it becomes easy to introduce additional information to `Point` without changing its interface, 
+so `Polygon` becomes easier to use and evolve. 
+Users need only apply the implicit conversion from the `Point` specialization to their mixin class 
+(`Label` or `Color`, above) to access that data or interface. 
+Moreover, the `Point` class can even be entirely hidden, 
+with the mixins provided to the `Polygon` class template itself:
+```c++
+template <typename ... Mixins>
+class Polygon
+{
+public:
+    // public operations here
+
+private:
+    std::vector<Point<Mixins...>> points;
+};
+```
+Mixins are useful in cases where a template needs some small level of customization, 
+such as decorating internally stored objects with user-specified data, 
+without requiring the library to expose and document those internal data types and their interfaces.
+
+#### 21.3.1 Curious Mixins
+
+Mixins can be made more powerful by combining them with the Curiously Recurring Template Pattern (CRTP). 
+Here, each of the mixins is actually a class template that will be provided with the type of the derived class, 
+allowing additional customization to that derived class. 
+A CRTP-mixin version of `Point` would be written as follows:
+```c++
+template <template <typename> ... Mixins>
+class Point : public Mixins<Point> ...
+{
+public:
+    Point() : Mixins<Point>()..., x(0.0), y(0.0) {}
+
+    Point(double x, double y) : Mixins<Point>()..., x(x), y(y) {}
+
+    double x, y;
+};
+```
+This formulation requires some more work for each class that will be mixed in, 
+so classes such as `Label` and `Color` will need to become class templates. 
+However, the mixed-in classes can now tailor their behavior 
+to the specific instance of the derived class they’ve been mixed into. 
+For example, we can mix the previously-discussed `ObjectCounter` template into `Point` 
+to count the number of points created by `Polygon` 
+and compose that mixin with other application-specific mixins as well.
+
+#### 21.3.2 Parameterized Virtuality
+
+Mixins also allow us to indirectly parameterize other attributes of the derived class,
+such as the virtuality of a member function.
+```c++
+class NotVirtual {};
+
+class Virtual
+{
+public:
+    virtual void foo() {}
+};
+
+template <typename ... Mixins>
+class Base : public Mixins ...
+{
+public:
+    // the virtuality of foo() depends on its declaration
+    // (if any) in the base classes Mixins...
+    void foo()
+    {
+        std::cout << "Base::foo()" << '\n';
+    }
+};
+
+template <typename ... Mixins>
+class Derived : public Base<Mixins...>
+{
+public:
+    void foo()
+    {
+        std::cout << "Derived::foo()" << '\n';
+    }
+};
+
+void bar()
+{
+    std::unique_ptr<Base<NotVirtual>> p1 = std::make_unique<Derived<NotVirtual>>();
+    p1->foo();  // calls Base::foo()
+    
+    std::unique_ptr<Base<Virtual>> p2 = std::make_unique<Derived<Virtual>>();
+    p2->foo();  // calls Derived::foo()
+}
+```
+This technique can provide a tool to design a class template 
+that is usable both to instantiate concrete classes and to extend using inheritance. 
+However, it is rarely sufficient just to sprinkle virtuality on some member functions 
+to obtain a class that makes a good base class for more specialized functionality. 
+This sort of development method requires more fundamental design decisions. 
+It is therefore usually more practical to design two different tools (class or class template hierarchies)
+than to try to integrate them all into one template hierarchy.
+
+#### 📌 21.4 Named Template Arguments
+
+
+
+
+
+
+
+
+
+
+
+
 
 #### 📌
 
