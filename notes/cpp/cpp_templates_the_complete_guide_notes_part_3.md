@@ -4555,19 +4555,346 @@ than to try to integrate them all into one template hierarchy.
 
 #### 📌 21.4 Named Template Arguments
 
+Various template techniques sometimes cause a class template to
+end up with many different template type parameters. 
+However, many of these parameters often have reasonable default values. 
+A natural way to define such a class template may look as follows:
+```c++
+template <typename Policy1 = DefaultPolicy1,
+          typename Policy2 = DefaultPolicy2,
+          typename Policy3 = DefaultPolicy3,
+          typename Policy4 = DefaultPolicy4>
+class BreadSlicer {};
+```
+Presumably, such a template can often be used with the default template argument values using the syntax `BreadSlicer<>`. 
+However, if a nondefault argument must be specified, 
+all preceding arguments must be specified too (even though they may have the default value). 
+
+
+Clearly, it would be attractive to be able to use a construct akin to `BreadSlicer<Policy3 = Custom>` rather than
+`BreadSlicer<DefaultPolicy1, DefaultPolicy2, Custom>`, 
+as is the case right now. In what follows we develop a technique to enable almost exactly that. 
+
+
+Our technique consists of placing the default type values in a base class 
+and overriding some of them through derivation. 
+Instead of directly specifying the type arguments, we provide them through helper classes. 
+For example, we could write `BreadSlicer<Policy3_is<Custom>>`. 
+Because each template argument can describe any of the policies, the defaults cannot be different. 
+In other words, at a high level, every template parameter is equivalent:
+```c++
+// name default policies as P1, P2, P3, P4
+class DefaultPolicies
+{
+public:
+    using P1 = DefaultPolicy1;
+    using P2 = DefaultPolicy2;
+    using P3 = DefaultPolicy3;
+    using P4 = DefaultPolicy4;
+};
+
+// class to define a use of the default policy values
+// avoids ambiguities if we derive from DefaultPolicies more than once
+class DefaultPolicyArgs : virtual public DefaultPolicies
+{};
+
+template <typename Policy>
+class Policy1_is : virtual public DefaultPolicies
+{
+public:
+    using P1 = Policy;  // overriding type alias
+};
+
+template <typename Policy>
+class Policy2_is : virtual public DefaultPolicies
+{
+public:
+    using P2 = Policy;  // overriding type alias
+};
+
+template <typename Policy>
+class Policy3_is : virtual public DefaultPolicies
+{
+public:
+    using P3 = Policy;  // overriding type alias
+};
+
+template <typename Policy>
+class Policy4_is : virtual public DefaultPolicies
+{
+public:
+    using P4 = Policy;  // overriding type alias
+};
+
+// PolicySelector<A, B, C, D> creates A, B, C, D as base classes
+// Discriminator<> allows having even the same base class more than once
+template <typename Base, int D>
+class Discriminator : public Base {};
+
+template <typename Setter1, typename Setter2,
+          typename Setter3, typename Setter4>
+class PolicySelector : public Discriminator<Setter1, 1>,
+                       public Discriminator<Setter2, 2>,
+                       public Discriminator<Setter3, 3>,
+                       public Discriminator<Setter4, 4>
+{};
+
+template <typename PolicySetter1 = DefaultPolicyArgs,
+          typename PolicySetter2 = DefaultPolicyArgs,
+          typename PolicySetter3 = DefaultPolicyArgs,
+          typename PolicySetter4 = DefaultPolicyArgs>
+class BreadSlicer
+{
+    using Policies = PolicySelector<PolicySetter1,
+                                    PolicySetter2,
+                                    PolicySetter3,
+                                    PolicySetter4>;
+    // use Policies::P1, Policies::P2, ... to refer to the various policies
+};
+
+// Defined as PolicySelector<Policy3_is<CustomPolicy>,
+//                           DefaultPolicyArgs,
+//                           DefaultPolicyArgs,
+//                           DefaultPolicyArgs>
+BreadSlicer<Policy3_is<CustomPolicy>> bc;
+```
 
 
 
 
 
 
+### 🎯 Chapter 22 Bridging Static and Dynamic Polymorphism
+
+```c++
+// bloats source code. 
+template <typename Operator>
+void forEachInt(int * b, int * e, Operator f) {}
+
+// does not work with lambdas. 
+void forEachInt(int * b, int * e, void (*f)(int)) {}
+
+// works with lambdas and does not bloat source code, but slow. 
+void forEachInt(int * b, int * e, std::function<void(int)> f) {}
+```
+The template argument to `std::function` is a function type 
+that describes the parameter types the function object will receive 
+and the return type that it should produce, 
+much like a function pointer describes the parameter and result types.
+
+
+This formulation of `forEachInt` provides some aspects of static polymorphism, 
+i.e., the ability to work with an unbounded set of types including function pointers,
+lambdas, and arbitrary classes with a suitable `operator()`, 
+while itself remaining a nontemplate function with a single implementation.
+It does so using a technique called _type erasure_, 
+which bridges the gap between static and dynamic polymorphism.
+
+The `std::function` type is effectively a generalized form of a C++ function pointer, 
+providing the same fundamental operations:
+- It can be used to invoke a function without the caller knowing anything about the function itself;
+- It can be copied, moved, and assigned;
+- It can be initialized or assigned from another function (with a compatible signature);
+- It has a “null” state that indicates when no function is bound to it.
+
+
+However, **unlike** a C++ function pointer, a `std::function` 
+can also store a lambda or any other function object with a suitable `operator()`, 
+all of which may have different types.
+
+
+In the remainder of this chapter, we will build our own generalized function pointer class template, `FunctionPtr`, 
+to provide these same core operations and capabilities and that can be used in place of `std::function`. 
+```c++
+template<typename R, typename ... Args>
+class FunctorBridge
+{
+public:
+    virtual ~FunctorBridge() = default;
+    virtual FunctorBridge* clone() const = 0;
+    virtual R invoke(Args... args) const = 0;
+    virtual bool equals(FunctorBridge const * fb) const = 0;
+};
+
+template <typename Functor, typename R, typename ... Args>
+class SpecificFunctorBridge : public FunctorBridge<R, Args...>
+{
+public:
+    template <typename FunctorFwd>
+    explicit SpecificFunctorBridge(FunctorFwd && functor) : functor(std::forward<FunctorFwd>(functor)) {}
+
+    SpecificFunctorBridge * clone() const override
+    {
+        return new SpecificFunctorBridge(functor);
+    }
+
+    R invoke(Args ... args) const override
+    {
+        return functor(std::forward<Args>(args)...);
+    }
+
+    bool equals(FunctorBridge<R, Args...> const * fb) const override
+    {
+        if (auto specFb = dynamic_cast<SpecificFunctorBridge const*>(fb))
+        {
+            return functor == specFb->functor;
+        }
+
+        // functors with different types are never equal.
+        return false;
+    }
+
+private:
+    Functor functor;
+};
+
+// primary template:
+template <typename Signature>
+class FunctionPtr;
+
+// partial specialization:
+template <typename R, typename ... Args>
+class FunctionPtr<R (Args ...)>
+{
+public:
+    friend bool operator==(FunctionPtr const & f1, FunctionPtr const & f2)
+    {
+        if (!f1 || !f2) 
+        {
+            return !f1 && !f2;
+        }
+
+        return f1.bridge->equals(f2.bridge);
+    }
+
+    friend bool operator!=(FunctionPtr const & f1, FunctionPtr const & f2)
+    {
+        return !(f1 == f2);
+    }
+
+    // constructors:
+    FunctionPtr() : bridge(nullptr) {}
+
+    FunctionPtr(FunctionPtr const & other) : bridge(nullptr)
+    {
+        if (other.bridge)
+        {
+            bridge = other.bridge->clone();
+        }
+    }
+
+    FunctionPtr(FunctionPtr & other) : FunctionPtr(static_cast<FunctionPtr const &>(other)) {}
+
+    FunctionPtr(FunctionPtr && other) noexcept : bridge(other.bridge)
+    {
+        other.bridge = nullptr;
+    }
+
+    // construction from arbitrary function objects:
+    template <typename F>
+    explicit FunctionPtr(F && f) : bridge(nullptr)
+    {
+        using Functor = std::decay_t<F>;
+        using Bridge = SpecificFunctorBridge<Functor, R, Args...>;
+        bridge = new Bridge(std::forward<F>(f));
+    }
+
+    // assignment operators:
+    FunctionPtr & operator=(FunctionPtr const & other)
+    {
+        if (&other != this)
+        {
+            FunctionPtr tmp(other);
+            swap(*this, tmp);
+        }
+
+        return *this;
+    }
+
+    FunctionPtr & operator=(FunctionPtr && other) noexcept
+    {
+        if (&other != this)
+        {
+            delete bridge;
+            bridge = other.bridge;
+            other.bridge = nullptr;
+        }
+
+        return *this;
+    }
+
+    // construction and assignment from arbitrary function objects:
+    template <typename F>
+    FunctionPtr & operator=(F && f)
+    {
+        FunctionPtr tmp(std::forward<F>(f));
+        swap(*this, tmp);
+        return *this;
+    }
+
+    // destructor:
+    ~FunctionPtr()
+    {
+        delete bridge;
+    }
+
+    friend void swap(FunctionPtr & fp1, FunctionPtr & fp2)
+    {
+        std::swap(fp1.bridge, fp2.bridge);
+    }
+
+    explicit operator bool() const
+    {
+        return bridge == nullptr;
+    }
+
+    // invocation:
+    R operator()(Args ... args) const
+    {
+        return bridge->invoke(std::forward<Args>(args)...);
+    }
+
+private:
+    FunctorBridge<R, Args...> * bridge;
+};
+```
+**Performance Considerations**. 
+Type erasure provides some of the advantages of both static polymorphism and dynamic polymorphism, but not all. 
+In particular, the performance of generated code using type erasure hews more closely to that of dynamic polymorphism, 
+because both use dynamic dispatch via virtual functions. 
+Thus, some of the traditional advantages of static polymorphism, 
+such as the ability of the compiler to inline calls, may be lost. 
+Whether this loss of performance will be perceptible is application-dependent, 
+but it’s often easy to tell by considering how much work is performed 
+in the function being called relative to the cost of a virtual function call: 
+If the two are close (e.g., using `FunctionPtr` to simply add two integers), 
+type erasure is likely to execute far more slowly than a static-polymorphic version. 
+If, on the other hand, the function call performs a significant amount of work, 
+such as querying a database, sorting a container, or updating a user interface, 
+the overhead of type erasure is unlikely to be measurable. 
 
 
 
 
+
+
+### 🎯 Chapter 23 Metaprogramming
 
 
 #### 📌
+
+
+#### 📌
+
+
+#### 📌
+
+
+#### 📌
+
+
+#### 📌
+
 
 #### 📌
 
@@ -4587,11 +4914,31 @@ than to try to integrate them all into one template hierarchy.
 #### 📌
 
 
-#### 📌
 
 #### 📌
 
+
 #### 📌
 
 
+
+
+
+
+
+
+
+
+
+### 🎯
+
+#### 📌
+
+
+#### 📌
+
+
+#### 📌
+
+#### 📌
 
