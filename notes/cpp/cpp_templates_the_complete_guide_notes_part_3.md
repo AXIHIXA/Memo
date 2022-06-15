@@ -4881,6 +4881,437 @@ the overhead of type erasure is unlikely to be measurable.
 ### 🎯 Chapter 23 Metaprogramming
 
 
+_Metaprogramming_ consists of “programming a program.” 
+In other words, we lay out code that the programming system executes 
+to generate new code that implements the functionality we really want. 
+Usually, the term metaprogramming implies a reflexive attribute: 
+The metaprogramming component is part of the program for which it generates a bit of code 
+(i.e., an additional or different bit of the program). 
+
+
+Why would metaprogramming be desirable? 
+As with most other programming techniques, the goal is to achieve more functionality with less effort, 
+where effort can be measured as code size, maintenance cost, and so forth. 
+What characterizes metaprogramming is that some user-defined computation happens at translation time. 
+The underlying motivation is often performance 
+(things computed at translation time can frequently be optimized away) 
+or interface simplicity (a metaprogram is generally shorter than what it expands to) or both. 
+
+#### 📌 23.1 The State of Modern C++ Metaprogramming
+
+#### 23.1.1 Value Metaprogramming
+
+Since C++14, a compile-time function to compute a square root is easily written as follows: 
+```c++
+template <typename T>
+constexpr T sqrt(T x)
+{
+    // handle cases where x and its square root are equal 
+    // as a special case to simplify the iteration criterion for larger x:
+    if (x <= 1)
+    {
+        return x;
+    }
+    
+    // repeatedly determine in which half of a [lo, hi] interval 
+    // the square root of x is located,
+    // until the interval is reduced to just one value:
+    T lo = 0, hi = x;
+    
+    while (true)
+    {
+        auto mid = (hi + lo) / 2, mid2 = mid * mid;
+        
+        if (hi <= lo + 1 || mid2 == x)
+        {
+            // mid must be the square root:
+            return mid;
+        }
+        
+        //continue with the higher/lower half-interval:
+        if (mid2 < x)
+        {
+            lo = mid;
+        }
+        else
+        {
+            hi = mid;
+        }
+    }
+}
+```
+This algorithm searches for the answer by repeatedly halving an interval known to contain the square root of `x` 
+(the roots of 0 and 1 are treated as special cases to keep the convergence criterion simple). 
+This `sqrt` function can be evaluated at compile or run time:
+```c++
+static_assert(sqrt(25) == 5, "");   // OK (evaluated at compile time)
+static_assert(sqrt(40) == 6, "");   // OK (evaluated at compile time)
+std::array<int, sqrt(40) + 1> arr;  // declares std::array<int, 7> (compile time)
+long long l = 53478LL;
+std::cout << sqrt(l) << '\n';       // prints 231 (evaluated at run time)
+```
+This function’s implementation may not be the most efficient at run time 
+(where exploiting peculiarities of the machine often pays off), 
+but because it is meant to perform compile-time computations, 
+absolute efficiency is less important than portability. 
+Note that no advanced “template magic” is in sight in that square root example, 
+only the usual template argument deduction for a function template. 
+The code is “plain C++” and is not particularly challenging to read.
+
+
+Value metaprogramming (i.e., programming the computation of compile-time values) 
+as we did above is occasionally quite useful, 
+but there are two additional kinds of metaprogramming that can be performed with modern C++: 
+type metaprogramming and hybrid metaprogramming.
+
+#### 23.1.2 Type Metaprogramming
+
+```c++
+template <typename _Tp>
+  struct remove_all_extents
+  { typedef _Tp     type; };
+
+template <typename _Tp, std::size_t _Size>
+  struct remove_all_extents<_Tp [_Size]>
+  { typedef typename remove_all_extents<_Tp>::type     type; };
+
+template <typename _Tp>
+  struct remove_all_extents<_Tp []>
+  { typedef typename remove_all_extents<_Tp>::type     type; };
+
+remove_all_extents<int []>       // int
+remove_all_extents<int [5][10]>  // int
+remove_all_extents<int [][10]>   // int
+remove_all_extents<int (*) []>   // int (*) [5]  
+```
+
+#### 23.1.3 Hybrid Metaprogramming
+
+```c++
+template <typename T, std::size_t N>
+struct DotProduct
+{
+    static inline T result(T * a, T * b)
+    {
+        return *a * *b + DotProduct<T, N - 1>::result(a + 1, b + 1);
+    }
+};
+
+// partial specialization as end criteria
+template <typename T>
+struct DotProduct<T, 0>
+{
+    static inline T result(T *, T *)
+    {
+        return T {};
+    }
+};
+
+template <typename T, std::size_t N>
+auto dotProduct(std::array<T, N> const & x, std::array<T, N> const & y)
+{
+    return DotProduct<T, N>::result(x.begin(), y.begin());
+}
+```
+Given that in `std::array` and `std::tuple` we have flexible counterparts to array types and (simple) struct types, 
+it is natural to wonder whether a counterpart to simple union types would also be useful for hybrid computation. 
+The answer is “yes.” 
+The C++ standard library introduced a `std::variant` template for this purpose in C++17, 
+and we develop a similar component in Chapter 26.
+
+
+Because `std::tuple` and `std::variant`, like struct types, are heterogeneous types, 
+hybrid metaprogramming that uses such types is sometimes called _heterogeneous metaprogramming_.
+
+#### 23.1.4 Hybrid Metaprogramming for Unit Types
+
+```c++
+template <unsigned N, unsigned D = 1>
+struct Ratio
+{
+    static constexpr unsigned num = N;  // numerator
+    static constexpr unsigned den = D;  // denominator
+    using Type = Ratio<num, den>;
+};
+
+// implementation of adding two ratios:
+template <typename R1, typename R2>
+struct RatioAddImpl
+{
+private:
+    static constexpr unsigned den = R1::den * R2::den;
+    static constexpr unsigned num = R1::num * R2::den + R2::num * R1::den;
+
+public:
+    typedef Ratio<num, den> Type;
+};
+
+// using declaration for convenient usage:
+template <typename R1, typename R2>
+using RatioAdd = typename RatioAddImpl<R1, R2>::Type;
+
+using R1 = Ratio<1, 1000>;
+using R2 = Ratio<2, 3>;
+using RS = RatioAdd<R1, R2>;                     // RS has type Ratio<2003, 3000>
+std::cout << RS::num << '/' << RS::den << '\n';  // prints 2003/3000
+using RA = RatioAdd<Ratio<2, 3>, Ratio<5, 7>>;   // RA has type Ratio<29, 21>
+std::cout << RA::num << '/' << RA::den << '\n';  // prints 29/21
+
+// duration type for values of type T with unit type U:
+template <typename T, typename U = Ratio<1>>
+class Duration
+{
+public:
+    using ValueType = T;
+    using UnitType = typename U::Type;
+
+public:
+    constexpr Duration(ValueType v = 0) : val(v) {}
+
+    constexpr ValueType value() const { return val; }
+
+private:
+    ValueType val;
+};
+
+// adding two durations where unit type might differ:
+template <typename T1, typename U1, typename T2, typename U2>
+auto constexpr operator+(Duration<T1, U1> const & lhs, Duration<T2, U2> const & rhs)
+{
+    // resulting type is a unit with 1 a nominator and
+    // the resulting denominator of adding both unit type fractions
+    using VT = Ratio<1, RatioAdd<U1, U2>::den>;
+    
+    // resulting value is the sum of both values
+    // converted to the resulting unit type:
+    auto val = lhs.value() * VT::den / U1::den * U1::num +
+               rhs.value() * VT::den / U2::den * U2::num;
+    
+    return Duration<decltype(val), VT>(val);
+}
+
+int x = 42;
+int y = 77;
+auto a = Duration<int, Ratio<1, 1000>>(x);   // x milliseconds
+auto b = Duration<int, Ratio<2, 3>>(y);      // y 2/3 seconds
+auto c = a + b;                              // computes resulting unit type 1/3000 seconds
+                                             // and generates run-time code for c = a*3 + b*2000
+auto d = Duration<double, Ratio<1,3>>(7.5);  // 7.5 1/3 seconds
+auto e = Duration<int, Ratio<1>>(4);         // 4 seconds
+auto f = d + e;                              // computes resulting unit type 1/3 seconds
+                                             // and generates code for f = d + e*3
+```
+In addition, the compiler can even perform the value computation at compile-time
+if the values are known at compile time, because `operator+` for durations is `constexpr`.
+
+
+The C++ standard library class template `std::chrono` uses this approach with several refinements, 
+such as using predefined units (e.g., `std::chrono::milliseconds`),
+supporting duration literals (e.g., `10ms`), and dealing with overflow. 
+
+
+#### 📌 23.2 The Dimensions of Reflective Metaprogramming
+
+
+Previously, we described value metaprogramming based on `constexpr` evaluation 
+and type metaprogramming based on recursive template instantiation. 
+These two options, both available in modern C++, 
+clearly involve different methods driving the computation. 
+It turns out that value metaprogramming can also be driven in terms of recursive template instantiation, 
+and, prior to the introduction of `constexpr` functions in C++11, that was the mechanism of choice. 
+
+
+#### 📌 23.3 The Cost of Recursive Instantiation
+
+
+The following metaprogram results in significant instantiations because the compiler
+instantiates both the positive branch and the negative branch of the tri operator used to compute `Sqrt::value`: 
+```c++
+// primary template to compute sqrt(N)
+template <int N, int LO = 1, int HI = N>
+struct Sqrt
+{
+    // compute the midpoint, rounded up
+    static constexpr auto mid = (LO + HI + 1) / 2;
+    
+    // search a not too large value in a halved interval
+    static constexpr auto value = (N < mid * mid) ?
+                                  Sqrt<N, LO, mid - 1>::value : 
+                                  Sqrt<N, mid, HI>::value;
+};
+
+// partial specialization for the case when LO equals HI
+template <int N, int M>
+struct Sqrt<N, M, M>
+{
+    static constexpr auto value = M;
+};
+```
+The solution is to refrain from the instantiation of the negative branch: 
+```c++
+// primary template to compute sqrt(N)
+template <int N, int LO = 1, int HI = N>
+struct Sqrt
+{
+    // compute the midpoint, rounded up
+    static constexpr auto mid = (LO + HI + 1) / 2;
+    
+    // search a not too large value in a halved interval
+    static constexpr auto value = IfThenElse<N < mid * mid), 
+                                             Sqrt<N, LO, mid - 1>::value, 
+                                             Sqrt<N, mid, HI>::value>::value;
+};
+
+// partial specialization for the case when LO equals HI
+template <int N, int M>
+struct Sqrt<N, M, M>
+{
+    static constexpr auto value = M;
+};
+```
+The key change here is the use of the `IfThenElse` template, which was introduced in Section 19.7.1. 
+The `IfThenElse` template is a device that selects between two types based on a given Boolean constant. 
+If the constant is true, the first type is type-aliased to `Type`; 
+otherwise, `Type` stands for the second type. 
+At this point it is important to remember that defining a type alias for a class template instance 
+does not cause a C++ compiler to instantiate the body of that instance. 
+
+
+#### 📌 23.4 Computational Completeness
+
+Nothing significant. 
+
+
+#### 📌 23.5 Recursive Instantiation versus Recursive Template Arguments
+
+```c++
+template <typename T, typename U>
+struct Doublify {};
+
+template <int N>
+struct Trouble
+{
+    using LongType = Doublify<typename Trouble<N - 1>::LongType,
+                              typename Trouble<N - 1>::LongType>;
+};
+
+template <>
+struct Trouble<0>
+{
+    using LongType = double;
+};
+
+Trouble<10>::LongType ouch;
+```
+The use of `Trouble<10>::LongType` not only triggers the recursive instantiation of
+`Trouble<9>`, `Trouble<8>`, ..., `Trouble<0>`, 
+but it also instantiates `Doublify` over increasingly complex types.
+The complexity of the type description of the expression `Trouble<N>::LongType` grows exponentially with `N`. 
+In general, such a situation stresses a C++ compiler even more than do 
+recursive instantiations that do not involve recursive template arguments. 
+One of the problems here is that a compiler keeps a representation of the mangled name for the type. 
+This mangled name encodes the exact template specialization in some way, 
+and early C++ implementations used an encoding that is roughly proportional to the length of the template-id. 
+These compilers then used well over 10,000 characters for `Trouble<10>::LongType`. 
+
+
+Newer C++ implementations take into account the fact that nested template-ids are fairly common in modern C++ programs 
+and use clever compression techniques to reduce considerably the growth in name encoding 
+(e.g., a few hundred characters for `Trouble<10>::LongType`). 
+These newer compilers also avoid generating a mangled name 
+if none is actually needed because no low-level code is actually generated for the template instance. 
+Still, all other things being equal, it is probably preferable to organize recursive instantiation in such a way 
+that template arguments need not also be nested recursively. 
+
+
+#### 📌 23.6 Enumeration Values versus Static Constants
+
+
+In the early days of C++, enumeration values (the enum hack) were the only mechanism 
+to create “true constants” (called constant-expressions) as named members in class declarations. 
+With them, we could, for example, define a `Pow3` metaprogram to compute powers of 3 as follows:
+```c++
+// primary template to compute 3 to the Nth
+template <int N>
+struct Pow3
+{
+    enum
+    {
+        value = 3 * Pow3<N - 1>::value
+    };
+};
+
+// full specialization to end the recursion
+template <>
+struct Pow3<0>
+{
+    enum
+    {
+        value = 1
+    };
+};
+```
+The standardization of C++98 introduced the concept of in-class static constant initializers, 
+so that our `Pow3` metaprogram could look as follows:
+```c++
+// primary template to compute 3 to the Nth
+template <int N>
+struct Pow3
+{
+    static int const value = 3 * Pow3<N - 1>::value;
+};
+
+// full specialization to end the recursion
+template <>
+struct Pow3<0>
+{
+    static int const value = 1;
+};
+```
+However, there is a drawback with this version: Static constant members are lvalues. 
+So, if we have a declaration such as `void foo(int const &);`,
+and we pass it the result of a metaprogram: `foo(Pow3<7>::value);`,
+a compiler must pass the _address_ of `Pow3<7>::value`, 
+and that forces the compiler to instantiate and allocate the definition for the static member. 
+As a result, the computation is no longer limited to a pure “compile-time” effect.
+
+
+Enumeration values aren’t lvalues (i.e., they don’t have an address). 
+So, when we pass them by reference, no static memory is used. 
+It’s almost exactly as if you passed the computed value as a literal. 
+The first edition of this book therefore preferred the use of enumerator constants for this kind of applications.
+
+
+C++11, however, introduced `constexpr` static data members, 
+and those are not limited to integral types. 
+They do not solve the address issue raised above, 
+but in spite of that shortcoming they are now a common way to produce results of metaprograms. 
+They have the advantage of having a correct type (as opposed to an artificial enum type), 
+and that type can be deduced when the static member is declared with the `auto` type specifier. 
+C++17 added `inline` static data members, 
+which do solve the address issue raised above, 
+and can be used in conjunction with `constexpr`. 
+
+
+
+
+
+
+### 🎯 Chapter 24 Typelists
+
+#### 📌 24.1 Anatomy of a Typelist
+
+
+
+#### 📌
+
+
+#### 📌
+
+
+
+
+
 #### 📌
 
 
@@ -4891,14 +5322,6 @@ the overhead of type erasure is unlikely to be measurable.
 
 
 #### 📌
-
-
-#### 📌
-
-
-#### 📌
-
-
 
 
 
@@ -4914,17 +5337,12 @@ the overhead of type erasure is unlikely to be measurable.
 #### 📌
 
 
-
 #### 📌
 
 
 #### 📌
 
-
-
-
-
-
+#### 📌
 
 
 
