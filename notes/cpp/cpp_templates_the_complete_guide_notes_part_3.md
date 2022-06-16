@@ -5301,6 +5301,771 @@ and can be used in conjunction with `constexpr`.
 
 #### 📌 24.1 Anatomy of a Typelist
 
+A typelist holds a list of types:
+```c++
+template <typename ... Elements>
+class Typelist {};
+```
+The basic operations of a typelist:
+```c++
+template <typename List>
+class FrontT;
+
+template <typename Head, typename ... Tail>
+class FrontT<Typelist<Head, Tail...>>
+{
+public:
+    using Type = Head;
+};
+
+template <typename List>
+using Front = typename FrontT<List>::Type;
+```
+```c++
+template <typename List>
+class PopFrontT;
+
+template <typename Head, typename ... Tail>
+class PopFrontT<Typelist<Head, Tail...>> 
+{
+public:
+    using Type = Typelist<Tail...>;
+};
+
+template <typename List>
+using PopFront = typename PopFrontT<List>::Type;
+```
+```c++
+template <typename List, typename NewElement>
+class PushFrontT;
+
+template <typename ... Elements, typename NewElement>
+class PushFrontT<Typelist<Elements...>, NewElement> 
+{
+public:
+    using Type = Typelist<NewElement, Elements...>;
+};
+
+template <typename List, typename NewElement>
+using PushFront = typename PushFrontT<List, NewElement>::Type;
+```
+
+#### 📌 24.2 Typelist Algorithms
+
+The fundamental typelist operations `Front`, `PopFront`, and `PushFront` 
+can be composed to create more interesting typelist manipulations.
+For example, we can replace the first element in a typelist 
+by applying `PushFront` to the result of `PopFront`:
+```c++
+using SignedIntegralTypes = Typelist<signed char, short, int, long, long long>;
+
+// equivalent to Typelist<bool, short, int, long, long long>
+using Type = PushFront<PopFront<SignedIntegralTypes>, bool>;
+```
+
+#### 24.2.1 Indexing
+
+Extract the N-th element from a typelist:
+```c++
+// recursive case:
+template <typename List, unsigned N>
+class NthElementT : public NthElementT<PopFront<List>, N - 1> {};
+
+// basis case:
+template <typename List>
+class NthElementT<List, 0> : public FrontT<List> {};
+
+template <typename List, unsigned N>
+using NthElement = typename NthElementT<List, N>::Type;
+```
+
+#### 24.2.2 Finding the Best Match
+
+```c++
+template <typename List>
+class IsEmpty
+{
+public:
+    static constexpr bool value = false;
+};
+
+template <>
+class IsEmpty<Typelist<>>
+{
+public:
+    static constexpr bool value = true;
+};
+
+template <typename List, bool Empty = IsEmpty<List>::value>
+class LargestTypeT;
+
+// recursive case:
+template <typename List>
+class LargestTypeT<List, false>
+{
+private:
+    using Contender = Front<List>;
+    using Best = typename LargestTypeT<PopFront<List>>::Type;
+    
+public:
+    using Type = IfThenElse<(sizeof(Contender) >= sizeof(Best)), Contender, Best>;
+};
+
+// basis case:
+template <typename List>
+class LargestTypeT<List, true>
+{
+public:
+    using Type = char;
+};
+
+template <typename List>
+using LargestType = typename LargestTypeT<List>::Type;
+```
+
+#### 24.2.3 Appending to a Typelist
+
+- Version 1:
+```c++
+template <typename List, typename NewElement>
+class PushBackT;
+
+template <typename ... Elements, typename NewElement>
+class PushBackT<Typelist<Elements...>, NewElement>
+{
+public:
+    using Type = Typelist<Elements..., NewElement>;
+};
+
+template <typename List, typename NewElement>
+using PushBack = typename PushBackT<List, NewElement>::Type;
+```
+- Version 2:
+```c++
+template <typename List, typename NewElement, bool = IsEmpty<List>::value>
+class PushBackRecT;
+
+// recursive case:
+template <typename List, typename NewElement>
+class PushBackRecT<List, NewElement, false>
+{
+private:
+    using Head = Front<List>;
+    using Tail = PopFront<List>;
+    using NewTail = typename PushBackRecT<Tail, NewElement>::Type;
+
+public:
+    using Type = PushFront<Head, NewTail>;
+};
+
+// basis case:
+template <typename List, typename NewElement>
+class PushBackRecT<List, NewElement, true>
+{
+public:
+    using Type = PushFront<List, NewElement>;
+};
+
+// generic push-back operation:
+template <typename List, typename NewElement>
+class PushBackT : public PushBackRecT<List, NewElement> {};
+
+template <typename List, typename NewElement>
+using PushBack = typename PushBackT<List, NewElement>::Type;
+```
+
+#### 24.2.4 Reversing a Typelist
+
+```c++
+template <typename List, bool Empty = IsEmpty<List>::value>
+class ReverseT;
+
+template <typename List>
+class ReverseT<List, false> : public PushBackT<Reverse<PopFront<List>>, Front<List>> {};
+
+template <typename List>
+class ReverseT<List, true>
+{
+public:
+    using Type = List;
+};
+
+template <typename List>
+using Reverse = typename ReverseT<List>::Type;
+```
+```c++
+template <typename List>
+class PopBackT 
+{
+public:
+    using Type = Reverse<PopFront<Reverse<List>>>;
+};
+
+template <typename List>
+using PopBack = typename PopBackT<List>::Type;
+```
+
+#### 24.2.5 Transforming a Typelist
+
+```c++
+template <typename List, 
+          template <typename T> class MetaFun, 
+          bool Empty = IsEmpty<List>::value>
+class TransformT;
+
+// recursive case:
+template <typename List, 
+          template <typename T> class MetaFun>
+class TransformT<List, MetaFun, false> 
+        : public PushFrontT<typename TransformT<PopFront<List>, MetaFun>::Type,
+                            typename MetaFun<Front<List>>::Type>
+{};
+
+// basis case:
+template <typename List, 
+          template <typename T> class MetaFun>
+class TransformT<List, MetaFun, true>
+{
+public:
+    using Type = List;
+};
+
+template <typename List, 
+          template <typename T> class MetaFun>
+using Transform = typename TransformT<List, MetaFun>::Type;
+```
+One possible `MetaFun`:
+```c++
+template <typename T>
+struct AddConstT
+{
+    using Type = T const;
+};
+
+template <typename T>
+using AddConst = typename AddConstT<T>::Type;
+```
+
+#### 24.2.6 Accumulating Typelists
+
+```c++
+template <typename List,
+          template <typename X, typename Y> class F,
+          typename I,
+          bool = IsEmpty<List>::value>
+class AccumulateT;
+
+// recursive case:
+template <typename List,
+          template <typename X, typename Y> class F,
+          typename I>
+class AccumulateT<List, F, I, false>
+        : public AccumulateT<PopFront<List>,
+                             F,
+                             typename F<I, Front<List>>::Type>
+{};
+
+// basis case:
+template <typename List,
+          template <typename X, typename Y> class F,
+          typename I>
+class AccumulateT<List, F, I, true>
+{
+public:
+    using Type = I;
+};
+
+template <typename List,
+          template <typename X, typename Y> class F,
+          typename I>
+using Accumulate = typename AccumulateT<List, F, I>::Type;
+
+// produces TypeList<long long, long, int, short, signed char>
+using Result = Accumulate<SignedIntegralTypes, PushFrontT, Typelist<>>;
+```
+Implementing an `Accumulator`-based version of `LargestType`, `LargestTypeAcc`,
+requires slightly more effort, because we need to produce a metafunction that returns the larger of two types:
+```c++
+template <typename T, typename U>
+class LargerTypeT : public IfThenElseT<sizeof(T) >= sizeof(U), T, U>
+{};
+
+template <typename Typelist, bool = IsEmpty<Typelist>::value>
+class LargestTypeAccT;
+
+template <typename Typelist>
+class LargestTypeAccT<Typelist, false> : public AccumulateT<PopFront<Typelist>, LargerTypeT, Front<Typelist>>
+{};
+
+template <typename Typelist>
+class LargestTypeAccT<Typelist, true>
+{};
+
+template <typename Typelist>
+using LargestTypeAcc = typename LargestTypeAccT<Typelist>::Type;
+```
+
+#### 24.2.7 Insertion Sort
+
+For our final typelist algorithm, we will implement an insertion sort. 
+As with other algorithms, the recursive step splits the list into
+its first element (the head) and the remaining elements (the tail). 
+The tail is then sorted (recursively), and the head is inserted into the correct position within the sorted list. 
+```c++
+template <typename List,
+          template <typename T, typename U> class Compare,
+          bool = IsEmpty<List>::value>
+class InsertionSortT;
+
+template <typename List,
+          template <typename T, typename U> class Compare>
+using InsertionSort = typename InsertionSortT<List, Compare>::Type;
+
+template <typename List, 
+          typename Element,
+          template <typename T, typename U> class Compare,
+          bool = IsEmpty<List>::value>
+class InsertSortedT;
+
+template <typename List, 
+          typename Element,
+          template <typename T, typename U> class Compare>
+using InsertSorted = typename InsertSortedT<List, Element, Compare>::Type;
+
+/// InsertSorted Impl
+
+// recursive case:
+template <typename List, 
+          typename Element,
+          template <typename T, typename U> class Compare>
+class InsertSortedT<List, Element, Compare, false>
+{
+private:
+    // compute the tail of the resulting list:
+    using NewTail = typename IfThenElse<Compare<Element, Front<List>>::value,
+                                        IdentityT<List>,
+                                        InsertSortedT<PopFront<List>, Element, Compare>>::Type;
+    
+    // compute the head of the resulting list:
+    using NewHead = IfThenElse<Compare<Element, Front<List>>::value, 
+                               Element, 
+                               Front<List>>;
+
+public:
+    using Type = PushFront<NewTail, NewHead>;
+};
+
+// basis case:
+template <typename List, 
+          typename Element,
+          template <typename T, typename U> class Compare>
+class InsertSortedT<List, Element, Compare, true> : public PushFrontT<List, Element>
+{};
+
+// recursive case (insert first element into sorted list):
+template <typename List,
+          template <typename T, typename U> class Compare>
+class InsertionSortT<List, Compare, false>
+        : public InsertSortedT<InsertionSort<PopFront<List>, Compare>, Front<List>, Compare>
+{};
+
+/// InsertSort Impl
+
+// basis case (an empty list is sorted):
+template <typename List,
+          template <typename T, typename U> class Compare>
+class InsertionSortT<List, Compare, true>
+{
+public:
+    using Type = List;
+};
+```
+
+#### 📌 24.3 Nontype Typelists
+
+```c++
+// Compile-time value
+template <typename T, T Value>
+struct CTValue
+{
+    static constexpr T value = Value;
+};
+
+using Primes = Typelist<CTValue<int, 2>, CTValue<int, 3>,
+                        CTValue<int, 5>, CTValue<int, 7>,
+                        CTValue<int, 11>>;
+
+template <typename T, typename U>
+struct MultiplyT;
+
+template <typename T, T Value1, T Value2>
+struct MultiplyT<CTValue<T, Value1>, CTValue<T, Value2>> 
+{
+public:
+    using Type = CTValue<T, Value1 * Value2>;
+};
+
+template <typename T, typename U>
+using Multiply = typename MultiplyT<T, U>::Type;
+
+std::cout << Accumulate<Primes, MultiplyT, CTValue<int, 1>>::value << '\n';
+```
+This usage of `Typelist` and `CTValue` is fairly verbose,
+especially for the case where all of the values are of the same type. 
+We can optimize this particular case by introducing an alias template `CTTypelist` 
+that provides a homogeneous list of values, described as a `Typelist` of `CTValues`:
+```c++
+template <typename T, T ... Values>
+using CTTypelist = Typelist<CTValue<T, Values>...>;
+
+using Primes = CTTypelist<int, 2, 3, 5, 7, 11>;
+
+template <typename T, T ... Values>
+struct Valuelist {};
+
+template <typename T, T ... Values>
+struct IsEmpty<Valuelist<T, Values...>> 
+{
+    static constexpr bool value = sizeof...(Values) == 0;
+};
+
+template <typename T, T Head, T ... Tail>
+struct FrontT<Valuelist<T, Head, Tail...>> 
+{
+    using Type = CTValue<T, Head>;
+    static constexpr T value = Head;
+};
+
+template <typename T, T Head, T ... Tail>
+struct PopFrontT<Valuelist<T, Head, Tail...>> 
+{
+    using Type = Valuelist<T, Tail...>;
+};
+
+template <typename T, T ... Values, T New>
+struct PushFrontT<Valuelist<T, Values...>, CTValue<T, New>> 
+{
+    using Type = Valuelist<T, New, Values...>;
+};
+
+template <typename T, T ... Values, T New>
+struct PushBackT<Valuelist<T, Values...>, CTValue<T, New>> 
+{
+    using Type = Valuelist<T, Values..., New>;
+};
+```
+By providing `IsEmpty`, `FrontT`, `PopFrontT`, and `PushFrontT`, 
+we have made `Valuelist` a proper typelist that can be used with the algorithms defined in this chapter.
+```c++
+template <typename T, typename U>
+struct GreaterThanT;
+
+template <typename T, T First, T Second>
+struct GreaterThanT<CTValue<T, First>, CTValue<T, Second>> 
+{
+    static constexpr bool value = First > Second;
+};
+
+void valuelisttest()
+{
+    using Integers = Valuelist<int, 6, 2, 4, 9, 5, 2, 1, 7>;
+    using SortedIntegers = InsertionSort<Integers, GreaterThanT>;
+    static_assert(std::is_same_v<SortedIntegers,
+                                 Valuelist<int, 9, 7, 6, 5, 4, 2, 2, 1>>,
+                  "insertion sort failed");
+}
+```
+
+#### 24.3.1 Deducible Nontype Parameters
+
+In C++17, `CTValue` can be improved by using a single deducible nontype parameter (spelled with `auto`):
+```c++
+template <auto Value>
+struct CTValue
+{
+    static constexpr auto value = Value;
+};
+
+using Primes = Typelist<CTValue<2>, CTValue<3>, CTValue<5>, CTValue<7>, CTValue<11>>;
+```
+The same can be done for a C++17 `Valuelist`, but the result isn’t necessarily better. 
+As noted in Section 15.10.1, a nontype parameter pack with deduced type allows the types of each argument to differ:
+```c++
+template <auto ... Values>
+class Valuelist {};
+
+int x {1};
+using MyValueList = Valuelist<1, '1', true, &x>;
+```
+While such a heterogeneous value list may be useful, 
+it is not the same as our previous `Valuelist` that required all of the elements to have the same type. 
+Although one could require that all of the elements have the same type 
+(which is also discussed in Section 15.10.1):
+```c++
+template <auto V1, decltype(V1) ... Values>
+class Valuelist {};
+```
+an empty `Valuelist<>` will necessarily have no known element types.
+
+#### 📌 24.4 Optimizing Algorithms with Pack Expansions
+
+Pack expansions (described in depth in Section 12.4.1) can be a useful mechanism 
+for offloading the work of typelist iteration to the compiler. 
+The `Transform` algorithm developed in Section 24.2.5 is one 
+that naturally lends itself to the use of a pack expansion, 
+because it is applying the same operation to each of the elements in the list. 
+This enables an algorithm specialization (by way of a partial specialization) for a `Transform` of a `Typelist`:
+```c++
+template <typename ... Elements, template <typename T> class MetaFun>
+class TransformT<Typelist<Elements...>, MetaFun, false>
+{
+public:
+    using Type = Typelist<typename MetaFun<Elements>::Type...>;
+};
+```
+Pack expansions can also be useful to select the elements in a given list of indices to produce a new typelist. 
+```c++
+template <typename Types, typename Indices>
+class SelectT;
+
+template <typename Types, unsigned ... Indices>
+class SelectT<Types, Valuelist<unsigned, Indices...>>
+{
+public:
+    using Type = Typelist<NthElement<Types, Indices>...>;
+};
+
+template <typename Types, typename Indices>
+using Select = typename SelectT<Types, Indices>::Type;
+```
+
+#### 📌 24.5 Cons-style Typelists
+
+Prior to the introduction of variadic templates, 
+typelists were generally formulated with a recursive data structure modeled after LISP’s `cons` cell. 
+Each `cons` cell contains a value (the head of the list) and a nested list, 
+the latter of which could either be another `cons` cell or the empty list, `nil`.
+This notion can be directly expressed in C++:
+```c++
+class Nil {};
+
+template <typename HeadT, typename TailT = Nil>
+class Cons 
+{
+public:
+    using Head = HeadT;
+    using Tail = TailT;
+};
+```
+An empty typelist is written `Nil`, 
+while a single-element list containing `int` is written as `Cons<int, Nil>` or,
+more succinctly, `Cons<int>`. 
+Longer lists require nesting:
+```c++
+using TwoShort = Cons<short, Cons<unsigned short>>;
+```
+Arbitrarily long typelists can be constructed by deep recursive nesting, 
+although writing such long lists by hand can become rather unwieldy:
+```c++
+using SignedIntegralTypes = Cons<signed char, Cons<short, Cons<int, Cons<long, Cons<long long, Nil>>>>>;
+```
+Basic operations on `cons`-style typelists:
+```c++
+template <typename List>
+class FrontT 
+{
+public:
+    using Type = typename List::Head;
+};
+
+template <typename List>
+using Front = typename FrontT<List>::Type;
+
+template <typename List, typename Element>
+class PushFrontT 
+{
+public:
+    using Type = Cons<Element, List>;
+};
+template <typename List, typename Element>
+using PushFront = typename PushFrontT<List, Element>::Type;
+
+template <typename List>
+class PopFrontT 
+{
+public:
+    using Type = typename List::Tail;
+};
+
+template <typename List>
+using PopFront = typename PopFrontT<List>::Type;
+
+template <typename List>
+struct IsEmpty 
+{
+    static constexpr bool value = false;
+};
+
+template <>
+struct IsEmpty<Nil> 
+{
+    static constexpr bool value = true;
+};
+```
+With these typelist operations, 
+we can now use the `InsertionSort` algorithm defined in Section 24.2.7, 
+this time with cons-style lists:
+```c++
+template <typename T, typename U>
+struct SmallerThanT 
+{
+    static constexpr bool value = sizeof(T) < sizeof(U);
+};
+
+void conslisttest()
+{
+    using ConsList = Cons<int, Cons<char, Cons<short, Cons<double>>>>;
+    using SortedTypes = InsertionSort<ConsList, SmallerThanT>;
+    using Expected = Cons<char, Cons<short, Cons<int, Cons<double>>>>;
+    std::cout << std::is_same<SortedTypes, Expected>::value << '\n';
+}
+```
+
+
+
+
+
+
+### 🎯 Chapter 25 Tuples
+
+#### 📌 25.1 Basic Tuple Design
+
+#### 25.1.1 Storage
+
+Tuples contain storage for each of the types in the template argument list. 
+That storage can be accessed through a function template `get`, 
+used as `get<I>(t)` for a tuple `t`. 
+For example, `get<0>(t)` on the `t` in the previous example would return a reference to the `int 17`, 
+while `get<1>(t)` returns a reference to the `double 3.14`. 
+
+
+The recursive formulation of tuple storage is based on the idea that 
+a non-empty tuple containing `N` elements can be stored as 
+both a single element (the first element, or header of the list) 
+and a tuple containing `N − 1` elements (the tail), 
+with a separate special case for a zero-element tuple. 
+Thus, a three-element tuple `Tuple<int, double, std::string>` 
+can be stored as an `int` and a `Tuple<double, std::string>`. 
+That two-element tuple can then be stored as a `double` and a `Tuple<std::string>`, 
+which itself can be stored as a `std::string` and a `Tuple<>`. 
+In fact, this is the same kind of recursive decomposition used in the generic versions of typelist algorithms, 
+and the actual implementation of recursive tuple storage unfolds similarly:
+```c++
+template <typename... Types>
+class Tuple;
+
+// recursive case:
+template <typename Head, typename... Tail>
+class Tuple<Head, Tail...>
+{
+public:
+    // constructors:
+    Tuple() {}
+
+    Tuple(Head const & head, Tuple<Tail...> const & tail) : head(head), tail(tail) {}
+
+    // ...
+
+    Head & getHead()
+    {
+        return head;
+    }
+
+    Head const & getHead() const
+    {
+        return head;
+    }
+
+    Tuple<Tail...> & getTail()
+    {
+        return tail;
+    }
+
+    Tuple<Tail...> const & getTail() const
+    {
+        return tail;
+    }
+
+private:
+    Head head;
+    Tuple<Tail...> tail;
+};
+
+// basis case:
+template <>
+class Tuple<>
+{
+    // no storage required
+};
+```
+In the recursive case, each `Tuple` instance contains a data member `head` that stores the first element in the list,
+along with a data member `tail` that stores the remaining elements in the list. 
+The basis case is simply the empty tuple, which has no associated storage. 
+
+
+The `get` function template walks this recursive structure to extract the requested element:
+```c++
+// recursive case:
+template <unsigned N>
+struct TupleGet
+{
+    template <typename Head, typename ... Tail>
+    static auto apply(Tuple<Head, Tail...> const & t)
+    {
+        return TupleGet<N - 1>::apply(t.getTail());
+    }
+};
+
+// basis case:
+template <>
+struct TupleGet<0>
+{
+    template <typename Head, typename ... Tail>
+    static Head const & apply(Tuple<Head, Tail...> const & t)
+    {
+        return t.getHead();
+    }
+};
+
+template <unsigned N, typename... Types>
+auto get(Tuple<Types ...> const & t)
+{
+    return TupleGet<N>::apply(t);
+}
+```
+Note that the function template `get` is simply a thin wrapper over a call to a static member function of `TupleGet`. 
+This technique is effectively a workaround for the lack of partial specialization of function templates 
+(discussed in Section 17.3), 
+which we use to specialize on the value of `N`. 
+In the recursive case (`N > 0`), the static member function `apply` extracts the `tail` of the current tuple 
+and decrements `N` to keep looking for the requested element later in the tuple. 
+The basis case (`N = 0`) returns the head of the current tuple, completing the implementation.
+
+#### 25.1.2 Construction
+
+
+
+
+
+#### 📌
+
+
+#### 📌
+
+#### 📌
+
+
+
 
 
 #### 📌
@@ -5311,38 +6076,6 @@ and can be used in conjunction with `constexpr`.
 
 
 
-
-#### 📌
-
-
-#### 📌
-
-
-#### 📌
-
-
-#### 📌
-
-
-
-
-
-
-
-
-
-
-### 🎯
-
-#### 📌
-
-
-#### 📌
-
-
-#### 📌
-
-#### 📌
 
 
 
