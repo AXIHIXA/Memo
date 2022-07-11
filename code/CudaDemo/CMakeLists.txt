@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 3.16)
-project(CudaDemo CUDA)
-set(CMAKE_CUDA_STANDARD 14)
+cmake_minimum_required(VERSION 3.23)
+project(CudaDemo CXX CUDA)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CUDA_STANDARD 20)
 
+find_package(fmt REQUIRED)
 
 set(UTIL
         include/util/TimerGuard.h
@@ -21,11 +23,11 @@ set(ALL_INCLUDE_DIRS
         )
 
 set(ALL_LIBRARIES
-
+        fmt::fmt
         )
 
 set(ALL_COMPILE_DEFS
-        
+
         )
 
 set(ALL_COMPILE_OPTS
