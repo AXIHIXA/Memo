@@ -277,7 +277,7 @@ sudo apt-get install kitware-archive-keyring
 sudo apt install cmake
 ```
 
-### {fmt}
+### `{fmt}`
 
 ```bash
 $ sudo dpkg -L libfmt-dev
@@ -314,7 +314,7 @@ $ sudo dpkg -L libfmt-dev
 /usr/share/doc/libfmt-dev/changelog.Debian.gz
 /usr/share/doc/libfmt-dev/copyright
 ```
-Download and compile the {fmt} GitHub repository, and override the `apt` package:
+Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html), and override the `apt` package:
 ```bash
 sudo cp -r include/fmt /usr/include
 sudo cp build/libfmt.a /usr/lib/x86_64-linux-gnu
