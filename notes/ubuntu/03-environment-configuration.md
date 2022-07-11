@@ -251,6 +251,75 @@ sudo update-alternatives --remove-all gcc
 sudo update-alternatives --remove-all g++
 ```
 
+### Latest `CMake` on `ubuntu 20.04 LTS`
+
+[Kitware Repository](https://apt.kitware.com/): 
+> This is Kitware, Inc.'s third-party APT repository, which we use for hosting our own Ubuntu packages, such as CMake.
+>
+> We currently support Ubuntu 16.04, 18.04, and 20.04 on our repository. 
+> The 16.04 and 18.04 repositories support x86 (32-bit and 64-bit), 
+> and the 20.04 repository supports x86 (32-bit and 64-bit) and ARM (32-bit and 64-bit).
+> 
+> To add the repository to your installation, run the kitware-archive.sh script, or do the following in order: 
+```bash
+# 2. Obtain a copy of our signing key:
+wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+
+# 3. Add the repository to your sources list and update.
+echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+sudo apt-get update
+
+# 4. Install the kitware-archive-keyring package to ensure that your keyring stays up to date as we rotate our keys:
+sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
+sudo apt-get install kitware-archive-keyring
+
+# 6. 
+sudo apt install cmake
+```
+
+### {fmt}
+
+```bash
+$ sudo dpkg -L libfmt-dev
+/.
+/usr
+/usr/include
+/usr/include/fmt
+/usr/include/fmt/chrono.h
+/usr/include/fmt/color.h
+/usr/include/fmt/compile.h
+/usr/include/fmt/core.h
+/usr/include/fmt/format-inl.h
+/usr/include/fmt/format.h
+/usr/include/fmt/locale.h
+/usr/include/fmt/ostream.h
+/usr/include/fmt/posix.h
+/usr/include/fmt/printf.h
+/usr/include/fmt/ranges.h
+/usr/lib
+/usr/lib/x86_64-linux-gnu
+/usr/lib/x86_64-linux-gnu/cmake
+/usr/lib/x86_64-linux-gnu/cmake/fmt
+/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-config-version.cmake
+/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-config.cmake
+/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-targets-none.cmake
+/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-targets.cmake
+/usr/lib/x86_64-linux-gnu/libfmt.a
+/usr/lib/x86_64-linux-gnu/pkgconfig
+/usr/lib/x86_64-linux-gnu/pkgconfig/fmt.pc
+/usr/share
+/usr/share/doc
+/usr/share/doc/libfmt-dev
+/usr/share/doc/libfmt-dev/README.Debian
+/usr/share/doc/libfmt-dev/changelog.Debian.gz
+/usr/share/doc/libfmt-dev/copyright
+```
+Download and compile the {fmt} GitHub repository, and override the `apt` package:
+```bash
+sudo cp -r include/fmt /usr/include
+sudo cp build/libfmt.a /usr/lib/x86_64-linux-gnu
+```
+
 ### Libraries
 
 ```

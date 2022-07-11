@@ -13,11 +13,11 @@ class TimerGuard
 public:
     using TimePoint = typename Clock::time_point;
 
-    explicit TimerGuard(std::FILE * stream_ = stdout) : startTime(Clock::now()), stream(stream_) {}
+    explicit TimerGuard(std::FILE * stream = stdout) : startTime(Clock::now()), stream(stream) {}
 
     ~TimerGuard()
     {
-        fmt::print("{}\n", std::chrono::duration_cast<Duration>(Clock::now() - startTime));
+        fmt::print(stream, "{}\n", std::chrono::duration_cast<Duration>(Clock::now() - startTime));
     }
 
 private:
