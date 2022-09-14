@@ -361,15 +361,24 @@ sudo reboot
 
 ### `CUDA`
 
-- Install nvidia driver: Refer to [01-system-installation.md](./01-system-installation.md)
-- Install NVIDIA `CUDA` Toolkit: 
+- Install Nvidia driver: Refer to [01-system-installation.md](./01-system-installation.md)
+- Install [NVIDIA `CUDA` Toolkit](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local): 
 ```
+# DO NOT USE THIS OBSELETE VERSION!
 sudo apt install nvidia-cuda-toolkit
+```
+- Set environment variables: 
+```bash
+sudo gedit /etc/profile
+
+# cuda
+export PATH="/usr/local/cuda/bin":${PATH}
 ```
 - Install `CUDNN`: Follow instructions on 
 [NVIDIA CUDNN DOCUMENTAZTION](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#installlinux-deb)
 (I am using Debian Installation. Do NOT use Package Manager Installation. )
 - CudaDemo: [CudaDemo](../../code/CudaDemo)
+- To uninstall, follow the [offical guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver), which ensures that the uninstalltion will be clean. 
 
 ### `OpenMesh`
 
