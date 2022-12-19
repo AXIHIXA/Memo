@@ -34,7 +34,8 @@ swap         swap           8G
 　　 
 - The grub page is default hidden if only ubuntu is detected. To see this page and edit grub after installation, boot with efi floppy inserted. 
 　　 
-- update nvidia drivers: 
+- Update nvidia drivers: 
+    - This package manager method is recommended by nvidia itself. 
         
 ```
 $ ubuntu-drivers devices
@@ -52,3 +53,8 @@ driver   : intel-microcode - distro free
 　　 
 $ sudo ubuntu-drivers autoinstall
 ```
+
+- Configure CUDA: 
+    - [Prepare Ubuntu](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#prepare-ubuntu)
+    - [Local Repo Installation for Ubuntu](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
+    - [Removing CUDA Toolkit and Driver](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver)
