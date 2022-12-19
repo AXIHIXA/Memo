@@ -34,8 +34,9 @@ swap         swap           8G
 　　 
 - The grub page is default hidden if only ubuntu is detected. To see this page and edit grub after installation, boot with efi floppy inserted. 
 　　 
-- Update nvidia drivers: 
-    - This package manager method is recommended by nvidia itself. 
+- Update NVIDIA drivers: 
+    - This package manager method is recommended by NVIDIA itself. 
+    - Use GUI: Show Applications -> Software & Updates -> Additional Drivers -> NVIDIA Cooperation
         
 ```
 $ ubuntu-drivers devices
@@ -51,6 +52,7 @@ driver   : xserver-xorg-video-nouveau - distro free builtin
 == cpu-microcode.py ==
 driver   : intel-microcode - distro free
 　　 
+# Use this for auto-install the recommended version (NOT recommended. Install latest version manually in GUI):
 $ sudo ubuntu-drivers autoinstall
 ```
 
