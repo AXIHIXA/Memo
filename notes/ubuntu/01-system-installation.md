@@ -61,3 +61,7 @@ $ sudo ubuntu-drivers autoinstall
     - [Local Repo Installation for Ubuntu](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
     - [Post-installation Actions](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions)
     - [Removing CUDA Toolkit and Driver](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver)
+
+- Do NOT use Graphical editors under root privilege, as it could corrupt the files. 
+    - Do NOT do this: `sudo gedit ...`
+    - Use this command: `sudoedit ...` or `sudo -e ...` 
