@@ -3,6 +3,12 @@
 
 ## 🌱 Terminal 
 
+### Editor
+
+- Do NOT use Graphical editors under root privilege, as it could corrupt the files. 
+    - Do NOT do this: `sudo gedit ...`
+    - Use this command: `sudoedit ...` or `sudo -e ...` 
+
 ### Shortcuts
 
 - `Ctrl` + `u`: Delete all text from cursor to head
