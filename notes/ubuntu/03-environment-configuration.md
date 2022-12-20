@@ -102,7 +102,7 @@ https://www.anaconda.com/pycharm
 ```
 conda create -n py3 python=3.9 numpy scipy sympy matplotlib cython ipykernel
 conda activate py3
-pip install opencv-python
+pip install opencv-contrib-python
 python -m ipykernel install --name py3 --user
 ```
 - **Never** update anaconda itself as well as the base environment, it is highly likely to downgrade!
@@ -118,7 +118,13 @@ anaconda-clean --yes
 rm -rf ~/opt/anaconda3
 # Remove Anaconda path from .bash_profile
 ```
-    
+- PyCharm 2022.3 fails to index opencv-python 4.6.0.66:
+```
+pip install --force-reinstall --no-cache -U opencv-contrib-python==4.5.5.64
+I can confirm this works absolutely brilliantly with opencv-contrib-python.
+Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (both main and contrib).
+```
+
 #### `.bashrc`
 
 ##### `VMWare` Client
