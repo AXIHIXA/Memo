@@ -100,7 +100,7 @@ https://www.anaconda.com/pycharm
 ```
 - New virtual environment (do NOT use `opencv` package from `conda`. It's bullsh*t):
 ```
-conda create -n py3 python=3.8 numpy scipy sympy matplotlib cython ipykernel
+conda create -n py3 python=3.9 numpy scipy sympy matplotlib cython ipykernel
 conda activate py3
 pip install opencv-python
 python -m ipykernel install --name py3 --user
@@ -162,10 +162,10 @@ edit `jupyter_server_config.py`:
 ```
 https://jupyter-notebook.readthedocs.io/en/stable/public_server.html?highlight=serverapp%20ip#running-a-public-notebook-server
 # Set ip to '*' to bind on all interfaces (ips) for the public server
-c.ServerApp.ip = '*'               # 278
-c.ServerApp.open_browser = False   # 366
-c.ServerApp.password = 'sha1:...'  # 377
-c.ServerApp.port = 9000            # 390
+c.ServerApp.ip = '*'                 # 282
+c.ServerApp.open_browser = False     # 383
+c.ServerApp.password = 'argon2:...'  # 394
+c.ServerApp.port = 9000              # 407
 ```
     
 #### kernel management
