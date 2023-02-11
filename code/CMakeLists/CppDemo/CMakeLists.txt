@@ -34,9 +34,9 @@ set(ALL_INCLUDE_DIRS
         )
 
 set(ALL_LIBRARIES
-        fmt::fmt
         ${OpenCV_LIBS}
         ${TBB_LIBRARIES}
+        fmt::fmt
         )
 
 set(ALL_COMPILE_DEFS
