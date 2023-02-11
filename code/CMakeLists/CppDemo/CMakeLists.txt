@@ -29,7 +29,6 @@ set(ALL_SOURCE_FILES
 
 set(ALL_INCLUDE_DIRS
         ${Boost_INCLUDE_DIRS}
-        ${FMT_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
         include
         )
