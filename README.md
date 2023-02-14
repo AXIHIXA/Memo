@@ -41,6 +41,7 @@
     - [OpenMesh + TBB](./code/CMakeLists/OpenMesh+TBB/CMakeLists.txt)
     - [Qt5](./code/CMakeLists/Qt5/CMakeLists.txt)
     - [Torch](./code/CMakeLists/Torch/CMakeLists.txt)
+    - [Vulkan](./code/CMakeLists/Vulkan/CMakeLists.txt)
 
 - `C/C++` Code
     - [debug.h](./code/debug.h)

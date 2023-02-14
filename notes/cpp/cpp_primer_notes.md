@@ -4635,6 +4635,23 @@ else
     // ...
 }
 ```
+Another approach: 
+```c++
+//    ate: Start reading at the end of the file;
+// binary: Read the file as binary file (avoid text transformations).
+if (std::ifstream fin {name.data(), std::ios::ate | std::ios::binary})
+{
+    auto fileSize {fin.tellg()};
+    std::vector<char> buffer(fileSize);
+    fin.seekg(0);
+    fin.read(buffer.data(), fileSize);
+    return buffer;
+}
+else
+{
+    // ...
+}
+```
 
 #### `C++`段子：`std::cout`真比`printf`慢吗
 
