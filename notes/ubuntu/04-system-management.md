@@ -1,5 +1,14 @@
 # Ubuntu System Management
 
+### 🌱 mlocate
+
+https://askubuntu.com/questions/520963/how-come-the-locate-command-doesnt-find-obvious-files
+```
+sudo updatedb
+# NOT sudo mlocate updatedb
+```
+
+
 ### 🌱 配置`ssh`
 
 ```
