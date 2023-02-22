@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(CppDemo)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(Boost REQUIRED)
 find_package(fmt REQUIRED HINTS "/home/xihan1/lib/fmt-9.1.0/build/")
@@ -12,7 +12,6 @@ set(UTIL
         )
 
 set(MAIN
-        include/S35.h
         src/main.cpp
         )
 
@@ -23,8 +22,8 @@ set(TBB_LIBRARIES
         )
 
 set(ALL_SOURCE_FILES
-        ${UTIL}
         ${MAIN}
+        ${UTIL}
         )
 
 set(ALL_INCLUDE_DIRS
@@ -54,4 +53,3 @@ target_compile_definitions(${EXECUTABLE} PUBLIC ${ALL_COMPILE_DEFS})
 target_compile_options(${EXECUTABLE} PUBLIC ${ALL_COMPILE_OPTS})
 target_include_directories(${EXECUTABLE} PUBLIC ${ALL_INCLUDE_DIRS})
 target_link_libraries(${EXECUTABLE} ${ALL_LIBRARIES})
-
