@@ -93,6 +93,7 @@ tmpfs            6577588        72   6577516   1% /run/user/1002
 
 - `ls >> out.txt`: Append stdout to `out.txt`
 - `ls > out.txt`: Overwrite `out.txt`with stdout
+- `ls N> file`: `N` default to 1 (stdout). 
 - File descriptors: 
   - stdin: 0
   - stdout: 1
