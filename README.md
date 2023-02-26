@@ -27,7 +27,8 @@
     2. [System Configuration](./notes/ubuntu/02-system-configuration.md)
     3. [Environment Configuration](./notes/ubuntu/03-environment-configuration.md)
     4. [System Management](./notes/ubuntu/04-system-management.md)
-    5. [WSL 2](./notes/ubuntu/05-wsl-2.md)
+    5. [System Programming](./notes/ubuntu/05-system-programming.md)
+    6. [WSL 2](./notes/ubuntu/06-wsl-2.md)
 
 ### 🌱 Sample Code
 
