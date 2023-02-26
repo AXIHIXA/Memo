@@ -36,7 +36,7 @@
     - [Boost](./code/CMakeLists/Boost/CMakeLists.txt)
     - [CppDemo](./code/CMakeLists/CppDemo/CMakeLists.txt)
     - [Criterion](./code/CMakeLists/Criterion/CMakeLists.txt)
-    - [CUDAToolkit](./code/CudaDemo/CMakeLists.txt)
+    - [CUDA](./code/CudaDemo/CMakeLists.txt)
     - [OpenCV](./code/CMakeLists/OpenCV/CMakeLists.txt)
     - [OpenGL](./code/CMakeLists/OpenGL/CMakeLists.txt)
     - [OpenMesh + TBB](./code/CMakeLists/OpenMesh+TBB/CMakeLists.txt)
