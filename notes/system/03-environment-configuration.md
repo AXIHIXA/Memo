@@ -4,6 +4,8 @@
 
 ## 🌱 Environment Variables
 
+### Wiki
+
 - See [Environment Variables - Ubuntu Documentation](https://help.ubuntu.com/community/EnvironmentVariables). 
 - Local Variables: 
   - Suggested: `~/.profile`. 
@@ -33,6 +35,27 @@
       but retaining any modified `PATH` variables. 
     - Alternatively you can setup sudo not to reset certain environment variables 
       by adding some explicit environment settings to keep in `/etc/sudoers`. 
+
+### Current `/etc/profile.d/my-env-vars.sh`
+
+```bash
+sudo touch /etc/profile.d/my-env-vars.sh
+sudoedit /etc/profile.d/my-env-vars.sh
+
+# /etc/profiles.d/my-env-vars.sh
+
+# cuda
+export PATH="/usr/local/cuda/bin:${PATH}"
+
+# editor
+export EDITOR="/usr/bin/vim"
+
+# jvm
+export JAVA_HOME="/opt/jdk"
+export JRE_HOME="${JAVA_HOME}/jre"
+export CLASSPATH=".:${JAVA_HOME}/lib:${JRE_HOME}/lib:${CLASSPATH}"
+export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}"
+```
 
 
 
