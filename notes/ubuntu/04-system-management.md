@@ -236,7 +236,7 @@ hadoop version
 gedit ${HADOOP_CONF_DIR}/hadoop-env.sh
 
 # jvm
-# in case hadoop does not recognize ${JAVA_HOME} exported in `/etc/profile`
+# in case hadoop does not recognize ${JAVA_HOME} exported in `/etc/environment`
 # just let it happy
 export JAVA_HOME=/opt/jvm/jdk
 ```

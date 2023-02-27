@@ -1,6 +1,39 @@
 # Environment Configuration
 
 
+
+## 🌱 Environment Variables
+
+- See [Environment Variables - Ubuntu Documentation](https://help.ubuntu.com/community/EnvironmentVariables). 
+- Local Variables: 
+  - Suggested: `~/.profile`. 
+  - Shell config files such as `~/.bashrc`, `~/.bash_profile`, and `~/.bash_login` 
+    are often suggested for setting environment variables. 
+    While this may work on Bash shells for programs started from the shell, 
+    variables set in those files are **not** available 
+    by default to programs started from the graphical environment in a desktop session.
+- System Variables: 
+  - Suggested: `/etc/profile.d/*.sh`. 
+  - While `/etc/profile` is often suggested for setting environment variables system-wide, 
+    it is a configuration file of the base-files package, 
+    so it's **not** appropriate to edit that file directly. 
+    Use a file in `/etc/profile.d` instead as shown above. 
+    (Files in `/etc/profile.d` are sourced by `/etc/profile`.)
+  - The shell config file `/etc/bash.bashrc` is sometimes suggested for setting environment variables system-wide. 
+    While this may work on Bash shells for programs started from the shell, 
+    variables set in that file are **not** available 
+    by default to programs started from the graphical environment in a desktop session.
+- `sudo` Caveat:
+  - Any variables added to these locations will **not** be reflected when invoking them with a `sudo` command, 
+    as `sudo` has a default policy of resetting the Environment 
+    and setting a secure path (this behavior is defined in `/etc/sudoers`). 
+    - As a workaround, you can use `sudo su` that will provide a shell with root privileges 
+      but retaining any modified `PATH` variables. 
+    - Alternatively you can setup sudo not to reset certain environment variables 
+      by adding some explicit environment settings to keep in `/etc/sudoers`. 
+
+
+
 ## 🌱 Terminal 
 
 ### Editor
@@ -11,27 +44,18 @@
 
 ### Shortcuts
 
+- `Ctrl UKAE`
 - `Ctrl` + `u`: Delete all text from cursor to head
 - `Ctrl` + `k`: Delete all text from cursor to tail
-- `Ctrl` + `w`: Delete one word ahead of cursor
 - `Ctrl` + `a`: Move cursor to head
 - `Ctrl` + `e`: Move cursor to end
+- `Ctrl` + `w`: Delete one word ahead of cursor
 - `Alt` + `f`: Move cursor forward (towards head) by one word
 - `Alt` + `b`: Move cursor back (towards tail) by one word
 
-### Useful Commands
 
-- `man -k "copy files`: see man page of all commands with "copy files"
-- `!`
-- `df -h`: See storage occupation of all mounted dirs; where `-h` convert unit into human-readable (MB, GB...)
-- `du -h --max-depth=1 /home` (or `-d 1`): See storage occupation of `/home`
-- `free -h`: See current RAM usage
-- `pgrep hello`, `pidof hello`: find pid of process "hello"
-- `killall hello`, `pkill hello`: kill all processes called "hello"
 
-## System Utils
-
-### `apt` PPA Management
+## 🌱 `apt` PPA Management
 
 - Remove PPAs:
     - Use the --remove flag, similar to how the PPA was added:
@@ -53,6 +77,8 @@
     ```bash
     sudo apt-get purge package_name
     ```
+
+
 
 ## 🌱 Python
 
@@ -125,6 +151,8 @@ I can confirm this works absolutely brilliantly with opencv-contrib-python.
 Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (both main and contrib).
 ```
 
+
+
 #### `.bashrc`
 
 ##### `VMWare` Client
@@ -153,7 +181,9 @@ alias jl="cd /mnt/d/workspace; jupyter lab"
 alias ss="sudo service ssh --full-restart"
 alias cls="reset"
 ```
-    
+
+
+
 ### jupyter lab
 
 #### generate config
@@ -181,6 +211,8 @@ jupyter kernelspec list
 jupyter kernelspec uninstall unwanted-kernel
 ```
 
+
+
 ## 🌱 java
 
 ### jdk
@@ -189,13 +221,13 @@ jupyter kernelspec uninstall unwanted-kernel
 tar -zxvf jdk-11.0.7_linux-x64_bin.tar.gz
 sudo mv jdk-11.0.7 /opt/jdk
 
-sudo gedit /etc/profile
+sudoedit /etc/profile.d/my-env-vars.sh
 
 # jvm
-export JAVA_HOME=/opt/jdk
-export JRE_HOME=${JAVA_HOME}/jre
-export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib:${CLASSPATH}
-export PATH=${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}
+export JAVA_HOME="/opt/jdk"
+export JRE_HOME="${JAVA_HOME}/jre"
+export CLASSPATH=".:${JAVA_HOME}/lib:${JRE_HOME}/lib:${CLASSPATH}"
+export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}"
 ```
 
 ### jdk的安装位置
@@ -239,12 +271,14 @@ gedit -idea64.vmoptions
 -Xmx8192m
 ```
 
+
+
 ## 🌱 C/C++ 
 
 ### CLion
 
 - `__CLION_IDE__`：在 CLion 的 CMakeLists.txt 以及程序中都可使用的宏
-- `$ENV{USER}`： CMakeLists.txt 中调用系统变量
+- `$ENV{USER}`, `$ENV{HOME}`： CMakeLists.txt 中调用系统变量
 - [Data flow analysis timeout](https://youtrack.jetbrains.com/issue/CPP-17623): press shift in CLion quickly twice, then we have a search window, search "Registry..." and change the timeout key. 
 
 ### `gcc-11` on `ubuntu 20.04 LTS`
@@ -381,10 +415,10 @@ sudo apt install nvidia-cuda-toolkit
 ```
 - Set environment variables: 
 ```bash
-sudo gedit /etc/profile
+sudoedit /etc/profile.d/my-env-vars.sh
 
 # cuda
-export PATH="/usr/local/cuda/bin":${PATH}
+export PATH="/usr/local/cuda/bin:${PATH}"
 ```
 - Install `CUDNN`: Follow instructions on 
 [NVIDIA CUDNN DOCUMENTAZTION](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#installlinux-deb)
@@ -429,6 +463,7 @@ set(ALL_COMPILE_DEFS
 - DO **include headers** in `add_executable` command, or `moc` will NOT parse them and there will be problems finding `vtable`!
 
 
+
 ## 🌱 Javascript
 
 ### `Node.js`
@@ -438,6 +473,7 @@ set(ALL_COMPILE_DEFS
 ### `yarn`
 
 [Installation | Yarn](https://classic.yarnpkg.com/en/docs/install/#debian-stable)
+
 
 
 ## 🌱 `MongoDB`
