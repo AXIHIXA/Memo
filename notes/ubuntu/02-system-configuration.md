@@ -2,24 +2,6 @@
 
 
 
-
-
-
-## 🌱 `.bashrc` 
-
-```
--rw-r--r--  1 ax   ax   3771 Mar 31 13:58 .bashrc
-```
-
-```
-chmod 644 ~/.bashrc ~/.bash_history
-```
-
-
-
-
-
-
 ## 🌱 dependencies
 
 ```
@@ -61,10 +43,6 @@ touch "~/Templates/Untitled Document"
 ```
 
 
-
-
-
-
 ## 🌱 `ssh`
 
 - New `ssh`
@@ -85,16 +63,11 @@ ssh-add
 
 
 
-
-
-
 ## 🌱 time fix
 
 ```
 sudo timedatectl set-local-rtc 1 --adjust-system-clock
 ```
-
-
 
 
 
@@ -111,9 +84,6 @@ Software messages in American, but time in British (weeks starting with Mondays)
 
 
 
-
-
-
 ## 🌱 VMWare Shared Folder
 
 ```
@@ -124,9 +94,6 @@ sudo gedit /etc/fstab
 # refer to https://kb.vmware.com/s/article/60262 for details
 vmhgfs-fuse    /media/ax/DATAIN    fuse    defaults,allow_other    0    0
 ```
-
-
-
 
 
 
@@ -147,9 +114,6 @@ APT::Periodic::Download-Upgradeable-Packages "0";
 APT::Periodic::AutocleanInterval "0";
 APT::Periodic::Unattended-Upgrade "0";
 ```
-
-
-
 
 
 
@@ -187,15 +151,10 @@ StartupWMClass=jetbrains-pycharm
 
 
 
-
-
-
 ## 🌱 ex****** passport
 
-For people getting the white screen error, go to Library > History > Show All History, right click on ex******, and Forget About This Site
-
-
-
+For people getting the white screen error, go to `Library > History > Show All History`, 
+right click on ex******, and Forget About This Site. 
 
 
 
@@ -206,16 +165,10 @@ For people getting the white screen error, go to Library > History > Show All Hi
 
 
 
-
-
-
 ## 🌱 Some Surface Pro 4 Stuff
 
 1. 提高`Surface Pro 4`  /`Surface Book`屏幕亮度的键盘快捷键：`Fn + Del`
 2. 降低`Surface Pro 4` / `Surface Book`屏幕亮度的键盘快捷键：`Fn + Backspace`
-
-
-
 
 
 

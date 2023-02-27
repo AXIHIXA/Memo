@@ -124,7 +124,8 @@ environments tightly integrated in the PyCharm IDE.
 PyCharm for Anaconda is available at:
 https://www.anaconda.com/pycharm
 ```
-- New virtual environment (do NOT use `opencv` package from `conda`. It's bullsh*t):
+- Cut the conda initialize script from `~/.bashrc` to `~/.profile`. 
+- New virtual environment (do NOT use `opencv` package from `conda`; go to PyPI):
 ```
 conda create -n py3 python=3.9 numpy scipy sympy matplotlib cython ipykernel
 conda activate py3
@@ -158,7 +159,7 @@ Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (b
 ##### `VMWare` Client
 
 ```
-gedit ~/.bashrc
+gedit ~/.profile
 
 # anaconda
 alias c3="conda activate py3"
@@ -171,7 +172,7 @@ alias cls="reset"
 ##### `WSL`
 
 ```
-gedit ~/.bashrc
+gedit ~/.profile
 
 # anaconda
 alias c3="conda activate py3"
