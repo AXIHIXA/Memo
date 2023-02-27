@@ -22,13 +22,13 @@
     - [`matplotlib` Offical Tutorial](./notes/py/matplotlib.md)
     - [`SymPy` Offical Tutorial](./notes/py/sympy/sympy.md)
 
-- `ubuntu` Management
-    1. [System Installation](./notes/ubuntu/01-system-installation.md)
-    2. [System Configuration](./notes/ubuntu/02-system-configuration.md)
-    3. [Environment Configuration](./notes/ubuntu/03-environment-configuration.md)
-    4. [System Management](./notes/ubuntu/04-system-management.md)
-    5. [System Programming](./notes/ubuntu/05-system-programming.md)
-    6. [WSL 2](./notes/ubuntu/06-wsl-2.md)
+- System Management
+    1. [System Installation](./notes/system/01-system-installation.md)
+    2. [System Configuration](./notes/system/02-system-configuration.md)
+    3. [Environment Configuration](./notes/system/03-environment-configuration.md)
+    4. [System Management](./notes/system/04-system-management.md)
+    5. [System Programming](./notes/system/05-system-programming.md)
+    6. [WSL 2](./notes/system/06-wsl-2.md)
 
 ### 🌱 Sample Code
 

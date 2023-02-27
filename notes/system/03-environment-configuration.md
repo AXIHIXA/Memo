@@ -7,6 +7,8 @@
 - See [Environment Variables - Ubuntu Documentation](https://help.ubuntu.com/community/EnvironmentVariables). 
 - Local Variables: 
   - Suggested: `~/.profile`. 
+    - **Not** for anaconda initialization script and aliases! 
+      These still go to `~/.bashrc`. 
   - Shell config files such as `~/.bashrc`, `~/.bash_profile`, and `~/.bash_login` 
     are often suggested for setting environment variables. 
     While this may work on Bash shells for programs started from the shell, 
@@ -124,7 +126,6 @@ environments tightly integrated in the PyCharm IDE.
 PyCharm for Anaconda is available at:
 https://www.anaconda.com/pycharm
 ```
-- Cut the conda initialize script from `~/.bashrc` to `~/.profile`. 
 - New virtual environment (do NOT use `opencv` package from `conda`; go to PyPI):
 ```
 conda create -n py3 python=3.9 numpy scipy sympy matplotlib cython ipykernel
@@ -139,27 +140,37 @@ python -m ipykernel install --name py3 --user
     conda update --all
     ```
 - [Uninstall anaconda](https://docs.anaconda.com/anaconda/install/uninstall/)
-```
+```bash
 conda install anaconda-clean
 anaconda-clean --yes
 rm -rf ~/opt/anaconda3
 # Remove Anaconda path from .bash_profile
 ```
 - PyCharm 2022.3 fails to index opencv-python 4.6.0.66:
-```
+  - I can confirm this works absolutely brilliantly with opencv-contrib-python.
+    Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (both main and contrib). 
+```bash
 pip install --force-reinstall --no-cache -U opencv-contrib-python==4.5.5.64
-I can confirm this works absolutely brilliantly with opencv-contrib-python.
-Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (both main and contrib).
 ```
-
 
 
 #### `.bashrc`
 
+##### Real Ubuntu System
+
+```bash
+# anaconda
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /home/xihan1/workspace"
+alias jl="cd /home/xihan1/workspace; jupyter lab"
+alias cls="reset"
+```
+
 ##### `VMWare` Client
 
-```
-gedit ~/.profile
+```bash
+gedit ~/.bashrc
 
 # anaconda
 alias c3="conda activate py3"
@@ -171,8 +182,8 @@ alias cls="reset"
 
 ##### `WSL`
 
-```
-gedit ~/.profile
+```bash
+gedit ~/.bashrc
 
 # anaconda
 alias c3="conda activate py3"
@@ -189,7 +200,7 @@ alias cls="reset"
 
 #### generate config
 
-```
+```bash
 jupyter server --generate-config
 jupyter server password
 ```
