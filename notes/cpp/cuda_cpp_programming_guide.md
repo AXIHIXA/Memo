@@ -318,6 +318,7 @@ int main()
       - performing copies between 2D arrays and other regions of device memory 
   - Transfered using `cudaMemcpy2D()` and `cudaMemcpy3D()`. 
   - The returned pitch (or stride) must be used to access array elements. 
+    - Pitch: matrix width (with padding). 
 ```c++
 // Host code
 int width = 64, height = 64;
@@ -327,7 +328,7 @@ cudaMallocPitch(&devPtr, &pitch, width * sizeof(float), height);
 MyKernel<<<100, 512>>>(devPtr, pitch, width, height);
 
 // Device code
-__global__ void MyKernel(float * devPtr, size_t pitch, int width, int height)
+__global__ void MyKernel(float * devPtr, std::size_t pitch, int width, int height)
 {
     for (int r = 0; r < height; ++r)
     {
@@ -336,6 +337,37 @@ __global__ void MyKernel(float * devPtr, size_t pitch, int width, int height)
         for (int c = 0; c < width; ++c)
         {
             float element = row[c];
+        }
+    }
+}
+```
+```c++
+// Host code
+int width = 64, height = 64, depth = 64;
+cudaExtent extent = make_cudaExtent(width * sizeof(float), height, depth);
+cudaPitchedPtr devPitchedPtr;
+cudaMalloc3D(&devPitchedPtr, extent);
+MyKernel<<<100, 512>>>(devPitchedPtr, width, height, depth);
+
+// Device code
+__global__ void MyKernel(cudaPitchedPtr devPitchedPtr, int width, int height, int depth)
+{
+    char * devPtr = devPitchedPtr.ptr;
+    std::size_t pitch = devPitchedPtr.pitch;
+    std::size_t slicePitch = pitch * height;
+    
+    for (int z = 0; z < depth; ++z)
+    {
+        char * slice = devPtr + z * slicePitch;
+        
+        for (int y = 0; y < height; ++y)
+        {
+            auto row = reinterpret_cast<float *>(slice + y * pitch);
+            
+            for (int x = 0; x < width; ++x)
+            {
+                float element = row[x];
+            }
         }
     }
 }
