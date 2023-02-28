@@ -248,10 +248,14 @@ Device code compiled in 64-bit mode is only supported with host code compiled in
     - transfer data between host memory and device memory. 
 - Device memory can be allocated as: 
   - *Linear memory*, or 
-    - allocated using `cudaMalloc()`
-    - freed using `cudaFree()`
-    - data transfer between host and device using `cudaMemcpy()`. 
   - CUDA arrays.
+  
+##### Linear Memory 
+
+- **Linear arrays**: 
+  - Allocated using `cudaMalloc()`
+  - Freed using `cudaFree()`
+  - Data transfer between host and device done by `cudaMemcpy()`. 
 ```c++
 // Device code
 __global__ void VecAdd(float * A, float * B, float * C, int N)
@@ -288,7 +292,8 @@ int main()
 
     // Invoke kernel
     int threadsPerBlock = 256;
-    int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;  // a.k.a. ceil(N / threadsPerBlock)
+    // a.k.a. std::ceil(static_cast<double>(N) / static_cast<double>(threadsPerBlock))
+    int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
     VecAdd<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, N);
 
     // Copy result from device memory to host memory
@@ -304,6 +309,38 @@ int main()
     ...
 } 
 ```
+- **2D / 3D Arrays**. 
+  - Allocated through `cudaMallocPitch()` and `cudaMalloc3D()`. 
+    - guarantees that the allocation is appropriately padded 
+      to meet the alignment requirements, 
+    - therefore ensuring best performance when
+      - accessing the row addresses, or
+      - performing copies between 2D arrays and other regions of device memory 
+  - Transfered using `cudaMemcpy2D()` and `cudaMemcpy3D()`. 
+  - The returned pitch (or stride) must be used to access array elements. 
+```c++
+// Host code
+int width = 64, height = 64;
+float * devPtr;
+size_t pitch;
+cudaMallocPitch(&devPtr, &pitch, width * sizeof(float), height);
+MyKernel<<<100, 512>>>(devPtr, pitch, width, height);
+
+// Device code
+__global__ void MyKernel(float * devPtr, size_t pitch, int width, int height)
+{
+    for (int r = 0; r < height; ++r)
+    {
+        auto row = reinterpret_cast<float *>(reinterpret_cast<char *>(devPtr) + r * pitch);
+        
+        for (int c = 0; c < width; ++c)
+        {
+            float element = row[c];
+        }
+    }
+}
+```
+
 
 ## 🌱 
 
