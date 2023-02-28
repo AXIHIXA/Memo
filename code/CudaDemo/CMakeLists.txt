@@ -36,8 +36,6 @@ set(ALL_INCLUDE_DIRS
         )
 
 set(ALL_LIBRARIES
-        ${Boost_LIBRARIES}
-        ${TBB_LIBRARIES}
         fmt::fmt
         )
 
