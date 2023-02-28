@@ -101,19 +101,118 @@ A rich set of thread-synchronization primitives in addition to `__syncthreads()`
 - Kernels must be compiled into binary code by `nvcc` to execute on the device. 
 - Kernels could be written in 
   - C/C++
-  - CUDA instruction set, called _PTX_. 
+  - CUDA instruction set, called *PTX*. 
 
 #### 📌 3.1.1. Compilation Workflow
 
+##### 3.1.1.1. Offline Compilation
+
 - Source files compiled with `nvcc` can include a mix of host code and device code. 
 - `nvcc` separates device code from host code and then:
-  - Compile device code into assembly (PTX code) and/or binary (cubin object),
-  - Modify the host code by replacing the `<<<...>>>` syntax by CUDA runtime function calls 
-    - which load and launch each compiled kernel from the PTX code and/or cubin object. 
+  - Device code: 
+    - Compile device code into assembly (*PTX* code) and/or binary (*cubin* object),
+  - Host code: 
+    - Modify the host code by replacing the `<<<...>>>` syntax by CUDA runtime function calls 
+      - which load and launch each compiled kernel from the *PTX* code and/or *cubin* object. 
+    - The modified host code is output 
+      - as C++ code left to another compiler, or
+      - as object code directly 
+        - by letting `nvcc` invoke the host compiler during the last compilation stage. 
+- Applications can then
+  - (the most common case) link to the compiled host code, or
+  - ignore the modified host code (if any) 
+    and use the CUDA driver API 
+    to load and execute the *PTX* code or *cubin* object.
 
+##### 3.1.1.2. Just-in-Time Compilation
 
+**JIT Compilcation**. 
+Any *PTX* code loaded by an application at runtime is compiled further to binary code by the device driver. 
+This is called just-in-time compilation. 
+Just-in-time compilation increases application load time, 
+but allows the application to benefit from any new compiler improvements coming with each new device driver. 
+It is also the only way for applications to run on devices that did not exist at the time the application was compiled, 
+as detailed in Application Compatibility.
 
+**Compute Cache**. 
+When the device driver just-in-time compiles some *PTX* code for some application, 
+it automatically caches a copy of the generated binary code 
+in order to avoid repeating the compilation in subsequent invocations of the application. 
+The cache (*compute cache*) is automatically invalidated when the device driver is upgraded, 
+so that applications can benefit from the improvements in the new just-in-time compiler built into the device driver.
 
+Environment variables are available to control just-in-time compilation. 
+
+As an alternative to using `nvcc` to compile CUDA C++ device code, 
+NVRTC (a runtime compilation library for CUDA C++) can be used to compile CUDA C++ device code to PTX at runtime. 
+
+#### 📌 3.1.2. Binary Compatibility
+
+- Binary code is architecture-specific. 
+- A *cubin* object is generated using the compiler option `-code` that specifies the targeted architecture. 
+  - Compiling with `-code=sm_80` produces binary code for devices of compute capability 8.0. 
+- A cubin object generated for compute capability `X.y` will only execute 
+  on devices of compute capability `X.z` where `z ≥ y`.
+
+#### 📌 3.1.3. PTX Compatibility
+
+- Some *PTX* instructions are only supported on devices of higher compute capabilities.
+- The `-arch` compiler option specifies the compute capability that is assumed when compiling C++ to PTX code. 
+  - E.g., *Warp Shuffle Functions* are only supported on devices of compute capability 5.0 and above. 
+    - Code that contains warp shuffle must be compiled with `-arch=compute_50` (or higher).
+
+*PTX* code produced for some specific compute capability 
+can always be compiled to binary code of greater or equal compute capability. 
+Note that a binary compiled from an earlier *PTX* version 
+may not make use of some hardware features. 
+E.g., a binary targeting devices of compute capability 7.0 (Volta) 
+compiled from *PTX* generated for compute capability 6.0 (Pascal) 
+will not make use of Tensor Core instructions,
+since these were not available on Pascal. 
+As a result, the final binary may perform worse than would be possible 
+if the binary were generated using the latest version of *PTX*. 
+
+#### 📌 3.1.4. Application Compatibility
+
+- An application must load binary or *PTX* code 
+  that is compatible with its device's compute capability. 
+  - To xecute code on future architectures with higher compute capability 
+    (for which no binary code can be generated yet), 
+    an application must load *PTX* code that will be just-in-time compiled for these devices. 
+- Which *PTX* and binary code gets embedded? Controlled by: 
+  - the `-arch` and `-code` compiler options, or 
+  - the `-gencode` compiler option
+- E.g., the following code embeds 
+  - binary code compatible with compute capability 5.0 and 6.0 (first and second `-gencode` options), and
+  - *PTX* and binary code compatible with compute capability 7.0 (third `-gencode` option).
+```bash
+nvcc x.cu
+      -gencode arch=compute_50,code=sm_50
+      -gencode arch=compute_60,code=sm_60
+      -gencode arch=compute_70,code=\"compute_70,sm_70\"
+```
+- Host code is generated to automatically select at runtime the most appropriate code to load and execute, 
+  which, in the above example, will be:
+  - 5.0 binary code for devices with compute capability 5.0 and 5.2,
+  - 6.0 binary code for devices with compute capability 6.0 and 6.1,
+  - 7.0 binary code for devices with compute capability 7.0 and 7.5,
+  - *PTX* code which is compiled to binary code at runtime for devices with compute capability 8.0 and 8.6.
+- The `nvcc` user manual lists various shorthands for the `-arch`, `-code`, and `-gencode` compiler options. 
+  - For example, `-arch=sm_70` is a shorthand for `-arch=compute_70 -code=compute_70,sm_70` 
+    (which is the same as `-gencode arch=compute_70,code=\"compute_70,sm_70\"`).
+
+#### 📌 3.1.5. C++ Compatibility
+
+The front end of the compiler processes CUDA source files according to C++ syntax rules. 
+Full C++ is supported for the host code. 
+However, only a subset of C++ is fully supported for the device code as described in C++ Language Support.
+
+#### 📌 3.1.6. 64-Bit Compatibility
+
+The 64-bit version of `nvcc` compiles device code in 64-bit mode (i.e., pointers are 64-bit). 
+Device code compiled in 64-bit mode is only supported with host code compiled in 64-bit mode.
+
+### 🎯 3.2. CUDA Runtime
 
 
 
