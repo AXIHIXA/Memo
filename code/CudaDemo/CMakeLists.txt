@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.23)
 project(CudaDemo CUDA CXX)
-set(CMAKE_CUDA_STANDARD 17)
 # Ensure correct CUDA architecture
 # NVIDIA Geforce RTX 2080 Ti has Compute Capability 7.5
 # https://developer.nvidia.com/cuda-gpus
+# https://stackoverflow.com/questions/67794606/cmake-cuda-architecture-flags
 set(CMAKE_CUDA_ARCHITECTURES 75)
+set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
