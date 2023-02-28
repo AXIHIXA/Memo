@@ -28,7 +28,7 @@ which typically exceeds the number of processors in the system.
 // Kernel definition
 __global__ void MatAdd(float A[N][N], float B[N][N], float C[N][N])
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;The runtime creates a CUDA context for each device in the system
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     if (i < N && j < N)  C[i][j] = A[i][j] + B[i][j];
 }
@@ -214,9 +214,96 @@ Device code compiled in 64-bit mode is only supported with host code compiled in
 
 ### 🎯 3.2. CUDA Runtime
 
+#### 📌 3.2.1. Initialization
 
+- The runtime creates a CUDA context for each device in the system. 
+  - is the *primary context* for this device 
+  - is initialized at the first runtime function which requires an active context on this device. 
+  - is shared among all the host threads of the application.
+  - This all happens transparently. 
+- `cudaDeviceReset()` destroys the primary context of the host's current device.  
+  - The next runtime function call made by any host thread that has this device as current 
+    will create a new primary context for this device. 
+- `cudaSetDevice()` will explicitly initialize the runtime after changing host's current device. 
+  - Previous versions of CUDA delayed runtime initialization on the new device 
+    until the first runtime call was made after `cudaSetDevice()`. 
+  - This change means that it is now very important to 
+    check the return value of `cudaSetDevice()` for initialization errors.
+- **Never** use CUDA APIs during program initiation or after termination. 
+  - The CUDA interfaces use global state that is 
+    - initialized during host program initiation
+    - destroyed during host program termination. 
+  - The CUDA runtime and driver cannot detect if this state is invalid.  
+    - Using any of these interfaces (implicitly or explicitly) 
+      during program initiation or termination after main
+      will result in undefined behavior.
 
+#### 📌 3.2.2. Device Memory
 
+- Kernels operate out of device memory. 
+  - The runtime provides functions to: 
+    - allocate device memory, 
+    - deallocate device memory, 
+    - copy device memory, 
+    - transfer data between host memory and device memory. 
+- Device memory can be allocated as: 
+  - *Linear memory*, or 
+    - allocated using `cudaMalloc()`
+    - freed using `cudaFree()`
+    - data transfer between host and device using `cudaMemcpy()`. 
+  - CUDA arrays.
+```c++
+// Device code
+__global__ void VecAdd(float * A, float * B, float * C, int N)
+{
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < N)  C[i] = A[i] + B[i];
+}
+
+// Host code
+int main()
+{
+    int N = ...;
+    size_t size = N * sizeof(float);
+
+    // Allocate input vectors h_A and h_B in host memory
+    float * h_A = (float *) malloc(size);
+    float * h_B = (float *) malloc(size);
+    float * h_C = (float *) malloc(size);
+
+    // Initialize input vectors
+    ...
+
+    // Allocate vectors in device memory
+    float * d_A;
+    cudaMalloc(&d_A, size);
+    float * d_B;
+    cudaMalloc(&d_B, size);
+    float * d_C;
+    cudaMalloc(&d_C, size);
+
+    // Copy vectors from host memory to device memory
+    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
+
+    // Invoke kernel
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;  // a.k.a. ceil(N / threadsPerBlock)
+    VecAdd<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, N);
+
+    // Copy result from device memory to host memory
+    // h_C contains the result in host memory
+    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+
+    // Free device memory
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    // Free host memory
+    ...
+} 
+```
 
 ## 🌱 
 
