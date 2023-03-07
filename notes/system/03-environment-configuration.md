@@ -149,12 +149,12 @@ environments tightly integrated in the PyCharm IDE.
 PyCharm for Anaconda is available at:
 https://www.anaconda.com/pycharm
 ```
-- New virtual environment (do NOT use `opencv` package from `conda`; go to PyPI):
+- New virtual environment (do NOT use `opencv` package from `conda-forge`; go to PyPI):
 ```
-conda create -n py3 python=3.9 numpy scipy sympy matplotlib cython ipykernel
+conda create -n py3 numpy scipy sympy matplotlib cython ipykernel
 conda activate py3
-pip install opencv-contrib-python
 python -m ipykernel install --name py3 --user
+# for opencv-python, see below. 
 ```
 - **Never** update anaconda itself as well as the base environment, it is highly likely to downgrade!
     - **Never** call the following commands:
@@ -167,15 +167,23 @@ python -m ipykernel install --name py3 --user
 conda install anaconda-clean
 anaconda-clean --yes
 rm -rf ~/opt/anaconda3
-# Remove Anaconda path from .bash_profile
+# Remove Anaconda path from .bash_rc
 ```
-- PyCharm 2022.3 fails to index opencv-python 4.6.0.66:
-  - I can confirm this works absolutely brilliantly with opencv-contrib-python.
-    Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (both main and contrib). 
-```bash
-pip install --force-reinstall --no-cache -U opencv-contrib-python==4.5.5.64
-```
-
+- `opencv-python`:
+  - PyCharm fails to index `opencv-python>=4.6.0.66`:
+    - Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (both main and contrib). 
+    - Manually hint old versions when installing. 
+  - `opencv-python` conflicts with `matplotlib` (which uses `PyQt5` on its default `QtAgg1` backend) on Qt versioning. 
+    - Could not load the Qt platform plugin "xcb". 
+    - Check [this](https://github.com/opencv/opencv-python/issues/386#issuecomment-687655197) GitHub issue. 
+      - Don't use PyQt and opencv-python together
+      - Instead, use `opencv-python-headless` which does not have dependency to Qt.
+    - Also check the following [opencv-python README](https://github.com/opencv/opencv-python). 
+  - Ultimate solution:
+    ```bash
+    # pip uninstall opencv-python
+    pip install opencv-python-headless==4.5.5.64
+    ```
 
 #### `.bashrc`
 

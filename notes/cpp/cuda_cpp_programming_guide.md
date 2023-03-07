@@ -249,10 +249,7 @@ Device code compiled in 64-bit mode is only supported with host code compiled in
 - Device memory can be allocated as: 
   - *Linear memory*, or 
   - CUDA arrays.
-  
-##### Linear Memory 
-
-- **Linear arrays**: 
+- **1D arrays**: 
   - Allocated using `cudaMalloc()`
   - Freed using `cudaFree()`
   - Data transfer between host and device done by `cudaMemcpy()`. 
@@ -309,7 +306,7 @@ int main()
     ...
 } 
 ```
-- **2D / 3D Arrays**. 
+- **2D / 3D Arrays**: 
   - Allocated through `cudaMallocPitch()` and `cudaMalloc3D()`. 
     - guarantees that the allocation is appropriately padded 
       to meet the alignment requirements, 
@@ -372,6 +369,34 @@ __global__ void MyKernel(cudaPitchedPtr devPitchedPtr, int width, int height, in
     }
 }
 ```
+- The following code sample illustrates various ways of accessing global variables via the runtime API:
+  - `cudaGetSymbolAddress()` is used to retrieve the address 
+    pointing to the memory allocated for a variable declared in global memory space. 
+  - The size of the allocated memory is obtained through `cudaGetSymbolSize()`.
+```c++
+__constant__ float constData[256];
+float data[256];
+cudaMemcpyToSymbol(constData, data, sizeof(data));
+cudaMemcpyFromSymbol(data, constData, sizeof(data));
+
+__device__ float devData;
+float value = 3.14f;
+cudaMemcpyToSymbol(devData, &value, sizeof(float));
+
+__device__ float * devPointer;
+float * ptr;
+cudaMalloc(&ptr, 256 * sizeof(float));
+cudaMemcpyToSymbol(devPointer, &ptr, sizeof(ptr));
+```
+
+#### 📌 3.2.4. Shared Memory
+
+
+
+
+
+
+
 
 
 ## 🌱 
