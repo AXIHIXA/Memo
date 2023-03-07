@@ -151,7 +151,7 @@ https://www.anaconda.com/pycharm
 ```
 - New virtual environment (do NOT use `opencv` package from `conda-forge`; go to PyPI):
 ```
-conda create -n py3 numpy scipy sympy matplotlib cython ipykernel
+conda create -n py3 ipykernel matplotlib numpy scipy scikit-image scikit-learn scikit-learn-intelex sympy 
 conda activate py3
 python -m ipykernel install --name py3 --user
 # for opencv-python, see below. 
