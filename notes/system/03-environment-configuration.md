@@ -184,6 +184,12 @@ rm -rf ~/opt/anaconda3
     # pip uninstall opencv-python
     pip install opencv-python-headless==4.5.5.64
     ```
+- [PyGLM](https://pypi.org/project/PyGLM/)
+```bash
+pip install PyGLM
+```
+
+
 
 #### `.bashrc`
 
