@@ -18,7 +18,7 @@ find_package(Python3 REQUIRED COMPONENTS Development Interpreter NumPy)
 
 # CMAKE_PREFIX_PATH can be gotten from `python -m "import torch;print(torch.utils.cmake_prefix_path)"`
 # libTorch conda build conflicts with OpenCV, so download compiled library directly from pytorch.org.
-find_package(Torch REQUIRED CONFIG HINTS /home/xihan1/lib/libtorch/share/cmake)
+find_package(Torch REQUIRED CONFIG HINTS $ENV{HOME}/lib/libtorch/share/cmake)
 
 set(GLOBAL
         include/global/global.h
@@ -72,7 +72,7 @@ set(ALL_INCLUDE_DIRS
         ${OpenMP_CXX_INCLUDE_DIRS}
         ${Python3_INCLUDE_DIRS}
         ${Python3_NumPy_INCLUDE_DIRS}
-        /home/$ENV{USER}/lib/amgcl
+        $ENV{HOME}/lib/amgcl
         include
         )
 

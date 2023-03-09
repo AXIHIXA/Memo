@@ -9,7 +9,7 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-find_package(fmt REQUIRED HINTS "/home/xihan1/lib/fmt-9.1.0/build")
+find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-9.1.0/build")
 
 set(CUAX
         include/cuax/CudaMatrix.h

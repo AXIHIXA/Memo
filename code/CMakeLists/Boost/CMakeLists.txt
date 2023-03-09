@@ -3,7 +3,7 @@ project(BoostFSDemo)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(Boost REQUIRED COMPONENTS filesystem)
-find_package(fmt REQUIRED HINTS "/home/xihan1/lib/fmt-9.1.0/build/")
+find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-9.1.0/build/")
 
 set(MAIN
         src/main.cpp

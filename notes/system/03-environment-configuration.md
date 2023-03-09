@@ -262,6 +262,177 @@ jupyter kernelspec uninstall unwanted-kernel
 
 
 
+## 🌱 C/C++ 
+
+### CLion
+
+- `__CLION_IDE__`：在 CLion 的 CMakeLists.txt 以及程序中都可使用的宏
+- `$ENV{USER}`, `$ENV{HOME}`： CMakeLists.txt 中调用系统变量
+- [Data flow analysis timeout](https://youtrack.jetbrains.com/issue/CPP-17623): press shift in CLion quickly twice, then we have a search window, search "Registry..." and change the timeout key. 
+
+### `gcc-11` on `ubuntu 20.04 LTS`
+
+```bash
+sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+sudo apt update
+sudo apt install gcc g++ gcc-11 g++-11
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 --slave /usr/bin/g++ g++ /usr/bin/g++-9
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11 --slave /usr/bin/g++ g++ /usr/bin/g++-11
+sudo update-alternatives --config gcc
+```
+Do not use these commands as you would have to install all symbolic links again:
+```bash
+sudo update-alternatives --remove-all gcc
+sudo update-alternatives --remove-all g++
+```
+
+### Latest `CMake` on `ubuntu 20.04 LTS`
+
+[Kitware Repository](https://apt.kitware.com/): 
+> This is Kitware, Inc.'s third-party APT repository, which we use for hosting our own Ubuntu packages, such as CMake.
+>
+> We currently support Ubuntu 16.04, 18.04, and 20.04 on our repository. 
+> The 16.04 and 18.04 repositories support x86 (32-bit and 64-bit), 
+> and the 20.04 repository supports x86 (32-bit and 64-bit) and ARM (32-bit and 64-bit).
+> 
+> To add the repository to your installation, run the kitware-archive.sh script, or do the following in order: 
+```bash
+# 2. Obtain a copy of our signing key:
+wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+
+# 3. Add the repository to your sources list and update.
+echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+sudo apt-get update
+
+# 4. Install the kitware-archive-keyring package to ensure that your keyring stays up to date as we rotate our keys:
+sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
+sudo apt-get install kitware-archive-keyring
+
+# 6. 
+sudo apt install cmake
+```
+
+### `{fmt}`
+
+Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html). 
+
+### Libraries
+
+```
+# Eigen, OpenCV, TBB, Boost
+sudo apt update
+sudo apt install libeigen3-dev libopencv-dev libtbb-dev libboost-all-dev 
+
+# CGAL
+sudo apt install libcgal-dev libcgal-qt5-dev
+```
+
+### `OpenGL`
+
+- Installation
+```
+# OpenGL
+sudo apt install libglm-dev libglew-dev libglfw3-dev mesa-utils libx11-dev libxi-dev libxrandr-dev 
+```
+- Check apt installed package version
+```
+apt policy <package>
+```
+- Check system `OpenGL`
+```
+sudo glxinfo | grep "OpenGL"
+```
+- Upgrade to OpenGL 4.1 on VMWare Workstation Pro 16.x Guest ubuntu OS: 
+    - Requirements: `mesa >= 20.2` and Linux kernel `>= 5.8`
+```
+sudo add-apt-repository ppa:kisak/kisak-mesa
+sudo apt update
+sudo apt-get dist-upgrade
+sudo apt autoremove
+sudo reboot
+```
+
+### `CUDA`
+
+- Install Nvidia driver: Refer to [01-system-installation.md](./01-system-installation.md)
+- Install [NVIDIA `CUDA` Toolkit](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local): 
+```
+# DO NOT USE THIS OBSELETE VERSION!
+sudo apt install nvidia-cuda-toolkit
+```
+- Set environment variables: 
+```bash
+sudoedit /etc/profile.d/my-env-vars.sh
+
+# cuda
+export PATH="/usr/local/cuda/bin:${PATH}"
+```
+- Install `CUDNN`: Follow instructions on 
+[NVIDIA CUDNN DOCUMENTAZTION](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#installlinux-deb)
+(I am using Debian Installation. Do NOT use Package Manager Installation. )
+- CudaDemo: [CudaDemo](../../code/CudaDemo)
+- To uninstall, follow the [offical guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver), which ensures that the uninstalltion will be clean. 
+
+### [MatPlot++](https://alandefreitas.github.io/matplotplusplus/integration/cmake/install-as-a-package-via-cmake/)
+
+```bash
+git clone https://github.com/alandefreitas/matplotplusplus.git
+cd matplotplusplus
+cmake -B build/local \
+    -DMATPLOTPP_BUILD_EXAMPLES=OFF \
+    -DMATPLOTPP_BUILD_SHARED_LIBS=ON \
+    -DMATPLOTPP_BUILD_TESTS=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$HOME/lib/Matplot++" \
+    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+cmake --build build/local
+cmake --install build/local
+```
+Note: 
+- `cmake --build build/local` automatically installs `libmatplot`. 
+- The actual install path is: 
+  - `${CMAKE_INSTALL_PREFIX}/include`;
+  - `${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}` where `CMAKE_INSTALL_LIBDIR=lib`. 
+
+### `OpenMesh`
+
+```
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ax/lib/OpenMesh
+make -j4
+make install
+```
+
+### `Qt`
+
+- Installation
+```
+# Qt
+sudo apt install qt5-default
+sudo apt install qtcreator
+```
+- `CMake` Options: 
+```
+# These 3 options for Qt support
+# You need to add your header files in add_executable, otherwise the moc won't parse them
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+# ...
+
+# Disable Qt's bad marco usage to avoid conflicts! 
+# After this, call original keywords such as: slots -> Q_SLOTS
+set(ALL_COMPILE_DEFS
+        -DQT_NO_KEYWORDS
+        )
+```
+- DO **include headers** in `add_executable` command, 
+  or `moc` will NOT parse them and there will be problems finding `vtable`!
+
+
+
 ## 🌱 java
 
 ### jdk
@@ -319,197 +490,6 @@ gedit -idea64.vmoptions
 -Xms2048m
 -Xmx8192m
 ```
-
-
-
-## 🌱 C/C++ 
-
-### CLion
-
-- `__CLION_IDE__`：在 CLion 的 CMakeLists.txt 以及程序中都可使用的宏
-- `$ENV{USER}`, `$ENV{HOME}`： CMakeLists.txt 中调用系统变量
-- [Data flow analysis timeout](https://youtrack.jetbrains.com/issue/CPP-17623): press shift in CLion quickly twice, then we have a search window, search "Registry..." and change the timeout key. 
-
-### `gcc-11` on `ubuntu 20.04 LTS`
-
-```bash
-sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-sudo apt update
-sudo apt install gcc g++ gcc-11 g++-11
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 --slave /usr/bin/g++ g++ /usr/bin/g++-9
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11 --slave /usr/bin/g++ g++ /usr/bin/g++-11
-sudo update-alternatives --config gcc
-```
-Do not use these commands as you would have to install all symbolic links again:
-```bash
-sudo update-alternatives --remove-all gcc
-sudo update-alternatives --remove-all g++
-```
-
-### Latest `CMake` on `ubuntu 20.04 LTS`
-
-[Kitware Repository](https://apt.kitware.com/): 
-> This is Kitware, Inc.'s third-party APT repository, which we use for hosting our own Ubuntu packages, such as CMake.
->
-> We currently support Ubuntu 16.04, 18.04, and 20.04 on our repository. 
-> The 16.04 and 18.04 repositories support x86 (32-bit and 64-bit), 
-> and the 20.04 repository supports x86 (32-bit and 64-bit) and ARM (32-bit and 64-bit).
-> 
-> To add the repository to your installation, run the kitware-archive.sh script, or do the following in order: 
-```bash
-# 2. Obtain a copy of our signing key:
-wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-
-# 3. Add the repository to your sources list and update.
-echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
-sudo apt-get update
-
-# 4. Install the kitware-archive-keyring package to ensure that your keyring stays up to date as we rotate our keys:
-sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
-sudo apt-get install kitware-archive-keyring
-
-# 6. 
-sudo apt install cmake
-```
-
-### `{fmt}`
-
-```bash
-$ sudo dpkg -L libfmt-dev
-/.
-/usr
-/usr/include
-/usr/include/fmt
-/usr/include/fmt/chrono.h
-/usr/include/fmt/color.h
-/usr/include/fmt/compile.h
-/usr/include/fmt/core.h
-/usr/include/fmt/format-inl.h
-/usr/include/fmt/format.h
-/usr/include/fmt/locale.h
-/usr/include/fmt/ostream.h
-/usr/include/fmt/posix.h
-/usr/include/fmt/printf.h
-/usr/include/fmt/ranges.h
-/usr/lib
-/usr/lib/x86_64-linux-gnu
-/usr/lib/x86_64-linux-gnu/cmake
-/usr/lib/x86_64-linux-gnu/cmake/fmt
-/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-config-version.cmake
-/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-config.cmake
-/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-targets-none.cmake
-/usr/lib/x86_64-linux-gnu/cmake/fmt/fmt-targets.cmake
-/usr/lib/x86_64-linux-gnu/libfmt.a
-/usr/lib/x86_64-linux-gnu/pkgconfig
-/usr/lib/x86_64-linux-gnu/pkgconfig/fmt.pc
-/usr/share
-/usr/share/doc
-/usr/share/doc/libfmt-dev
-/usr/share/doc/libfmt-dev/README.Debian
-/usr/share/doc/libfmt-dev/changelog.Debian.gz
-/usr/share/doc/libfmt-dev/copyright
-```
-Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html), and override the `apt` package:
-```bash
-sudo cp -r include/fmt /usr/include
-sudo cp build/libfmt.a /usr/lib/x86_64-linux-gnu
-```
-
-### Libraries
-
-```
-# fmtlib https://fmt.dev/latest/index.html
-sudo apt install libfmt-dev
-
-# Eigen, OpenCV, TBB, Boost
-sudo apt update
-sudo apt install libeigen3-dev libopencv-dev libtbb-dev libboost-all-dev 
-
-# CGAL
-sudo apt install libcgal-dev libcgal-qt5-dev
-```
-
-### `OpenGL`
-
-- Installation
-```
-# OpenGL
-sudo apt install libglm-dev libglew-dev libglfw3-dev mesa-utils libx11-dev libxi-dev libxrandr-dev 
-```
-- Check apt installed package version
-```
-apt policy <package>
-```
-- Check system `OpenGL`
-```
-sudo glxinfo | grep "OpenGL"
-```
-- Upgrade to OpenGL 4.1 on VMWare Workstation Pro 16.x Guest ubuntu OS: 
-    - Requirements: `mesa >= 20.2` and Linux kernel `>= 5.8`
-```
-sudo add-apt-repository ppa:kisak/kisak-mesa
-sudo apt update
-sudo apt-get dist-upgrade
-sudo apt autoremove
-sudo reboot
-```
-
-### `CUDA`
-
-- Install Nvidia driver: Refer to [01-system-installation.md](./01-system-installation.md)
-- Install [NVIDIA `CUDA` Toolkit](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local): 
-```
-# DO NOT USE THIS OBSELETE VERSION!
-sudo apt install nvidia-cuda-toolkit
-```
-- Set environment variables: 
-```bash
-sudoedit /etc/profile.d/my-env-vars.sh
-
-# cuda
-export PATH="/usr/local/cuda/bin:${PATH}"
-```
-- Install `CUDNN`: Follow instructions on 
-[NVIDIA CUDNN DOCUMENTAZTION](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#installlinux-deb)
-(I am using Debian Installation. Do NOT use Package Manager Installation. )
-- CudaDemo: [CudaDemo](../../code/CudaDemo)
-- To uninstall, follow the [offical guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver), which ensures that the uninstalltion will be clean. 
-
-### `OpenMesh`
-
-```
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/ax/lib/OpenMesh
-make -j4
-make install
-```
-
-### `Qt`
-
-- Installation
-```
-# Qt
-sudo apt install qt5-default
-sudo apt install qtcreator
-```
-- `CMake` Options: 
-```
-# These 3 options for Qt support
-# You need to add your header files in add_executable, otherwise the moc won't parse them
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-
-# ...
-
-# Disable Qt's bad marco usage to avoid conflicts! 
-# After this, call original keywords such as: slots -> Q_SLOTS
-set(ALL_COMPILE_DEFS
-        -DQT_NO_KEYWORDS
-        )
-```
-- DO **include headers** in `add_executable` command, or `moc` will NOT parse them and there will be problems finding `vtable`!
 
 
 
