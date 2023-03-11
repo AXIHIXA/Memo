@@ -184,6 +184,7 @@ rm -rf ~/opt/anaconda3
     # pip uninstall opencv-python
     pip install opencv-python-headless==4.5.5.64
     ```
+- [PyTorch](https://pytorch.org/get-started/locally/)
 - [PyGLM](https://pypi.org/project/PyGLM/)
 ```bash
 pip install PyGLM
@@ -376,8 +377,10 @@ export PATH="/usr/local/cuda/bin:${PATH}"
 ### [MatPlot++](https://alandefreitas.github.io/matplotplusplus/integration/cmake/install-as-a-package-via-cmake/)
 
 ```bash
+sudo apt install gnuplot
+
 git clone https://github.com/alandefreitas/matplotplusplus.git
-cd matplotplusplus
+
 cmake -B build/local \
     -DMATPLOTPP_BUILD_EXAMPLES=OFF \
     -DMATPLOTPP_BUILD_SHARED_LIBS=ON \
@@ -385,8 +388,8 @@ cmake -B build/local \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$HOME/lib/Matplot++" \
     -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
-cmake --build build/local
-cmake --install build/local
+
+cmake --build build/local; cmake --install build/local
 ```
 Note: 
 - `cmake --build build/local` automatically installs `libmatplot`. 
