@@ -17,6 +17,7 @@
 
 - CUDA
   - [CUDA C++ Programming Guide](./notes/cpp/cuda_cpp_programming_guide.md)
+  - [Professional CUDA C Programming](./notes/cpp/professional_cuda_c_programming.md)
 
 - `Python`
     - [`Python` Offical Tutorial Notes](./notes/py/py.md)
