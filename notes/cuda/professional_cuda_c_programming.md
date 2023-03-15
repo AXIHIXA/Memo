@@ -4,7 +4,7 @@
 
 ## 🌱 1 Heterogeneous Parallel Computing with CUDA
 
-#### 🎯 PARALLEL COMPUTING -- Computer Architecture
+### 🎯 PARALLEL COMPUTING -- Computer Architecture
 
 - *Flynn's Taxonomy*
   - Single Instruction Single Data (SISD)
@@ -39,7 +39,7 @@
     - Same address space (there could be multiple physical memories)
 - NVIDIA: *Single Instruction, Multiple Thread* (SIMT)
 
-#### 🎯 HETEROGENEOUS COMPUTING
+### 🎯 HETEROGENEOUS COMPUTING
 
 - Performace features
   - *Peak computational performance* 
@@ -59,7 +59,7 @@
 
 ## 🌱 2 CUDA Programming Model
 
-#### 📌 [Managing Memory](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
+### 📌 [Managing Memory](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
 
 ```c++
 /// Allocate memory on the device. 
