@@ -172,7 +172,8 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
   - Each SM is designed to support concurrent execution of hundreds of threads
     - Each thread block is assigned to one SM
       - Threads of this thread block execute concurrently only on this SM
-    - Multiple thread blocks may be assigned on the same SM
+    - Each SM can hold more than one thread block at the same time
+      - Multiple thread blocks may be assigned on the same SM
     - Instructions within a single thread are pipelined to further leverage instruction-level parallelism
 - Key components of a Fermi SM
   - CUDA Cores
@@ -192,14 +193,167 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
   - Difference
     - SIMD requires all vector elements in a vector execute together in a unified synchronous group
     - SIMT allows multiple threads in the same warp to execute independently
-      - All threads in a warp start together at the same program address
-      - Indivisual threads could have different behavior
+      - All threads in a warp start together (logically) at the same program address
+        - Physically, not all threads can execute at the same time
+      - Different threads may make progress at a different pace 
   - SIMT includes three key features (that SIMD does not)
     - Each thread has its own instruction address counter
     - Each thread has its own register state
     - Each thread can have an independent execution path
-- 
+- Magic Number 32
+  - Optimizing workloads to fit within the boundaries of a warp (group of 32 threads) 
+    will lead to more efficient utilization of GPU compute resources
+- Shared Memory and Registers
+  - Shared memory is partitioned among thread blocks
+  - Registers are partitioned among threads
+  - Thread in a thread block can cooperate and communicate through these resources
+- Data race
+  - CUDA provides means to synchronize threads within a thread block
+    - to ensure that all thread reach certain points in execution before making further progresses
+  - **No** inter-block synchronization
+- Warp context switching
+  - When a warp idles (e.g., waiting for values to be read from device memory)
+    the SM is free to schedule another available warp from any assigned thread block 
+  - **No** overhead
+    - Hardware resources are partitioned among all threads and blocks on an SM
+    - State of the newly scheduled warp is already stored on the SM
+- *Dynamic Parallelism*
+  - Any kernel can launch another kernel and manage any inter-kernel dependencies
+  - Aids recursive and data-dependent execution patterns
 
+#### 📌 Profile-Driven Optimization
+
+- Profiling is important in CUDA programming because
+  - A naive implementation generally does **not** yield best performance. 
+    - Profiling tools can help you find the bottleneck regions of your code
+  - CUDA partitions the compute resources in an SM among multiple thread blocks
+    - This partition causes some resources to become performance limiters
+    - Profiling tools can help you gain insight into how compute resources are being utilized
+  - CUDA provides an abstraction of the hardware architecture enabling you to control thread concurrency
+    - Profiling tools can help you measure, visualize, and guide your implementation
+- CUDA provides two profiling tools
+  - `nvvp`: Standalone visual profiler
+    - Displays a timeline of program activity on both the CPU and the GPU
+    - Analyzes for potential bottlenecks and suggests how to eliminate/reduce them
+  - `nvprof`: Command-line profiler
+- Events and metrics
+  - An event is a countable activity the corresponds to a hardaware counter collected during kernel execution
+  - A metric is a characteristic of a kernel calculated from one or more events
+  - Most counters are reported per SM **rather than** the entire GPU
+  - A single run can only collect a few counters
+    - The collection of some counters is mutually exclusive
+    - Multiple profiling runs are often needed to gather all relevant counters
+  - Counter values may **not** be exactly the same across repeated runs
+    - Due to variations in GPU execution (E.g., thread block and warp scheduling order)
+
+### 🎯 WARP EXECUTION
+
+#### 📌 Warps and Thread Blocks
+
+- When you launch a grid of thread blocks
+  - These thread blocks are distributed among SMs
+  - Once a thread block is assigned to a SM
+    - Threads in this thread block are further partitioned into warps
+    - A warp consists of 32 consecutive threads
+    - All threads in a warp are executed in SIMT fashion
+      - All threads execute the same instruction
+      - Each thread carries out that operation on its own private data
+- The hardware always allocates a discrete number of warps for a thread block
+  - `numberOfWarps = ceil(numberOfThreads / warpSize)`
+  - A warp is **never** split between different thread blocks
+  - If thread block size is not a multiple of warp size, some threads in the last warp a left inactive
+    - But they still consume SM resources, e.g., CUDA cores and registers!
+
+#### 📌 Warp Divergence
+
+- GPU has **no** complex branch prediction mechanism
+  - All threads in a warp must execute the same instruction
+- Threads in the saem warp executing different instructions is referred as *warp divergence*
+  - When threads in a warp diverge, different `if-then-else` branches are executed serially
+    - Warp serially executes each branch path 
+    - disabling threads that do not take that path
+  - Warp divergence can cause degraded performance
+- Branch divergence only occurs within a warp
+  - Different conditional values in different warps do **not** cause warp diverence
+- E.g. For a 1D thread block
+  - `if (threadIdx.x % 2 == 0)` 
+    - even-numbered threads take `if` clause 
+    - odd-numbered threads take `else` clause
+  - Interleave data using a warp approach
+    - `if ((threadIdx.x / warpSize) % 2 == 0)`
+    - Forces the branch granularity to be a multiple of warp size
+    - even warps take the `if` clause
+    - odd warps the the `else` clause
+- *Branch Efficiency*
+  - The ratio of non-divergent branches to total branches
+- Compiler optimizations
+  - In branch prediction, a predicate variable for each thread is replaced by 1 or 0
+  - Both conditional flow paths are fully executed
+    - Only instructions with a predicate of 1 are executed
+    - Instructions with 0 predicates are **not** executed
+      - Corresponding thread does **not** stall either
+  - Compiler replaces a branch instruction with predicated instructions 
+    - only if the number of instructions in the body of a conditional statement is less than a certain threshold
+  - A long code path will certainly result in warp divergence
+```c++
+__global__ void goodPractice(float * c)
+{
+    float a = 0.0f, b = 0.0f;
+
+    if ((threadIdx.x / warpSize) % 2 == 0)
+    {
+        a = 100.0f;
+    }
+    else
+    {
+        b = 200.0f;
+    }
+
+    c[threadIdx.x] = a + b;
+}
+
+__global__ void doesNotDivergeThanksToCompilerOptimizations(float * c)
+{
+    float a = 0.0f, b = 0.0f;
+
+    if (threadIdx.x % 2 == 0)
+    {
+        a = 100.0f;
+    }
+    else
+    {
+        b = 200.0f;
+    }
+
+    c[threadIdx.x] = a + b;
+}
+
+__global__ void willCertainlyDiverge(float * c)
+{
+    float a = 0.0f, b = 0.0f;
+    bool pred = threadIdx.x % 2 == 0;
+
+    if (pred)
+    {
+        a = 100.0f;
+    }
+
+    if (!pred)
+    {
+        b = 200.0f;
+    }
+
+    c[threadIdx.x] = a + b;
+}
+```
+
+#### 📌 Resource Partitioning
+
+- Local execution context of a warp mainly consists of
+  - Program counters
+  - Registers
+  - Shared memory
+- Switching from one execution context to another has no cost
 
 
 
