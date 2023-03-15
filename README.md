@@ -1,6 +1,8 @@
 # Memo
 
-### 🌱 Notes
+
+
+## 🌱 Notes
 
 - `C/C++`
     - *[C++ Primer](./notes/cpp/cpp_primer_notes.md)*
@@ -14,18 +16,15 @@
         3. *[Effective STL](./notes/cpp/effective_cpp_notes_03_effective_stl.md)*
         4. *[Effective Modern C++](./notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
     - *[CPP Concurrency In Action](./notes/cpp/cpp_concurrency_in_action_notes.md)*
-
 - CUDA
   - [CUDA C++ Programming Guide](./notes/cpp/cuda_cpp_programming_guide.md)
   - [Professional CUDA C Programming](./notes/cpp/professional_cuda_c_programming.md)
-
 - `Python`
     - [`Python` Offical Tutorial Notes](./notes/py/py.md)
     - [`NumPy` Tutorial Notes](./notes/py/numpy.md)
     - [`PyTorch` Tutorial Notes](./notes/py/pytorch.md)
     - [`matplotlib` Offical Tutorial](./notes/py/matplotlib.md)
     - [`SymPy` Offical Tutorial](./notes/py/sympy/sympy.md)
-
 - System Management
     1. [System Installation](./notes/system/01-system-installation.md)
     2. [System Configuration](./notes/system/02-system-configuration.md)
@@ -34,7 +33,11 @@
     5. [System Programming](./notes/system/05-system-programming.md)
     6. [WSL 2](./notes/system/06-wsl-2.md)
 
-### 🌱 Sample Code
+
+
+## 🌱 Sample Code
+
+
 
 - `CMakeLists`
     - [Boost](./code/CMakeLists/Boost/CMakeLists.txt)
@@ -47,7 +50,6 @@
     - [Qt5](./code/CMakeLists/Qt5/CMakeLists.txt)
     - [Torch](./code/CMakeLists/Torch/CMakeLists.txt)
     - [Vulkan](./code/CMakeLists/Vulkan/CMakeLists.txt)
-
 - `C/C++` Code
     - [debug.h](./code/debug.h)
     - [OpenGL Shader](./code/Shader.h)
@@ -56,12 +58,11 @@
         - [h (explicit instantiation declaration)](./code/TimerGuard/include/util/TimerGuard.h)
         - [cpp (explicit instantiation definition)](./code/TimerGuard/src/util/TimerGuard.cpp)
     - [variadic.cpp](./code/variadic.cpp)
-
 - `Python` Code
     - [python codes](./code/python_code.md)
-
 - IDE Preferences
     - [Code Styles](./code/ide%20preferences)
-
 - Windows Terminal config
     - [settings.json](./code/Windows%20Terminal)
+
+

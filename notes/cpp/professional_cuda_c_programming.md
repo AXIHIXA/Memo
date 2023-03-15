@@ -8,7 +8,7 @@
 
 #### 📌 Computer Architecture
 
-- Flynn's Taxonomy
+- *Flynn's Taxonomy*
   - Single Instruction Single Data (SISD)
     - Traditional computer
   - Single Instruction Multiple Data (SIMD)
@@ -30,12 +30,50 @@
     - *gflops* (billion floating-point operaions per second)
 - Memory organization
   - Multi-node with distributed memory
+    - Many processers connected by a network
+    - Each processor has its own local memory
+    - Processers can communicate their local memories over the network
+    - Referred as *clusters*
   - Multiprocesor with shared memory
+    - Processors are 
+      - either physically connected to the same memory
+      - or share a low-latency link, e.g., PCI-Express (PCIe)
+    - Same address space (there could be multiple physical memories)
+- NVIDIA: *Single Instruction, Multiple Thread* (SIMT)
 
+### 🎯 HETEROGENEOUS COMPUTING
+
+- Performace features
+  - *Peak computational performance* 
+    - How many single-precision or double-precision floating point calculations can be processed per second
+    - `gflops` (billion) or `tflops` (trillion)
+  - *Memory bandwidth*
+    - Ratio at which data could be read from or stored to memory
+    - GB/s
+- CPU Threads
+  - Heavyweight
+  - Context switches are slow and expensive
+- GPU Threads
+  - Lightweight
+  - Thousands of threads queued up for work
+
+
+
+## 🌱 2 CUDA Programming Model
 
 ### 🎯 
 
 #### 📌 
+
+
+
+
+
+
+
+
+
+
 
 
 
