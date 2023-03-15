@@ -28,7 +28,7 @@ which typically exceeds the number of processors in the system.
 // Kernel definition
 __global__ void MatAdd(float A[N][N], float B[N][N], float C[N][N])
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;The runtime creates a CUDA context for each device in the system
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     if (i < N && j < N)  C[i][j] = A[i][j] + B[i][j];
 }

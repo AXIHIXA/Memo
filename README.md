@@ -17,8 +17,8 @@
         4. *[Effective Modern C++](./notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
     - *[CPP Concurrency In Action](./notes/cpp/cpp_concurrency_in_action_notes.md)*
 - CUDA
-  - [CUDA C++ Programming Guide](./notes/cpp/cuda_cpp_programming_guide.md)
-  - [Professional CUDA C Programming](./notes/cpp/professional_cuda_c_programming.md)
+  - [CUDA C++ Programming Guide](./notes/cuda/cuda_cpp_programming_guide.md)
+  - [Professional CUDA C Programming](./notes/cuda/professional_cuda_c_programming.md)
 - `Python`
     - [`Python` Offical Tutorial Notes](./notes/py/py.md)
     - [`NumPy` Tutorial Notes](./notes/py/numpy.md)
