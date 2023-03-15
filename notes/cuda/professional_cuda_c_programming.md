@@ -4,9 +4,7 @@
 
 ## 🌱 1 Heterogeneous Parallel Computing with CUDA
 
-### 🎯 PARALLEL COMPUTING
-
-#### 📌 Computer Architecture
+### 🎯 PARALLEL COMPUTING -- Computer Architecture
 
 - *Flynn's Taxonomy*
   - Single Instruction Single Data (SISD)
@@ -61,9 +59,7 @@
 
 ## 🌱 2 CUDA Programming Model
 
-### 🎯 INTRODUCTION
-
-#### 📌 [Managing Memory](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
+### 📌 [Managing Memory](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
 
 ```c++
 /// Allocate memory on the device. 
@@ -97,7 +93,7 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - **Never** ~~dereference the different memory spaces~~
   - E.g., `gpuRef = devPtr` instead of `cudaMemcpy(gpuRef, devPtr, nBytes, cudaMemcpyDeviceToHost)` will crash
 
-### 📌 Organizing Threads
+## 📌 Organizing Threads
 
 - Grid
   - All threads spawned by a single kernel launch are collectively called a *grid*. 
@@ -106,7 +102,7 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - A grid is made up of multiple thread blocks. 
 - Thread block
   - 1D, 2D, or 3D, `blockDim.xyz`, `threadIdx.xyz`
-  - One thread block ~ One Streaming Multiprocessor (SM), i.e., CUDA Core. 
+  - One thread block ~ One Streaming Multiprocessor (SM)
   - A group of threads that can cooperate with each other using
     - Block-local synchronization
     - Block-local shared memory
@@ -119,14 +115,90 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
     - Both grids and blocks use the `dim3` type with 3 unsinged integer fields. 
     - Ununsed fields with be initialized to 1 and ignored. 
 
+## 📌 Launching a CUDA Kernel
+
+- All CUDA kernel launches are asynchronous.
+  - Control returns to CPU immediately after the CUDA kernel is invoked. 
+```c++
+dim3 gridDim(...), blockDim(...);
+cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
+```
+
+## 📌 Writing Your Kernel
+
+- Function type qualifiers
+  - `__global__`: Functions defined with `__global__` are kernel functions
+    - Executed on the device
+    - Callable from
+      - the host
+      - the device
+    - Must have a `void` return type
+  - `__device__`
+    - Executed on the device
+    - Callable from the device only
+  - `__host__`
+    - Executed on the host
+    - Callable from the host only
+    - Can be omitted
+- CUDA kernels are functions with restrictions
+  - Access to device memory only
+  - Must have `void` return type
+  - **No** support for
+    - ~~A variable number of arguments~~
+    - ~~Static variables~~
+    - ~~Function points~~
+    - Exhibit an asynchronous behavior
+
+## 📌 Verifying Your Kernel
+
+- You can use `printf` in your kernel for Fermi and later generation devices;
+- You can set the execution configuration to `<<<1, 1>>>` to force a sequential implementation. 
+
+## 📌 Timing Your Kernel
+
+- With CPU timer
+- With `nvprof`
+  - Command-line profiling tool
 
 
 
+## 🌱 3 CUDA Execution Model
 
+### 🎯 INTRODUCTION
 
+#### 📌 GPU Architecture Overview
 
-
-
+- GPU architecture is built around a scalable array of *Streaming Multiprocessers* (SM)
+  - Each SM is designed to support concurrent execution of hundreds of threads
+    - Each thread block is assigned to one SM
+      - Threads of this thread block execute concurrently only on this SM
+    - Multiple thread blocks may be assigned on the same SM
+    - Instructions within a single thread are pipelined to further leverage instruction-level parallelism
+- Key components of a Fermi SM
+  - CUDA Cores
+  - Shared Memory / L1 Cache
+  - Register File
+  - Load/Store Units
+  - Special Function Units
+  - Warp Scheduler
+- CUDA employs a SIMT architecture 
+  - Execute threads in groups of 32 called *warps*
+  - All threads in a warp execute the same instruction at the same time
+    - Each thread has its own instruction address counter and register state
+    - Each thread carries out the current instruction on its own data
+  - Each SM partitions its assigned thread block into warps of 32 threads
+- SIMT vs SIMD
+  - Both broadcast the same instruction to multiple execution units
+  - Difference
+    - SIMD requires all vector elements in a vector execute together in a unified synchronous group
+    - SIMT allows multiple threads in the same warp to execute independently
+      - All threads in a warp start together at the same program address
+      - Indivisual threads could have different behavior
+  - SIMT includes three key features (that SIMD does not)
+    - Each thread has its own instruction address counter
+    - Each thread has its own register state
+    - Each thread can have an independent execution path
+- 
 
 
 
