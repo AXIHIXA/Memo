@@ -354,6 +354,18 @@ __global__ void willCertainlyDiverge(float * c)
   - Registers
   - Shared memory
 - Switching from one execution context to another has no cost
+- A thread block is called an *active block* when compute resources have been allocated to it
+  - The warps it contains are called *active warps*
+  - Active warps can be classified into
+    - Selected warp: Warp that is actively executing
+    - Stalled warp: Not ready for execution
+    - Eligible warp: Ready for execution but not currently executing
+      - A warp is elligible if both
+        - 32 CUDA cores are available for execution, and
+        - All arguments to the current instruction are ready
+
+#### Latency Hiding
+
 
 
 
