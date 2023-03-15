@@ -4,7 +4,7 @@
 
 ## 🌱 1 Heterogeneous Parallel Computing with CUDA
 
-### 🎯 PARALLEL COMPUTING -- Computer Architecture
+#### 🎯 PARALLEL COMPUTING -- Computer Architecture
 
 - *Flynn's Taxonomy*
   - Single Instruction Single Data (SISD)
@@ -39,7 +39,7 @@
     - Same address space (there could be multiple physical memories)
 - NVIDIA: *Single Instruction, Multiple Thread* (SIMT)
 
-### 🎯 HETEROGENEOUS COMPUTING
+#### 🎯 HETEROGENEOUS COMPUTING
 
 - Performace features
   - *Peak computational performance* 
@@ -59,7 +59,7 @@
 
 ## 🌱 2 CUDA Programming Model
 
-### 📌 [Managing Memory](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
+#### 📌 [Managing Memory](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
 
 ```c++
 /// Allocate memory on the device. 
@@ -93,7 +93,7 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - **Never** ~~dereference the different memory spaces~~
   - E.g., `gpuRef = devPtr` instead of `cudaMemcpy(gpuRef, devPtr, nBytes, cudaMemcpyDeviceToHost)` will crash
 
-## 📌 Organizing Threads
+### 📌 Organizing Threads
 
 - Grid
   - All threads spawned by a single kernel launch are collectively called a *grid*. 
@@ -115,7 +115,7 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
     - Both grids and blocks use the `dim3` type with 3 unsinged integer fields. 
     - Ununsed fields with be initialized to 1 and ignored. 
 
-## 📌 Launching a CUDA Kernel
+### 📌 Launching a CUDA Kernel
 
 - All CUDA kernel launches are asynchronous.
   - Control returns to CPU immediately after the CUDA kernel is invoked. 
@@ -124,7 +124,7 @@ dim3 gridDim(...), blockDim(...);
 cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
 ```
 
-## 📌 Writing Your Kernel
+### 📌 Writing Your Kernel
 
 - Function type qualifiers
   - `__global__`: Functions defined with `__global__` are kernel functions
@@ -149,12 +149,12 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
     - ~~Function points~~
     - Exhibit an asynchronous behavior
 
-## 📌 Verifying Your Kernel
+### 📌 Verifying Your Kernel
 
 - You can use `printf` in your kernel for Fermi and later generation devices;
 - You can set the execution configuration to `<<<1, 1>>>` to force a sequential implementation. 
 
-## 📌 Timing Your Kernel
+### 📌 Timing Your Kernel
 
 - With CPU timer
 - With `nvprof`
