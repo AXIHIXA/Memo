@@ -364,7 +364,189 @@ __global__ void willCertainlyDiverge(float * c)
         - 32 CUDA cores are available for execution, and
         - All arguments to the current instruction are ready
 
-#### Latency Hiding
+#### 📌 Latency Hiding
+
+- *Latency*
+  - Number of clock cycles between an instruction being issued and being completed
+- *Latency Hiding*
+  - Latency of each instruction can be hidden by issuing other instructions in other resident warps
+  - CPU cores are designed to minimize latency
+  - GPU cores are designed to maximize throughput
+    - GPU instruction latency is hidden by computation from other warps
+- Instruction can be classifed into two basic types
+  - Arithmetic instructions
+    - Latency 10-20 cycles for arithmetic operations
+  - Memory instructions
+    - Latency 400-800 cycles for global memory accesses
+- *Required Parallelism*
+  - Arithmetic instructions: Number of required warps to hide latency
+    - *Little's Law*: Required parallelism = Latency $\times$ Throughput
+    - Two ways to increase parallelism
+      - **Instruction-level parallelism (ILP)**: More independent instructions within a thread
+      - **Thread-level parallelism (TLP)**: More concurrently eligible threads
+  - Memory instructions: Number of Bytes of memory load/store per cycle required to hide latency
+    - Check device's memory frequency via `$ nvidia-smi -a -q -d CLOCK | fgrep -A 3 "Max Clocks" | fgrep "Memory"`
+      - E.g. NVIDIA Geforce GTX 2080 Ti: 7000 MHz (cycle per second)
+      - Bandwidth (GB/s) $\div$ Memory frequency (cycle/s) => Bytes/cycle
+
+#### 📌 Occupancy
+
+- *Occupancy*
+  - Ratio of active warps to maximum number of warps per SM
+  - Check the maximum warps per SM for your device
+    ```c++
+    cudaError_t cudaGetDeviceProperties(struct cudaDeviceProp * prop, int device);
+    ```
+  - Maximum number of threads per SM is returned in `prop->maxThreadsPerMultiProcessor`
+  - Manipulating thread blocks to either extreme can restrict resource utilization
+    - **Small thread blocks**
+      - Limits the number of warps per SM to be reached before all resources are fully utilized
+    - **Large thread blocks**
+      - Leads to fewer per-SM hardware resources available to each thread
+- Guidelines for grid and block size
+  - Keep the number of threads per block a multiple of warp size 32
+  - Avoid small block sizes: Start with at least 128 or 256 threads per block
+  - Adjust block size up or down according to kernel resource requirements
+  - Keep the number of blocks much greater than the number of SMs to expose sufficient parallelism to your device
+  - COnduct experiments to discover the best execution configuration and resource usage
+
+#### 📌 Synchronization
+
+- Two levels of Barrier synchronoizations in CUDA
+  - **System-level**
+    - Wait for all work on both the host and the device to complete 
+      - Many CUDA API calls and all kernel launches are asynchronous w.r.t. the host
+      ```c++
+      /// May return errors from previous async CUDA operations
+      cudaError_t cudaDeviceSynchronize(void);
+      ```
+  - **Block-level**
+    - Wait for all threads in a thread block to reach the same point in execution on the device
+      - Warps in a thread block are executed in an undefined order
+      ```c++
+      /// Each thread in the same thread block must wait 
+      /// until all other threads in that block have reached this synchronization point. 
+      /// All global and shared memory accesses made by all threads prior to this barrier
+      /// will be visible to all other threads in the thread block after the barrier. 
+      __device__ void __syncthreads(void);
+      ```
+    - **No** thread synchronization among different blocks
+      - The only safe way to synchronize across blocks is 
+        to use the global synchronization point at the end of every kernel execution
+
+### 🎯 EXPOSING PARALLELISM
+
+- Metrics and performace
+  - **No** single metric can prescribe optimal performance.
+   - Which metric or event most directly relates to overall performance 
+     depends on the nature of the kernel code.
+  - Seek a good balance among related metrics and events.
+  - Check the kernel from different angles to find a balance among the related metrics.
+  - Grid/block heuristics provide a good starting point for performance tuning. 
+- Practice *grid and block heuristics* with the following code
+  - Higher occupancy $\ne$ higher performace
+  - Higher load throughput $\ne$ higher performance
+  - More thread blocks launched $\ne$ higher performance
+```c++
+__global__ void sumMatrixOnGPU2D(float * A, float * B, float * C, int NX, int NY) 
+{
+    unsigned int ix = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int iy = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int idx = iy * NX + ix;
+
+    if (ix < NX && iy < NY) 
+    {
+        C[idx] = A[idx] + B[idx];
+    }
+}
+
+int main(int argc, char * argv[])
+{
+    int nx = 1 << 14, ny = 1 << 14, dimx, dimy;
+
+    if (2 < argc)
+    {
+        dimx = std::atoi(argv[1]);
+        dimy = std::atoi(argv[2]);
+    }
+
+    dim3 blockDim {dimx, dimy};
+    dim3 gridDim {(nx + blockDim.x - 1) / blockDim.x, (ny + blockDim.y - 1) / blockDim.y};
+
+    ...
+}
+```
+
+#### 📌 Checking Active Warps with `nvprof`
+
+```bash
+$ nvcc -O3 --generate-code=arch=compute_75,code=[compute_75,sm_75] sumMatrix.cu -o sumMatrix
+
+$ ./sumMatrix 32 32
+sumMatrixOnGPU2D <<< (512,512), (32,32) >>> elapsed 60 ms
+$ ./sumMatrix 32 16
+sumMatrixOnGPU2D <<< (512,1024), (32,16) >>> elapsed 38 ms
+$ ./sumMatrix 16 32
+sumMatrixOnGPU2D <<< (1024,512), (16,32) >>> elapsed 51 ms
+$ ./sumMatrix 16 16
+sumMatrixOnGPU2D <<< (1024,1024),(16,16) >>> elapsed 46 ms
+
+$ nvprof --metrics achieved_occupancy ./sumMatrix 32 32
+sumMatrixOnGPU2D <<<(512,512), (32,32)>>> Achieved Occupancy 0.501071
+$ nvprof --metrics achieved_occupancy ./sumMatrix 32 16
+sumMatrixOnGPU2D <<<(512,1024), (32,16)>>> Achieved Occupancy 0.736900
+$ nvprof --metrics achieved_occupancy ./sumMatrix 16 32
+sumMatrixOnGPU2D <<<(1024,512), (16,32)>>> Achieved Occupancy 0.766037
+$ nvprof --metrics achieved_occupancy ./sumMatrix 16 16
+sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Achieved Occupancy 0.810691
+```
+- Because the second case has more blocks than the first case, 
+  it exposed more active warps to the device.
+  - This is likely the reason why the second case has a higher achieved occupancy 
+    and better performance than the first case.
+- The fourth case has the highest achieved occupancy, but it is **not** the fastest. 
+  - Therefore, a higher occupancy does **not** always equate to higher performance. 
+  - There must be other factors that restrict performance.
+
+#### 📌 Checking Active Warps with `nvprof`
+
+- `C[idx] = A[idx] + B[idx]` has two loads and one store
+```bash
+$ nvprof --metrics gld_throughput./sumMatrix 32 32
+sumMatrixOnGPU2D <<<(512,512), (32,32)>>> Global Load Throughput 35.908GB/s
+$ nvprof --metrics gld_throughput./sumMatrix 32 16
+sumMatrixOnGPU2D <<<(512,1024), (32,16)>>> Global Load Throughput 56.478GB/s
+$ nvprof --metrics gld_throughput./sumMatrix 16 32
+sumMatrixOnGPU2D <<<(1024,512), (16,32)>>> Global Load Throughput 85.195GB/s
+$ nvprof --metrics gld_throughput./sumMatrix 16 16
+sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Global Load Throughput 94.708GB/s
+```
+- While the fourth case has the highest load throughput, 
+  it is slower than the second case (which only demonstrates around half the load throughput). 
+  - A higher load throughput does **not** always equate to higher performance. 
+```bash
+# The ratio of requested global load throughput to required global load throughput
+$ nvprof --metrics gld_efficiency ./sumMatrix 32 32
+sumMatrixOnGPU2D <<<(512,512), (32,32)>>> Global Memory Load Efficiency 100.00%
+$ nvprof --metrics gld_efficiency ./sumMatrix 32 16
+sumMatrixOnGPU2D <<<(512,1024), (32,16)>>> Global Memory Load Efficiency 100.00%
+$ nvprof --metrics gld_efficiency ./sumMatrix 16 32
+sumMatrixOnGPU2D <<<(1024,512), (16,32)>>> Global Memory Load Efficiency 49.96%
+$ nvprof --metrics gld_efficiency ./sumMatrix 16 16
+sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Global Memory Load Efficiency 49.80%
+```
+- The load efficiency for the last two cases was half that of the first two cases. 
+  - This would explain why the higher load throughput and achieved occupancy 
+    of the last two cases did not yield improved performance. 
+  - Even though the number of loads being performed is greater for the last two cases, 
+    the effectiveness of those loads is lower.
+- Note that the common feature for the last two cases is that their block size 
+  in the innermost dimension is half of a warp. 
+  - **The innermost dimension (`blockDim.x`) should always be a multiple of the warp size**. 
+
+### 🎯 AVOIDING BRANCH DIVERGENCE
+
+
 
 
 
