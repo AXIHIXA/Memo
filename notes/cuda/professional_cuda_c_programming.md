@@ -954,6 +954,180 @@ switch (blocksize)
       dynamically and adapting in response to data-driven decisions or workloads
   - Reduce the need to transfer execution control and data between the host and device
 
+#### 📌 Nested Execution
+
+- The same kernel invocation syntax is used to launch a new kernel within a kernel
+- Kernel executions are classified into two types
+  - Parent
+    - A *parent thread*, *parent thread block*, or *parent grid* has launched a new grid, the child grid. 
+    - A parent is **not** considered complete until all of its child grids have completed.
+  - Child
+    - A *child thread*, *child thread block*, or *child grid* has been launched by a parent. 
+    - A child grid must complete before the parent thread, parent thread block, or parent grids are considered complete. 
+- Runtime guarantees an implicit synchronization between the parent and the child. 
+- Grid launches in a device thread are visible across a thread block. 
+  - A thread may synchronize on the child grids launched by that thread or by other threads in the same thread block.
+  - Execution of a thread block is **not** considered complete until 
+    all child grids created by all threads in the block have completed. 
+  - If all threads in a block exit before all child grids have completed, 
+    implicit synchronization on those child grids is triggered.
+- When a parent launches a child grid, the child is **not** guaranteed to begin execution 
+  until the parent thread block explicitly synchronizes on the child.
+- Memory
+  - Parent and child grids share the same global and constant memory storage
+  - Parent and child grids have distinct local and shared memory
+    - Shared and local memory are private to a thread block or thread
+      - **not** visible or coherent between parent and child. 
+    - Local memory is private storage for a thread
+      - **not** visible outside of that thread. 
+    - It is **invalid** to ~~pass a pointer to local memory as an argument when launching a child grid~~.
+  - Parent and child grids have concurrent access to global memory
+    - with weak consistency guarantees between child and parent. 
+      - There are two points in the execution of a child grid 
+        when its view of memory is fully consistent with the parent thread: 
+        - at the start of a child grid,
+        - when the child grid completes.
+    - All global memory operations in the parent thread prior to a child grid invocation
+      are guaranteed to be visible to the child grid.
+    - All memory operations of the child grid are guaranteed to be visible to the parent 
+      after the parent has synchronized on the child grid’s completion.
+
+#### 📌 Nested Hello World on the GPU
+
+```c++
+__global__ void nestedHelloWorld(int const iSize, int iDepth) 
+{
+    int tid = threadIdx.x;
+    printf("Recursion=%d: Hello World from thread %d block %d\n", iDepth, tid, blockIdx.x);
+    // condition to stop recursive execution
+    if (iSize == 1) return;
+    // reduce block size to half
+    int nthreads = iSize >> 1;
+    // thread 0 launches child grid recursively
+    if (tid == 0 && nthreads > 0) 
+    {
+        nestedHelloWorld<<<1, nthreads>>>(nthreads, ++iDepth);
+        printf("-------> nested execution depth: %d\n", iDepth);
+    }
+}
+```
+- Restrictions on Dynamic Parallelism
+  - Only supported by devices of compute capability 3.5+
+  - Kernels invoked through dynamic parallelism can **not** be launched on physically separate devices. 
+    - However, it is permitted to query properties for any CUDA capable device in the system.
+  - The maximum nesting depth of dynamic parallelism is limited to 24
+    - in reality most kernels will be limited by the amount of memory
+      required by the device runtime system at each new level, 
+      as the device runtime reserves additional memory for synchronization management
+      between every parent and child grid at each nested level.
+
+#### 📌 Nested (Recursive) Reduction
+
+- Vanilla version
+  - 2,048 blocks initially 
+  - Each block performs 8 recursions, 16,384 child blocks were created
+    - intra-block synchronization with `__syncthreads` was also invoked 16,384 times 
+  - poor kernel performance
+```c++
+__global__ void gpuRecursiveReduce(int * g_idata, int * g_odata, unsigned int isize) 
+{
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+    // convert global data pointer to the local pointer of this block
+    int * idata = g_idata + blockIdx.x * blockDim.x;
+    int * odata = &g_odata[blockIdx.x];
+
+    // stop condition
+    if (isize == 2 && tid == 0) 
+    {
+        g_odata[blockIdx.x] = idata[0] + idata[1];
+        return;
+    }
+
+    // nested invocation
+    int istride = isize >> 1;
+
+    if (istride > 1 && tid < istride) 
+    {
+        // in place reduction
+        idata[tid] += idata[tid + istride];
+    }
+    // sync at block level
+    __syncthreads();
+
+    // nested invocation to generate child grids
+    if (tid == 0) 
+    {
+        gpuRecursiveReduce<<<1, istride>>>(idata, odata, istride);
+        // sync all child grids launched in this block
+        cudaDeviceSynchronize();
+    }
+    // sync at block level again
+    __syncthreads();
+}
+```
+- No Sync Version
+  - When a child grid is invoked, its view of memory is fully consistent with the parent thread
+  - Each child thread only needs its parent’s values to conduct the partial reduction
+  - the in-block synchronization performed before the child grids are launched is unnecessary
+  - Still poor performance
+    - Each block generates a child grid, resulting in a huge number of invocations
+```c++
+__global__ void gpuRecursiveReduceNosync(int * g_idata, int * g_odata, unsigned int isize) 
+{
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+    // convert global data pointer to the local pointer of this block
+    int * idata = g_idata + blockIdx.x * blockDim.x;
+    int * odata = &g_odata[blockIdx.x];
+
+    // stop condition
+    if (isize == 2 && tid == 0) 
+    {
+        g_odata[blockIdx.x] = idata[0] + idata[1];
+        return;
+    }
+
+    // nested invoke
+    int istride = isize >> 1;
+
+    if (istride > 1 && tid < istride) 
+    {
+        idata[tid] += idata[tid + istride];
+
+        if (tid == 0) 
+        {
+            gpuRecursiveReduceNosync<<<1, istride>>>(idata, odata, istride);
+        }
+    }
+}
+```
+- Version 2
+  - The first thread in the first block of a grid invokes the child grids for each nested step
+```c++
+__global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, int const iDim) 
+{
+    // convert global data pointer to the local pointer of this block
+    int * idata = g_idata + blockIdx.x * iDim;
+    // stop condition
+    if (iStride == 1 && threadIdx.x == 0) 
+    {
+        g_odata[blockIdx.x] = idata[0] + idata[1];
+        return;
+    }
+
+    // in place reduction
+    idata[threadIdx.x] += idata[threadIdx.x + iStride];
+    // nested invocation to generate child grids
+    if (threadIdx.x == 0 && blockIdx.x == 0) 
+    {
+        gpuRecursiveReduce2<<<gridDim.x, iStride / 2>>>(g_idata, g_odata, iStride / 2, iDim);
+    }
+}
+```
+
+
+
 
 
 ## 🌱 
