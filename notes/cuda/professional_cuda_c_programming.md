@@ -652,7 +652,307 @@ __global__ void reduceInterleaved(int * g_idata, int * g_odata, unsigned int n)
 
 ### 🎯 UNROLLING LOOPS
 
+- *Loop unrolling* 
+  - A technique that attempts to reduce the frequency of branches and loop maintenance instructions. 
+    - Rather than writing the body of a loop once and using a loop to execute it repeatedly, 
+      the body is written in code multiple times. 
+    - Any enclosing loop then either has its iterations reduced or is removed entirely. 
+  - The number of copies made of the loop body is called the *loop unrolling factor*. 
+    - The number of iterations in the enclosing loop is divided by the loop unrolling factor. 
+```c++
+// vanilla
+for (int i = 0; i < 100; ++i) 
+{
+    a[i] = b[i] + c[i];
+}
 
+// unrolled
+// condition 1 < 100 checked only 50 times (compared to vanilla's 100)
+for (int i = 0; i < 100; i += 2) 
+{
+    // better utilizes space coherence
+    a[i] = b[i] + c[i];
+    a[i + 1] = b[i + 1] + c[i + 1];
+}
+```
+
+#### 📌 Reduction with Unrolling
+
+- Each thread block in the `reduceInterleaved` kernel handles just one portion of the data
+  - Manually unrolled the processing of two data blocks by a single thread block
+  - For each thread block, data from two data blocks is summed. 
+  - This is an example of cyclic partitioning
+    - Each thread works on more than one data block and processes a single element from each data block.
+```c++
+__global__ void reduceUnrolling2(int * g_idata, int * g_odata, unsigned int n) 
+{
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x * 2 + threadIdx.x;
+    // convert global data pointer to the local pointer of this block
+    int * idata = g_idata + blockIdx.x * blockDim.x * 2;
+
+    // unrolling 2 data blocks
+    if (idx + blockDim.x < n)
+    {
+        g_idata[idx] += g_idata[idx + blockDim.x];
+        __syncthreads();
+    }
+
+    // in-place reduction in global memory
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) 
+    {
+        if (tid < stride) 
+        {
+            idata[tid] += idata[tid + stride];
+        }
+
+        // synchronize within thread block
+        __syncthreads();
+    }
+
+    // write result for this block to global mem
+    if (tid == 0)
+    {
+        g_odata[blockIdx.x] = idata[0];
+    }
+}
+```
+
+#### 📌 Reduction with Unrolled Warps
+
+- `__syncthreads` is used for intra-block synchronization
+  - When there are 32 or fewer threads (i.e., a single warp) left. 
+  - SIMT means implicit intra-warp synchronization after each instruction.
+  - The last 6 iterations of the reduction loop can therefore be unrolled as follows
+  ```c++
+  if (tid < 32) 
+  {
+      volatile int * vmem = idata;
+      vmem[tid] += vmem[tid + 32];
+      vmem[tid] += vmem[tid + 16];
+      vmem[tid] += vmem[tid + 8];
+      vmem[tid] += vmem[tid + 4];
+      vmem[tid] += vmem[tid + 2];
+      vmem[tid] += vmem[tid + 1];
+  }
+  ```
+  - This warp unrolling avoids executing loop control and thread synchronization logic.
+  - Note that the variable vmem is declared `volatile`
+    - Tells the compiler that it must store `vmem[tid]` back to global memory with every assignment. 
+    - If `volatile` is omitted, this code will **not** work correctly
+      - because the compiler or cache may optimize out some reads or writes to global or shared memory. 
+    - If a variable located in global or shared memory is declared `volatile` 
+      - the compiler assumes that its value can be changed or used at any time by other threads. 
+      - Any reference to `volatile` variables forces a read or write directly to memory 
+        - and **not** simply to cache or a register
+```c++
+__global__ void reduceUnrollWarps8(int * g_idata, int * g_odata, unsigned int n) 
+{
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x * 8 + threadIdx.x;
+    // convert global data pointer to the local pointer of this block
+    int * idata = g_idata + blockIdx.x * blockDim.x * 8;
+
+    // unrolling 8
+    if (idx + 7 * blockDim.x < n) 
+    {
+        int a1 = g_idata[idx];
+        int a2 = g_idata[idx + blockDim.x];
+        int a3 = g_idata[idx + 2 * blockDim.x];
+        int a4 = g_idata[idx + 3 * blockDim.x];
+        int b1 = g_idata[idx + 4 * blockDim.x];
+        int b2 = g_idata[idx + 5 * blockDim.x];
+        int b3 = g_idata[idx + 6 * blockDim.x];
+        int b4 = g_idata[idx + 7 * blockDim.x];
+        g_idata[idx] = a1 + a2 + a3 + a4 + b1 + b2 + b3 + b4;
+    }
+
+    __syncthreads();
+
+    // in-place reduction in global memory
+    for (int stride = blockDim.x / 2; stride > 32; stride >>= 1) 
+    {
+        if (tid < stride) 
+        {
+            idata[tid] += idata[tid + stride];
+        }
+
+        // synchronize within threadblock
+        __syncthreads();
+    }
+
+    // unrolling warp
+    if (tid < 32) 
+    {
+        volatile int * vmem = idata;
+        vmem[tid] += vmem[tid + 32];
+        vmem[tid] += vmem[tid + 16];
+        vmem[tid] += vmem[tid + 8];
+        vmem[tid] += vmem[tid + 4];
+        vmem[tid] += vmem[tid + 2];
+        vmem[tid] += vmem[tid + 1];
+    }
+
+    // write result for this block to global mem
+    if (tid == 0)
+    {
+        g_odata[blockIdx.x] = idata[0];
+    }
+}
+```
+
+#### 📌 Reduction with Complete Unrolling
+
+- If you know the number of iterations in a loop at compile-time, you can completely unroll it
+  - The maximum number of threads per block on either Fermi or Kepler is limited to 1024
+  - the loop iteration count in these reduction kernels is based on a thread block dimension
+```c++
+__global__ void reduceCompleteUnrollWarps8(int * g_idata, int * g_odata, unsigned int n) {
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x * 8 + threadIdx.x;
+    // convert global data pointer to the local pointer of this block
+    int * idata = g_idata + blockIdx.x * blockDim.x * 8;
+
+    // unrolling 8
+    if (idx + 7 * blockDim.x < n) 
+    {
+        int a1 = g_idata[idx];
+        int a2 = g_idata[idx + blockDim.x];
+        int a3 = g_idata[idx + 2 * blockDim.x];
+        int a4 = g_idata[idx + 3 * blockDim.x];
+        int b1 = g_idata[idx + 4 * blockDim.x];
+        int b2 = g_idata[idx + 5 * blockDim.x];
+        int b3 = g_idata[idx + 6 * blockDim.x];
+        int b4 = g_idata[idx + 7 * blockDim.x];
+        g_idata[idx] = a1 + a2 + a3 + a4 + b1 + b2 + b3 + b4;
+    }
+
+    __syncthreads();
+
+    // in-place reduction and complete unroll
+    if (blockDim.x >= 1024 && tid < 512) idata[tid] += idata[tid + 512];
+    __syncthreads();
+
+    if (blockDim.x >= 512 && tid < 256) idata[tid] += idata[tid + 256];
+    __syncthreads();
+
+    if (blockDim.x >= 256 && tid < 128) idata[tid] += idata[tid + 128];
+    __syncthreads();
+
+    if (blockDim.x >= 128 && tid < 64) idata[tid] += idata[tid + 64];
+    __syncthreads();
+
+    // unrolling warp
+    if (tid < 32) 
+    {
+        volatile int *vsmem = idata;
+        vsmem[tid] += vsmem[tid + 32];
+        vsmem[tid] += vsmem[tid + 16];
+        vsmem[tid] += vsmem[tid + 8];
+        vsmem[tid] += vsmem[tid + 4];
+        vsmem[tid] += vsmem[tid + 2];
+        vsmem[tid] += vsmem[tid + 1];
+    }
+
+    // write result for this block to global mem
+    if (tid == 0) g_odata[blockIdx.x] = idata[0];
+}
+```
+
+#### 📌 Reduction with Template Functions
+
+- Further reduce branch overhead with templates
+  - Compared with `reduceCompleteUnrollWarps8`: Replace block size with template parameter `iBlockSize`
+  - The if statements that check the block size will be evaluated at compile time and removed 
+    if the condition is not true, resulting in a very effi cient inner loop (like C++'s constexpr if).
+```c++
+template <unsigned int iBlockSize>
+__global__ void reduceCompleteUnroll(int * g_idata, int * g_odata, unsigned int n) 
+{
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x * 8 + threadIdx.x;
+    // convert global data pointer to the local pointer of this block
+    int *idata = g_idata + blockIdx.x * blockDim.x * 8;
+
+    // unrolling 8
+    if (idx + 7 * blockDim.x < n) 
+    {
+        int a1 = g_idata[idx];
+        int a2 = g_idata[idx + blockDim.x];
+        int a3 = g_idata[idx + 2 * blockDim.x];
+        int a4 = g_idata[idx + 3 * blockDim.x];
+        int b1 = g_idata[idx + 4 * blockDim.x];
+        int b2 = g_idata[idx + 5 * blockDim.x];
+        int b3 = g_idata[idx + 6 * blockDim.x];
+        int b4 = g_idata[idx + 7 * blockDim.x];
+        g_idata[idx] = a1 + a2 + a3 + a4 + b1 + b2 + b3 + b4;
+    }
+
+    __syncthreads();
+
+    // in-place reduction and complete unroll
+    if (iBlockSize >= 1024 && tid < 512) idata[tid] += idata[tid + 512];
+    __syncthreads();
+
+    if (iBlockSize >= 512 && tid < 256) idata[tid] += idata[tid + 256];
+    __syncthreads();
+
+    if (iBlockSize >= 256 && tid < 128) idata[tid] += idata[tid + 128];
+    __syncthreads();
+
+    if (iBlockSize >= 128 && tid < 64) idata[tid] += idata[tid + 64];
+    __syncthreads();
+
+    // unrolling warp
+    if (tid < 32) 
+    {
+        volatile int *vsmem = idata;
+        vsmem[tid] += vsmem[tid + 32];
+        vsmem[tid] += vsmem[tid + 16];
+        vsmem[tid] += vsmem[tid + 8];
+        vsmem[tid] += vsmem[tid + 4];
+        vsmem[tid] += vsmem[tid + 2];
+        vsmem[tid] += vsmem[tid + 1];
+    }
+
+    // write result for this block to global mem
+    if (tid == 0) g_odata[blockIdx.x] = idata[0];
+}
+```
+```c++
+switch (blocksize) 
+{
+    case 1024:
+        reduceCompleteUnroll<1024><<<grid.x/8, block>>>(d_idata, d_odata, size);
+        break;
+    case 512:
+        reduceCompleteUnroll<512><<<grid.x/8, block>>>(d_idata, d_odata, size);
+        break;
+    case 256:
+        reduceCompleteUnroll<256><<<grid.x/8, block>>>(d_idata, d_odata, size);
+        break;
+    case 128:
+        reduceCompleteUnroll<128><<<grid.x/8, block>>>(d_idata, d_odata, size);
+        break;
+    case 64:
+        reduceCompleteUnroll<64><<<grid.x/8, block>>>(d_idata, d_odata, size);
+        break;
+}
+```
+
+### 🎯 DYNAMIC PARALLELISM
+
+- So far, all kernels have been invoked from the host thread
+- CUDA *Dynamic Parallelism *allows new GPU kernels to be created and synchronized directly on the GPU
+  - Make recursive algorithms more transparent and easier to understand
+  - Postpone the decision of exactly how many blocks and grids to create on a GPU until runtime
+    - Taking advantage of the GPU hardware schedulers and load balancers
+      dynamically and adapting in response to data-driven decisions or workloads
+  - Reduce the need to transfer execution control and data between the host and device
 
 
 
