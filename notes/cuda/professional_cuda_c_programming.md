@@ -546,6 +546,111 @@ sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Global Memory Load Efficiency 49.80%
 
 ### 🎯 AVOIDING BRANCH DIVERGENCE
 
+- Reduce or avoid branch divergence by rearranging data access patterns
+- Practice with a parallel reduction example: E.g., sum an array via airwise parallel sum 
+  - A thread sums a pair (containing two elements) and store partial results in-place as input to another iteration
+  - Implementations
+    - **Neighbored pair**
+      - Elements are paired with the immediate neighbor
+    - **Interleaved pair** 
+      - Paired elements are separated by a given stride
+      ```c++
+      int recursiveReduce(int * data, int size)
+      {
+          // terminate check
+          if (size == 1)
+          {
+              return data[0];
+          }
+          // renew the stride
+          const int stride = size / 2;
+          // in-place reduction
+          for (int i = 0; i != stride; ++i)
+          {
+              // reduction
+              data[i] += data[i + stride];
+          }
+          // call recursively
+          return recursiveReduce(data, stride);
+      }
+      ``` 
+
+#### 📌 Reduction with Neighbored Pairs
+
+```c++
+__global__ void reduceNeighboredLess(int * g_idata, int * g_odata, unsigned int n) 
+{
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    // convert global data pointer to the local pointer of this block
+    int * idata = g_idata + blockIdx.x * blockDim.x;
+    // boundary check
+    if (n <= idx) 
+    {
+        return;
+    }
+
+    // in-place reduction in global memory
+    for (int stride = 1; stride < blockDim.x; stride *= 2) 
+    {
+        // convert tid into local array index
+        int index = 2 * stride * tid;
+
+        if (index < blockDim.x) 
+        {
+            idata[index] += idata[index + stride];
+        }
+
+        // synchronize within threadblock
+        __syncthreads();
+    }
+
+    // write result for this block to global mem
+    if (tid == 0)
+    {
+        g_odata[blockIdx.x] = idata[0];
+    }
+}
+```
+
+#### 📌 Reduction with Interleaved Pairs
+
+```c++
+// Interleaved Pair Implementation with less divergence
+__global__ void reduceInterleaved(int * g_idata, int * g_odata, unsigned int n) 
+{
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    // convert global data pointer to the local pointer of this block
+    int * idata = g_idata + blockIdx.x * blockDim.x;
+    // boundary check
+    if (n <= idx) 
+    {
+        return;
+    }
+
+    // in-place reduction in global memory
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) 
+    {
+        if (tid < stride) 
+        {
+            idata[tid] += idata[tid + stride];
+        }
+
+        __syncthreads();
+    }
+
+    // write result for this block to global mem
+    if (tid == 0)
+    {
+        g_odata[blockIdx.x] = idata[0];
+    }
+}
+```
+
+### 🎯 UNROLLING LOOPS
 
 
 
