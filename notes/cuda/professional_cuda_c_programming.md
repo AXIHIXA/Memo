@@ -1210,7 +1210,180 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
         // Your kernel body
     }
     ```
-  - 
+    - You can also control the maximum number of registers used by all kernels in a compilation unit
+      using the `maxrregcount` compiler option, e.g., `-maxregcount=32`
+      - `maxregcount` is ignored for any kernels with launch bounds. 
+- **Local Memory**
+  - Variables in a kernel that are eligible for registers but spilled into local memory, e.g.,
+      - Local arrays references with non-compiler-constant indices
+      - Large local structures or arrays that would consume too much register space
+      - Any variable that does not fit within the kernel register limit
+  - *local* is misleading 
+    - Values spilled to local memory reside in the same physical location as global memory
+    - Local memory accesses are characterized by high latency and low bandwidth 
+    - Local memory accesses are subject to the requirements for efficient memory access
+      - To be detailed in the section Memory Access Patterns found later in this chapter. 
+    - Local memory data is also cached in a per-SM L1 and per-device L2 cache.
+- *Shared Memory*
+  - Variables decorated with `__shared__` attribute in a kernel
+  - Shared memory is on-chip
+    - Higher bandwidth and lower latency (compared with local/global memory)
+    - Used similarly to CPU L1 cache (but programmable)
+  - Each SM has a limited amount of shared memory partitioned among thread blocks
+    - **Don't** overuse or will limit the number of active warps
+  - Lifetime: Same as thread block
+    - Even though declared in the scope of a kernel function
+  - Serves as a basic means for inter-thread communication
+    - Threads within a block can cooperate by sharing data stored in shared memory
+    - Access to shared memory must be synchronized using `__syncthread()`;
+  - L1 cache and shared memory for an SM use the same 64KB of on-chip memory
+    - Statically partitioned
+    - Can be dynamically configured at runtime
+    ```c++
+    /// Configures the partitioning of on-chip memory for kernel function func
+    /// @param func        The kernel function to configure
+    /// @param cacheConfig Takes one of the following values
+    ///                    - cudaFuncCachePreferNone:   no preference (default)
+    ///                    - cudaFuncCachePreferShared: prefer 48KB shared memory and 16KB L1 cache
+    ///                    - cudaFuncCachePreferL1:     prefer 48KB L1 cache and 16KB shared memory
+    ///                    - cuadFuncCachePreferEqual:  prefer 32KB L1 cache and 32KB shared memory
+    cudaError_t cudaFuncSetCacheConfig(const void * func, enum cudaFuncCache cacheConfig);
+    ```
+- **Constant Memory**
+  - Variables decorated with `__constant__` attribute in global scope
+    - Must in global scope, outside of any kernels
+    - Statically declared and visible to all kernels in the same compilation unit
+    - Read-only to kernels
+      - Hence must be initialized by the host using
+      ```c++
+      /// Copies count bytes from the memory pointed to by src to the memory pointed to by symbol. 
+      /// This function is synchronous in most cases. 
+      /// @param symbol A variable that resides on the device in global or constant memory. 
+      /// @param src    ...
+      /// @param count  ...
+      cudaError_t cudaMemcpyToSymbol(const void * symbol, const void * src, size_t count);
+      ```
+  - Resides in device memory and cached in per-SM constant cache
+    - Limited amount: 64KB for all compute capabilities
+  - Performs best when all threads in a warp read from the same memory address
+    - E.g., Coefficient for a math formula
+    - If each thread in a warp reads from different addresses and only reads once, 
+      then constant memory is **not** a good choice
+      - A single read from constant memory broadcasts to all threads in a warp
+- **Texture Memory**
+  - Resides in device memory and cached in per-SM read-only cache
+    - Global memory
+    - Accessed through a dedicated read-only cache. 
+      - includes support for hardware filtering
+      - can perform floating-point interpolation as part of the read process
+  - Optimized for 2D spatial locality
+    - Threads in a warp that use texture memory to access 2D data will achieve the best performance. 
+    - For some applications, provides performance advantages due to the cache and the filtering hardware.
+    - For other applications using texture memory can be slower than global memory.
+- **Global Memory**
+  - Global w.r.t. scope and lifetime 
+    - Its state can be accessed on the device from any SM throughout the lifetime of the application.
+  - Can be declared either statically or dynamically
+    - Static: in device code with qualifier `__device__`
+    - Dynamic: by host using `cudaMalloc` and `cudaFree`
+  - Take care when accessing global memory from multiple threads. 
+    - Thread execution can **not** be synchronized across thread blocks
+    - Potential hazard of data race (*undefined behavior*)
+  - Resides in device memory
+    - Accessible via 32-Byte, 64-Byte, or 128-Byte memory transactions
+    - These transactions must be naturally aligned
+      - The first address must be a multiple of 32 Bytes, 64 Bytes, or 128 Bytes
+  - Number of transactions required to satisfy a warp memory request (load/store operation)
+    - Depends on two factors
+      - Distribution of memory addresses across the threads of that warp
+      - Alignment of memory addresses per transaction
+- **GPU Caches**
+  - Non-programmable memory (like CPU caches)
+  - Four types of cache
+    - L1
+      - One per SM
+      - Stores data in local and global memory (including register spills)
+    - L2
+      - One shared by all SMs
+      - Stores data in local and global memory (including register spills)
+    - Read-only constant
+      - One per SM
+    - Read-only texture
+      - One per SM
+  - Only memory load operations can be cached
+    - On CPU, both store and load can be cached
+- **Static Global Memory**
+  - Sample
+  ```c++
+  #include <iostream>
+  #include <cuda_runtime.h>
+
+  __device__ float devData;
+
+  __global__ void checkGlobalVariable()
+  {
+      // display the original value
+      printf("Device: the value of the global variable is %f\n", devData);
+      // alter the value
+      devData += 2.0f;
+  }
+
+  int main()
+  {
+      // initialize the global variable
+      float value = 3.14f;
+      cudaMemcpyToSymbol(devData, &value, sizeof(float));
+      printf("Host: copied %f to the global variable\n", value);
+      // invoke the kernel
+      checkGlobalVariable<<<1, 1>>>();
+      // copy the global variable back to the host
+      cudaMemcpyFromSymbol(&value, devData, sizeof(float));
+      printf("Host: the value changed by the kernel to %f\n", value);
+      cudaDeviceReset();
+      return EXIT_SUCCESS;
+  }
+  ```
+  - Even though the host and device code are stored in the same file, 
+    they exist in completely different worlds. 
+  - The host code can **not** directly access a device variable 
+    even if it is visible in the same file scope. 
+  - Similarly, device code can **not** directly access a host variable either.
+  - Notes
+    - `cudaMemcpyToSymbol` is in the CUDA runtime API 
+      and uses GPU hardware behind the scenes to perform the access.
+      - The variable `devData` is passed here as a *symbol*, 
+        **not** as the address of the variable in device global memory.
+      - In the kernel, `devData` is used as a variable in global memory. 
+    - `cudaMemcpy` can **not** be used to transfer data into `devData` using the address of the variable:
+    ```c++
+    cudaMemcpy(&devData, &value, sizeof(float),cudaMemcpyHostToDevice);
+    ```
+    - You can **not** use the reference operator `&` on a device variable from the host, 
+      because it is simply a symbol representing the physical location on the GPU. 
+      - However, you can acquire the address of a global variable
+        by explicitly making a call using the following CUDA API:
+      ```c++
+      /// Fetches the physical address of the global memory associated with the provided device symbol
+      cudaError_t cudaGetSymbolAddress(void ** devPtr, const void * symbol);
+      ```
+      ```c++
+      float * dptr = nullptr;
+      cudaGetSymbolAddress(reintrepret_cast<void **>(&dptr), devData);
+      cudaMemcpy(dptr, &value, sizeof(float), cudaMemcpyHostToDevice);
+      ```
+    - CUDA pinned memory
+      - A single exception to being able to directly reference GPU memory from the host
+      - Both host code and device code can access pinned memory directly by simply dereferencing a pointer. 
+      - Detailed in the next section
+
+### 🎯 MEMORY MANAGEMENT
+
+#### 📌 
+
+
+
+
+
 
 
 
