@@ -1378,10 +1378,31 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
 
 ### 🎯 MEMORY MANAGEMENT
 
-#### 📌 
+#### 📌 Memory Allocation and Deallocation
 
+- `cudaError_t cudaMalloc(void ** devPtr, size_t count);`
+  - Allocates `count` bytes of global memory on the device. 
+    - The allocated memory is suitably aligned for any variable type. 
+  - Outputs the location of that memory in pointer `devPtr`. 
+  - Returns `cudaErrorMemoryAllocation` in the case of failure. 
+  - The values contained in the allocated global memory are **not** cleared. 
+    - It is your responsibility to either fill the allocated global memory 
+      - with data transferred from the host, 
+      - or initialize it with the following function:
+- `cudaError_t cudaMemset(void * devPtr, int value, size_t count);`
+  - Fills each of the count bytes starting at the device memory address `devPtr` 
+    with the value stored in the variable `value`.
+- `cudaError_t cudaFree(void * devPtr);`
+  - Frees the global memory pointed to by `devPtr`
+    - `devPtr` must have been previously allocated using a device allocation function (such as `cudaMalloc`). 
+    - Otherwise, it returns an error `cudaErrorInvalidDevicePointer`. 
+  - Also returns an error if the address has already been freed.
+- Device memory allocation and deallocation are expensive operations 
+  - Device memory should be reused by applications whenever possible to minimize the impact on overall performance.
 
+#### 📌 Memory Transfer
 
+#### 📌 Pinned Memory
 
 
 
