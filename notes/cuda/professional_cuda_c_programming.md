@@ -1402,11 +1402,170 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
 
 #### 📌 Memory Transfer
 
+- Data transfer between host and device can throttle overall application
+  - Minimize host-device transfers!
+```c++
+/// Copies count Bytes from memory location src to memory location dst. 
+/// Undefined behavior if pointers dst and src do not match the direction of the copy specified by kind. 
+/// @param dst   ...
+/// @param src   ...
+/// @param count ...
+/// @param kind  Takes one of the following types:
+///              - cudaMemcpyHostToHost
+///              - cudaMemcpyHostToDevice
+///              - cudaMemcpyDeviceToHost
+///              - cudaMemcpyDeviceToDevice
+__host__ cudaError_t cudaMemcpy(void * dst, void * src, size_t count, cudaMemcpyKind kind);
+```
+
 #### 📌 Pinned Memory
 
+- Allocated host memory is by default *pageable*
+  - Subject to page fault operations by host OS
+- GPU can **not** access data in pageable host memory
+  - GPU has **no** control over OS page fault mechnism
+- *Page-locked memory* or *Pinned* host memory
+  - Allocated by CUDA driver temporarily when transferring pageable data from host to device
+  - First copy source host data to pinned memory
+  - Then transfer from pinned memory to device memory
+- `cudaError_t cudaMallocHost(void **devPtr, size_t count);`
+  - Allocates `count` Bytes of page-locked (pinned) host memory that is accessible to device
+  - Pinned memoty must be freed with `cudaError_t cudaFreeHost(void * ptr);`
+```c++
+if (cudaMallocHost(reinterpret_cast<void **>(&h_aPinned), bytes) != cudaSuccess)
+{
+    fprintf(stderr, "Error returned from pinned host memory allocation\n");
+    exit(1);
+}
+// do something...
+cudaFreeHost(h_aPinned);
+```
+- Pinned memory can be accessed directly from device
+  - Higher bandwidth for read/write operations than pageable memory
+  - More expensive to allocate and deallocate than pageable memory
+  - Using too much pinned memory would occupy the amount of pageable memory available to the host 
+    - Hinders host from sotring virtual memory data
+    - Downgrades performance
 
+#### 📌 Zero-Copy Memory
 
+- *Zero-copy memory*
+  - Both host and device can directly access zero-copy memory
+    - Pinned (non-pageable, page-locked) memory that is mapped into the device address space
+  - GPU threads can directly access zero-copy memory
+    - Leveraging host memory when there is insufficient device memory
+    - Avoiding explicit data transfer between the host and device
+    - Improving PCIe transfer rates
+  - Must synchronize memory accesses across the host and the deive
+    - Potential data hazards caused by multiple threads accessing the same memory location without synchronization. 
+    - Undefined behavior when data race happens
+  - Create zero-copy memory via
+  ```c++
+  /// Allocates count bytes of host memory that is page-locked and accessible to the device.
+  /// Memory allocated by this function must be freed with cudaFreeHost. 
+  /// The flags parameter enables further configuration of special properties of the allocated memory. 
+  /// @param flags Takes one of the following four values:
+  ///              - cudaHostAllocDefault:       Makes behavior of cudaHostAlloc identical to cudaMallocHost;
+  ///              - cudaHostAllocPortable:      Returns pinned memory that can be used by all CUDA contexts, 
+  ///                                            not just the one that performed the action;
+  ///              - cudaHostAllocWriteCombined: Returns write-combined memory, 
+  ///                                            which can be transferred across the PICe bus 
+  ///                                            more quickly on some systems 
+  ///                                            but can not be read efficiently by most hosts. 
+  ///                                            A good choice for buffers that will be 
+  ///                                            written by the host and read by the device 
+  ///                                            using mapped pinned memory or host-to-device transfers;
+  ///              - cudaHostAllocMapped:        Returns host memory that is mapped into the device address space. 
+  cudaError_t cudaHostAlloc(void ** pHost, size_t count, unsigned int flags);
+  ```
+  - Obtain device pointer for the mapped pinned memory via
+  ```c++
+  /// Returns a device pointer in pDevice 
+  /// that can be referenced on the device to access mapped, pinned host memory. 
+  /// This function will fail if the device does not support mapped, pinned memory. 
+  /// @param flag Reserved for future use, must be set to zero.
+  cudaError_t cudaHostGetDevicePointer(void ** pDevice, void * pHost, unsigned int flags);
+  ```
+  - Using zero-copy memory as a supplement to device memory with frequent read/write operations 
+    will significantly slow performance
+    - Every memory transaction to mapped memory must pass over the PCIe bus, 
+    - A significant amount of latency is added even when compared to global memory.
+  - A good choice for sharing a small amount of data between the host and device
+    - Simplifies programming and offers reasonable performance. 
+  - For larger datasets with discrete GPUs connected via the PCIe bus, 
+    zero-copy memory is a **poor** choice and causes significant performance degradation.
+  - P.S. 
+    - Two common categories of heterogeneous computing system architectures:
+      - Integrated
+        - CPUs and GPUs are fused onto a single die and physically share main memory. 
+        - Zero-copy memory is more likely to benefit both performance and programmability 
+          - because no copies over the PCIe bus are necessary.
+      - Discrete
+        - Devices connected to the host via PCIe bus
+        - Zero-copy memory is advantageous only in special cases. 
 
+#### 📌 Unified Virtual Addressing
+
+- *Unified Virtual Addressing* (UVA)
+  - Supported on 64-bit Linux systems
+  - Host memory and device memory share a single virtual address space
+    - The memory space referenced by a pointer becomes transparent to application code!
+  - Prior to UVA: Multiple memory spaces
+    - You need to manage which pointers refereed to host memory and which referred to device memory
+- Under UVA
+  - Pinned host memory allocated with `cudaHostAlloc` has identical host and device pointers
+  - You can pass the returned pointer directly to a kernel function 
+    - **without** ~~the need of calling `cudaHostGetDevicePointer` to get another device pointer~~
+
+#### 📌 Unified Memory
+
+- *Unified Memory*
+  - Creates a pool of managed memory,
+    where each allocation from this memory pool is accessible on both the CPU and GPU 
+    with the same memory address (pointer)
+  - The underlying system automatically migrates data in the unified memory space between the host and device
+    - This data movement is transparent to the application, greatly simplifying the application code
+  - Depends on UVA support
+    - UVA provides a single virtual memory address space for all processors in the system. 
+    - UVA does **not** automatically migrate data from one physical location to another
+      - unique to Unified Memory.
+- Unified Memory offers a *single-pointer-to-data* model 
+  - is conceptually similar to zero-copy memory. 
+    - zero-copy memory is allocated in host memory
+    - kernel performance generally suffers from high-latency accesses to zero-copy memory over the PCIe bus.
+  - Unified Memory decouples memory and execution spaces 
+    - so that data can be transparently migrated on demand to the host or device to improve locality and performance.
+- *Managed Memory*
+  - Unified Memory allocations that are automatically managed by the underlying system
+  - Is interoperable with device-specific allocations such as those created using the `cudaMalloc`.
+  - You can use both types of memory in a kernel: 
+    - managed memory that is controlled by the system
+    - un-managed memory that must be explicitly allocated and transferred by the application. 
+  - All CUDA operations that are valid on device memory are also valid on managed memory. 
+    - The primary difference is that the host is also able to reference and access managed memory.
+- Managed memory can be allocated statically or dynamically. 
+  - Statically: As device variable in global scope
+    - Add a `__managed__` annotation to device variable declaration. 
+    - This can only be done in file-scope and global-scope. 
+    - The variable can be referenced directly from either host or device code
+    ```c++
+    __device__ __managed__ int y;
+    ```
+  - Dynamically: In host code
+    - Device code can **not** call `cudaMallocManaged`
+  ```c++
+  /// Allocates size bytes of managed memory and returns a pointer in devPtr. 
+  /// The pointer is valid on all devices and the host. 
+  /// The behavior of a program with managed memory is functionally unchanged 
+  /// to its counterpart with un-managed memory. 
+  /// However, a program that uses managed memory can take advantage of 
+  /// automatic data migration and duplicate pointer elimination.
+  cudaError_t cudaMallocManaged(void ** devPtr, size_t size, unsigned int flags = 0);
+  ```
+
+### 🎯 MEMORY ACCESS PATTERNS
+
+#### 📌 Aligned and Coalesced Access
 
 
 
