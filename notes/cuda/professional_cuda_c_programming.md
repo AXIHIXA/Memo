@@ -508,7 +508,7 @@ sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Achieved Occupancy 0.810691
   - Therefore, a higher occupancy does **not** always equate to higher performance. 
   - There must be other factors that restrict performance.
 
-#### 📌 Checking Active Warps with `nvprof`
+#### 📌 Checking Memoty Options with `nvprof`
 
 - `C[idx] = A[idx] + B[idx]` has two loads and one store
 ```bash
@@ -542,7 +542,8 @@ sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Global Memory Load Efficiency 49.80%
     the effectiveness of those loads is lower.
 - Note that the common feature for the last two cases is that their block size 
   in the innermost dimension is half of a warp. 
-  - **The innermost dimension (`blockDim.x`) should always be a multiple of the warp size**. 
+  - **The innermost dimension (`blockDim.x`) should always be a multiple of the warp size**
+  - Because otherwise we will have poor global memory access patterns (detailed Chapter 4)
 
 ### 🎯 AVOIDING BRANCH DIVERGENCE
 
@@ -670,7 +671,7 @@ for (int i = 0; i < 100; ++i)
 // condition 1 < 100 checked only 50 times (compared to vanilla's 100)
 for (int i = 0; i < 100; i += 2) 
 {
-    // better utilizes space coherence
+    // better utilizes spatial locality
     a[i] = b[i] + c[i];
     a[i + 1] = b[i + 1] + c[i + 1];
 }
@@ -1125,6 +1126,92 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     }
 }
 ```
+
+
+
+## 🌱 4 Global Memory
+
+### 🎯 INTRODUCTION
+
+#### 📌 Memory Hierachy
+
+- *Principle of Locality*
+  - Temporal locality
+    - If a data location is referenced, 
+      then it is more likely to be referenced again within a short time period
+      and less likely to be referenced as more and more time passes
+  - Spatial locality
+    - If a memory location is referenced, 
+      nearby locations are likely to be referenced as well
+- *Memory Hierachy*: Speed fast to low, size small to large
+  - Registers
+  - Caches
+    - Lower-latency memory, such as CPU L1 cache
+    - Implemented using *SRAM* (Static Random Access Memory)
+  - Main Memory
+    - Both CPUs and GPUs use *DRAM* (Dynamic Random Access Memory)
+  - Disk Memory
+    - Implemented using magnetic disks, flash drives, etc. 
+    - Properties
+      - Lower cost per bit
+      - Higher capacity
+      - Higher latency
+      - Less frequently accessed by the processer
+
+#### 📌 CUDA Memory Model
+
+- Two types of memory
+  - Programmable memory
+    - You explicitly control what data is placed in programmable memory
+  - Non-programmable memory
+    - You have **no** control over data placement
+    - You rely on automatic techniques to achieve good performance
+    - E.g., CPU's L1/L2 cache
+- Programmable memories in the CUDA memory model
+  - Registers
+    - Private to a thread in a kernel
+    - Lifetime: same as the kernel
+  - Local memory
+    - Private to a thread in a kernel
+    - Lifetime: same as the kernel
+  - Shared memory
+    - Private to a thread block
+    - Visible to all threads in the same thread block
+    - Lifetime: same as the thread block
+  - Constant memory
+    - Read-only
+    - Accessible by all threads and the host
+    - Lifetime: same as the application
+  - Texture memory
+    - Read-only
+    - Accessible by all threads and the host
+    - Lifetime: same as the application
+  - Global memory
+    - Accessible by all threads and the host
+    - Lifetime: same as the application
+- **Registers**
+  - Fastest
+  - Automatic variables declared in a kernel **without** any other type qualifiers are generally stored in registers
+  - Arrays declared in a kernel may also be stored in registers
+    - Only if the indices used to reference the array are compile-time constants
+  - Check hardware resources used by a kernel by `nvcc` options `-Xptxas -v,-abi=no`
+  - If a kernel uses more registers than the hardware limit, the excess registers will spill over to local memory 
+    - Can have adverse performance consequences. 
+    - `nvcc` uses heuristics to minimize register usage and avoid register spilling
+    - You can optionally aid these heuristics in the form of *launch bounds*
+      - `maxThreadsPerBlock`: The maximum number of threads per block that a kernel will launch.
+      - `minBlocksPerMultiprocessor`: optional, the desired minimum number of resident blocks per SM. 
+      - Optimal launch bounds for a given kernel will usually differ across major architectural revisions.
+    ```c++
+    __global__ void
+    __launch_bounds__(maxThreadsPerBlock, minBlocksPerMultiProcessor)
+    kernel(...) 
+    {
+        // Your kernel body
+    }
+    ```
+  - 
+
 
 
 
