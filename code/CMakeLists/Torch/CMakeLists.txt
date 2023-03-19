@@ -36,6 +36,7 @@ set(MAIN
         )
 
 set(ALL_SOURCE_FILES
+        ${MODEL}
         ${UTIL}
         ${MAIN}
         )
