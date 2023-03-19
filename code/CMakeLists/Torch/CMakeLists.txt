@@ -21,8 +21,14 @@ set(TBB_LIBRARIES
         /usr/lib/x86_64-linux-gnu/libtbb.so
         )
 
+set(MODEL
+        include/model/MVP.h
+        src/model/MVP.cpp
+        )
+
 set(UTIL
-        
+        include/util/Formatter.h
+        include/util/TimerGuard.h
         )
 
 set(MAIN
@@ -44,6 +50,7 @@ set(ALL_LIBRARIES
         ${TBB_LIBRARIES}
         ${TORCH_LIBRARIES}
         fmt::fmt
+        pthread
         )
 
 set(ALL_COMPILE_DEFS
