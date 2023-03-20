@@ -317,9 +317,9 @@ sudo apt install cmake
 
 Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html). 
 
-### `Matplot++`
+### [Matplot++](https://github.com/alandefreitas/matplotplusplus)
 
-- Download the binary release from [alandefreitas/matplotplusplus](https://github.com/alandefreitas/matplotplusplus). 
+- [Install Binary Packages](https://alandefreitas.github.io/matplotplusplus/integration/install/binary-packages/)
   - Releases -> `matplotplusplus-1.1.0-Linux.tar.gz`. 
   - Do **not** compile from source; `std::filesystem` not found error for whatever reason.
 - Integration with CMake:
@@ -334,6 +334,9 @@ target_link_libraries(${TARGET} Matplot++::matplot)
 # Eigen, OpenCV, TBB, Boost
 sudo apt update
 sudo apt install libeigen3-dev libopencv-dev libtbb-dev libboost-all-dev 
+
+# gnuplot (Dependency of Matplot++)
+sudo apt install gnuplot
 
 # CGAL
 sudo apt install libcgal-dev libcgal-qt5-dev
