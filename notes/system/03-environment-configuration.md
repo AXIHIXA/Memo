@@ -317,6 +317,17 @@ sudo apt install cmake
 
 Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html). 
 
+### `Matplot++`
+
+- Download the binary release from [alandefreitas/matplotplusplus](https://github.com/alandefreitas/matplotplusplus). 
+  - Releases -> `matplotplusplus-1.1.0-Linux.tar.gz`. 
+  - Do **not** compile from source; `std::filesystem` not found error for whatever reason.
+- Integration with CMake:
+```cmake
+find_package(Matplot++ REQUIRED HINTS "$ENV{HOME}/lib/matplotplusplus/lib/cmake/Matplot++/")
+target_link_libraries(${TARGET} Matplot++::matplot)
+```
+
 ### Libraries
 
 ```
