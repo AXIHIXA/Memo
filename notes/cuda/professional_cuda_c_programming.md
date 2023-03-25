@@ -1487,7 +1487,7 @@ cudaFreeHost(h_aPinned);
   cudaError_t cudaHostGetDevicePointer(void ** pDevice, void * pHost, unsigned int flags);
   ```
   - Using zero-copy memory as a supplement to device memory with frequent read/write operations 
-    will significantly slow performance
+    will significantly **slow down** performance
     - Every memory transaction to mapped memory must pass over the PCIe bus, 
     - A significant amount of latency is added even when compared to global memory.
   - A good choice for sharing a small amount of data between the host and device
@@ -1530,7 +1530,7 @@ cudaFreeHost(h_aPinned);
     - UVA does **not** automatically migrate data from one physical location to another
       - unique to Unified Memory.
 - Unified Memory offers a *single-pointer-to-data* model 
-  - is conceptually similar to zero-copy memory. 
+  - Unified Memory is conceptually similar to zero-copy memory. 
     - zero-copy memory is allocated in host memory
     - kernel performance generally suffers from high-latency accesses to zero-copy memory over the PCIe bus.
   - Unified Memory decouples memory and execution spaces 
