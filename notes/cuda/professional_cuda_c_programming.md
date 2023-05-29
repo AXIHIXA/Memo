@@ -184,7 +184,10 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
   - Warp Scheduler
 - CUDA employs a SIMT architecture 
   - Execute threads in groups of 32 called *warps*
-  - All threads in a warp execute the same instruction at the same time
+  - All threads in a warp *execute* the same instruction at the same time
+    - In one clock cycle, one thread
+      - either execute the same instruction, 
+      - or halt (be idle) for this cycle. 
     - Each thread has its own instruction address counter and register state
     - Each thread carries out the current instruction on its own data
   - Each SM partitions its assigned thread block into warps of 32 threads
@@ -261,14 +264,14 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
 - The hardware always allocates a discrete number of warps for a thread block
   - `numberOfWarps = ceil(numberOfThreads / warpSize)`
   - A warp is **never** split between different thread blocks
-  - If thread block size is not a multiple of warp size, some threads in the last warp a left inactive
+  - If thread block size is not a multiple of warp size, some threads in the last warp are left inactive
     - But they still consume SM resources, e.g., CUDA cores and registers!
 
 #### 📌 Warp Divergence
 
 - GPU has **no** complex branch prediction mechanism
   - All threads in a warp must execute the same instruction
-- Threads in the saem warp executing different instructions is referred as *warp divergence*
+- Threads in the same warp executing different instructions is referred as *warp divergence*
   - When threads in a warp diverge, different `if-then-else` branches are executed serially
     - Warp serially executes each branch path 
     - disabling threads that do not take that path
@@ -948,7 +951,7 @@ switch (blocksize)
 ### 🎯 DYNAMIC PARALLELISM
 
 - So far, all kernels have been invoked from the host thread
-- CUDA *Dynamic Parallelism *allows new GPU kernels to be created and synchronized directly on the GPU
+- CUDA *Dynamic Parallelism* allows new GPU kernels to be created and synchronized directly on the GPU
   - Make recursive algorithms more transparent and easier to understand
   - Postpone the decision of exactly how many blocks and grids to create on a GPU until runtime
     - Taking advantage of the GPU hardware schedulers and load balancers
@@ -1012,12 +1015,12 @@ __global__ void nestedHelloWorld(int const iSize, int iDepth)
     }
 }
 ```
-- Restrictions on Dynamic Parallelism
-  - Only supported by devices of compute capability 3.5+
+- Restrictions on Dynamic Parallelism: 
+  - Only supported by devices of compute capability 3.5+. 
   - Kernels invoked through dynamic parallelism can **not** be launched on physically separate devices. 
     - However, it is permitted to query properties for any CUDA capable device in the system.
-  - The maximum nesting depth of dynamic parallelism is limited to 24
-    - in reality most kernels will be limited by the amount of memory
+  - The maximum nesting depth of dynamic parallelism is limited to 24. 
+    - In reality, most kernels will be limited by the amount of memory
       required by the device runtime system at each new level, 
       as the device runtime reserves additional memory for synchronization management
       between every parent and child grid at each nested level.
@@ -1068,11 +1071,11 @@ __global__ void gpuRecursiveReduce(int * g_idata, int * g_odata, unsigned int is
 }
 ```
 - No Sync Version
-  - When a child grid is invoked, its view of memory is fully consistent with the parent thread
-  - Each child thread only needs its parent’s values to conduct the partial reduction
-  - the in-block synchronization performed before the child grids are launched is unnecessary
+  - When a child grid is invoked, its view of memory is fully consistent with the parent thread. 
+  - Each child thread only needs its parent’s values to conduct the partial reduction. 
+  - the in-block synchronization performed before the child grids are launched is unnecessary. 
   - Still poor performance
-    - Each block generates a child grid, resulting in a huge number of invocations
+    - Each block generates a child grid, resulting in a huge number of invocations. 
 ```c++
 __global__ void gpuRecursiveReduceNosync(int * g_idata, int * g_odata, unsigned int isize) 
 {
