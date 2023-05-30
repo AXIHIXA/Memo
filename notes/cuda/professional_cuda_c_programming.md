@@ -61,6 +61,7 @@
 
 ### 📌 [Managing Memory](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
 
+- [Memory Management Documentation](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
 ```c++
 /// Allocate memory on the device. 
 /// @return cudaError_t typed value, takes one of the following values:
@@ -74,6 +75,9 @@ __host__​ __device__ cudaError_t cudaMalloc(void ** devPtr, size_t size);
 ///             - cudaMemcpyHostToDevice
 ///             - cudaMemcpyDeviceToHost
 ///             - cudaMemcpyDeviceToDevice
+///             - cudaMemcpyDefault
+/// Passing cudaMemcpyDefault is recommended, in which case the type of transfer is inferred from the pointer values. 
+/// However, cudaMemcpyDefault is only allowed on systems that support unified virtual addressing. 
 __host__ cudaError_t cudaMemcpy(void * dst, void * src, size_t count, cudaMemcpyKind kind);
 
 /// Initializes or sets device memory to a value.
@@ -1172,24 +1176,30 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - E.g., CPU's L1/L2 cache
 - Programmable memories in the CUDA memory model
   - Registers
+    - On-chip
     - Private to a thread in a kernel
     - Lifetime: same as the kernel
   - Local memory
+    - Device memory
     - Private to a thread in a kernel
     - Lifetime: same as the kernel
   - Shared memory
+    - On chip, for each SM, share a 64KB memory-block with L1 cache
     - Private to a thread block
     - Visible to all threads in the same thread block
     - Lifetime: same as the thread block
   - Constant memory
+    - On-chip, one part of the cache memory
     - Read-only
     - Accessible by all threads and the host
     - Lifetime: same as the application
   - Texture memory
+    - On-chip, one part of the cache memory
     - Read-only
     - Accessible by all threads and the host
     - Lifetime: same as the application
   - Global memory
+    - Device memory
     - Accessible by all threads and the host
     - Lifetime: same as the application
 - **Registers**
@@ -1257,15 +1267,16 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - Must in global scope, outside of any kernels
     - Statically declared and visible to all kernels in the same compilation unit
     - Read-only to kernels
-      - Hence must be initialized by the host using
+      - Hence must be initialized by the host using [cudaMemcpyToSymbol](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1g9bcf02b53644eee2bef9983d807084c7)
       ```c++
       /// Copies count bytes from the memory pointed to by src to the memory pointed to by symbol. 
       /// This function is synchronous in most cases. 
       /// @param symbol A variable that resides on the device in global or constant memory. 
       /// @param src    ...
       /// @param count  ...
-      cudaError_t cudaMemcpyToSymbol(const void * symbol, const void * src, size_t count);
+      __host__ cudaError_t cudaMemcpyToSymbol(const void * symbol, const void * src, size_t count);
       ```
+      - A direct call to `cudaMemcpy` is illegal without prior symbol lookup
   - Resides in device memory and cached in per-SM constant cache
     - Limited amount: 64KB for all compute capabilities
   - Performs best when all threads in a warp read from the same memory address
@@ -1363,6 +1374,7 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     ```
     - You can **not** use the reference operator `&` on a device variable from the host, 
       because it is simply a symbol representing the physical location on the GPU. 
+      A direct call to `cudaMemcpy` is **illegal** without prior symbol lookup.
       - However, you can acquire the address of a global variable
         by explicitly making a call using the following CUDA API:
       ```c++
@@ -1383,66 +1395,71 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
 
 #### 📌 Memory Allocation and Deallocation
 
-- `cudaError_t cudaMalloc(void ** devPtr, size_t count);`
-  - Allocates `count` bytes of global memory on the device. 
-    - The allocated memory is suitably aligned for any variable type. 
-  - Outputs the location of that memory in pointer `devPtr`. 
-  - Returns `cudaErrorMemoryAllocation` in the case of failure. 
-  - The values contained in the allocated global memory are **not** cleared. 
-    - It is your responsibility to either fill the allocated global memory 
-      - with data transferred from the host, 
-      - or initialize it with the following function:
-- `cudaError_t cudaMemset(void * devPtr, int value, size_t count);`
-  - Fills each of the count bytes starting at the device memory address `devPtr` 
-    with the value stored in the variable `value`.
-- `cudaError_t cudaFree(void * devPtr);`
-  - Frees the global memory pointed to by `devPtr`
-    - `devPtr` must have been previously allocated using a device allocation function (such as `cudaMalloc`). 
-    - Otherwise, it returns an error `cudaErrorInvalidDevicePointer`. 
-  - Also returns an error if the address has already been freed.
-- Device memory allocation and deallocation are expensive operations 
-  - Device memory should be reused by applications whenever possible to minimize the impact on overall performance.
+- [Memory Management Documentation](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
+```c++
+/// Allocate memory on the device. 
+/// @return cudaError_t typed value, takes one of the following values:
+///         - cudaSuccess 
+///         - cudaErrorMemoryAllocation
+__host__​ __device__ cudaError_t cudaMalloc(void ** devPtr, size_t size);
+
+/// Copies data between host and device.
+/// @param kind takes one of the following types:
+///             - cudaMemcpyHostToHost
+///             - cudaMemcpyHostToDevice
+///             - cudaMemcpyDeviceToHost
+///             - cudaMemcpyDeviceToDevice
+///             - cudaMemcpyDefault
+/// Passing cudaMemcpyDefault is recommended, in which case the type of transfer is inferred from the pointer values. 
+/// However, cudaMemcpyDefault is only allowed on systems that support unified virtual addressing. 
+__host__ cudaError_t cudaMemcpy(void * dst, void * src, size_t count, cudaMemcpyKind kind);
+
+/// Initializes or sets device memory to a value.
+__host__ cudaError_t cudaMemset(void * devPtr, int value, size_t count);
+
+/// Frees memory on the device.
+__host__ ​__device__ cudaError_t cudaFree(void * devPtr);
+
+/// Convert an error code to human-readable error message. 
+/// Returns the description string for an error code.
+__host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
+```
+- Device memory allocation and deallocation are expensive operations.  
+- Device memory should be reused for performance.
 
 #### 📌 Memory Transfer
 
-- Data transfer between host and device can throttle overall application
-  - Minimize host-device transfers!
-```c++
-/// Copies count Bytes from memory location src to memory location dst. 
-/// Undefined behavior if pointers dst and src do not match the direction of the copy specified by kind. 
-/// @param dst   ...
-/// @param src   ...
-/// @param count ...
-/// @param kind  Takes one of the following types:
-///              - cudaMemcpyHostToHost
-///              - cudaMemcpyHostToDevice
-///              - cudaMemcpyDeviceToHost
-///              - cudaMemcpyDeviceToDevice
-__host__ cudaError_t cudaMemcpy(void * dst, void * src, size_t count, cudaMemcpyKind kind);
-```
+- Data transfer between host and device is done by [cudaMemcpy](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1gc263dbe6574220cc776b45438fc351e8). 
+- Can throttle overall application. 
+- Minimize host-device transfers!
 
 #### 📌 Pinned Memory
 
-- Allocated host memory is by default *pageable*
-  - Subject to page fault operations by host OS
-- GPU can **not** access data in pageable host memory
-  - GPU has **no** control over OS page fault mechnism
-- *Page-locked memory* or *Pinned* host memory
-  - Allocated by CUDA driver temporarily when transferring pageable data from host to device
-  - First copy source host data to pinned memory
-  - Then transfer from pinned memory to device memory
-- `cudaError_t cudaMallocHost(void **devPtr, size_t count);`
-  - Allocates `count` Bytes of page-locked (pinned) host memory that is accessible to device
-  - Pinned memoty must be freed with `cudaError_t cudaFreeHost(void * ptr);`
-```c++
-if (cudaMallocHost(reinterpret_cast<void **>(&h_aPinned), bytes) != cudaSuccess)
-{
-    fprintf(stderr, "Error returned from pinned host memory allocation\n");
-    exit(1);
-}
-// do something...
-cudaFreeHost(h_aPinned);
-```
+- Allocated host memory is by default *pageable*. 
+  - Subject to page fault operations by host OS. 
+- GPU can **not** access data in pageable host memory. 
+  - GPU has **no** control over OS page fault mechnism. 
+- *Page-locked memory* or *Pinned* memory (on host). 
+  - Allocated by CUDA driver temporarily when transferring pageable data from host to device. 
+  - First, copy source host data to pinned memory;
+  - Then, transfer from pinned memory to device memory. 
+- [cudaMallocHost](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1gab84100ae1fa1b12eaca660207ef585b)
+  ```c++
+  /// Allocates page-locked (pinned) host memory that is accessible to device.
+  /// @param ptr  - Pointer to allocated host memory. 
+  /// @param size - Requested allocation size in bytes. 
+  __host__ ​cudaError_t cudaMallocHost(void ** ptr, size_t size);
+  ```
+  - Pinned memory must be freed with [cudaFreeHost](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1g71c078689c17627566b2a91989184969). 
+  ```c++
+  if (cudaMallocHost(reinterpret_cast<void **>(&h_aPinned), bytes) != cudaSuccess)
+  {
+      fprintf(stderr, "Error returned from pinned host memory allocation\n");
+      exit(1);
+  }
+  // do something...
+  cudaFreeHost(h_aPinned);
+  ```
 - Pinned memory can be accessed directly from device
   - Higher bandwidth for read/write operations than pageable memory
   - More expensive to allocate and deallocate than pageable memory
@@ -1462,24 +1479,29 @@ cudaFreeHost(h_aPinned);
   - Must synchronize memory accesses across the host and the deive
     - Potential data hazards caused by multiple threads accessing the same memory location without synchronization. 
     - Undefined behavior when data race happens
-  - Create zero-copy memory via
+  - Create zero-copy memory via [cudaHostAlloc](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1gb65da58f444e7230d3322b6126bb4902)
   ```c++
   /// Allocates count bytes of host memory that is page-locked and accessible to the device.
   /// Memory allocated by this function must be freed with cudaFreeHost. 
   /// The flags parameter enables further configuration of special properties of the allocated memory. 
-  /// @param flags Takes one of the following four values:
-  ///              - cudaHostAllocDefault:       Makes behavior of cudaHostAlloc identical to cudaMallocHost;
-  ///              - cudaHostAllocPortable:      Returns pinned memory that can be used by all CUDA contexts, 
-  ///                                            not just the one that performed the action;
-  ///              - cudaHostAllocWriteCombined: Returns write-combined memory, 
-  ///                                            which can be transferred across the PICe bus 
-  ///                                            more quickly on some systems 
-  ///                                            but can not be read efficiently by most hosts. 
-  ///                                            A good choice for buffers that will be 
-  ///                                            written by the host and read by the device 
-  ///                                            using mapped pinned memory or host-to-device transfers;
-  ///              - cudaHostAllocMapped:        Returns host memory that is mapped into the device address space. 
-  cudaError_t cudaHostAlloc(void ** pHost, size_t count, unsigned int flags);
+  /// @param pHost - Device pointer to allocated memory; 
+  /// @param count - Requested allocation size in bytes; 
+  /// @param flags - Requested properties of allocated memory. 
+  ///                Takes one of the following four values:
+  ///                - cudaHostAllocDefault:       Makes behavior of cudaHostAlloc identical to cudaMallocHost;
+  ///                - cudaHostAllocPortable:      Returns pinned memory that can be used by all CUDA contexts, 
+  ///                                              not just the one that performed the action;
+  ///                - cudaHostAllocMapped:        Maps the allocation into the CUDA address space. 
+  ///                                              The device pointer to the memory may be obtained 
+  ///                                              by calling cudaHostGetDevicePointer;
+  ///                - cudaHostAllocWriteCombined: Returns write-combined memory, 
+  ///                                              which can be transferred across the PICe bus 
+  ///                                              more quickly on some systems 
+  ///                                              but can not be read efficiently by most hosts. 
+  ///                                              A good choice for buffers that will be 
+  ///                                              written by the host and read by the device 
+  ///                                              using mapped pinned memory or host-to-device transfers;
+  __host__ cudaError_t cudaHostAlloc(void ** pHost, size_t count, unsigned int flags);
   ```
   - Obtain device pointer for the mapped pinned memory via
   ```c++
@@ -1555,20 +1577,57 @@ cudaFreeHost(h_aPinned);
     __device__ __managed__ int y;
     ```
   - Dynamically: In host code
-    - Device code can **not** call `cudaMallocManaged`
+    - Device code can **not** call [cudaMallocManaged](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1gd228014f19cc0975ebe3e0dd2af6dd1b)
   ```c++
-  /// Allocates size bytes of managed memory and returns a pointer in devPtr. 
-  /// The pointer is valid on all devices and the host. 
+  /// Allocates memory that will be automatically managed by the Unified Memory system,  
+  /// and returns a pointer which is valid on all devices and the host. 
   /// The behavior of a program with managed memory is functionally unchanged 
   /// to its counterpart with un-managed memory. 
   /// However, a program that uses managed memory can take advantage of 
   /// automatic data migration and duplicate pointer elimination.
-  cudaError_t cudaMallocManaged(void ** devPtr, size_t size, unsigned int flags = 0);
+  /// @param devPtr Pointer to allocated device memory;
+  /// @param size   Requested allocation size in bytes;
+  /// @param flags  Must be either cudaMemAttachGlobal (default) or cudaMemAttachHost. 
+  ///               - cudaMemAttachGlobal: This memory is accessible from any stream on any device.
+  __host__ cudaError_t cudaMallocManaged(void ** devPtr, size_t size, unsigned int flags = cudaMemAttachGlobal);
   ```
 
 ### 🎯 MEMORY ACCESS PATTERNS
 
 #### 📌 Aligned and Coalesced Access
+
+- Memory Hierachy
+  - SM (chip includes the following)
+    - Registers (on chip)
+    - On-chip Cache
+      - Shared Memory and L1 Cache (share 64 KB cache storage)
+      - Constant Memory
+      - Texture Memory
+  - L2 Cache (off chip)
+  - DRAM (off-chip device memory)
+    - Local Memory
+    - Global Memory
+- Global memory 
+  - a logical memory space that you can access from your kernel.
+  - loads/stores are staged through caches. 
+  - Kernel memory requests: Either 128-byte or 32-byte memory transactions.
+    - 128-byte: Both L1 and L2 cache is used
+    - 32-byte: Only L2 cache is used
+- Two characteristics of device memory accesses for performance: 
+  - Aligned memory accesses
+    - Occur when the first address of a device memory transaction 
+      is an even multiple of the cache granularity for the transaction
+      (either 32 bytes for L2 cache or 128 bytes for L1 cache). 
+      Performing a misaligned load will cause wasted bandwidth.
+  - Coalesced memory accesses
+    - Occur when all 32 threads in a warp access a contiguous chunk of memory.
+  - To maximize global memory throughput, organize memory operations to be both aligned and coalesced. 
+
+#### 📌 Global Memory Reads
+
+
+
+
 
 
 
