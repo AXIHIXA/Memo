@@ -1891,6 +1891,136 @@ unroll4 <<< 8192, 128 >>> offset 11 elapsed 0.000162 sec
   ```
   - **Reads**: Accessed by rows in the original matrix; results in coalesced access. 
   - **Writes**: Accessed by columns in the transposed matrix; results in strided access. 
+- Setting An Upper and Lower Performance Bound for Transpose Kernels. 
+  - Copy the matrix by loading and storing rows (upper bound). 
+    - This simulates the transpose but with only coalesced accesses. 
+  - Copy the matrix by loading and storing columns (lower bound). 
+    - This simulates the transpose but with only strided accesses.
+```c++
+__global__ void copyRow(float * out, float * in, const int nx, const int ny) 
+{
+    unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
+    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
+
+    if (ix < nx && iy < ny) 
+    {
+        out[iy * nx + ix] = in[iy * nx + ix];
+    }
+}
+
+__global__ void copyCol(float * out, float * in, const int nx, const int ny) 
+{
+    unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
+    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
+
+    if (ix < nx && iy < ny) 
+    {
+        out[ix * ny + iy] = in[ix * ny + iy];
+    }
+}
+```
+- Naive Transpose: Reading Rows versus Reading Columns
+  - For the `NaiveCol` implementation, store requests are never replayed due to coalesced writes, 
+    but load requests are replayed many times due to strided reads. 
+  - Caching of loads in L1 cache can limit the negative performance impact of strided loads. 
+```c++
+/// Loads by row and stores by column. 
+__global__ void transposeNaiveRow(float * out, float * in, const int nx, const int ny) 
+{
+    unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
+    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
+
+    if (ix < nx && iy < ny) 
+    {
+        out[ix * ny + iy] = in[iy * nx + ix];
+    }
+}
+
+/// Loads by column and stores by row. 
+/// Performs better on loading with L1-cache enabled. 
+/// While the reads performed by column will be uncoalesced 
+/// (hence bandwidth will be wasted on bytes that were not requested), 
+/// bringing those extra bytes into the L1 cache means that 
+/// the next read may be serviced out of cache rather than global memory. 
+/// Global memory writes does not go through L1-cache, no difference on performance. 
+__global__ void transposeNaiveCol(float * out, float * in, const int nx, const int ny) 
+{
+    unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
+    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
+
+    if (ix < nx && iy < ny) 
+    {
+        out[iy * nx + ix] = in[ix * ny + iy];
+    }
+}
+```
+```
+L1-cache Enabled: 
+
+Effective Bandwidth: 
+CopyRow:  125.67 GB/s
+CopyCol:   58.76 GB/s
+NaiveRow:  64.16 GB/s
+NaiveCol:  81.64 GB/s * 
+
+Throughput and Efficiency: 
+CopyRow:  gld_throughput 131.46 GB/s gst_throughput  65.32 GB/s gld_efficiency 49.81% gst_efficiency 100.00%
+CopyRow:  gld_throughput 475.67 GB/s gst_throughput 118.52 GB/s gld_efficiency  6.23% gst_efficiency  25.00%
+NaiveRow: gld_throughput 129.05 GB/s gst_throughput  64.31 GB/s gld_efficiency 50.00% gst_efficiency  25.00%
+NaiveCol: gld_throughput 642.33 GB/s gst_throughput  40.02 GB/s gld_efficiency  6.21% gst_efficiency 100.00%
+```
+- Unrolling Transpose: Reading Rows versus Reading Columns
+  - Goal of unrolling: Assign more independent work to each thread to maximize in-flight memory requests.
+```c++
+__global__ void transposeUnroll4Row(float  *out, float * in, const int nx, const int ny) 
+{
+    unsigned int ix = blockDim.x * blockIdx.x * 4 + threadIdx.x;
+    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
+
+    unsigned int ti = iy * nx + ix; // access in rows
+    unsigned int to = ix * ny + iy; // access in columns
+    
+    if (ix + 3 * blockDim.x < nx && iy < ny) 
+    {
+        out[to] = in[ti];
+        out[to + ny * blockDim.x] = in[ti + blockDim.x];
+        out[to + ny * 2 * blockDim.x] = in[ti + 2 * blockDim.x];
+        out[to + ny * 3 * blockDim.x] = in[ti + 3 * blockDim.x];
+    }
+}
+
+__global__ void transposeUnroll4Col(float  *out, float * in, const int nx, const int ny) 
+{
+    unsigned int ix = blockDim.x * blockIdx.x * 4 + threadIdx.x;
+    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
+
+    unsigned int ti = iy * nx + ix; // access in rows
+    unsigned int to = ix * ny + iy; // access in columns
+    
+    if (ix + 3 * blockDim.x < nx && iy < ny) 
+    {
+        out[ti] = in[to];
+        out[ti + blockDim.x] = in[to + blockDim.x * ny];
+        out[ti + 2 * blockDim.x] = in[to+ 2 * blockDim.x * ny];
+        out[ti + 3 * blockDim.x] = in[to+ 3 * blockDim.x * ny];
+    }
+}
+```
+```
+Bandwidth: 
+Unroll4Row : Load rows/store columns 44.15 GB/s
+Unroll4Col : Load columns/store rows 90.20 GB/s
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
