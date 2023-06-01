@@ -1556,8 +1556,8 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
       - unique to Unified Memory.
 - Unified Memory offers a *single-pointer-to-data* model 
   - Unified Memory is conceptually similar to zero-copy memory. 
-    - zero-copy memory is allocated in host memory
-    - kernel performance generally suffers from high-latency accesses to zero-copy memory over the PCIe bus.
+    - Zero-copy memory is allocated in host memory
+    - Kernel performance generally suffers from high-latency accesses to zero-copy memory over the PCIe bus.
   - Unified Memory decouples memory and execution spaces 
     - so that data can be transparently migrated on demand to the host or device to improve locality and performance.
 - *Managed Memory*
@@ -1600,9 +1600,9 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - SM (chip includes the following)
     - Registers (on chip)
     - On-chip Cache
-      - Shared Memory and L1 Cache (share 64 KB cache storage)
+      - L1 Cache and Shared Memory (share 64 KB cache storage)
       - Constant Memory
-      - Texture Memory
+      - Read-only Memory
   - L2 Cache (off chip)
   - DRAM (off-chip device memory)
     - Local Memory
@@ -1625,6 +1625,74 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
 
 #### 📌 Global Memory Reads
 
+- Three cache paths to pipepile global memory onto chip:
+  - L1/L2 cache: Default path. 
+    - L1 cache is enabled by default, could be manually enabled/disabled by `nvcc` flags (flag details later). 
+    - Only L2: Query, if miss then 32-byte memory transactions. 
+    - Both L1 and L2: Query L1, if miss then query L2, if still miss then 128-byte memory transactions.
+  - Constant cache
+  - Read-only cache
+- **Memory Load Access Patterns**
+  - Two types of memory loads:
+    - Cached load (L1 cache enabled)
+    - Uncached load (L1 cache disabled)
+  - Access patterns for memory loads:
+    - Cached vs uncached: Cached if L1 cache is enabled. 
+    - Aligned vs misaligned: Aligned if the first address of a memory access is a multiple of 32 bytes. 
+    - Coalesced vs uncoalsced: Coalesced if a warp accesses a contiguous chuck of data. 
+- Cached Loads
+  - Pass through L1 cache
+  - Device memory transaction granularity: L1 cache line (128 bytes)
+  - All memory accesses from a warp is collected together, then serviced. 
+  - These memory accesses does not consecutive by thread ID. 
+  - **GPU L1 Cache vs CPU L1 Cache**
+    - CPU L1 Cache: Optimized for both spatial and temporal locality. 
+    - GPU L1 Cache: Only for spatial locality. 
+      - Frequent access to a cached L1 memory location does **not** increase its chance to stay in cache. 
+  - Explicitly enable L1 cache: `nvcc` flags `-Xptxas -dlcm=ca`
+- Uncached Loads
+  - Does **not** ass through L1 cache
+  - Granualarity: Memory segments (32 bytes)
+    - More fine-grained loads. 
+    - Better bus utilization for misaligned or uncoalesced memory accesses. 
+  - Force uncached loads: `nvcc` flags `-Xptxas -dlcm=cg`
+- Efficiency
+  - $\mathrm{gld_efficiency} = \dfrac{\mathrm{RequestedGlobalMemoryLoadThroughput}}{\mathrm{RequiredGlobalMemoryLoadThroughput}}$
+  - `nvprof --devices 0 --metrics gld_efficiency ./testProgram`
+  - `nvprof --devices 0 --metrics gld_transactions ./testProgram`
+- Read-only Cache
+  - Was originally reserved for use by texture memory loads (prior to compute capability 3.5). 
+  - Granularity: 32 bytes.
+  - Two ways to direct memory reads through the read-only cache:
+    - Use the function `__ldg`;
+    - Use the declaration qualifier `const __restrict__` on the pointer being dereferenced. 
+  ```c++
+  __global__ void copyKernel(int * out, int * in) 
+  {
+      int idx = blockIdx.x * blockDim.x + threadIdx.x;
+      out[idx] = in[idx];
+  }
+
+  /// Use the intrinsic function __ldg to direct 
+  /// the read accesses for array in through the readonly cache. 
+  __global__ void copyKernelVersion2(int * out, int * in) 
+  {
+      int idx = blockIdx.x * blockDim.x + threadIdx.x;
+      out[idx] = __ldg(&in[idx]);
+  }
+
+  /// Apply const __restrict__ qualifiers to pointers. 
+  /// These qualifiers help the nvcc compiler recognize non-aliased pointers 
+  /// (that is, pointers which are used exclusively to access a particular array). 
+  /// nvcc will automatically direct loads from non-aliased pointers through the read-only cache.
+  __global__ void copyKernelVersion3(int * __restrict__ out, const int * __restrict__ in) 
+  {
+      int idx = blockIdx.x * blockDim.x + threadIdx.x;
+      out[idx] = in[idx];
+  }
+  ```
+
+#### 📌 Global Memory Writes
 
 
 
@@ -1635,6 +1703,8 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
 ## 🌱 
 
 ### 🎯 
+
+
 
 #### 📌 
 
