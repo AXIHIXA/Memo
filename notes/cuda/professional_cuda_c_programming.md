@@ -1694,6 +1694,206 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
 
 #### 📌 Global Memory Writes
 
+- Memory store operations: 
+  - Use only L2 cache;
+  - Write-allocate policy;
+  - 32-byte segment granularity, 1/2/3/4 segments at a time.
+  - E.g., two addresses fall within the same 128-byte region but not within an aligned 64-byte region: 
+    - One four-segment transaction will be issued. 
+    - I.e., a single four-segment transaction performs better than two one-segment transactions. 
+- `nvprof --devices 0 --metrics gst_efficiency ./testProgram`
+
+#### 📌 Arrays of Structures vs Structures of Arrays
+
+- SIMD-style parallel programming paradigms prefer SoA. 
+- In CUDA C programming, SoA is also typically preferred. 
+  - Data elements are pre-arranged for efficient coalesced access to global memory. 
+- *Array of structure* (AoS)
+```c++
+struct InnerStruct
+{
+    float x;
+    float y;
+};
+
+__global__ void testInnerStruct(InnerStruct * data, InnerStruct * result, const int n) 
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < n) 
+    {
+        InnerStruct tmp = data[i];
+        tmp.x += 10.f;
+        tmp.y += 20.f;
+        result[i] = tmp;
+    }
+}
+
+/// $ nvprof --devices 0 --metrics gld_efficiency,gst_efficiency ./simpleMathAoS
+/// gld_efficiency 50.00%
+/// gst_efficiency 50.00%
+/// Both load and store memory requests are replayed for the AoS data layout. 
+/// The fields x and y are stored adjacent in memory and have the same size.  
+/// Every time a memory transaction is performed to load the values of a particular field, 
+/// exactly half of the bytes loaded must also belong to the other field. 
+/// Thus, 50 percent of all required load and store bandwidth is unused. 
+```
+- *Structure of Array* (SoA)
+```c++
+struct InnerArray
+{
+    float x[kN];
+    float y[kN];
+};
+
+__global__ void testInnerArray(InnerArray * data, InnerArray * result, const int n) 
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < n) 
+    {
+        float tmpx = data->x[i];
+        float tmpy = data->y[i];
+        tmpx += 10.f;
+        tmpy += 20.f;
+        result->x[i] = tmpx;
+        result->y[i] = tmpy;
+    }
+}
+
+/// $ nvprof --devices 0 --metrics gld_efficiency,gst_efficiency ./simpleMathSoA
+/// gld_efficiency 100.00%
+/// gst_efficiency 100.00%
+```
+
+#### 📌 Performance Tuning
+
+- Two goals when optimizing memory bandwidth:
+  - Aligned and coalesced memory accesses
+    - Reduce wasted bandwidth
+  - Sufficient concurrent memory operations
+    - Hide memory latency
+    - Increasing the number of independent memory operations performed within each thread.
+    - Experimenting with the execution configuration of a kernel launch to expose sufficient parallelism to each SM.
+- Unrolling Techniques
+  - Unrolling loops that contain memory operations adds more independent memory operations to the pipeline. 
+    - For an I/O-bound kernel, exposing sufficient memory access parallelism is a high priority. 
+  - Consider the earlier `readSegment` example. 
+    - Revise the `readOffset` kernel such that each thread performs four independent memory operations. 
+    - Because each of these loads is independent, you can expect more concurrent memory accesses.
+    - This unrolling technique has a tremendous impact on performance, even **more than address alignment**.
+  ```c++
+  __global__ void readOffset(float * A, float * B, float * C, const int n, int offset) 
+  {
+      unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+      unsigned int k = i + offset;
+
+      if (k < n) 
+      {
+          C[i] = A[k] + B[k];
+      }
+  }
+
+  __global__ void readOffsetUnroll4(float * A, float * B, float * C, const int n, int offset) 
+  {
+      unsigned int i = blockIdx.x * blockDim.x * 4 + threadIdx.x;
+      unsigned int k = i + offset;
+
+      if (k + 3 * blockDim.x < n) 
+      {
+          C[i] = A[k]
+          C[i + blockDim.x] = A[k + blockDim.x] + B[k + blockDim.x];
+          C[i + 2 * blockDim.x] = A[k + 2 * blockDim.x] + B[k + 2 * blockDim.x];
+          C[i + 3 * blockDim.x] = A[k + 3 * blockDim.x] + B[k + 3 * blockDim.x];
+      }
+  }
+  ```
+  ```
+  // $ ./readSegment 0
+  // readOffset <<< 32768, 512 >>> offset 0 elapsed 0.001820 sec
+  // $ ./readSegment 11
+  // readOffset <<< 32768, 512 >>> offset 11 elapsed 0.001949 sec
+  // $ ./readSegment 128
+  // readOffset <<< 32768, 512 >>> offset 128 elapsed 0.001821 sec
+
+  // $ ./readSegmentUnroll 0
+  // unroll4 <<< 8192, 512 >>> offset 0 elapsed 0.000599 sec
+  // $ ./readSegmentUnroll 11
+  // unroll4 <<< 8192, 512 >>> offset 11 elapsed 0.000615 sec
+  // $ ./readSegmentUnroll 128
+  // unroll4 <<< 8192, 512 >>> offset 128 elapsed 0.000598 sec
+
+  // $ nvprof --devices 0 --metrics gld_efficiency,gst_efficiency ./readSegmentUnroll 11
+  // readOffset gld_efficiency 49.69%
+  // readOffset gst_efficiency 100.00%
+  // readOffsetUnroll4 gld_efficiency 50.79%
+  // readOffsetUnroll4 gst_efficiency 100.00%
+
+  // $ nvprof --devices 0 --metrics gld_transactions,gst_transactions ./readSegmentUnroll 11
+  // readOffset gld_transactions 132384
+  // readOffset gst_transactions 32928
+  // readOffsetUnroll4 gld_transactions 33152
+  // readOffsetUnroll4 gst_transactions 8064
+  ```
+- Exposing More Parallelism
+  - Experiment with the grid and block size of a kernel. 
+```
+$ ./readSegmentUnroll 11 1024 22
+unroll4 <<< 1024, 1024 >>> offset 11 elapsed 0.000184 sec
+$ ./readSegmentUnroll 11 512 22
+unroll4 <<< 2048, 512 >>> offset 11 elapsed 0.000162 sec
+$ ./readSegmentUnroll 11 256 22
+unroll4 <<< 4096, 256 >>> offset 11 elapsed 0.000162 sec
+$ ./readSegmentUnroll 11 128 22
+unroll4 <<< 8192, 128 >>> offset 11 elapsed 0.000162 sec
+```
+- **MAXIMIZING BANDWIDTH UTILIZATION**
+  - Two major factors on the performance of device memory operations:
+    - Efficient use of bytes moving between device DRAM and SM on-chip memory:
+      - Memory access patterns should be aligned and coalesced.
+    - Number of memory operations concurrently in-flight: 
+      - Unrolling, yielding more independent memory accesses per thread; 
+      - Modifying the execution confiuration of a kernel launch.
+
+### 🎯 WHAT BANDWIDTH CAN A KERNEL ACHIEVE?
+
+- *Memory Latency*
+  - The time to satisfy an individual memory request. 
+  - Hiding memory latency by maximizing the number of concurrently executing warps. 
+- *Memory Bandwidth*
+  - The rate at which device memory can be accessed by an SM. 
+  - Maximizing memory bandwidth efficiency by properly aligning and coalescing memory accesses.
+- Sometimes a bad access pattern is inherent to the nature of the problem at hand. 
+- Options for an inherently imperfect access pattern. 
+
+#### 📌 Memory Bandwidth
+
+- Most kernels are are memory bandwidth-bound.
+- *Theoretical Bandwidth*
+  - The absolute maximum bandwidth achievable for the hardware. 
+- *Effective Bandwidth*
+  - The measured bandwidth that a kernel actually achieves. 
+  - Effective Bandwidth (GB/s) = (Bytes Read + Bytes Written) * 1e-9 / (Times Elapsed). 
+- Matrix Transpose Problem
+  - Ignore the indexing tricks: We want the data transposed physically in storage. 
+  - Sample host implementation
+  ```c++
+  void transposeHost(float * out, float * in, const int nx, const int ny) 
+  {
+      for (int iy = 0; iy < ny; ++iy) 
+      {
+          for (int ix = 0; ix < nx; ++ix) 
+          {
+              out[ix * ny + iy] = in[iy * nx + ix];
+          }
+      }
+  }
+  ```
+  - **Reads**: Accessed by rows in the original matrix; results in coalesced access. 
+  - **Writes**: Accessed by columns in the transposed matrix; results in strided access. 
+
+
+
 
 
 
