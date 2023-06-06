@@ -6314,8 +6314,9 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
     - `s.compare(cp)`：比较`s`和`cp`指向的以`'\0'`结尾的字符数组
     - `s.compare(pos1, n1, cp)`：比较`s`中`pos1`开始的`n1`个字符和`cp`指向的以`'\0'`结尾的字符数组
     - `s.compare(pos1, n1, cp, n2)`：比较`s`中`pos1`开始的`n1`个字符和`cp + n2`指向的以`'\0'`结尾的字符数组
-- 数值转换
+- 数值转换 (to_int, parseInt, etc.)
     - `C++`风格字符串转数值定义于`<string>`中
+        - The `strtol`-family functions are C-functions in header `<cstdlib>`. In many cases, not an option. 
         - 签名集锦
         ```
         int                std::stoi(const std::string & str, std::size_t * pos = 0, int base = 10)
@@ -6366,7 +6367,7 @@ std::deque<std::string> svec(10);   // 10 elements, each an empty string
         double res = std::stod("+3.14159pi", &idx);
         printf("%lf %zu\n", res, idx);               // 3.141590 8
         ```
-    - 数值转字符串（`<string>`）
+    - 数值转字符串（Included in header `<string>`）
     ```
     std::string std::to_string(int value);                 (1)  // std::sprintf(buf, "%d", value)
     std::string std::to_string(long value);                (2)  // std::sprintf(buf, "%ld", value)
