@@ -1875,9 +1875,9 @@ unroll4 <<< 8192, 128 >>> offset 11 elapsed 0.000162 sec
   - The measured bandwidth that a kernel actually achieves. 
   - Effective Bandwidth (GB/s) = (Bytes Read + Bytes Written) * 1e-9 / (Times Elapsed). 
 - Matrix Transpose Problem
-  - Ignore the indexing tricks: We want the data transposed physically in storage. 
   - Sample host implementation
   ```c++
+  /// x: Row; y: Column
   void transposeHost(float * out, float * in, const int nx, const int ny) 
   {
       for (int iy = 0; iy < ny; ++iy) 
@@ -1961,7 +1961,7 @@ Effective Bandwidth:
 CopyRow:  125.67 GB/s
 CopyCol:   58.76 GB/s
 NaiveRow:  64.16 GB/s
-NaiveCol:  81.64 GB/s * 
+NaiveCol:  81.64 GB/s
 
 Throughput and Efficiency: 
 CopyRow:  gld_throughput 131.46 GB/s gst_throughput  65.32 GB/s gld_efficiency 49.81% gst_efficiency 100.00%
@@ -1972,7 +1972,8 @@ NaiveCol: gld_throughput 642.33 GB/s gst_throughput  40.02 GB/s gld_efficiency  
 - Unrolling Transpose: Reading Rows versus Reading Columns
   - Goal of unrolling: Assign more independent work to each thread to maximize in-flight memory requests.
 ```c++
-__global__ void transposeUnroll4Row(float  *out, float * in, const int nx, const int ny) 
+/// Load by row and store by column
+__global__ void transposeUnroll4Row(float * out, float * in, const int nx, const int ny) 
 {
     unsigned int ix = blockDim.x * blockIdx.x * 4 + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
@@ -1989,7 +1990,8 @@ __global__ void transposeUnroll4Row(float  *out, float * in, const int nx, const
     }
 }
 
-__global__ void transposeUnroll4Col(float  *out, float * in, const int nx, const int ny) 
+/// Load by column and store by row
+__global__ void transposeUnroll4Col(float * out, float * in, const int nx, const int ny) 
 {
     unsigned int ix = blockDim.x * blockIdx.x * 4 + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
@@ -1997,13 +1999,12 @@ __global__ void transposeUnroll4Col(float  *out, float * in, const int nx, const
     unsigned int ti = iy * nx + ix;  // access in rows
     unsigned int to = ix * ny + iy;  // access in columns
     
-    
     if (ix + 3 * blockDim.x < nx && iy < ny) 
     {
         out[ti] = in[to];
         out[ti + blockDim.x] = in[to + blockDim.x * ny];
-        out[ti + 2 * blockDim.x] = in[to+ 2 * blockDim.x * ny];
-        out[ti + 3 * blockDim.x] = in[to+ 3 * blockDim.x * ny];
+        out[ti + 2 * blockDim.x] = in[to + 2 * blockDim.x * ny];
+        out[ti + 3 * blockDim.x] = in[to + 3 * blockDim.x * ny];
     }
 }
 ```
