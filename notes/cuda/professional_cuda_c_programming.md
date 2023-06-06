@@ -2009,9 +2009,15 @@ __global__ void transposeUnroll4Col(float * out, float * in, const int nx, const
 }
 ```
 ```
-Bandwidth: 
-Unroll4Row : Load rows/store columns 44.15 GB/s
-Unroll4Col : Load columns/store rows 90.20 GB/s
+Tested on NVIDIA GeForce RTX 2080 Ti, with nx = ny = 1 << 14. 
+MUST time kernels with ncu (nvidia compute). CPU timer is buggy with GPU apps!
+BTW nvprof's profiling is deprecated for compute compatibility 7.5+. 
+Use ncu instead! 
+$ nvprof ./bin/transpose
+NaiveRow :                         Time 1.55 ms
+NaiveCol :                         Time 2.12 ms
+Unroll4Row : Bandwidth 44.15 GB/s, Time 1.81 ms
+Unroll4Col : Bandwidth 90.20 GB/s, Time 2.09 ms
 ```
 
 
