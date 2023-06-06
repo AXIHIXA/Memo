@@ -9,11 +9,12 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+find_package(Eigen3 REQUIRED)
 find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-9.1.0/build")
 
 set(CUAX
-        include/cuax/CudaMatrix.h
-        src/cuax/CudaMatrix.cu
+        include/cuax/pccg.h
+        src/cuax/pccg.cu
         )
 
 set(UTIL
@@ -36,6 +37,7 @@ set(ALL_INCLUDE_DIRS
         )
 
 set(ALL_LIBRARIES
+        Eigen3::Eigen
         fmt::fmt
         )
 
