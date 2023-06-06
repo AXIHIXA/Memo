@@ -8,7 +8,6 @@ find_package(OpenCV REQUIRED)
 
 set(UTIL
         include/util/TimerGuard.h
-        src/util/TimerGuard.cpp
         )
 
 set(MAIN

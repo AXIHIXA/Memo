@@ -9,18 +9,20 @@ namespace xi
 
 using FloatMilliseconds = std::chrono::duration<float, std::chrono::milliseconds::period>;
 
+using FloatSeconds = std::chrono::duration<float, std::chrono::seconds::period>;
+
 
 template <typename Clock = std::chrono::high_resolution_clock, typename Duration = FloatMilliseconds>
 class TimerGuard
 {
 public:
-    using Rep = typename Duration::rep;
     using TimePoint = typename Clock::time_point;
 
     /// @brief RAII-style timer guard.
-    /// @param t      A number of counts of the Duration (time elapsed from construction to destruction).
+    /// @param d      Duration (time elapsed from construction to destruction).
     /// @param stream Print time elapsed to stream.
-    explicit TimerGuard(Rep * t = nullptr, std::FILE * stream = stdout) : t(t), startTime(Clock::now()), stream(stream)
+    explicit TimerGuard(Duration * d = nullptr, std::FILE * stream = stdout)
+            : d(d), startTime(Clock::now()), stream(stream)
     {
         // Do nothing.
     }
@@ -29,22 +31,31 @@ public:
     {
         auto timeElapsed = std::chrono::duration_cast<Duration>(Clock::now() - startTime);
 
-        if (t)
+        if (d)
         {
-            *t = timeElapsed.count();
+            *d = timeElapsed;
         }
 
-        fmt::print(stream, "{}\n", timeElapsed);
+        if (stream)
+        {
+            fmt::print(stream, "{}\n", timeElapsed);
+        }
     }
 
 private:
-    Rep * t;
+    Duration * d;
     TimePoint startTime;
     std::FILE * stream;
 };
 
 
-extern template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
+// // Use explicit instantiation only when needed.
+// // One (and exactly one) manual instantiation will be needed for any instance.
+// // Explicit instantiation declaration (extern template):
+// // Skips implicit instantiation step.
+// extern template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
+// // Explicit instantiation difinition:
+// template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
 
 }  // namespace xi
 

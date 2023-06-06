@@ -1,12 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(TimerGuard)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
-find_package(fmt REQUIRED)
+find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-9.1.0/build/")
 
 set(UTIL
         include/util/TimerGuard.h
-        src/util/TimerGuard.cpp
         )
 
 set(MAIN

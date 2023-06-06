@@ -1,34 +1,63 @@
-#ifndef XH_TIMER_GUARD_H
-#define XH_TIMER_GUARD_H
+#ifndef XI_TIMER_GUARD_H
+#define XI_TIMER_GUARD_H
 
 #include <fmt/chrono.h>
 
 
-namespace XH
+namespace xi
 {
 
-template <typename Clock = std::chrono::high_resolution_clock, typename Duration = std::chrono::milliseconds>
+using FloatMilliseconds = std::chrono::duration<float, std::chrono::milliseconds::period>;
+
+using FloatSeconds = std::chrono::duration<float, std::chrono::seconds::period>;
+
+
+template <typename Clock = std::chrono::high_resolution_clock, typename Duration = FloatMilliseconds>
 class TimerGuard
 {
 public:
     using TimePoint = typename Clock::time_point;
 
-    explicit TimerGuard(std::FILE * stream = stdout) : startTime(Clock::now()), stream(stream) {}
+    /// @brief RAII-style timer guard.
+    /// @param d      Duration (time elapsed from construction to destruction).
+    /// @param stream Print time elapsed to stream.
+    explicit TimerGuard(Duration * d = nullptr, std::FILE * stream = stdout)
+            : d(d), startTime(Clock::now()), stream(stream)
+    {
+        // Do nothing.
+    }
 
     ~TimerGuard()
     {
-        fmt::print(stream, "{}\n", std::chrono::duration_cast<Duration>(Clock::now() - startTime));
+        auto timeElapsed = std::chrono::duration_cast<Duration>(Clock::now() - startTime);
+
+        if (d)
+        {
+            *d = timeElapsed;
+        }
+
+        if (stream)
+        {
+            fmt::print(stream, "{}\n", timeElapsed);
+        }
     }
 
 private:
+    Duration * d;
     TimePoint startTime;
     std::FILE * stream;
 };
 
 
-extern template class TimerGuard<std::chrono::high_resolution_clock, std::chrono::milliseconds>;
+// // Use explicit instantiation only when needed.
+// // One (and exactly one) manual instantiation will be needed for any instance.
+// // Explicit instantiation declaration (extern template):
+// // Skips implicit instantiation step.
+// extern template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
+// // Explicit instantiation difinition:
+// template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
 
-}  // namespace XH
+}  // namespace xi
 
 
-#endif  // XH_TIMER_GUARD_H
+#endif  // XI_TIMER_GUARD_H

@@ -5,7 +5,9 @@
 ## 🌱 Notes
 
 - `C/C++`
-    - *[C++ Primer](./notes/cpp/cpp_primer_notes.md)*
+    - *[C++ Primer]*
+        - [Part 1](./notes/cpp/cpp_primer_notes_p1.md)
+        - [Part 2](./notes/cpp/cpp_primer_notes_p2.md)
     - *C++ Templates: The Complete Guide*
         - [Part I The Basics](./notes/cpp/cpp_templates_the_complete_guide_notes.md)
         - [Part II Templates in Depth](./notes/cpp/cpp_templates_the_complete_guide_notes_part_2.md)
