@@ -1174,6 +1174,39 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - You have **no** control over data placement
     - You rely on automatic techniques to achieve good performance
     - E.g., CPU's L1/L2 cache
+- Memory Layout on an SM
+  - The SM is designed to simultaneously execute multiple thread blocks. 
+    - Thread blocks can be from different grid launches.
+  - Each SM is partitioned into four processing blocks, called SM *sub partitions*. 
+    - The primary processing elements. 
+    - Each sub partition contains the following units:
+      - Warp scheduler
+      - Register File
+      - Execution Units, Pipelines, and Cores
+        - Integer Execution Units
+        - Floating Point Execution Units
+        - Memory Load/Store Units
+        - Special Function Unit
+        - Tensor Cores
+  - Shared within an SM across the four SM partitions are:
+    - Unified L1 Data Cache / Shared Memory
+    - Texture Units
+    - RT Cores
+- Warp
+  - Allocated to a sub partition and resides on the sub partition from launch to completion. 
+  - A warp is referred to as active or resident when it is mapped to a sub partition. 
+  - A sub partition manages a fixed size pool of warps. 
+    - 16 for the Volta architecture;
+    - 8 for the Turing architecture. 
+  - Active warps can be in eligible state if the warp is ready to issue an instruction. 
+    - The warp has a decoded instruction; 
+    - All input dependencies resolved; 
+    - The function unit is available. 
+  - A warp is stalled when the warp is waiting on
+    - An instruction fetch,
+    - A memory dependency (result of memory instruction),
+    - An execution dependency (result of previous instruction), or
+    - A synchronization barrier.
 - Programmable memories in the CUDA memory model
   - Registers
     - On-chip
@@ -1878,7 +1911,7 @@ unroll4 <<< 8192, 128 >>> offset 11 elapsed 0.000162 sec
   - Sample host implementation
   ```c++
   /// x: Row; y: Column
-  void transposeHost(float * out, float * in, const int nx, const int ny) 
+  void transposeHost(float * out, const float * in, const int nx, const int ny) 
   {
       for (int iy = 0; iy < ny; ++iy) 
       {
@@ -1897,7 +1930,7 @@ unroll4 <<< 8192, 128 >>> offset 11 elapsed 0.000162 sec
   - Copy the matrix by loading and storing columns (lower bound). 
     - This simulates the transpose but with only strided accesses.
 ```c++
-__global__ void copyRow(float * out, float * in, const int nx, const int ny) 
+__global__ void copyRow(float * out, const float * in, const int nx, const int ny) 
 {
     unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
@@ -1908,7 +1941,7 @@ __global__ void copyRow(float * out, float * in, const int nx, const int ny)
     }
 }
 
-__global__ void copyCol(float * out, float * in, const int nx, const int ny) 
+__global__ void copyCol(float * out, const float * in, const int nx, const int ny) 
 {
     unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
@@ -1925,7 +1958,7 @@ __global__ void copyCol(float * out, float * in, const int nx, const int ny)
   - Caching of loads in L1 cache can limit the negative performance impact of strided loads. 
 ```c++
 /// Loads by row and stores by column. 
-__global__ void transposeNaiveRow(float * out, float * in, const int nx, const int ny) 
+__global__ void transposeNaiveRow(float * out, const float * in, const int nx, const int ny) 
 {
     unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
@@ -1943,7 +1976,7 @@ __global__ void transposeNaiveRow(float * out, float * in, const int nx, const i
 /// bringing those extra bytes into the L1 cache means that 
 /// the next read may be serviced out of cache rather than global memory. 
 /// Global memory writes does not go through L1-cache, no difference on performance. 
-__global__ void transposeNaiveCol(float * out, float * in, const int nx, const int ny) 
+__global__ void transposeNaiveCol(float * out, const float * in, const int nx, const int ny) 
 {
     unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
@@ -1973,7 +2006,7 @@ NaiveCol: gld_throughput 642.33 GB/s gst_throughput  40.02 GB/s gld_efficiency  
   - Goal of unrolling: Assign more independent work to each thread to maximize in-flight memory requests.
 ```c++
 /// Load by row and store by column
-__global__ void transposeUnroll4Row(float * out, float * in, const int nx, const int ny) 
+__global__ void transposeUnroll4Row(float * out, const float * in, const int nx, const int ny) 
 {
     unsigned int ix = blockDim.x * blockIdx.x * 4 + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
@@ -1991,7 +2024,7 @@ __global__ void transposeUnroll4Row(float * out, float * in, const int nx, const
 }
 
 /// Load by column and store by row
-__global__ void transposeUnroll4Col(float * out, float * in, const int nx, const int ny) 
+__global__ void transposeUnroll4Col(float * out, const float * in, const int nx, const int ny) 
 {
     unsigned int ix = blockDim.x * blockIdx.x * 4 + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
@@ -2008,7 +2041,7 @@ __global__ void transposeUnroll4Col(float * out, float * in, const int nx, const
     }
 }
 ```
-- Tested on NVIDIA GeForce RTX 2080 Ti, with nx = ny = 1 << 14. 
+- Tested on NVIDIA GeForce RTX 2080 Ti, with `nx = ny = 1 << 13`. 
   - `nvprof` is outdated. Use [ncu](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html#nvprof-metric-comparison) instead! 
     - Format: `ncu [options] [program] [program-arguments...]`. 
     - [NVIDIA Development Tools Solutions - ERR_NVGPUCTRPERM: Permission issue with Performance Counters](https://developer.nvidia.com/nvidia-development-tools-solutions-err_nvgpuctrperm-permission-issue-performance-counters)
@@ -2024,15 +2057,15 @@ smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct \  # gst_efficienc
 program arguments...
 ```
 ```
-------------------------------------------------------------- ------------ --------- --------- ----------- -----------
-Metric Name                                                    Metric Unit  NaiveRow  NaiveCol  Unroll4Row  Unroll4Col
-------------------------------------------------------------- ------------ --------- --------- ----------- -----------
-Performance (Time Cost)                                        Millisceond      1.56      2.16        1.77        2.18
-l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second       Gbyte/second    170.27    480.41      145.31      497.63
-l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second       Gbyte/second    681.09    120.10      583.67      124.41
-smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct            %       100        25         100          25
-smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct            %        25       100          25         100
-------------------------------------------------------------- ------------ --------- --------- ----------- -----------
+------------------------------------------------------------- ------------ -------- --------  ---------- ----------
+Metric Name                                                    Metric Unit NaiveRow NaiveCol  Unroll4Row Unroll4Col
+------------------------------------------------------------- ------------ -------- --------  ---------- ----------
+Performance (Time Cost)                                        Millisceond     1.56     2.16        1.77       2.18
+l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second       Gbyte/second   170.27   480.41      145.31     497.63
+l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second       Gbyte/second   681.09   120.10      583.67     124.41
+smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct            %      100       25         100         25
+smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct            %       25      100          25        100
+------------------------------------------------------------- ------------ -------- --------- ---------- ----------
 ```
 
 
