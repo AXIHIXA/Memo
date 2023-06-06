@@ -12,7 +12,7 @@ using FloatMilliseconds = std::chrono::duration<float, std::chrono::milliseconds
 using FloatSeconds = std::chrono::duration<float, std::chrono::seconds::period>;
 
 
-template <typename Clock = std::chrono::high_resolution_clock, typename Duration = FloatMilliseconds>
+template <typename Duration = FloatMilliseconds, typename Clock = std::chrono::high_resolution_clock>
 class TimerGuard
 {
 public:
@@ -53,9 +53,9 @@ private:
 // // One (and exactly one) manual instantiation will be needed for any instance.
 // // Explicit instantiation declaration (extern template):
 // // Skips implicit instantiation step.
-// extern template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
+// extern template class TimerGuard<FloatMilliseconds, std::chrono::high_resolution_clock>;
 // // Explicit instantiation difinition:
-// template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
+// template class TimerGuard<FloatMilliseconds, std::chrono::high_resolution_clock>;
 
 }  // namespace xi
 
