@@ -2008,16 +2008,28 @@ __global__ void transposeUnroll4Col(float * out, float * in, const int nx, const
     }
 }
 ```
+- Tested on NVIDIA GeForce RTX 2080 Ti, with nx = ny = 1 << 14. 
+  - `nvprof` is outdated. Use [ncu](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html#nvprof-metric-comparison) instead! 
+  - Format: `ncu [options] [program] [program-arguments...]`. 
+  - [NVIDIA Development Tools Solutions - ERR_NVGPUCTRPERM: Permission issue with Performance Counters](https://developer.nvidia.com/nvidia-development-tools-solutions-err_nvgpuctrperm-permission-issue-performance-counters)
+```bash
+ncu -k regex:transpose \
+--metrics \
+l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,\        # gld_throughput
+l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,\        # gst_throughput
+smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,\  # gld_efficiency
+smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct \  # gst_efficiency
+program arguments...
 ```
-Tested on NVIDIA GeForce RTX 2080 Ti, with nx = ny = 1 << 14. 
-MUST time kernels with ncu (nvidia compute). CPU timer is buggy with GPU apps!
-BTW nvprof's profiling is deprecated for compute compatibility 7.5+. 
-Use ncu instead! 
-$ nvprof ./bin/transpose
-NaiveRow :                         Time 1.55 ms
-NaiveCol :                         Time 2.12 ms
-Unroll4Row : Bandwidth 44.15 GB/s, Time 1.81 ms
-Unroll4Col : Bandwidth 90.20 GB/s, Time 2.09 ms
+```
+------------------------------------------------------------- ------------ --------- --------- ----------- -----------
+Metric Name                                                    Metric Unit  NaiveRow  NaiveCol  Unroll4Row  Unroll4Col
+------------------------------------------------------------- ------------ --------- --------- ----------- -----------
+l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second       Gbyte/second    170.27    480.41      145.31      497.63
+l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second       Gbyte/second    681.09    120.10      583.67      124.41
+smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct            %       100        25         100          25
+smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct            %        25       100          25         100
+------------------------------------------------------------- ------------ --------- --------- ----------- -----------
 ```
 
 

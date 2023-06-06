@@ -1,13 +1,16 @@
-#ifndef XH_TIMER_GUARD_H
-#define XH_TIMER_GUARD_H
+#ifndef XI_TIMER_GUARD_H
+#define XI_TIMER_GUARD_H
 
 #include <fmt/chrono.h>
 
 
-namespace XH
+namespace xi
 {
 
-template <typename Clock = std::chrono::high_resolution_clock, typename Duration = std::chrono::milliseconds>
+using FloatMilliseconds = std::chrono::duration<float, std::chrono::milliseconds::period>;
+
+
+template <typename Clock = std::chrono::high_resolution_clock, typename Duration = FloatMilliseconds>
 class TimerGuard
 {
 public:
@@ -26,9 +29,9 @@ private:
 };
 
 
-extern template class TimerGuard<std::chrono::high_resolution_clock, std::chrono::milliseconds>;
+extern template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
 
-}  // namespace XH
+}  // namespace xi
 
 
-#endif  // XH_TIMER_GUARD_H
+#endif  // XI_TIMER_GUARD_H

@@ -1,9 +1,9 @@
 #include "util/TimerGuard.h"
 
 
-namespace XH
+namespace xi
 {
 
-template class TimerGuard<std::chrono::high_resolution_clock, std::chrono::milliseconds>;
+template class TimerGuard<std::chrono::high_resolution_clock, FloatMilliseconds>;
 
-}  // namespace XH
+}  // namespace xi
