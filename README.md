@@ -57,9 +57,8 @@
     - [debug.h](./code/debug.h)
     - [OpenGL Shader](./code/Shader.h)
     - [pipe_demo.c](./code/pipe_demo.c)
-    - [TimerGuard](./code/TimerGuard)
-        - [h (explicit instantiation declaration)](./code/TimerGuard/include/util/TimerGuard.h)
-        - [cpp (explicit instantiation definition)](./code/TimerGuard/src/util/TimerGuard.cpp)
+    - [TimerGuard](./code/TimerGuard/include/util/TimerGuard.h)
+      - Does not use explicit instantiation syntax by default; code remains as comments. 
     - [variadic.cpp](./code/variadic.cpp)
 - `Python` Code
     - [python codes](./code/python_code.md)
