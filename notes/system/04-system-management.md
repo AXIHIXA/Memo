@@ -164,6 +164,31 @@ port = 130      # ssh port 130. do not need to specify if using port 22
 sudo service fail2ban restart
 ```
 
+### 🌱 `su`
+
+- 格式：
+```bash
+su [OPTIONS] [-] [USER [ARGUMENT...]]
+```
+- OPTIONS
+```
+When called without arguments, su defaults to running an interactive shell as root.
+
+-, -l, --login
+      Start the shell as a login shell with an environment similar to a real login:
+
+          o      clears all the environment variables except TERM and variables specified by --whitelist-environment
+
+          o      initializes the environment variables HOME, SHELL, USER, LOGNAME, and PATH
+
+          o      changes to the target user's home directory
+
+          o      sets argv[0] of the shell to '-' in order to make the shell a login shell
+
+-m, -p, --preserve-environment
+      Preserve the entire environment, i.e. it does not set HOME, SHELL, USER nor LOGNAME.  
+      This option is ignored if the option --login is specified.
+```
 ### 🌱 新建用户
 
 ```
