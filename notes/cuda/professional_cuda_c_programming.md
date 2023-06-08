@@ -265,10 +265,11 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
 #### 📌 Warps and Thread Blocks
 
 - When you launch a grid of thread blocks
-  - These thread blocks are distributed among SMs
+  - These thread blocks are distributed among SMs. 
+    - One thread block is scheduled to one SM. 
   - Once a thread block is assigned to a SM
     - Threads in this thread block are further partitioned into warps
-    - A warp consists of 32 consecutive threads
+    - A warp consists of 32 **consecutive** threads
     - All threads in a warp are executed in SIMT fashion
       - All threads execute the same instruction
       - Each thread carries out that operation on its own private data
@@ -1181,7 +1182,7 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - You have **no** control over data placement
     - You rely on automatic techniques to achieve good performance
     - E.g., CPU's L1/L2 cache
-- Memory Layout on an SM
+- Memory Layout on an SM ([Hardware Model](https://docs.nvidia.com/nsight-compute/ProfilingGuide/#metrics-hw-model))
   - The SM is designed to simultaneously execute multiple thread blocks. 
     - Thread blocks can be from different grid launches.
   - Each SM is partitioned into four processing blocks, called SM *sub partitions*. 
@@ -1200,11 +1201,19 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - Texture Units
     - RT Cores
 - Warp
+  - All warps from the same thread block will also be assigned on the same SM. 
   - Allocated to a sub partition and resides on the sub partition from launch to completion. 
   - A warp is referred to as active or resident when it is mapped to a sub partition. 
   - A sub partition manages a fixed size pool of warps. 
     - 16 for the Volta architecture;
     - 8 for the Turing architecture. 
+    - E.g., NVIDIA Geforce RTX 2080 Ti (Turing architecture)
+      - 68 Multiprocessors, 64 CUDA Cores/MP, In total 4352 CUDA Cores
+      - Each SM has 4 sub partitions
+        - Each sub partition has 16 CUDA Cores, and manages 8 warps
+      - Each SM could host 32 active warps (1024 threads)
+        - Maximum number of threads per multiprocessor:  1024
+        - Maximum number of threads per block:           1024
   - Active warps can be in eligible state if the warp is ready to issue an instruction. 
     - The warp has a decoded instruction; 
     - All input dependencies resolved; 
@@ -1650,6 +1659,7 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
 - Global memory 
   - a logical memory space that you can access from your kernel.
   - loads/stores are staged through caches. 
+  - Requests from a warp are packed and serviced together. 
   - Kernel memory requests: Either 128-byte or 32-byte memory transactions.
     - 128-byte: Both L1 and L2 cache is used
     - 32-byte: Only L2 cache is used
@@ -1981,20 +1991,24 @@ __global__ void transposeNaiveRow(float * out, const float * in, const int nx, c
 /// Performs better on loading with L1-cache enabled. 
 ///
 /// Xi:
-/// Suppose loading and storing are equally expensive. 
+/// Suppose loads and stores are almost equally expensive (NOT TRUE in all scenarios!). 
 /// NaiveRow, Load-by-row and store-by-column: 
 ///     Loading is colaesced, no extra overhead. 
 ///     Storing is strided, full extra overhead. 
 /// NaiveCol, Load-by-column and store-by-row: 
 ///     Loading is strided, (in concept) full extra overhead, 
-///         BUT previous loads brings into L1 cache the data needed for succeeding loads, 
-///         (all warps in one thread block reside on one unique SM, 
-///         and share the same on-chip L1-cache/shared-memory block), 
-///         thus sub-full extra overhead;
+///         BUT one warp brings into L1 cache the data needed for neighboring warps (their loads), 
+///         (note that warps are colaesced w.r.t. threadIdx, and that
+///         all warps in one thread block reside on one unique SM, 
+///         sharing the same on-chip L1-cache/shared-memory block), 
+///         thus achieves sub-full extra overhead;
 ///     Storing is colaesced, no extra overhead. 
 /// Overall: 
-///     NaiveCol performs better, as it utilizes L1-caching for strided mem operations
-///     (which is available to loads, so it's better to make loads strided and stores coalesced.)
+///     NaiveCol performs better, as it utilizes the L1-cache 
+///     to negate the overhead of strided memory access patterns, 
+///     which is available only to loading operations. 
+///     So it's better to make loads strided (negated by L1-cache) 
+///     and stores coalesced (no extra overhead). 
 /// 
 /// Textbook: 
 /// While the reads performed by column will be uncoalesced 
@@ -2028,8 +2042,8 @@ CopyRow:  gld_throughput 475.67 GB/s gst_throughput 118.52 GB/s gld_efficiency  
 NaiveRow: gld_throughput 129.05 GB/s gst_throughput  64.31 GB/s gld_efficiency 50.00% gst_efficiency  25.00%
 NaiveCol: gld_throughput 642.33 GB/s gst_throughput  40.02 GB/s gld_efficiency  6.21% gst_efficiency 100.00%
 ```
-- Unrolling Transpose: Reading Rows versus Reading Columns
-  - Goal of unrolling: Assign more independent work to each thread to maximize in-flight memory requests.
+- Unrolling Transpose
+  - Assign more independent work to each thread to maximize in-flight memory requests.
 ```c++
 /// Load by row and store by column
 __global__ void transposeUnroll4Row(float * out, const float * in, const int nx, const int ny) 
@@ -2067,7 +2081,7 @@ __global__ void transposeUnroll4Col(float * out, const float * in, const int nx,
     }
 }
 ```
-- Tested on NVIDIA GeForce RTX 2080 Ti, with `nx = ny = 1 << 13`. 
+- Tested on NVIDIA GeForce RTX 2080 Ti, with `nx = ny = 1 << 11`. 
   - `nvprof` is outdated. Use [ncu](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html#nvprof-metric-comparison) instead! 
     - Format: `ncu [options] [program] [program-arguments...]`. 
     - [NVIDIA Development Tools Solutions - ERR_NVGPUCTRPERM: Permission issue with Performance Counters](https://developer.nvidia.com/nvidia-development-tools-solutions-err_nvgpuctrperm-permission-issue-performance-counters)
@@ -2088,21 +2102,64 @@ program arguments...
 ----------------------- ---- -------- -------- ---------- ----------
 Metric                  Unit NaiveRow NaiveCol Unroll4Row Unroll4Col
 ----------------------- ---- -------- -------- ---------- ----------
-Time Elapsed              ms     1.60     2.23       1.70       2.11
-Effective Bandwidth     GB/s   334.39   241.28     315.07     253.86
+Time Elapsed              ms    0.093    0.087      0.078      0.075
+Effective Bandwidth     GB/s   359.04   384.21     426.27     445.37
 Global  Load Throughput GB/s   192.12   839.87     227.06     967.32
 Global Store Throughput GB/s   768.47   209.97     912.20     241.83
 Global  Load Efficiency    %      100       25        100         25
 Global Store Efficiency    %       25      100         25        100
 ----------------------- ---- -------- -------- ---------- ----------
+
+P.S. Original data collected for nx = ny = 1 << 11: 
+transposeNaiveRow<<<grid (128x128), block (16x16)>>> ran for 0.093456ms, effective bandwidth 359.0398858364917 GB/s
+transposeNaiveCol<<<grid (128x128), block (16x16)>>> ran for 0.087334ms, effective bandwidth 384.208106545478 GB/s
+transposeUnroll4Row<<<grid (32x128), block (16x16)>>> ran for 0.078717ms, effective bandwidth 426.26665538018864 GB/s
+transposeUnroll4Col<<<grid (32x128), block (16x16)>>> ran for 0.075341ms, effective bandwidth 445.36749747338024 GB/s
+
+When nx = ny = 1 << 13, the results are inverted!
+transposeNaiveRow<<<grid (512x512), block (16x16)>>> ran for 1.6378ms, effective bandwidth 327.7996449420446 GB/s
+transposeNaiveCol<<<grid (512x512), block (16x16)>>> ran for 2.1792ms, effective bandwidth 246.3616982564283 GB/s
+transposeUnroll4Row<<<grid (128x512), block (16x16)>>> ran for 1.76699ms, effective bandwidth 303.8344394371926 GB/s
+transposeUnroll4Col<<<grid (128x512), block (16x16)>>> ran for 2.21361ms, effective bandwidth 242.53162715341088 GB/s
 ```
 - Diagonal Transpose
+  - Physically, all thread blocks are arranged in 1D. 
+    - Logical layout could be 1D, 2D, or 3D (`dim3 gridDim`). 
+    - Each block has its identifier;
+      - E.g., Cartesian coordinate system (row-major);
+      - `int bid = blockIdx.y * blockDim.x + blockIdx.x;`. 
+  - **No** direct control over the order in which thread blocks are scheduled. 
+    - DRAM: Memory access serviced by 256-Byte partitions
+    - Cartesian coordinate
+      - Access not evenly distributed among partitions (*partition camping*)
+        - Some partitions are accessed more than once (queued)
+        - Other partitions are never accessed (idle)
+    - Diagonal block-coordinate system
+      - Nonlinear mapping
+      - Strided accesses are not likely to fall into a single partition
+  - Note: 
+    - Thread blocks are "shuffled"
+      - Adjacent thread blocks might not be assigned to adjacent SMs
+    - Warps in one thread block are "consecutive" (exploits spatial locality)
+      - Wrap 0: threadIdx 0-31
+      - Warp 1: threadIdx 32-63
+      - ...
+- Thin Blocks:
+  - Block Dim $(16, 16) \to (8, 32)$
+  - A thin block improves the effectiveness of store operations
+  - Increases the number of consecutive elements stored by a thread block
+```
+transposeNaiveRow<<<grid (128x128), block (16x16)>>> ran for 0.091892ms, effective bandwidth 365.1507512092593 GB/s
+transposeNaiveRow<<<grid (256x64), block (8x32)>>> ran for 0.073047ms, effective bandwidth 459.35401567461935 GB/s
 
+transposeNaiveCol<<<grid (128x128), block (16x16)>>> ran for 0.09071ms, effective bandwidth 369.9088663155546 GB/s
+transposeNaiveCol<<<grid (256x64), block (8x32)>>> ran for 0.074991ms, effective bandwidth 447.4461010914167 GB/s
+```
 
+### 🎯 MATRIX ADDITION WITH UNIFIED MEMORY
 
-
-
-
+```c++
+```
 
 
 
