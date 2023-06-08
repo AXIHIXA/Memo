@@ -2158,8 +2158,113 @@ transposeNaiveCol<<<grid (256x64), block (8x32)>>> ran for 0.074991ms, effective
 
 ### 🎯 MATRIX ADDITION WITH UNIFIED MEMORY
 
+- Manual:
 ```c++
+void initializeData(float * data, const int size)
+{
+    static std::default_random_engine e(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+    static std::normal_distribution<float> n(0.0f);
+
+    for (int i = 0; i < size; i++)
+    {
+        data[i] = n(e);
+    }
+}
 ```
+```c++
+constexpr int kNx {1 << 11};
+constexpr int kNy {1 << 11};
+constexpr int kMatrixSize {kNx * kNy};
+constexpr int kNBytes {sizeof(float) * kMatrixSize};
+
+std::vector<float> A(kNx * kNy);
+std::vector<float> B(kNx * kNy);
+std::vector<float> C(kNx * kNy);
+
+initializeData(A.data(), kNx * kNy);
+initializeData(A.data(), kNx * kNy);
+
+float * dA;
+float * dB;
+float * dC;
+
+cudaMalloc(reinterpret_cast<void **>(&dA), kNBytes);
+cudaMalloc(reinterpret_cast<void **>(&dB), kNBytes);
+cudaMalloc(reinterpret_cast<void **>(&dC), kNBytes);
+
+cudaMemcpy(dA, A.data(), kNBytes, cudaMemcpyHostToDevice);
+cudaMemcpy(dB, B.data(), kNBytes, cudaMemcpyHostToDevice);
+
+// Warm-up kernel for accurate timing results. 
+sum<<<grid, block>>>(dA, dB, dC, 1, 1);
+
+sum<<<grid, block>>>(dA, dB, dC, kNx, kNy);
+cudaMemcpy(c.data(), dC, kNBytes, cudaMemcpyDeviceToHost);
+
+// Dereference and use C on host (after cudaMemcpy)
+// ...
+
+cudaFree(dA);
+cudaFree(dB);
+cudaFree(dC);
+```
+- Managed memory:
+  - On Geforce RTX 2080 Ti:
+    - Overall performance **degrade** by 100%! Takes 2x time. 
+      - Time from memory allocation to free and device reset. 
+  - P.S. On Kepler K40 (Data from textbook):
+    - Takes longer to initialize data. 
+      - Data are initially allocated on GPU;
+      - Copied to CPU for initialization; not needed in the manual version. 
+    - Warm up kernel: 
+      - **IMPORTANT**! 
+      - Brings CPU data back to GPU. 
+      - If omitted, kernel with managed memory will run significantly slower!
+    - No Explicit memcpys. 
+    - Kernel launchs faster than the manual version. 
+    - Kernel time nearly the same as the manual version. 
+```c++
+float * A;
+float * B;
+float * C;
+
+cudaMallocManaged(reinterpret_cast<void **>(&A), kNBytes);
+cudaMallocManaged(reinterpret_cast<void **>(&B), kNBytes);
+cudaMallocManaged(reinterpret_cast<void **>(&C), kNBytes);
+
+initializeData(A, kMatrixSize);
+initializeData(B, kMatrixSize);
+
+// Warm-up kernel. IMPORTANT FOR PERFORMANCE! 
+// With unified memory, all pages will migrate from host to device. 
+sum<<<grid, block>>>(dA, dB, dC, 1, 1);
+
+sum<<<grid, block>>>(A, B, C, kNx, kNy);
+cudaDeviceSynchronize();
+
+// Dereference and use C directly on host
+// ...
+
+cudaFree(A);
+cudaFree(B);
+cudaFree(C);
+```
+
+
+
+## 🌱 5 Shared Memory and Constant Memory
+
+### 🎯 INTRODUCING CUDA SHARED MEMORY
+
+#### 📌 
+
+
+### 🎯 
+
+#### 📌 
+
+
+
 
 
 
@@ -2175,8 +2280,6 @@ transposeNaiveCol<<<grid (256x64), block (8x32)>>> ran for 0.074991ms, effective
 ## 🌱 
 
 ### 🎯 
-
-
 
 #### 📌 
 
