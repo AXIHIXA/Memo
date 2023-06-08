@@ -1913,7 +1913,8 @@ unroll4 <<< 8192, 128 >>> offset 11 elapsed 0.000162 sec
   - The absolute maximum bandwidth achievable for the hardware. 
 - *Effective Bandwidth*
   - The measured bandwidth that a kernel actually achieves. 
-  - Effective Bandwidth (GB/s) = (Bytes Read + Bytes Written) * 1e-9 / (Times Elapsed). 
+  - $\mathrm{Effective Bandwidth (GB/s)} = \dfrac{\mathrm{Bytes Read (Byte)} + \mathrm{Bytes Written (Byte)}}{10^{9} \mathrm{(Byte/GB)} \times \mathrm{Times Elapsed (s)}}$
+  - E.g., if copying a $2048 \times 2048$ floating point matrix, $\mathrm{Effective Bandwidth} = \dfrac{2048 \times 2048 \times \mathrm{sizeof}(\mathbf{float}) \times 2}{10^9 \times \mathrm{TimesElapsed(s)}}$
 - Matrix Transpose Problem
   - Sample host implementation
   ```c++
@@ -2095,7 +2096,7 @@ Global  Load Efficiency    %      100       25        100         25
 Global Store Efficiency    %       25      100         25        100
 ----------------------- ---- -------- -------- ---------- ----------
 ```
-
+- Diagonal Transpose
 
 
 

@@ -5,7 +5,7 @@
 #include <thrust/random.h>
 
 
-void test()
+void test(int argc, char * argv[])
 {
     // Generate random data serially.
     thrust::default_random_engine rng(1337);

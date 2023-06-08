@@ -1,14 +1,11 @@
-#include <iostream>
-
-#include <fmt/core.h>
+#include <cstdlib>
 
 #include "cuax/pccg.h"
-#include "util/TimerGuard.h"
 
 
 int main(int argc, char * argv[])
 {
-    test();
+    test(argc, argv);
 
     return EXIT_SUCCESS;
 }

@@ -2,7 +2,7 @@
 #define PCCG_H
 
 
-void test();
+void test(int argc, char * argv[]);
 
 
 #endif  // PCCG_H
