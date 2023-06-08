@@ -1649,7 +1649,7 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - SM (chip includes the following)
     - Registers (on chip)
     - On-chip Cache
-      - L1 Cache and Shared Memory (share 64 KB cache storage)
+      - L1 Cache and Shared Memory (SMEM) (share 64KB cache storage)
       - Constant Memory
       - Read-only Memory
   - L2 Cache (off chip)
@@ -2256,7 +2256,157 @@ cudaFree(C);
 
 ### 🎯 INTRODUCING CUDA SHARED MEMORY
 
-#### 📌 
+#### 📌 Shared Memory (SMEM)
+
+- Shared memory (SMEM)
+  - Shared by all threads in the thread block (currently executing on that SM);
+    - A fixed amount of SMEM is allocated to each thread block when it starts executing;
+    - This SMEM address space is shared by all threads in this thread block;
+    - Accesses issued per warp. 
+      - Ideally: Each request by a warp is serviced in one transaction; 
+      - Worst case: Sequentially in 32 unique transactions.  
+        - All threads access the same word in SMEM
+        - One fetches it and multicast it to other threads
+  - Latency: Roughly 20-30x lower than global memory;
+  - Bandwidth: Nearly 10x higher. 
+- PROGRAM-MANAGED CACHE
+  - C Programming (CPU cache)
+    - Transparent to C program, **no** control over it
+    - Could only tune the algorithm (iteration order)
+  - CUDA Shared Memory (SMEM)
+    - Full control over it
+      - When data is moved into and when evicted
+
+#### 📌 Shared Memory Allocation
+
+- Static Allocation
+  - Known size
+    - Decalred inside a kernel function: Local to that kernel
+    - Declared outside of any kernels, in a file: Global to all kernels
+  - 1D, 2D or 3D
+  ```c++
+  __shared__ float tile[kNy][kNx];
+  ```
+- Dynamic Allocation
+  - Unknown size (*unsized array*) 
+  - Declare with `extern` keyword
+  - Allocate dynamically when launching kernels
+  - *Only 1D* supported
+  ```c++
+  extern __shared__ float tile[];
+  // ...
+  kernel<<<grid, block, kTileSize * sizeof(float)>>>(arguments...);
+  ```
+
+#### 📌 Shared Memory Banks and Access Mode
+
+- Shared Memory could hide the impact of global memory latency and bandwidth
+  - Two key properties to mesure when optimizing memory performance
+    - Latency
+    - Bandwidth
+- Memory Banks
+  - SMEM: 1D memory space
+  - SMEM is divided into 32 equally-sized memory modules (*banks*)
+    - Banks could be accessed simultaneously
+    - 32 banks because a warp has 32 threads
+    - Recall: Similar to DRAM partitions (global memory, 256-byte chunks)
+  - Number of transactions of a warp's SMEM access request
+    - 1 transaction if accessing no more than one memory location per bank
+    - 2/2+ transactions otherwise
+- Bank Conflict
+  - When?
+    - When multiple addresses in a SMEM request fall into the same bank
+    - Splits the request into separate conflict-free serial transactions
+  - Three Types
+    - **Parallel Access**
+      - Multiple addresses accessed across multiple banks
+      - Most common
+      - One or more transactions depending on conflicts
+    - **Serial Access**
+      - Multiple addresses fall into the same bank
+      - Wrost pattern, request must be serialized
+        - 32 serial transactions if all threads in a warp access the same bank
+    - **Broadcast Access**
+      - All threads in a warp read a single address (in a single bank)
+      - One memory transaction, result broadcasted to all threads
+      - Poor bandwidth footprint
+  - When several threads access the same bank:
+    - Conflict-free broadcast access when accessing the same address
+    - Bank conflict access when accessing different addresses within a bank
+- Access Mode
+  - Memory bank width: 32-bit (one word)
+    - Successive 32-bit words map to successive bank
+    - Bandwidth: 32 bits per clock cycle.
+- Memory Padding
+  - Add padding words
+    - Suppose 5 banks 01234, append a padding x "in the last column (logically)"
+    - 5-way conflict on bank 0 turns into regular parallel access
+  ```
+  01234x    01234
+  01234x    x0123
+  01234x => 4x012
+  01234x    34x01
+  01234x    0234x
+  ```
+  - Padded memory is never used for data storage
+
+#### 📌 Configuring the Amount of Shared Memory
+
+- Turing architecture (compute capability 7.5)
+  - Unified data cache has a size of 96KB
+  - SMEM capacity can be set to either 32KB or 64KB
+  - The driver automatically configures the SMEM capacity *for each kernel*
+    - Avoids SMEM occupancy bottlenecks 
+    - Allows concurrent execution with already-launched kernels where possible. 
+    - In most cases, the driver's default behavior should provide optimal performance.
+- Applications can provide additional hints regarding the desired shared memory configuration
+  - [cudaFuncSetAttribute](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__HIGHLEVEL.html#group__CUDART__HIGHLEVEL_1g422642bfa0c035a590e4c43ff7c11f8d)
+  - Where a chosen integer percentage does not map exactly to a supported capacity, the next larger capacity is used.
+    - Supported in Compute Compatibility 7.x: 0, 8, 16, 32, 64, or 96KB;
+    - For instance, in the example above, 50% of the 96KB maximum is 48KB, 
+      - which is not a supported shared memory capacity. 
+      - Thus, the preference is rounded up to 64KB.
+  ```c++
+  template <class T>
+  inline __host__ ​cudaError_t cudaFuncSetAttribute(T * entry, cudaFuncAttribute attr, int value);
+
+  // Device code
+  __global__ void kernel(...)
+  {
+      __shared__ float buffer[kBlockDim];
+      ...
+  }
+
+  // Host code
+  int carveout = 50; // prefer shared memory capacity 50% of maximum
+  // Named Carveout Values:
+  // carveout = cudaSharedmemCarveoutDefault;   //  (-1)
+  // carveout = cudaSharedmemCarveoutMaxL1;     //   (0)
+  // carveout = cudaSharedmemCarveoutMaxShared; // (100)
+  cudaFuncSetAttribute(MyKernel, cudaFuncAttributePreferredSharedMemoryCarveout, carveout);
+  kernel<<<grid, block>>>(...);
+  ```
+  - A single thread block can address the full capacity of shared memory (64KB on Turing). 
+    - Kernels relying on shared memory allocations over 48KB per block are architecture-specific, 
+      - as such they must use dynamic shared memory (rather than statically sized arrays)
+      - require an explicit opt-in using `cudaFuncSetAttribute` as follows.
+  ```c++
+  // Device code
+  __global__ void kernel(...)
+  {
+      extern __shared__ float buffer[];
+      ...
+  }
+
+  // Host code
+  constexpr int kMaxBytes = 64 * 1024;  // 64KB
+  cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, kMaxBytes);
+  kernel<<<grid, block, kMaxBytes>>>(...);
+  ```
+- Synchronization
+  - Barriers
+  - Memory fences
+
 
 
 ### 🎯 
