@@ -1,10 +1,3 @@
-/// CLion clangd bug, YouTrack Issue #CPP-25855.
-/// Incorrect Clangd error for partial template specialization with default parameters (happens within thrust headers).
-/// A workaround by @Justen Di Ruscio:
-/// Go to the `Settings | Languages & Frameworks | C/C++ | Clangd`,
-/// there will be a field for additional flags which are added to the every compilation command in the project.
-/// Add there `-fno-relaxed-template-template-args`.
-
 #include <fmt/core.h>
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>

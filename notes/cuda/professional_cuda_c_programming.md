@@ -4,6 +4,13 @@
 
 ## 🌱 1 Heterogeneous Parallel Computing with CUDA
 
+- CLion clangd bug, YouTrack Issue [CPP-25855](https://youtrack.jetbrains.com/issue/CPP-25855).
+  - Incorrect Clangd error for partial template specialization with default parameters (happens within thrust headers).
+  - A workaround by @Petr Kudriavtsev:
+    - Go to the `Settings | Languages & Frameworks | C/C++ | Clangd`,
+    - There will be a field for additional flags which are added to the every compilation command in the project.
+    - Add there `-fno-relaxed-template-template-args`.
+
 ### 🎯 PARALLEL COMPUTING -- Computer Architecture
 
 - *Flynn's Taxonomy*
@@ -1971,6 +1978,24 @@ __global__ void transposeNaiveRow(float * out, const float * in, const int nx, c
 
 /// Loads by column and stores by row. 
 /// Performs better on loading with L1-cache enabled. 
+///
+/// Xi:
+/// Suppose loading and storing are equally expensive. 
+/// NaiveRow, Load-by-row and store-by-column: 
+///     Loading is colaesced, no extra overhead. 
+///     Storing is strided, full extra overhead. 
+/// NaiveCol, Load-by-column and store-by-row: 
+///     Loading is strided, (in concept) full extra overhead, 
+///         BUT previous loads brings into L1 cache the data needed for succeeding loads, 
+///         (all warps in one thread block reside on one unique SM, 
+///         and share the same on-chip L1-cache/shared-memory block), 
+///         thus sub-full extra overhead;
+///     Storing is colaesced, no extra overhead. 
+/// Overall: 
+///     NaiveCol performs better, as it utilizes L1-caching for strided mem operations
+///     (which is available to loads, so it's better to make loads strided and stores coalesced.)
+/// 
+/// Textbook: 
 /// While the reads performed by column will be uncoalesced 
 /// (hence bandwidth will be wasted on bytes that were not requested), 
 /// bringing those extra bytes into the L1 cache means that 
@@ -2048,24 +2073,27 @@ __global__ void transposeUnroll4Col(float * out, const float * in, const int nx,
     - `ncu` could not profile time cost because of kernel replays!
   - Note that a better memory footprint does **not** indicate better performance (time cost)!
 ```bash
+# These Nsight Compute metrics "translated" into legacy nvprof metrics: 
+# gld_throughput, gst_throughput, gld_efficiency, gst_efficiency
 ncu -k regex:transpose \
 --metrics \
-l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,\        # gld_throughput
-l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,\        # gst_throughput
-smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,\  # gld_efficiency
-smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct \  # gst_efficiency
+l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,\
+l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,\
+smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,\
+smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct \
 program arguments...
 ```
 ```
-------------------------------------------------------------- ------------ -------- --------  ---------- ----------
-Metric Name                                                    Metric Unit NaiveRow NaiveCol  Unroll4Row Unroll4Col
-------------------------------------------------------------- ------------ -------- --------  ---------- ----------
-Performance (Time Cost)                                        Millisceond     1.56     2.16        1.77       2.18
-l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second       Gbyte/second   170.27   480.41      145.31     497.63
-l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second       Gbyte/second   681.09   120.10      583.67     124.41
-smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct            %      100       25         100         25
-smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct            %       25      100          25        100
-------------------------------------------------------------- ------------ -------- --------- ---------- ----------
+----------------------- ---- -------- -------- ---------- ----------
+Metric                  Unit NaiveRow NaiveCol Unroll4Row Unroll4Col
+----------------------- ---- -------- -------- ---------- ----------
+Time Elapsed              ms     1.60     2.23       1.70       2.11
+Effective Bandwidth     GB/s   334.39   241.28     315.07     253.86
+Global  Load Throughput GB/s   192.12   839.87     227.06     967.32
+Global Store Throughput GB/s   768.47   209.97     912.20     241.83
+Global  Load Efficiency    %      100       25        100         25
+Global Store Efficiency    %       25      100         25        100
+----------------------- ---- -------- -------- ---------- ----------
 ```
 
 
