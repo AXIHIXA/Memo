@@ -4,7 +4,12 @@
 
 ## 🌱 Notes
 
-- `C/C++`
+- Assembly
+  - [x86-64 Assembly Programming](./notes/assembly/assembly.md)
+  - [Introduction to x64 Assembly](./notes/assembly/introduction-to-x64-assembly.pdf)
+    - [Original from www.intel.com](https://www.intel.com/content/dam/develop/external/us/en/documents/introduction-to-x64-assembly-181178.pdf)
+  - [Compiler Explorer](https://godbolt.org)
+- C/C++
     - *C++ Primer*
         - [Part 1](./notes/cpp/cpp_primer_notes_p1.md)
         - [Part 2](./notes/cpp/cpp_primer_notes_p2.md)
@@ -21,12 +26,12 @@
 - CUDA
   - [CUDA C++ Programming Guide](./notes/cuda/cuda_cpp_programming_guide.md)
   - [Professional CUDA C Programming](./notes/cuda/professional_cuda_c_programming.md)
-- `Python`
-    - [`Python` Offical Tutorial Notes](./notes/py/py.md)
-    - [`NumPy` Tutorial Notes](./notes/py/numpy.md)
-    - [`PyTorch` Tutorial Notes](./notes/py/pytorch.md)
-    - [`matplotlib` Offical Tutorial](./notes/py/matplotlib.md)
-    - [`SymPy` Offical Tutorial](./notes/py/sympy/sympy.md)
+- Python
+    - [Python Offical Tutorial Notes](./notes/py/py.md)
+    - [NumPy Tutorial Notes](./notes/py/numpy.md)
+    - [PyTorch Tutorial Notes](./notes/py/pytorch.md)
+    - [matplotlib Offical Tutorial](./notes/py/matplotlib.md)
+    - [SymPy Offical Tutorial](./notes/py/sympy/sympy.md)
 - System Management
     1. [System Installation](./notes/system/01-system-installation.md)
     2. [System Configuration](./notes/system/02-system-configuration.md)
