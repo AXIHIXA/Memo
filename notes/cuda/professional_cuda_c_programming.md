@@ -2413,12 +2413,12 @@ cudaFree(C);
     - Memory fences
       - Calling threads stall until all modifications to memory are visible to all other calling threads.
   - CUDA's Weakly-Ordered Memory Model
-    - Order in which GPU thread writes could be **different** from the order in which they appear in source code. 
+    - Order in which GPU thread writes could be **different** from the order in which they appear in *source code*. 
       - Shared memory
       - Global memory
       - Page-locked host memory
       - Memory of a peer device
-    - Order in which GPU thread reads could be **different** from the source code
+    - Order in which GPU thread reads could be **different** from the *source code*
       - If instructions are independent of each other
     - Barriers and fences are necessary to explicitly enforce ordering
   - [Explicit Barrier](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions)
@@ -2479,7 +2479,53 @@ cudaFree(C);
       // are visible to all threads in all devices and host threads.
       void __threadfence_system();
       ```
+    - E.g. Thread 1 executes `write` and thread 2 executes `read`
+      - 4 possible results without fences
+        - `a == 1 && b == 2`
+        - `a == 1 && b == 20`
+        - `a == 10 && b == 2`
+        - `a == 10 && b == 20`
+      ```c++
+      __device__ int x = 1, y = 2;
 
+      __device__ write()
+      {
+          // Write to x does NOT necessarily happen before write to y
+          x = 10;
+          y = 20;
+      }
+
+      __device__ read()
+      {
+          // Write to b does NOT necessarily happen before write to a
+          int b = y;
+          int a = x;
+      }
+      ```
+      - 3 possible results remains with grid-level fences
+        - If `b` is assigned with the updated `y`, then `a` is guaranteed to be assigned with the updated `x`;
+        - If thread 1 and 2 belong to the same block, it is enough to use `__threadfence_block()`;
+        - `__threadfence()` must be used if they are CUDA threads from the same device;
+        - `__threadfence_system()` must be used if they are CUDA threads from two different devices.
+      ```c++
+      __device__ int x = 1, y = 2;
+
+      __device__ write()
+      {
+          // Write to x is guaranteed to happen before write to y
+          x = 10;
+          __threadfence();
+          y = 20;
+      }
+
+      __device__ read()
+      {
+          // Write to b is guaranteed to happen before write to a
+          int b = y;
+          __threadfence();
+          int a = x;
+      }
+      ```
 
 
 ### 🎯 
