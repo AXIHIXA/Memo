@@ -2371,20 +2371,23 @@ cudaFree(C);
   inline __host__ ​cudaError_t cudaFuncSetAttribute(T * entry, cudaFuncAttribute attr, int value);
 
   // Device code
-  __global__ void kernel(...)
+  __global__ void myKernel(...)
   {
       __shared__ float buffer[kBlockDim];
       ...
   }
 
   // Host code
-  int carveout = 50; // prefer shared memory capacity 50% of maximum
+  // Prefer shared memory capacity 50% of maximum
+  int carveout = 50;   
+
   // Named Carveout Values:
   // carveout = cudaSharedmemCarveoutDefault;   //  (-1)
   // carveout = cudaSharedmemCarveoutMaxL1;     //   (0)
-  // carveout = cudaSharedmemCarveoutMaxShared; // (100)
-  cudaFuncSetAttribute(MyKernel, cudaFuncAttributePreferredSharedMemoryCarveout, carveout);
-  kernel<<<grid, block>>>(...);
+  // carveout = cudaSharedmemCarveoutMaxShared; // (100)             
+
+  cudaFuncSetAttribute(myKernel, cudaFuncAttributePreferredSharedMemoryCarveout, carveout);
+  myKernel<<<grid, block>>>(...);
   ```
   - A single thread block can address the full capacity of shared memory (64KB on Turing). 
     - Kernels relying on shared memory allocations over 48KB per block are architecture-specific, 
@@ -2392,7 +2395,7 @@ cudaFree(C);
       - require an explicit opt-in using `cudaFuncSetAttribute` as follows.
   ```c++
   // Device code
-  __global__ void kernel(...)
+  __global__ void myKernel(...)
   {
       extern __shared__ float buffer[];
       ...
@@ -2400,12 +2403,82 @@ cudaFree(C);
 
   // Host code
   constexpr int kMaxBytes = 64 * 1024;  // 64KB
-  cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, kMaxBytes);
+  cudaFuncSetAttribute(myKernel, cudaFuncAttributeMaxDynamicSharedMemorySize, kMaxBytes);
   kernel<<<grid, block, kMaxBytes>>>(...);
   ```
 - Synchronization
-  - Barriers
-  - Memory fences
+  - CUDA runtime functions for intra-block synchronization: 
+    - Barriers
+      - Calling threads wait for all other calling threads to reach the barrier point. 
+    - Memory fences
+      - Calling threads stall until all modifications to memory are visible to all other calling threads.
+  - CUDA's Weakly-Ordered Memory Model
+    - Order in which GPU thread writes could be **different** from the order in which they appear in source code. 
+      - Shared memory
+      - Global memory
+      - Page-locked host memory
+      - Memory of a peer device
+    - Order in which GPU thread reads could be **different** from the source code
+      - If instructions are independent of each other
+    - Barriers and fences are necessary to explicitly enforce ordering
+  - [Explicit Barrier](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions)
+    - Only possible to perform a barrier among threads in the same thread block
+    ```c++
+    /// Waits until 
+    /// (1) all threads in the thread block have reached this point
+    /// and 
+    /// (2) all global and shared memory accesses made by these threads prior to __syncthreads() 
+    ///     are visible to all threads in the block. 
+    void __syncthreads();
+    ```
+    - Thread blocks can be executed in any order
+      - In parallel or in series
+      - On any SM
+    - Global synchronization across blocks could be "simulated"
+      - Split the kernel apart at the synchronizatio point;
+      - Perform multiple kernel launches. 
+      - Each successive kernel launch must wait for the preceding kernel launch to complete
+        - Implicit global barrier
+  - Be careful when using `__syncthreads` in conditional code
+    - Valid only if a conditional is guaranteed to evaluate identically across the entire thread block;
+    - Otherwise: Hangs execution or unintended side effects
+    ```c++
+    // May cause threads in a block to wait indefinitely for each other 
+    // because all threads in a block never hit the same barrier point. 
+    if (threadID % 2 == 0)
+    {
+        __syncthreads();
+    }
+    else
+    {
+        __syncthreads();
+    }
+    ```
+  - [Memory Fence](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#memory-fence-functions)
+    - Enforce a sequentially-consistent ordering on memory accesses for all threads inside a thread block
+    - Block-level
+      - Equivalent to [cuda::atomic_thread_fence(cuda::memory_order_seq_cst, cuda::thread_scope_block)](https://nvidia.github.io/libcudacxx/extended_api/synchronization_primitives/atomic/atomic_thread_fence.html)
+      ```c++
+      // Ensures that 
+      // all writes to shared/global memory made by a calling thread before the fence 
+      // are visible to other threads in the same block after the fence. 
+      void __threadfence_block();
+      ```
+    - Grid-level
+      - Equivalent to [cuda::atomic_thread_fence(cuda::memory_order_seq_cst, cuda::thread_scope_device)](https://nvidia.github.io/libcudacxx/extended_api/synchronization_primitives/atomic/atomic_thread_fence.html)
+      ```c++
+      // Stalls the calling thread until 
+      // all of its writes to global memory are visible to all threads in the same grid. 
+      void __threadfence();
+      ```
+    - System-level (including host and device)
+      - Equivalent to [cuda::atomic_thread_fence(cuda::memory_order_seq_cst, cuda::thread_scope_system)](https://nvidia.github.io/libcudacxx/extended_api/synchronization_primitives/atomic/atomic_thread_fence.html)
+      ```c++
+      // Stalls the calling thread to ensure 
+      // all its writes to global memory, pagelocked host memory, and the memory of other devices 
+      // are visible to all threads in all devices and host threads.
+      void __threadfence_system();
+      ```
 
 
 
