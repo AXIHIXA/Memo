@@ -271,7 +271,7 @@ jupyter kernelspec uninstall unwanted-kernel
 - `$ENV{USER}`, `$ENV{HOME}`： CMakeLists.txt 中调用系统变量
 - [Data flow analysis timeout](https://youtrack.jetbrains.com/issue/CPP-17623): press shift in CLion quickly twice, then we have a search window, search "Registry..." and change the timeout key. 
 
-### `gcc-13` on `ubuntu 20.04 LTS`
+### Latest `gcc` on `ubuntu 20.04 LTS`
 
 ```bash
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
@@ -316,7 +316,8 @@ sudo apt install cmake
 
 ### `{fmt}`
 
-Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html). 
+- Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html). 
+- Some special tricks when [building the libary](https://fmt.dev/latest/usage.html). 
 
 ### [Matplot++](https://github.com/alandefreitas/matplotplusplus)
 
@@ -449,7 +450,14 @@ set(ALL_COMPILE_DEFS
 - DO **include headers** in `add_executable` command, 
   or `moc` will NOT parse them and there will be problems finding `vtable`!
 
+### [pybind11](https://github.com/pybind/pybind11)
 
+- This is used to build C/C++ source code into a shared library (.so) which could be imported in Python. 
+- When using with CMake, simply use the `pybind11_add_module` command to replace CMake's `add_library` command. 
+- No need to `add_executable`. No program runnable at C/C++ side. 
+- Dynamic linking or Position-independent static library required at C/C++ side. 
+  - See `{fmt}`(libfmt)'s [build guide](https://fmt.dev/latest/usage.html) as an example. 
+- See the [Sample CMakeLists.txt](../../code/CMakeLists/PyBinding/CMakeLists.txt). 
 
 ## 🌱 java
 
