@@ -2,10 +2,13 @@ cmake_minimum_required(VERSION 3.27)
 project(CPX CXX)
 set(CMAKE_CXX_STANDARD 17)
 
+# If the main consumer of libfmt is a shared library (i.e., a Python extension),
+# we must build libfmt as either shared library or position-independent static library.
+# See https://fmt.dev/latest/usage.html for details.
 find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-10.0.0/build/")
 
 set(Python_ROOT_DIR
-        "$ENV{HOME}/opt/anaconda3/envs/py3"
+        "$ENV{HOME}/opt/anaconda3/envs/py3/"
         )
 find_package(Python COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED CONFIG HINTS "${Python_ROOT_DIR}/lib/python3.10/site-packages/pybind11/share/cmake/")
@@ -35,10 +38,10 @@ set(ALL_LIBRARIES
         pybind11::embed
         )
 
-set(MODULE cpx)
+set(PYMODULE cpx)
 
 set(ALL_COMPILE_DEFS
-        -DMODULE_NAME=${MODULE}
+        -DMODULE_NAME=${PYMODULE}
         )
 
 set(ALL_COMPILE_OPTS
@@ -46,8 +49,8 @@ set(ALL_COMPILE_OPTS
         -Wredundant-move
         )
 
-pybind11_add_module(${MODULE} ${ALL_SOURCE_FILES})
-target_compile_definitions(${MODULE} PUBLIC ${ALL_COMPILE_DEFS})
-target_compile_options(${MODULE} PUBLIC ${ALL_COMPILE_OPTS})
-target_include_directories(${MODULE} PUBLIC ${ALL_INCLUDE_DIRS})
-target_link_libraries(${MODULE} PUBLIC ${ALL_LIBRARIES})
+pybind11_add_module(${PYMODULE} ${ALL_SOURCE_FILES})
+target_compile_definitions(${PYMODULE} PUBLIC ${ALL_COMPILE_DEFS})
+target_compile_options(${PYMODULE} PUBLIC ${ALL_COMPILE_OPTS})
+target_include_directories(${PYMODULE} PUBLIC ${ALL_INCLUDE_DIRS})
+target_link_libraries(${PYMODULE} PUBLIC ${ALL_LIBRARIES})
