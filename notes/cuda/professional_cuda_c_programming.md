@@ -5,7 +5,8 @@
 ## 🌱 1 Heterogeneous Parallel Computing with CUDA
 
 - CLion clangd bug, YouTrack Issue [CPP-25855](https://youtrack.jetbrains.com/issue/CPP-25855).
-  - Incorrect Clangd error for partial template specialization with default parameters (happens within thrust headers).
+  - Incorrect Clangd error for partial template specialization with default parameters (happens within Thrust headers).
+    - Ambiguous partial specializations of `pointer_element<pointer<void>>`. 
   - A workaround by @Petr Kudriavtsev:
     - Go to the `Settings | Languages & Frameworks | C/C++ | Clangd`,
     - There will be a field for additional flags which are added to the every compilation command in the project.

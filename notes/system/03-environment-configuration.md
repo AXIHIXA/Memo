@@ -389,6 +389,13 @@ export PATH="/usr/local/cuda/bin:${PATH}"
 (I am using Debian Installation. Do NOT use Package Manager Installation. )
 - CudaDemo: [CudaDemo](../../code/CudaDemo)
 - To uninstall, follow the [offical guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver), which ensures that the uninstalltion will be clean. 
+- CLion clangd bug, YouTrack Issue [CPP-25855](https://youtrack.jetbrains.com/issue/CPP-25855).
+  - Incorrect Clangd error for partial template specialization with default parameters (happens within Thrust headers).
+    - Ambiguous partial specializations of `pointer_element<pointer<void>>`. 
+  - A workaround by @Petr Kudriavtsev:
+    - Go to the `Settings | Languages & Frameworks | C/C++ | Clangd`,
+    - There will be a field for additional flags which are added to the every compilation command in the project.
+    - Add there `-fno-relaxed-template-template-args`.
 
 ### [MatPlot++](https://alandefreitas.github.io/matplotplusplus/integration/cmake/install-as-a-package-via-cmake/)
 
