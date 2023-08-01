@@ -271,14 +271,15 @@ jupyter kernelspec uninstall unwanted-kernel
 - `$ENV{USER}`, `$ENV{HOME}`： CMakeLists.txt 中调用系统变量
 - [Data flow analysis timeout](https://youtrack.jetbrains.com/issue/CPP-17623): press shift in CLion quickly twice, then we have a search window, search "Registry..." and change the timeout key. 
 
-### `gcc-11` on `ubuntu 20.04 LTS`
+### `gcc-13` on `ubuntu 20.04 LTS`
 
 ```bash
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 sudo apt update
-sudo apt install gcc g++ gcc-11 g++-11
+sudo apt install gcc g++ gcc-13 g++-13
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 --slave /usr/bin/g++ g++ /usr/bin/g++-9
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11 --slave /usr/bin/g++ g++ /usr/bin/g++-11
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 13 --slave /usr/bin/g++ g++ /usr/bin/g++-13
 sudo update-alternatives --config gcc
 ```
 Do not use these commands as you would have to install all symbolic links again:
@@ -289,7 +290,7 @@ sudo update-alternatives --remove-all g++
 
 ### Latest `CMake` on `ubuntu 20.04 LTS`
 
-[Kitware Repository](https://apt.kitware.com/): 
+- [Kitware Repository](https://apt.kitware.com/): 
 > This is Kitware, Inc.'s third-party APT repository, which we use for hosting our own Ubuntu packages, such as CMake.
 >
 > We currently support Ubuntu 16.04, 18.04, and 20.04 on our repository. 
