@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 find_package(Boost REQUIRED)
-find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-9.1.0/build/")
+find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build/")
 
 # CMAKE_PREFIX_PATH can be gotten from `python -m "import torch;print(torch.utils.cmake_prefix_path)"`
 # libTorch conda build conflicts with OpenCV, so download compiled library directly from pytorch.org.

@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 find_package(Boost REQUIRED)
 find_package(glfw3 REQUIRED)
-find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-9.1.0/build/")
+find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build/")
 find_package(OpenCV REQUIRED)
 find_package(Vulkan REQUIRED COMPONENTS glslc)
 

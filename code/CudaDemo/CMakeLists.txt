@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 find_package(Eigen3 REQUIRED)
-find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-9.1.0/build/")
+find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build/")
 
 set(CUAX
         include/cuax/pccg.h
