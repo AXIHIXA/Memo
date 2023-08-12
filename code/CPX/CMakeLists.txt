@@ -32,7 +32,7 @@ set(UTIL
         )
 
 set(MAIN
-        src/main.cu
+        src/main.cpp
         )
 
 set(ALL_SOURCE_FILES
