@@ -339,7 +339,8 @@ sudo reboot
 - Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html). 
 - Some special tricks when [building the libary](https://fmt.dev/latest/usage.html). 
   - The default build generates position-dependent static libraries. 
-  - Some clients (e.g. Python C/C++ extension) require position-indepent static library or dynamic link library. 
+  - Some clients (e.g. Python C/C++ extension) require 
+    either dynamic libraries or position-independent static libraries. 
 
 ### Libraries
 
@@ -489,9 +490,9 @@ set(ALL_COMPILE_DEFS
 - This is used to build C/C++ source code into a shared library (.so) which could be imported in Python. 
 - When using with CMake, simply use the `pybind11_add_module` command to replace CMake's `add_library` command. 
 - No need to `add_executable`. No program runnable at C/C++ side. 
-- Dynamic linking or Position-independent static library required at C/C++ side. 
+- Dynamic or Position-independent static library required at C/C++ side. 
   - See `{fmt}`(libfmt)'s [build guide](https://fmt.dev/latest/usage.html) as an example. 
-- See the [Sample CMakeLists.txt](../../code/CMakeLists/PyBinding/CMakeLists.txt). 
+- See the [Sample CMakeLists.txt](../../code/CPX/CMakeLists.txt). 
 
 ## 🌱 java
 

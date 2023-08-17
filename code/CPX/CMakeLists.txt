@@ -28,7 +28,11 @@ find_package(pybind11 REQUIRED CONFIG HINTS "${Python_ROOT_DIR}/lib/python3.10/s
 
 set(UTIL
         include/util/add.h
+        include/util/fun.h
+        include/util/pb.h
         src/util/add.cu
+        src/util/fun.cpp
+        src/util/pb.cpp
         )
 
 set(MAIN
