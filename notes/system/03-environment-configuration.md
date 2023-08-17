@@ -9,8 +9,8 @@
 - See [Environment Variables - Ubuntu Documentation](https://help.ubuntu.com/community/EnvironmentVariables). 
 - Local Variables: 
   - Suggested: `~/.profile`. 
-    - **Not** for anaconda initialization script and aliases! 
-      These still go to `~/.bashrc`. 
+    - **NOT** for anaconda initialization script and aliases! 
+      These still go to `~/.bashrc` as you invoke anaconda commands in Bash shells! 
   - Shell config files such as `~/.bashrc`, `~/.bash_profile`, and `~/.bash_login` 
     are often suggested for setting environment variables. 
     While this may work on Bash shells for programs started from the shell, 
@@ -42,7 +42,7 @@
 sudo touch /etc/profile.d/my-env-vars.sh
 sudoedit /etc/profile.d/my-env-vars.sh
 
-# /etc/profiles.d/my-env-vars.sh
+# The following are the contents to be appended to /etc/profiles.d/my-env-vars.sh: 
 
 # cuda
 export PATH="/usr/local/cuda/bin:${PATH}"
@@ -282,8 +282,9 @@ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11 --slave /
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 13 --slave /usr/bin/g++ g++ /usr/bin/g++-13
 sudo update-alternatives --config gcc
 ```
-Do not use these commands as you would have to install all symbolic links again:
+Do **NOT** use these commands, as you would have to re-install all symbolic links manually:
 ```bash
+# Do NOT use these commands!
 sudo update-alternatives --remove-all gcc
 sudo update-alternatives --remove-all g++
 ```
@@ -293,9 +294,8 @@ sudo update-alternatives --remove-all g++
 - [Kitware Repository](https://apt.kitware.com/): 
 > This is Kitware, Inc.'s third-party APT repository, which we use for hosting our own Ubuntu packages, such as CMake.
 >
-> We currently support Ubuntu 16.04, 18.04, and 20.04 on our repository. 
-> The 16.04 and 18.04 repositories support x86 (32-bit and 64-bit), 
-> and the 20.04 repository supports x86 (32-bit and 64-bit) and ARM (32-bit and 64-bit).
+> We currently support Ubuntu 20.04 and 22.04 on our repository. 
+> The repositories support x86 (64-bit only) and ARM (32-bit and 64-bit).
 > 
 > To add the repository to your installation, run the kitware-archive.sh script, or do the following in order: 
 ```bash
@@ -310,25 +310,32 @@ sudo apt-get update
 sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
 sudo apt-get install kitware-archive-keyring
 
-# 6. 
+# 6. (Step 5 is optional and skipped; it's for registering the non-production release candidates)
 sudo apt install cmake
+```
+- To UNDO: The repo could be corrupted and will fail the apt updates (invalid certificate). 
+```bash
+sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
+
+sudo rm /etc/apt/sources.list.d/kitware.list
+sudo rm /etc/apt/sources.list.d/kitware.list.distUpgrade
+sudo rm /etc/apt/sources.list.d/kitware.list.save
+
+sudo vi /etc/apt/sources.list
+# Remove all kitware entries if present
+
+sudo apt clean
+sudo reboot
+
+# Redo the installation steps
 ```
 
 ### `{fmt}`
 
 - Download and compile the [`{fmt}` repository](https://fmt.dev/latest/index.html). 
 - Some special tricks when [building the libary](https://fmt.dev/latest/usage.html). 
-
-### [Matplot++](https://github.com/alandefreitas/matplotplusplus)
-
-- [Install Binary Packages](https://alandefreitas.github.io/matplotplusplus/integration/install/binary-packages/)
-  - Releases -> `matplotplusplus-1.1.0-Linux.tar.gz`. 
-  - Do **not** compile from source; `std::filesystem` not found error for whatever reason.
-- Integration with CMake:
-```cmake
-find_package(Matplot++ REQUIRED HINTS "$ENV{HOME}/lib/matplotplusplus/lib/cmake/Matplot++/")
-target_link_libraries(${TARGET} Matplot++::matplot)
-```
+  - The default build generates position-dependent static libraries. 
+  - Some clients (e.g. Python C/C++ extension) require position-indepent static library or dynamic link library. 
 
 ### Libraries
 
@@ -396,6 +403,18 @@ export PATH="/usr/local/cuda/bin:${PATH}"
     - Go to the `Settings | Languages & Frameworks | C/C++ | Clangd`,
     - There will be a field for additional flags which are added to the every compilation command in the project.
     - Add there `-fno-relaxed-template-template-args`.
+
+
+### [Matplot++](https://github.com/alandefreitas/matplotplusplus)
+
+- [Install Binary Packages](https://alandefreitas.github.io/matplotplusplus/integration/install/binary-packages/)
+  - Releases -> `matplotplusplus-1.1.0-Linux.tar.gz`. 
+  - Do **not** compile from source; `std::filesystem` not found error for whatever reason.
+- Integration with CMake:
+```cmake
+find_package(Matplot++ REQUIRED HINTS "$ENV{HOME}/lib/matplotplusplus/lib/cmake/Matplot++/")
+target_link_libraries(${TARGET} Matplot++::matplot)
+```
 
 ### [MatPlot++](https://alandefreitas.github.io/matplotplusplus/integration/cmake/install-as-a-package-via-cmake/)
 
@@ -485,7 +504,7 @@ export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}"
 
 ### jdk的安装位置
 
-引用自百度知道（这地方整体不咋地，不过这句话我感觉还是挺靠谱的）：
+From Baidu: 
 
 > 如果你认为`jdk`是系统提供给你可选的程序，放在`/opt`里；
 > 如果你认为这是你个人行为，自主安装的，放在`/usr/local/lib`里；
