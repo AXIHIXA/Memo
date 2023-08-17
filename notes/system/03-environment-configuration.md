@@ -313,9 +313,13 @@ sudo apt-get install kitware-archive-keyring
 # 6. (Step 5 is optional and skipped; it's for registering the non-production release candidates)
 sudo apt install cmake
 ```
+- Do **NOT** use command `sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'`
+  as it modifies `/etc/apt/sources.list`! 
+  We want all kitware stuff in `/etc/apt/sources.list.d/`. 
 - To UNDO: The repo could be corrupted and will fail the apt updates (invalid certificate). 
 ```bash
 sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
+sudo rm /usr/share/keyrings/kitware-archive-removed-keys.gpg 
 
 sudo rm /etc/apt/sources.list.d/kitware.list
 sudo rm /etc/apt/sources.list.d/kitware.list.distUpgrade
@@ -391,6 +395,11 @@ sudoedit /etc/profile.d/my-env-vars.sh
 # cuda
 export PATH="/usr/local/cuda/bin:${PATH}"
 ```
+- `apt` update failure (`cuda` `cuda-driver` kept back):
+```bash
+# Note: It's "install", NOT "update"!
+sudo apt install cuda cuda-driver
+```
 - Install `CUDNN`: Follow instructions on 
 [NVIDIA CUDNN DOCUMENTAZTION](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#installlinux-deb)
 (I am using Debian Installation. Do NOT use Package Manager Installation. )
@@ -403,7 +412,6 @@ export PATH="/usr/local/cuda/bin:${PATH}"
     - Go to the `Settings | Languages & Frameworks | C/C++ | Clangd`,
     - There will be a field for additional flags which are added to the every compilation command in the project.
     - Add there `-fno-relaxed-template-template-args`.
-
 
 ### [Matplot++](https://github.com/alandefreitas/matplotplusplus)
 
