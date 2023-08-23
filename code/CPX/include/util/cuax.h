@@ -1,15 +1,15 @@
-#ifndef FUN_H
-#define FUN_H
+#ifndef CUAX_H
+#define CUAX_H
 
 #include "util/pybind11_opaque.h"
 
 
-namespace fun
+namespace cuax
 {
 
 void init_py_module(pybind11::module_ & m);
 
-}  // namespace fun
+}  // namespace cuax
 
 
-#endif  // FUN_H
+#endif  // CUAX_H

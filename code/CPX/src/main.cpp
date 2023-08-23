@@ -2,30 +2,16 @@
 #include <iostream>
 
 #include <fmt/core.h>
-#include <pybind11/pybind11.h>
 
+#include "util/pybind11_opaque.h"
+//#include "util/cuax.h"
 #include "util/fun.h"
-#include "util/pb.h"
+//#include "util/pb.h"
 
 
 PYBIND11_MODULE(MODULE_NAME, m)
 {
-    namespace py = pybind11;
-
-    m.doc() = "pybind11 example plugin";
-
-    // Export variables
-    m.attr("int_variable") = 42;
-    m.attr("string_variable") = py::cast("a string variable");
-    m.attr("string_variable_2") = "another string variable";
-
-    // Overloading
-    // Separate initialization code to other files to accelerate compilation
     fun::init_py_module(m);
-
-    // Class
-    // Separate initialization code to other files to accelerate compilation
-    Pb::init_py_module(m);
 }
 
 

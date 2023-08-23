@@ -16,8 +16,7 @@ find_package(Torch REQUIRED CONFIG HINTS "$ENV{HOME}/lib/libtorch/share/cmake/")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 set(TBB_LIBRARIES
-        /usr/lib/x86_64-linux-gnu/libtbbmalloc_proxy.so
-        /usr/lib/x86_64-linux-gnu/libtbbmalloc.so
+        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
         /usr/lib/x86_64-linux-gnu/libtbb.so
         )
 

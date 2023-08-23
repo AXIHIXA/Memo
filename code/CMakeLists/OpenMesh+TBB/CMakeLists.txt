@@ -21,8 +21,7 @@ set(OPENMESH_LIBRARIES
 # TBB
 
 set(TBB_LIBRARIES
-        /usr/lib/x86_64-linux-gnu/libtbbmalloc_proxy.so
-        /usr/lib/x86_64-linux-gnu/libtbbmalloc.so
+        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
         /usr/lib/x86_64-linux-gnu/libtbb.so
         )
 

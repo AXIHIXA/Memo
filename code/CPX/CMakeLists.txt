@@ -26,11 +26,17 @@ set(Python_ROOT_DIR
 find_package(Python COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED CONFIG HINTS "${Python_ROOT_DIR}/lib/python3.10/site-packages/pybind11/share/cmake/")
 
+set(TBB_LIBRARIES
+        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
+        /usr/lib/x86_64-linux-gnu/libtbb.so
+        )
+
 set(UTIL
-        include/util/add.h
+        include/util/cuax.h
         include/util/fun.h
         include/util/pb.h
-        src/util/add.cu
+        include/util/pybind11_opaque.h
+        src/util/cuax.cu
         src/util/fun.cpp
         src/util/pb.cpp
         )
@@ -50,6 +56,7 @@ set(ALL_INCLUDE_DIRS
         )
 
 set(ALL_LIBRARIES
+        ${TBB_LIBRARIES}
         fmt::fmt
         pybind11::module
         pybind11::embed

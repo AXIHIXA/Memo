@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 
-#include <pybind11/pybind11.h>
+#include "util/pybind11_opaque.h"
 
 
 class Pb
