@@ -197,7 +197,22 @@ pip install PyGLM
 ##### Real Ubuntu System
 
 ```bash
-# anaconda
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/xihan1/opt/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/xihan1/opt/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/xihan1/opt/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/xihan1/opt/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+# Anaconda
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /home/xihan1/workspace"
@@ -210,7 +225,7 @@ alias cls="reset"
 ```bash
 gedit ~/.bashrc
 
-# anaconda
+# Anaconda
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /media/ax/DATA/workspace"
@@ -223,7 +238,7 @@ alias cls="reset"
 ```bash
 gedit ~/.bashrc
 
-# anaconda
+# Anaconda
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /mnt/d/workspace"
