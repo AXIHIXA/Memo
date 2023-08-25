@@ -381,15 +381,23 @@ sudo apt autoremove
 sudo reboot
 ```
 
-### `CUDA`
+### NVIDIA CUDA Toolkit
 
-- Install Nvidia driver: Refer to [01-system-installation.md](./01-system-installation.md)
-- Install [NVIDIA `CUDA` Toolkit](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local): 
-```
+- Uninstall all previous CUDA toolkits and drivers: [Here](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver). 
+- Install CUDA Toolkit: 
+  - Download deb package [here](https://developer.nvidia.com/cuda-11-8-0-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local) and follow the instructions; 
+  - As reference: [NVIDIA Installation Documentation](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local). 
+```bash
 # DO NOT USE THIS OBSELETE VERSION!
 sudo apt install nvidia-cuda-toolkit
 ```
-- Set environment variables: 
+- Install Nvidia driver: 
+  - Recommended by [NVIDIA CUDA Installation Guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#driver-installation): `$sudo apt-get install cuda-drivers`;
+  - Old option: Refer to [01-system-installation.md](./01-system-installation.md).
+- Reboot: The drivers won't work before a reboot! 
+- Post-installation steps: 
+  - Remove local deb file: `$ sudo apt-get remove --purge "cuda-repo-ubuntu2004-11-8-local*"`
+  - Set environment variables: 
 ```bash
 sudoedit /etc/profile.d/my-env-vars.sh
 
