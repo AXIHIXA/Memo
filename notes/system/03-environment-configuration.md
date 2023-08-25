@@ -263,10 +263,10 @@ edit `jupyter_server_config.py`:
 ```
 https://jupyter-notebook.readthedocs.io/en/stable/public_server.html?highlight=serverapp%20ip#running-a-public-notebook-server
 # Set ip to '*' to bind on all interfaces (ips) for the public server
-c.ServerApp.ip = '*'                 # 282
-c.ServerApp.open_browser = False     # 383
-c.ServerApp.password = 'argon2:...'  # 394
-c.ServerApp.port = 9000              # 407
+c.ServerApp.ip = '*'                 # 335
+c.ServerApp.open_browser = False     # 440
+c.ServerApp.password = 'argon2:...'  # 451
+c.ServerApp.port = 9000              # 464
 ```
     
 #### kernel management
