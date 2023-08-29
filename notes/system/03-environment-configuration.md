@@ -356,6 +356,12 @@ sudo reboot
   - The default build generates position-dependent static libraries. 
   - Some clients (e.g. Python C/C++ extension) require 
     either dynamic libraries or position-independent static libraries. 
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE ...
+make -j32
+```
 
 ### Libraries
 
