@@ -1,7 +1,7 @@
 import shutil
 
 from setuptools import setup
-from torch.utils.cpp_extension import CppExtension, BuildExtension
+from torch.utils.cpp_extension import BuildExtension, CppExtension
 
 
 def main() -> None:

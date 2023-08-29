@@ -1,6 +1,6 @@
 import torch
 
-import build.pte as pte
+import cmake_build_release.pte as pte
 
 
 def main() -> None:
