@@ -520,7 +520,8 @@ set(ALL_COMPILE_DEFS
 - When using with CMake, simply use the `pybind11_add_module` command to replace CMake's `add_library` command. 
 - No need to `add_executable`. No program runnable at C/C++ side. 
 - Dynamic or Position-independent static library required at C/C++ side. 
-  - See `{fmt}`(libfmt)'s [build guide](https://fmt.dev/latest/usage.html) as an example. 
+  - See `{fmt}`'s [build guide](https://fmt.dev/latest/usage.html) as an example. 
+  - Details also available above in `{fmt}`'s section. 
 - See the [Sample CMakeLists.txt](../../code/CPX/CMakeLists.txt). 
 
 ## 🌱 java
