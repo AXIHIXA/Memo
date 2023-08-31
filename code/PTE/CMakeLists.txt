@@ -19,7 +19,7 @@ set(VERBOSE ON)
 # If the main consumer of libfmt is a shared library (i.e., a Python extension),
 # we must build libfmt as either shared library or position-independent static library.
 # See https://fmt.dev/latest/usage.html for details.
-find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt-10.0.0/build/")
+find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build/")
 
 set(Python_ROOT_DIR "$ENV{HOME}/opt/anaconda3/envs/py3/")
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
