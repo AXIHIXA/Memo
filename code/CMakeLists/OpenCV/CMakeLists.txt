@@ -11,32 +11,32 @@ find_package(OpenCV REQUIRED)
 
 set(MAIN
         src/main.cpp
-        )
+)
 
 set(ALL_SOURCE_FILES
         ${MAIN}
-        )
+)
 
 set(ALL_INCLUDE_DIRS
         ${EIGEN3_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
         include
-        )
+)
 
 set(ALL_LIBRARIES
         ${OpenCV_LIBS}
-        )
-        
+)
+
 # all definitions and options
 
 set(ALL_COMPILE_DEFS
 
-        )
+)
 
 set(ALL_COMPILE_OPTS
         -Wpessimizing-move
         -Wredundant-move
-        )
+)
 
 # executable target
 

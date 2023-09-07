@@ -38,28 +38,28 @@ endfunction()
 set(APP
         include/app/VulkanApp.h
         src/app/VulkanApp.cpp
-        )
+)
 
 set(MAIN
         src/main.cpp
-        )
+)
 
 set(TBB_LIBRARIES
         # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
         /usr/lib/x86_64-linux-gnu/libtbb.so
-        )
+)
 
 set(ALL_SOURCE_FILES
         ${APP}
         ${MAIN}
-        )
+)
 
 set(ALL_INCLUDE_DIRS
         ${Boost_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
         ${Vulkan_INCLUDE_DIRS}
         include
-        )
+)
 
 set(ALL_LIBRARIES
         ${OpenCV_LIBS}
@@ -73,18 +73,18 @@ set(ALL_LIBRARIES
         Xi
         Xrandr
         Xxf86vm
-        )
+)
 
 set(ALL_COMPILE_DEFS
         -DWINDOW_NAME="VulkanDemo"
         -DGLFW_INCLUDE_VULKAN
         ${ALL_COMPILE_DEFS}
-        )
+)
 
 set(ALL_COMPILE_OPTS
         -Wpessimizing-move
         -Wredundant-move
-        )
+)
 
 set(EXECUTABLE ${PROJECT_NAME})
 add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})

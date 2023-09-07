@@ -1,49 +1,46 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.27)
 project(CppDemo)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(Boost REQUIRED)
 find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build/")
-find_package(OpenCV REQUIRED)
 
 set(UTIL
-        include/util/TimerGuard.h
-        )
+        
+)
 
 set(MAIN
         src/main.cpp
-        )
+)
 
 set(TBB_LIBRARIES
         # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
         /usr/lib/x86_64-linux-gnu/libtbb.so
-        )
+)
 
 set(ALL_SOURCE_FILES
-        ${MAIN}
         ${UTIL}
-        )
+        ${MAIN}
+)
 
 set(ALL_INCLUDE_DIRS
         ${Boost_INCLUDE_DIRS}
-        ${OpenCV_INCLUDE_DIRS}
         include
-        )
+)
 
 set(ALL_LIBRARIES
-        ${OpenCV_LIBS}
         ${TBB_LIBRARIES}
         fmt::fmt
-        )
+)
 
 set(ALL_COMPILE_DEFS
 
-        )
+)
 
 set(ALL_COMPILE_OPTS
         -Wpessimizing-move
         -Wredundant-move
-        )
+)
 
 set(EXECUTABLE ${PROJECT_NAME})
 add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})

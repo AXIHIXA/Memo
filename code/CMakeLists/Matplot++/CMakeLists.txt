@@ -6,28 +6,28 @@ find_package(Matplot++ REQUIRED HINTS "$ENV{HOME}/lib/matplotplusplus/lib/cmake/
 
 set(MAIN
         src/main.cpp
-        )
+)
 
 set(ALL_SOURCE_FILES
         ${MAIN}
-        )
+)
 
 set(ALL_INCLUDE_DIRS
         include
-        )
+)
 
 set(ALL_LIBRARIES
         Matplot++::matplot
-        )
+)
 
 set(ALL_COMPILE_DEFS
 
-        )
+)
 
 set(ALL_COMPILE_OPTS
         -Wpessimizing-move
         -Wredundant-move
-        )
+)
 
 set(EXECUTABLE ${PROJECT_NAME})
 add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})

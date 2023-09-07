@@ -13,8 +13,8 @@ project(PTE CUDA CXX)
 set(CMAKE_CUDA_ARCHITECTURES 75)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_VERBOSE_MAKEFILE ON)
-set(VERBOSE ON)
+
+find_package(Boost REQUIRED)
 
 # If the main consumer of libfmt is a shared library (i.e., a Python extension),
 # we must build libfmt as either shared library or position-independent static library.
@@ -46,7 +46,7 @@ set(UTIL
         )
 
 set(MAIN
-        src/main.cpp
+        src/main.cu
         )
 
 set(ALL_SOURCE_FILES
@@ -79,3 +79,7 @@ target_compile_definitions(${TORCH_EXTENSION} PUBLIC ${ALL_COMPILE_DEFS})
 target_compile_options(${TORCH_EXTENSION} PUBLIC ${ALL_COMPILE_OPTS})
 target_include_directories(${TORCH_EXTENSION} PUBLIC ${ALL_INCLUDE_DIRS})
 target_link_libraries(${TORCH_EXTENSION} PUBLIC ${ALL_LIBRARIES})
+
+# NOT NEEDED given CMAKE_CUDA_ARCHITECTURE is set properly
+# target_compile_options(${EXECUTABLE} PRIVATE
+#         $<$<COMPILE_LANGUAGE:CUDA>:--generate-code=arch=compute_75,code=[compute_75,sm_75]>)

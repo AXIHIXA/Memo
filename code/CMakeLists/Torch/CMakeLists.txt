@@ -18,32 +18,32 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 set(TBB_LIBRARIES
         # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
         /usr/lib/x86_64-linux-gnu/libtbb.so
-        )
+)
 
 set(MODEL
         include/model/MVP.h
         src/model/MVP.cpp
-        )
+)
 
 set(UTIL
         include/util/Formatter.h
         include/util/TimerGuard.h
-        )
+)
 
 set(MAIN
         src/main.cpp
-        )
+)
 
 set(ALL_SOURCE_FILES
         ${MODEL}
         ${UTIL}
         ${MAIN}
-        )
+)
 
 set(ALL_INCLUDE_DIRS
         ${TORCH_INCLUDE_DIRS}
         include
-        )
+)
 
 set(ALL_LIBRARIES
         ${Boost_LIBRARIES}
@@ -51,15 +51,15 @@ set(ALL_LIBRARIES
         ${TORCH_LIBRARIES}
         fmt::fmt
         pthread
-        )
+)
 
 set(ALL_COMPILE_DEFS
 
-        )
+)
 
 set(ALL_COMPILE_OPTS
 
-        )
+)
 
 set(EXECUTABLE ${PROJECT_NAME})
 add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})

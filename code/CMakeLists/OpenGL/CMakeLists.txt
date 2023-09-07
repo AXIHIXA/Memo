@@ -14,16 +14,16 @@ find_package(OpenGL REQUIRED)
 
 set(GLAD
         src/glad/glad.c
-        )
+)
 
 set(MAIN
         src/main.cpp
-        )
+)
 
 set(ALL_SOURCE_FILES
         ${GLAD}
         ${MAIN}
-        )
+)
 
 set(ALL_INCLUDE_DIRS
         ${GLEW_INCLUDE_DIRS}
@@ -31,7 +31,7 @@ set(ALL_INCLUDE_DIRS
         ${OPENGL_INCLUDE_DIR}
         ${OPENGL_EGL_INCLUDE_DIRS}
         include
-        )
+)
 
 set(ALL_LIBRARIES
         ${OpenCV_LIBS}
@@ -45,18 +45,18 @@ set(ALL_LIBRARIES
         OpenGL::GLX
         OpenGL::EGL
         pthread
-        )
+)
 
 # all definitions and options
 
 set(ALL_COMPILE_DEFS
 
-        )
+)
 
 set(ALL_COMPILE_OPTS
         -Wpessimizing-move
         -Wredundant-move
-        )
+)
 
 # executable target
 

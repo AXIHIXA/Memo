@@ -17,22 +17,22 @@ set(SOURCE_FILES
         src/jobs.c
         src/sf_readline.c
         src/task.c
-        )
+)
 
 SET(OBJECT_FILES
         lib/sf_event.o
-        )
+)
 
 if (${TEST})
     set(SOURCE_FILES
             ${SOURCE_FILES}
             tests/hw4_tests.c
-            )
+    )
 else ()
     set(SOURCE_FILES
             ${SOURCE_FILES}
             src/main.c
-            )
+    )
 endif ()
 
 add_definitions(-DST_COLOR -DST_VERBOSE)

@@ -11,54 +11,54 @@ find_package(OpenCV REQUIRED)
 
 set(OPENMESH_INCLUDE_DIRS
         $ENV{HOME}/lib/OpenMesh/include
-        )
+)
 
 set(OPENMESH_LIBRARIES
         $ENV{HOME}/lib/OpenMesh/lib/libOpenMeshCore.so
         $ENV{HOME}/lib/OpenMesh/lib/libOpenMeshTools.so
-        )
+)
 
 # TBB
 
 set(TBB_LIBRARIES
         # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
         /usr/lib/x86_64-linux-gnu/libtbb.so
-        )
+)
 
 # all sources
 
 set(MAIN
         src/main.cpp
-        )
+)
 
 set(ALL_SOURCE_FILES
         ${MAIN}
-        )
+)
 
 set(ALL_INCLUDE_DIRS
         ${EIGEN3_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
         ${OPENMESH_INCLUDE_DIRS}
         include
-        )
+)
 
 set(ALL_LIBRARIES
         ${OpenCV_LIBS}
         ${OPENMESH_LIBRARIES}
         ${TBB_LIBRARIES}
         CGAL::CGAL
-        )
+)
 
 # all definitions and options
 
 set(ALL_COMPILE_DEFS
         -DVISUALIZE_DEPTH_MAP
-        )
+)
 
 set(ALL_COMPILE_OPTS
         -Wpessimizing-move
         -Wredundant-move
-        )
+)
 
 # executable target
 

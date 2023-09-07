@@ -16,22 +16,22 @@ find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
 set(GUI
         include/gui/MainWindow.h
         src/gui/MainWindow.cpp
-        )
+)
 
 set(MAIN
         src/main/main.cpp
-        )
+)
 
 set(ALL_SOURCE_FILES
         ${GUI}
         ${MAIN}
-        )
+)
 
 set(ALL_INCLUDE_DIRS
         ${EIGEN3_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
         include
-        )
+)
 
 set(ALL_LIBRARIES
         ${Boost_LIBRARIES}
@@ -40,18 +40,18 @@ set(ALL_LIBRARIES
         Qt5::Core
         Qt5::Gui
         Qt5::Widgets
-        )
+)
 
-# Disable Qt's bad marco usage to avoid conflicts! 
+# Disable Qt's bad marco usage to avoid conflicts!
 # After this, call original keywords such as: slots -> Q_SLOTS
 set(ALL_COMPILE_DEFS
         -DQT_NO_KEYWORDS
-        )
+)
 
 set(ALL_COMPILE_OPTS
         -Wpessimizing-move
         -Wredundant-move
-        )
+)
 
 set(EXECUTABLE ${PROJECT_NAME})
 add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})

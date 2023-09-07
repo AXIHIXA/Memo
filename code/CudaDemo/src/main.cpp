@@ -1,11 +1,7 @@
-#include <cstdlib>
-
-#include "cuax/pccg.h"
+#include "cuax/cuax.h"
 
 
 int main(int argc, char * argv[])
 {
-    test(argc, argv);
-
-    return EXIT_SUCCESS;
+    return cuax::test(argc, argv);
 }
