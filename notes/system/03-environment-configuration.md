@@ -189,6 +189,7 @@ rm -rf ~/opt/anaconda3
 ```bash
 pip install PyGLM
 ```
+- **Note**: When building third-library C++ projects, remember to deactive the base conda environment to avoid dependency overlaps! 
 
 
 
@@ -279,6 +280,8 @@ jupyter kernelspec uninstall unwanted-kernel
 
 
 ## 🌱 C/C++ 
+
+- **Note**: When building third-library C++ projects, remember to deactive the base conda environment to avoid dependency overlaps! 
 
 ### CLion
 
@@ -372,11 +375,17 @@ sudo apt install libeigen3-dev libopencv-dev libtbb-dev libboost-all-dev
 
 # gnuplot (Dependency of Matplot++)
 sudo apt install gnuplot
-
-# CGAL
-sudo apt install libcgal-dev libcgal-qt5-dev
 ```
 
+### `CGAL`
+
+- [Download CGAL for Linux](https://www.cgal.org/download/linux.html)
+```bash
+cd CGAL
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+```
 ### `OpenGL`
 
 - Installation
@@ -443,6 +452,21 @@ sudo apt install cuda cuda-driver
     - There will be a field for additional flags which are added to the every compilation command in the project.
     - Add there `-fno-relaxed-template-template-args`.
 
+### [NVIDIA AMGX](https://github.com/NVIDIA/AMGX)
+
+```bash
+git clone --recursive git@github.com:nvidia/amgx.git
+cd amgx
+mkdir build
+cd build
+cmake .. -DCUDA_ARCH="70" -DCMAKE_NO_MPI=1 -DCMAKE_BUILD_TYPE="Release" -DCMAKE_C_COMPILER="gcc" -DCMAKE_CXX_COMPILER="g++"
+make -j32
+```
+```cmake
+set(AMGX_INCLUDE_DIRS "$ENV{HOME}/lib/amgx/include/")
+set(AMGX_LIBRARIES "$ENV{HOME}/lib/amgx/build/libamgx.a")
+```
+
 ### [Matplot++](https://github.com/alandefreitas/matplotplusplus)
 
 - [Install Binary Packages](https://alandefreitas.github.io/matplotplusplus/integration/install/binary-packages/)
@@ -454,7 +478,7 @@ find_package(Matplot++ REQUIRED HINTS "$ENV{HOME}/lib/matplotplusplus/lib/cmake/
 target_link_libraries(${TARGET} Matplot++::matplot)
 ```
 
-### [MatPlot++](https://alandefreitas.github.io/matplotplusplus/integration/cmake/install-as-a-package-via-cmake/)
+### [MatPlot++ (Don't Use This One!)](https://alandefreitas.github.io/matplotplusplus/integration/cmake/install-as-a-package-via-cmake/)
 
 ```bash
 sudo apt install gnuplot

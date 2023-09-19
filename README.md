@@ -48,6 +48,7 @@
 
 - `CMakeLists`
     - [Boost](./code/CMakeLists/Boost/CMakeLists.txt)
+    - [CGAL](./code/CMakeLists/CGAL/CMakeLists.txt)
     - [CppDemo](./code/CMakeLists/CppDemo/CMakeLists.txt)
     - [Criterion](./code/CMakeLists/Criterion/CMakeLists.txt)
     - [CUDA](./code/CudaDemo/CMakeLists.txt)
