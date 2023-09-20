@@ -2,41 +2,55 @@ cmake_minimum_required(VERSION 3.16)
 project(OpenGLDemo)
 set(CMAKE_CXX_STANDARD 17)
 
-# packages to find
-
-find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
-find_package(OpenCV REQUIRED)
 find_package(OpenGL REQUIRED)
 
 # all sources
 
+set(APP
+        include/app/App.h
+        include/app/Window.h
+        src/app/App.cpp
+        src/app/Window.cpp
+)
+
 set(GLAD
+        include/glad/glad.h
+        include/KHR/khrplatform.h
         src/glad/glad.c
 )
 
-set(MAIN
-        src/main.cpp
+set(UTIL
+        include/util/Shader.h
 )
 
-set(ALL_SOURCE_FILES
-        ${GLAD}
-        ${MAIN}
+set(SHAPE
+        include/shape/Circle.h
+        include/shape/Shape.h
+        include/shape/Triangle.h
+        src/shape/Circle.cpp
+        src/shape/Shape.cpp
+        src/shape/Triangle.cpp
 )
 
 set(ALL_INCLUDE_DIRS
         ${GLEW_INCLUDE_DIRS}
-        ${OpenCV_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIR}
         ${OPENGL_EGL_INCLUDE_DIRS}
         include
 )
 
+set(ALL_SOURCE_FILES
+        ${APP}
+        ${GLAD}
+        ${SHAPE}
+        ${UTIL}
+        src/main.cpp
+)
+
 set(ALL_LIBRARIES
-        ${OpenCV_LIBS}
         dl
-        Eigen3::Eigen
         GLEW::GLEW
         glfw
         OpenGL::GL
@@ -49,8 +63,10 @@ set(ALL_LIBRARIES
 
 # all definitions and options
 
-set(ALL_COMPILE_DEFS
+set(EXECUTABLE ${PROJECT_NAME})
 
+set(ALL_COMPILE_DEFS
+        -DWINDOW_NAME="${EXECUTABLE}"
 )
 
 set(ALL_COMPILE_OPTS
@@ -58,9 +74,8 @@ set(ALL_COMPILE_OPTS
         -Wredundant-move
 )
 
-# executable target
+# executable target(s)
 
-set(EXECUTABLE ${PROJECT_NAME})
 add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})
 target_compile_definitions(${EXECUTABLE} PUBLIC ${ALL_COMPILE_DEFS})
 target_compile_options(${EXECUTABLE} PUBLIC ${ALL_COMPILE_OPTS})

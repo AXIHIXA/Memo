@@ -6,7 +6,7 @@ find_package(Boost REQUIRED)
 find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build/")
 
 set(UTIL
-        
+
 )
 
 set(MAIN

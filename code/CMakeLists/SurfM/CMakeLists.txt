@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.27)
-project(CppDemo)
+project(SurfM)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(Boost REQUIRED)
@@ -41,7 +41,7 @@ set(ALL_COMPILE_OPTS
         -Wredundant-move
 )
 
-set(EXECUTABLE ${PROJECT_NAME})
+set(EXECUTABLE surf)
 add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})
 target_compile_definitions(${EXECUTABLE} PUBLIC ${ALL_COMPILE_DEFS})
 target_compile_options(${EXECUTABLE} PUBLIC ${ALL_COMPILE_OPTS})
