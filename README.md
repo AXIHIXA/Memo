@@ -66,7 +66,6 @@
     - [Vulkan](./code/CMakeLists/VulkanDemo/CMakeLists.txt)
 - `C/C++` Code
     - [debug.h](./code/debug.h)
-    - [OpenGL Shader](./code/Shader.h)
     - [pipe_demo.c](./code/pipe_demo.c)
     - [TimerGuard](./code/TimerGuard/include/util/TimerGuard.h)
       - Does not use explicit instantiation syntax by default; code remains as comments. 
