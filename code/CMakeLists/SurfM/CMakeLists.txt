@@ -10,11 +10,6 @@ set(MAIN
         src/main.cpp
 )
 
-set(TBB_LIBRARIES
-        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
-        /usr/lib/x86_64-linux-gnu/libtbb.so
-)
-
 set(ALL_SOURCE_FILES
         ${MAIN}
 )
@@ -25,11 +20,11 @@ set(ALL_INCLUDE_DIRS
 )
 
 set(ALL_LIBRARIES
-        ${TBB_LIBRARIES}
         CGAL::CGAL
+        dl
         fmt::fmt
         pthread
-        dl
+        tbb
 )
 
 set(ALL_COMPILE_DEFS

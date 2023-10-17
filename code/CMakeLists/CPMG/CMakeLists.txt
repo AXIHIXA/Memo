@@ -26,11 +26,6 @@ set(AMGCL_INCLUDE_DIRS "$ENV{HOME}/lib/amgcl/")
 set(AMGX_INCLUDE_DIRS "$ENV{HOME}/lib/amgx/include/")
 set(AMGX_LIBRARIES "$ENV{HOME}/lib/amgx/build/libamgx.a")
 
-set(TBB_LIBRARIES
-        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
-        /usr/lib/x86_64-linux-gnu/libtbb.so
-)
-
 set(CPMG
         include/cpmg/assembler.h
         include/cpmg/cpamgcl.h
@@ -63,15 +58,15 @@ set(ALL_INCLUDE_DIRS
 
 set(ALL_LIBRARIES
         ${AMGX_LIBRARIES}
-        ${TBB_LIBRARIES}
         Boost::boost
         cublas
         cublasLt
         cusolver
         cusparse
         nvToolsExt  # Solves AMGX CE undefined symbol: nvtxRangePushEx
-        torch
         pybind11::module
+        torch
+        tbb
 )
 
 set(PYMODULE cpmg)

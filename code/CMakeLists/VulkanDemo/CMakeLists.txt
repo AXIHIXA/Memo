@@ -44,11 +44,6 @@ set(MAIN
         src/main.cpp
 )
 
-set(TBB_LIBRARIES
-        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
-        /usr/lib/x86_64-linux-gnu/libtbb.so
-)
-
 set(ALL_SOURCE_FILES
         ${APP}
         ${MAIN}
@@ -63,11 +58,11 @@ set(ALL_INCLUDE_DIRS
 
 set(ALL_LIBRARIES
         ${OpenCV_LIBS}
-        ${TBB_LIBRARIES}
         dl
         fmt::fmt
         glfw
         pthread
+        tbb
         Vulkan::Vulkan
         X11
         Xi

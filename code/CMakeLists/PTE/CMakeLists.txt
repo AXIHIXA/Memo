@@ -36,11 +36,6 @@ find_package(Torch REQUIRED CONFIG HINTS "$ENV{HOME}/opt/anaconda3/envs/py3/lib/
 # (Test with command $ python -c "import torch; print(torch._C._GLIBCXX_USE_CXX11_ABI)".)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
-set(TBB_LIBRARIES
-        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
-        /usr/lib/x86_64-linux-gnu/libtbb.so
-        )
-
 set(UTIL
 
         )
@@ -59,8 +54,8 @@ set(ALL_INCLUDE_DIRS
         )
 
 set(ALL_LIBRARIES
-        ${TBB_LIBRARIES}
         fmt::fmt
+        tbb
         torch
         )
 

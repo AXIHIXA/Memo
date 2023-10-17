@@ -18,13 +18,6 @@ set(OPENMESH_LIBRARIES
         $ENV{HOME}/lib/OpenMesh/lib/libOpenMeshTools.so
 )
 
-# TBB
-
-set(TBB_LIBRARIES
-        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
-        /usr/lib/x86_64-linux-gnu/libtbb.so
-)
-
 # all sources
 
 set(MAIN
@@ -45,8 +38,8 @@ set(ALL_INCLUDE_DIRS
 set(ALL_LIBRARIES
         ${OpenCV_LIBS}
         ${OPENMESH_LIBRARIES}
-        ${TBB_LIBRARIES}
         CGAL::CGAL
+        tbb
 )
 
 # all definitions and options

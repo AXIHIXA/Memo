@@ -17,11 +17,6 @@ set(Python_ROOT_DIR "$ENV{HOME}/opt/anaconda3/envs/py3/")
 find_package(Python COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED CONFIG HINTS "${Python_ROOT_DIR}/lib/python3.10/site-packages/pybind11/share/cmake/")
 
-set(TBB_LIBRARIES
-        # Do NOT include libtbbmalloc and libtbbmaloc_proxy, otherwise crashes after exiting Python intepreter
-        /usr/lib/x86_64-linux-gnu/libtbb.so
-)
-
 set(CPCG
         include/cpcg/cpcg.h
         src/cpcg/cpcg.cu
@@ -42,12 +37,12 @@ set(ALL_INCLUDE_DIRS
 )
 
 set(ALL_LIBRARIES
-        ${TBB_LIBRARIES}
         Boost::boost
         cudart
         cublas
         cusparse
         pybind11::module
+        tbb
 )
 
 set(PYMODULE cpcg)
