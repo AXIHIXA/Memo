@@ -51,10 +51,12 @@
     - [CGAL](./code/CMakeLists/SurfM/CMakeLists.txt)
     - [CppDemo](./code/CMakeLists/CppDemo/CMakeLists.txt)
     - [Criterion](./code/CMakeLists/Criterion/CMakeLists.txt)
-    - CUDA
+    - CUDA/PyTorch
       - [CUDA](./code/CMakeLists/CudaDemo/CMakeLists.txt)
       - [CPCG](./code/CMakeLists/CPCG/CMakeLists.txt)
       - [CPMG](./code/CMakeLists/CPMG/CMakeLists.txt)
+      - [Torch](./code/CMakeLists/Torch/CMakeLists.txt)
+      - [PyTorch CUDA Extension](./code/CMakeLists/PTE/CMakeLists.txt)
     - [Matplot++](./code/CMakeLists/Matplot++/CMakeLists.txt)
     - [OpenCV](./code/CMakeLists/OpenCV/CMakeLists.txt)
     - OpenGL
@@ -62,7 +64,6 @@
       - [OpenGLDemo3D](./code/CMakeLists/OpenGLDemo3D/CMakeLists.txt)
     - [OpenMesh + TBB](./code/CMakeLists/OpenMesh+TBB/CMakeLists.txt)
     - [Qt5](./code/CMakeLists/Qt5/CMakeLists.txt)
-    - [Torch](./code/CMakeLists/Torch/CMakeLists.txt)
     - [Vulkan](./code/CMakeLists/VulkanDemo/CMakeLists.txt)
 - `C/C++` Code
     - [debug.h](./code/debug.h)
