@@ -169,8 +169,7 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
 ### 📌 Timing Your Kernel
 
 - With CPU timer
-- With `nvprof`
-  - Command-line profiling tool
+- With `ncu` (Note that `nvprof` is outdated!)
 
 
 
@@ -250,7 +249,7 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
   - `nvvp`: Standalone visual profiler
     - Displays a timeline of program activity on both the CPU and the GPU
     - Analyzes for potential bottlenecks and suggests how to eliminate/reduce them
-  - `nvprof`: Command-line profiler
+  - `ncu`: Command-line profiler
 - Events and metrics
   - An event is a countable activity the corresponds to a hardaware counter collected during kernel execution
   - A metric is a characteristic of a kernel calculated from one or more events
@@ -493,27 +492,20 @@ int main(int argc, char * argv[])
 }
 ```
 
-#### 📌 Checking Active Warps with `nvprof`
+#### 📌 Checking Active Warps
 
 ```bash
 $ nvcc -O3 --generate-code=arch=compute_75,code=[compute_75,sm_75] sumMatrix.cu -o sumMatrix
+$ ncu -k regex:sumMatrixOnGPU2D ./sumMatrix
 
-$ ./sumMatrix 32 32
 sumMatrixOnGPU2D <<< (512,512), (32,32) >>> elapsed 60 ms
-$ ./sumMatrix 32 16
 sumMatrixOnGPU2D <<< (512,1024), (32,16) >>> elapsed 38 ms
-$ ./sumMatrix 16 32
 sumMatrixOnGPU2D <<< (1024,512), (16,32) >>> elapsed 51 ms
-$ ./sumMatrix 16 16
 sumMatrixOnGPU2D <<< (1024,1024),(16,16) >>> elapsed 46 ms
 
-$ nvprof --metrics achieved_occupancy ./sumMatrix 32 32
 sumMatrixOnGPU2D <<<(512,512), (32,32)>>> Achieved Occupancy 0.501071
-$ nvprof --metrics achieved_occupancy ./sumMatrix 32 16
 sumMatrixOnGPU2D <<<(512,1024), (32,16)>>> Achieved Occupancy 0.736900
-$ nvprof --metrics achieved_occupancy ./sumMatrix 16 32
 sumMatrixOnGPU2D <<<(1024,512), (16,32)>>> Achieved Occupancy 0.766037
-$ nvprof --metrics achieved_occupancy ./sumMatrix 16 16
 sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Achieved Occupancy 0.810691
 ```
 - Because the second case has more blocks than the first case, 
@@ -524,17 +516,13 @@ sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Achieved Occupancy 0.810691
   - Therefore, a higher occupancy does **not** always equate to higher performance. 
   - There must be other factors that restrict performance.
 
-#### 📌 Checking Memoty Options with `nvprof`
+#### 📌 Checking Memoty Options
 
 - `C[idx] = A[idx] + B[idx]` has two loads and one store
 ```bash
-$ nvprof --metrics gld_throughput./sumMatrix 32 32
 sumMatrixOnGPU2D <<<(512,512), (32,32)>>> Global Load Throughput 35.908GB/s
-$ nvprof --metrics gld_throughput./sumMatrix 32 16
 sumMatrixOnGPU2D <<<(512,1024), (32,16)>>> Global Load Throughput 56.478GB/s
-$ nvprof --metrics gld_throughput./sumMatrix 16 32
 sumMatrixOnGPU2D <<<(1024,512), (16,32)>>> Global Load Throughput 85.195GB/s
-$ nvprof --metrics gld_throughput./sumMatrix 16 16
 sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Global Load Throughput 94.708GB/s
 ```
 - While the fourth case has the highest load throughput, 
@@ -542,13 +530,9 @@ sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Global Load Throughput 94.708GB/s
   - A higher load throughput does **not** always equate to higher performance. 
 ```bash
 # The ratio of requested global load throughput to required global load throughput
-$ nvprof --metrics gld_efficiency ./sumMatrix 32 32
 sumMatrixOnGPU2D <<<(512,512), (32,32)>>> Global Memory Load Efficiency 100.00%
-$ nvprof --metrics gld_efficiency ./sumMatrix 32 16
 sumMatrixOnGPU2D <<<(512,1024), (32,16)>>> Global Memory Load Efficiency 100.00%
-$ nvprof --metrics gld_efficiency ./sumMatrix 16 32
 sumMatrixOnGPU2D <<<(1024,512), (16,32)>>> Global Memory Load Efficiency 49.96%
-$ nvprof --metrics gld_efficiency ./sumMatrix 16 16
 sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Global Memory Load Efficiency 49.80%
 ```
 - The load efficiency for the last two cases was half that of the first two cases. 
@@ -1709,8 +1693,6 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - Force uncached loads: `nvcc` flags `-Xptxas -dlcm=cg`
 - Efficiency
   - $\mathrm{gld_efficiency} = \dfrac{\mathrm{RequestedGlobalMemoryLoadThroughput}}{\mathrm{RequiredGlobalMemoryLoadThroughput}}$
-  - `nvprof --devices 0 --metrics gld_efficiency ./testProgram`
-  - `nvprof --devices 0 --metrics gld_transactions ./testProgram`
 - Read-only Cache
   - Was originally reserved for use by texture memory loads (prior to compute capability 3.5). 
   - Granularity: 32 bytes.
@@ -1752,7 +1734,6 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - E.g., two addresses fall within the same 128-byte region but not within an aligned 64-byte region: 
     - One four-segment transaction will be issued. 
     - I.e., a single four-segment transaction performs better than two one-segment transactions. 
-- `nvprof --devices 0 --metrics gst_efficiency ./testProgram`
 
 #### 📌 Arrays of Structures vs Structures of Arrays
 
@@ -1780,7 +1761,6 @@ __global__ void testInnerStruct(InnerStruct * data, InnerStruct * result, const 
     }
 }
 
-/// $ nvprof --devices 0 --metrics gld_efficiency,gst_efficiency ./simpleMathAoS
 /// gld_efficiency 50.00%
 /// gst_efficiency 50.00%
 /// Both load and store memory requests are replayed for the AoS data layout. 
@@ -1812,7 +1792,6 @@ __global__ void testInnerArray(InnerArray * data, InnerArray * result, const int
     }
 }
 
-/// $ nvprof --devices 0 --metrics gld_efficiency,gst_efficiency ./simpleMathSoA
 /// gld_efficiency 100.00%
 /// gst_efficiency 100.00%
 ```
@@ -1874,13 +1853,11 @@ __global__ void testInnerArray(InnerArray * data, InnerArray * result, const int
   // $ ./readSegmentUnroll 128
   // unroll4 <<< 8192, 512 >>> offset 128 elapsed 0.000598 sec
 
-  // $ nvprof --devices 0 --metrics gld_efficiency,gst_efficiency ./readSegmentUnroll 11
   // readOffset gld_efficiency 49.69%
   // readOffset gst_efficiency 100.00%
   // readOffsetUnroll4 gld_efficiency 50.79%
   // readOffsetUnroll4 gst_efficiency 100.00%
 
-  // $ nvprof --devices 0 --metrics gld_transactions,gst_transactions ./readSegmentUnroll 11
   // readOffset gld_transactions 132384
   // readOffset gst_transactions 32928
   // readOffsetUnroll4 gld_transactions 33152
@@ -2083,21 +2060,15 @@ __global__ void transposeUnroll4Col(float * out, const float * in, const int nx,
 }
 ```
 - Tested on NVIDIA GeForce RTX 2080 Ti, with `nx = ny = 1 << 11`. 
-  - `nvprof` is outdated. Use [ncu](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html#nvprof-metric-comparison) instead! 
-    - Format: `ncu [options] [program] [program-arguments...]`. 
-    - [NVIDIA Development Tools Solutions - ERR_NVGPUCTRPERM: Permission issue with Performance Counters](https://developer.nvidia.com/nvidia-development-tools-solutions-err_nvgpuctrperm-permission-issue-performance-counters)
+  - Profile a kernel function named `myKernelFunc` from executable `./myProgramExecutable` 
+    - `$ ncu -k regex:myKernelFunc ./myProgramExecutable [command-line arguments...]`
     - `ncu` could not profile time cost because of kernel replays!
-  - Note that a better memory footprint does **not** indicate better performance (time cost)!
+  - Note that a better memory footprint does **not** equal to better performance (overall time taken)!
+  - [NVIDIA Development Tools Solutions - ERR_NVGPUCTRPERM: Permission issue with Performance Counters](https://developer.nvidia.com/nvidia-development-tools-solutions-err_nvgpuctrperm-permission-issue-performance-counters)
 ```bash
 # These Nsight Compute metrics "translated" into legacy nvprof metrics: 
 # gld_throughput, gst_throughput, gld_efficiency, gst_efficiency
-ncu -k regex:transpose \
---metrics \
-l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,\
-l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,\
-smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,\
-smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct \
-program arguments...
+ncu -k regex:myKernelFunc --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct ./myProgramExecutable
 ```
 ```
 ----------------------- ---- -------- -------- ---------- ----------
