@@ -10,15 +10,19 @@
 namespace cuax
 {
 
+/// Monte-Carlo intergration routine inside unit circle.
+/// Estimates value of PI.
 __global__ void iint(
         float * __restrict__ pt,
         int * __restrict__ inside,
         int len
 )
 {
-    // Well it proved by ncu that row-majored indexing has better throughput.
+    // Well, ncu says that row-majored indexing has better overall throughput.
     // ncu -k regex:iint ./cmake-build-release/cumo
     int i = blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x;
+
+    // Some says that column-majored indexing utilizes cache better, hum.
     // int i = blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.x * blockDim.y + threadIdx.y;
 
     if (i < len)
@@ -35,7 +39,11 @@ class RandomPoint
 public:
     RandomPoint() = delete;
 
-    RandomPoint(unsigned int seed, float xMin, float xMax, float yMin, float yMax) : dx(xMin, xMax), dy(yMin, yMax) {}
+    RandomPoint(unsigned int seed, float xMin, float xMax, float yMin, float yMax)
+            : e(seed), dx(xMin, xMax), dy(yMin, yMax)
+    {
+        // Nothing needed here. 
+    }
 
     __host__ __device__ float2 operator()(unsigned long long i)
     {
@@ -54,7 +62,8 @@ private:
 
 int test(int argc, char * argv[])
 {
-    constexpr unsigned long long kNumSamples {500000000ULL};
+    constexpr unsigned long long kNumSamples = 50000000ULL;
+    
     unsigned int seed = std::random_device()();
     printf("seed = %u\n", seed);
 
@@ -77,6 +86,7 @@ int test(int argc, char * argv[])
     cudaDeviceSynchronize();
 
     int numInside = thrust::reduce(thrust::device, dInside.begin(), dInside.end());
+    cudaDeviceSynchronize();
     printf("Monte-Carlo PI = %lf\n", static_cast<double>(numInside) / static_cast<double>(kNumSamples) * 4.0);
 
     return EXIT_SUCCESS;
