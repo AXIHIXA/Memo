@@ -86,7 +86,6 @@ int test(int argc, char * argv[])
     cudaDeviceSynchronize();
 
     int numInside = thrust::reduce(thrust::device, dInside.begin(), dInside.end());
-    cudaDeviceSynchronize();
     printf("Monte-Carlo PI = %lf\n", static_cast<double>(numInside) / static_cast<double>(kNumSamples) * 4.0);
 
     return EXIT_SUCCESS;
