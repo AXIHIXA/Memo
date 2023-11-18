@@ -14,6 +14,10 @@ def main() -> None:
     c = pte.cross2d(a, b)
     print(c)
 
+    d = torch.arange(0, 32 * 4).float().to(device)
+    print(d)
+    pte.print(d)
+
 
 if __name__ == '__main__':
     main()
