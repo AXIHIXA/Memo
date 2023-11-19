@@ -5,6 +5,8 @@
 #include <thrust/device_vector.h>
 #include <thrust/random.h>
 
+#include "util/CudaUtil.h"
+
 
 namespace cuax
 {
@@ -86,7 +88,8 @@ int test(int argc, char * argv[])
             dInside.data().get(),
             static_cast<int>(dInside.size())
     );
-    cudaDeviceSynchronize();
+    CUDA_CHECK_LAST_ERROR();
+    CUDA_CHECK(cudaDeviceSynchronize());
 
     int numInside = thrust::reduce(thrust::device, dInside.begin(), dInside.end());
     std::printf("Monte-Carlo PI = %lf\n", static_cast<double>(numInside) / static_cast<double>(kNumSamples) * 4.0);
