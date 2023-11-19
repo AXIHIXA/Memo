@@ -63,12 +63,9 @@ private:
 
 int test(int argc, char * argv[])
 {
-    static constexpr long long kNumSamples = 50000000LL;
-    static constexpr dim3 kBlockDim = {32, 32, 1};
+    static constexpr int kNumSamples = 50000000;
+    static constexpr dim3 kBlockDim = {32U, 32U, 1U};
     static constexpr int kBlockSize = static_cast<int>(kBlockDim.x * kBlockDim.y * kBlockDim.z);
-    
-    unsigned int numGrids = kNumSamples / kBlockSize + 1;
-    dim3 mGridDim {numGrids, 1, 1};
     
     unsigned int seed = std::random_device()();
     std::printf("seed = %u\n", seed);
@@ -77,7 +74,7 @@ int test(int argc, char * argv[])
     
     thrust::transform(
         thrust::device,
-        thrust::make_counting_iterator(0LL),
+        thrust::make_counting_iterator(0),
         thrust::make_counting_iterator(kNumSamples),
         dSample.begin(),
         UniformFloat2(seed, -1.0f, 1.0f, -1.0f, 1.0f)
@@ -85,7 +82,9 @@ int test(int argc, char * argv[])
 
     thrust::device_vector<int> dMask(kNumSamples, 0);
 
-    iint<<<mGridDim, kBlockDim>>>(
+    dim3 iintGridDim {static_cast<unsigned int>(kNumSamples / kBlockSize) + 1U, 1U, 1U};
+
+    iint<<<iintGridDim, kBlockDim>>>(
             reinterpret_cast<float *>(dSample.data().get()),
             dMask.data().get(),
             static_cast<int>(dMask.size())
