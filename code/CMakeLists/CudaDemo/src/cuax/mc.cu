@@ -3,7 +3,6 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
 #include <thrust/random.h>
 
 
@@ -12,9 +11,10 @@ namespace cuax
 
 /// Monte-Carlo intergration routine inside unit circle.
 /// Estimates value of PI.
-__global__ void iint(
-        float * __restrict__ pt,
-        int * __restrict__ inside,
+__global__ 
+void iint(
+        float * __restrict__ sample,
+        int * __restrict__ mask,
         int len
 )
 {
@@ -27,30 +27,29 @@ __global__ void iint(
 
     if (i < len)
     {
-        float dx = pt[2 * i];
-        float dy = pt[2 * i + 1];
-        inside[i] = dx * dx + dy * dy <= 1.0f;
+        float x = sample[2 * i];
+        float y = sample[2 * i + 1];
+        mask[i] = x * x + y * y <= 1.0f;
     }
 }
 
 
-class RandomPoint
+class UniformFloat2
 {
 public:
-    RandomPoint() = delete;
+    UniformFloat2() = delete;
 
-    RandomPoint(unsigned int seed, float xMin, float xMax, float yMin, float yMax)
+    UniformFloat2(unsigned int seed, float xMin, float xMax, float yMin, float yMax)
             : e(seed), dx(xMin, xMax), dy(yMin, yMax)
     {
         // Nothing needed here. 
     }
 
-    __host__ __device__ float2 operator()(unsigned long long i)
+    __host__ __device__ 
+    float2 operator()(unsigned long long i)
     {
         e.discard(i);
-        float x = dx(e);
-        float y = dy(e);
-        return {x, y};
+        return {dx(e), dy(e)};
     }
 
 private:
@@ -74,7 +73,7 @@ int test(int argc, char * argv[])
         thrust::make_counting_iterator(0ULL),
         thrust::make_counting_iterator(kNumSamples),
         dPt.begin(),
-        RandomPoint(seed, -1.0f, 1.0f, -1.0f, 1.0f)
+        UniformFloat2(seed, -1.0f, 1.0f, -1.0f, 1.0f)
     );
 
     dim3 blockDim {32, 32, 1};
