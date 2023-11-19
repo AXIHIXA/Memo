@@ -13,14 +13,14 @@ namespace cuax
 /// Estimates value of PI.
 __global__ 
 void iint(
-        float * __restrict__ sample,
+        const float * __restrict__ sample,
         int * __restrict__ mask,
         int len
 )
 {
     // Well, ncu says that row-majored indexing has better overall throughput.
     // ncu -k regex:iint ./cmake-build-release/cumo
-    int i = blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x;
+    auto i = static_cast<int>(blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
 
     // Some says that column-majored indexing utilizes cache better, hum.
     // int i = blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.x * blockDim.y + threadIdx.y;
@@ -61,31 +61,35 @@ private:
 
 int test(int argc, char * argv[])
 {
-    constexpr unsigned long long kNumSamples = 50000000ULL;
+    static constexpr long long kNumSamples = 50000000LL;
+    static constexpr dim3 kBlockDim = {32, 32, 1};
+    static constexpr int kBlockSize = kBlockDim.x * kBlockDim.y * kBlockDim.z;
     
     unsigned int seed = std::random_device()();
-    printf("seed = %u\n", seed);
+    std::printf("seed = %u\n", seed);
 
     thrust::device_vector<float2> dPt(kNumSamples);
     thrust::device_vector<int> dInside(kNumSamples, 0);
     thrust::transform(
         thrust::device,
-        thrust::make_counting_iterator(0ULL),
+        thrust::make_counting_iterator(0LL),
         thrust::make_counting_iterator(kNumSamples),
         dPt.begin(),
         UniformFloat2(seed, -1.0f, 1.0f, -1.0f, 1.0f)
     );
 
-    dim3 blockDim {32, 32, 1};
-    unsigned int blockSize = blockDim.x * blockDim.y * blockDim.z;
-    unsigned int numGrids = kNumSamples / blockSize + 1;
-    dim3 gridDim {numGrids, 1, 1};
+    unsigned int numGrids = kNumSamples / kBlockSize + 1;
+    dim3 mGridDim {numGrids, 1, 1};
 
-    iint<<<gridDim, blockDim>>>(reinterpret_cast<float *>(dPt.data().get()), dInside.data().get(), dInside.size());
+    iint<<<mGridDim, kBlockDim>>>(
+            reinterpret_cast<float *>(dPt.data().get()),
+            dInside.data().get(),
+            static_cast<int>(dInside.size())
+    );
     cudaDeviceSynchronize();
 
     int numInside = thrust::reduce(thrust::device, dInside.begin(), dInside.end());
-    printf("Monte-Carlo PI = %lf\n", static_cast<double>(numInside) / static_cast<double>(kNumSamples) * 4.0);
+    std::printf("Monte-Carlo PI = %lf\n", static_cast<double>(numInside) / static_cast<double>(kNumSamples) * 4.0);
 
     return EXIT_SUCCESS;
 }
