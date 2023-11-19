@@ -65,7 +65,7 @@ int test(int argc, char * argv[])
 {
     static constexpr long long kNumSamples = 50000000LL;
     static constexpr dim3 kBlockDim = {32, 32, 1};
-    static constexpr int kBlockSize = kBlockDim.x * kBlockDim.y * kBlockDim.z;
+    static constexpr int kBlockSize = static_cast<int>(kBlockDim.x * kBlockDim.y * kBlockDim.z);
     
     unsigned int seed = std::random_device()();
     std::printf("seed = %u\n", seed);
