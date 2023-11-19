@@ -71,7 +71,7 @@ int test(int argc, char * argv[])
     std::printf("seed = %u\n", seed);
 
     thrust::device_vector<float2> dPt(kNumSamples);
-    thrust::device_vector<int> dInside(kNumSamples, 0);
+    thrust::device_vector<int> dMask(kNumSamples, 0);
     thrust::transform(
         thrust::device,
         thrust::make_counting_iterator(0LL),
@@ -85,8 +85,8 @@ int test(int argc, char * argv[])
 
     iint<<<mGridDim, kBlockDim>>>(
             reinterpret_cast<float *>(dPt.data().get()),
-            dInside.data().get(),
-            static_cast<int>(dInside.size())
+            dMask.data().get(),
+            static_cast<int>(dMask.size())
     );
     CUDA_CHECK_LAST_ERROR();
     CUDA_CHECK(cudaDeviceSynchronize());
