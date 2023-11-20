@@ -26,7 +26,7 @@ set(TORCH_EXTENSION pte)
 add_library(${TORCH_EXTENSION} SHARED src/main.cu)
 set_target_properties(${TORCH_EXTENSION} PROPERTIES PREFIX "" OUTPUT_NAME ${TORCH_EXTENSION} SUFFIX ".so")
 target_include_directories(${TORCH_EXTENSION} PUBLIC
-        ${CMAKE_SOURCE_DIR}/include/
+        ${CMAKE_SOURCE_DIR}/include
         ${Torch_ROOT_DIR}/include
         ${Torch_ROOT_DIR}/include/torch/csrc/api/include
         ${Torch_ROOT_DIR}/include/TH
