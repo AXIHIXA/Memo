@@ -2403,7 +2403,7 @@ cudaFree(C);
     - Order in which GPU thread reads could be **different** from the *source code*
       - If instructions are independent of each other
     - Barriers and fences are necessary to explicitly enforce ordering
-  - [Explicit Barrier](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions)
+  - [Synchronization Functions (Explicit Barriers)](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions)
     - Only possible to perform a barrier among threads in the same thread block
     ```c++
     /// Waits until 
@@ -2436,8 +2436,10 @@ cudaFree(C);
         __syncthreads();
     }
     ```
-  - [Memory Fence](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#memory-fence-functions)
+  - [Memory Fence Functions](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#memory-fence-functions)
     - Enforce a sequentially-consistent ordering on memory accesses for all threads inside a thread block
+    - Memory fence functions only affect the ordering of memory operations by a thread.
+      - They do **not**, by themselves, ensure that these memory operations are visible to other threads!
     - Block-level
       - Equivalent to [cuda::atomic_thread_fence(cuda::memory_order_seq_cst, cuda::thread_scope_block)](https://nvidia.github.io/libcudacxx/extended_api/synchronization_primitives/atomic/atomic_thread_fence.html)
       ```c++
