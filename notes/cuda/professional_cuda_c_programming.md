@@ -67,6 +67,12 @@
 
 ## 🌱 2 CUDA Programming Model
 
+- [C++ Compatibility](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#c-compatibility)
+  - Host code supports full C++ syntax: 
+    - Reference: [3.1.5. C++ Compatibility](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#c-compatibility). 
+  - Dvice code supports only a subset of C++ syntax: 
+    - Listed in [14. C++ Language Support](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#c-language-support)
+
 ### 📌 [Managing Memory](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
 
 - [Memory Management Documentation](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html)
@@ -202,6 +208,10 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
     - Each thread has its own instruction address counter and register state
     - Each thread carries out the current instruction on its own data
   - Each SM partitions its assigned thread block into warps of 32 threads
+    - Warp partition: 
+      - Each warp contains threads of consecutive, increasing thread IDs; 
+      - The first warp contains thread 0. 
+      - Reference: [4.1 SIMT Architecture](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#simt-architecture)
 - SIMT vs SIMD
   - Both broadcast the same instruction to multiple execution units
   - Difference
