@@ -175,7 +175,9 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
 ### 📌 Timing Your Kernel
 
 - With CPU timer
-- With `ncu` (Note that `nvprof` is outdated!)
+- With `ncu` 
+  - Note that `nvprof` is outdated!
+  - [Metric Comparasion](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html#nvprof-metric-comparison)
 
 
 
@@ -1805,9 +1807,7 @@ __global__ void testInnerArray(InnerArray * data, InnerArray * result, const int
 /// gld_efficiency 100.00%
 /// gst_efficiency 100.00%
 ```
-- Local Test Result
-  - [Code](./examples/pccp/pccp_171_aos_vs_soa.cu)
-  - [Result](./examples/pccp/pccp_171_aos_vs_soa_res.txt)
+- [Local Test Result](./examples/pccp/pccp_171_aos_vs_soa.cu)
 
 #### 📌 Performance Tuning
 
@@ -2275,7 +2275,7 @@ cudaFree(C);
 - Dynamic Allocation
   - Unknown size (*unsized array*) 
   - Declare with `extern` keyword
-  - Allocate dynamically when launching kernels
+  - Allocate dynamically when launching kernels (pass in size **in Bytes**)
   - *Only 1D* supported
   ```c++
   extern __shared__ float tile[];
@@ -2289,16 +2289,19 @@ cudaFree(C);
   - Two key properties to mesure when optimizing memory performance
     - Latency
     - Bandwidth
-- Memory Banks
+- [Memory **Banks**](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-5-x)
   - SMEM: 1D memory space
   - SMEM is divided into 32 equally-sized memory modules (*banks*)
+    - Strided segmentation: [Successive 32-bit words map to successive banks](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared-memory-5-x). 
+      - Addresses 0-31x4 * fall into bank 0-31, 
+      - Addresses 32x4-63x4 again fall into bank 0-31, 
+      - ...
     - Banks could be accessed simultaneously
-    - 32 banks because a warp has 32 threads
-    - Recall: Similar to DRAM partitions (global memory, 256-byte chunks)
+    - We have 32 banks because a warp has 32 threads
   - Number of transactions of a warp's SMEM access request
     - 1 transaction if accessing no more than one memory location per bank
     - 2/2+ transactions otherwise
-- Bank Conflict
+- **Bank Conflict**
   - When?
     - When multiple addresses in a SMEM request fall into the same bank
     - Splits the request into separate conflict-free serial transactions
@@ -2345,6 +2348,16 @@ cudaFree(C);
     - Allows concurrent execution with already-launched kernels where possible. 
     - In most cases, the driver's default behavior should provide optimal performance.
 - Applications can provide additional hints regarding the desired shared memory configuration
+  - [cudaFuncSetCacheConfig](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__HIGHLEVEL.html#group__CUDART__HIGHLEVEL_1g422642bfa0c035a590e4c43ff7c11f8d)
+  ```c++
+  template <class T>
+  inline __host__ ​cudaError_t cudaFuncSetCacheConfig (T * func, cudaFuncCache cacheConfig);
+
+  // cudaFuncCachePreferNone = 0    Default function cache configuration, no preference
+  // cudaFuncCachePreferShared = 1  Prefer larger shared memory and smaller L1 cache
+  // cudaFuncCachePreferL1 = 2      Prefer larger L1 cache and smaller shared memory
+  // cudaFuncCachePreferEqual = 3   Prefer equal size L1 cache and shared memory
+  ```
   - [cudaFuncSetAttribute](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__HIGHLEVEL.html#group__CUDART__HIGHLEVEL_1g422642bfa0c035a590e4c43ff7c11f8d)
   - Where a chosen integer percentage does not map exactly to a supported capacity, the next larger capacity is used.
     - Supported in Compute Compatibility 7.x: 0, 8, 16, 32, 64, or 96KB;
@@ -2513,6 +2526,181 @@ cudaFree(C);
           int a = x;
       }
       ```
+  - Volatile Qualifier
+    - For variables in global or shared memory;
+    - Enforce cache-free direct stores/loads to memory upon these variables;
+      - GPU assume these variables can be changed/used at any time by any other thread. 
+- **SHARED MEMORY VERSUS GLOBAL MEMORY**
+  - SMEM
+    - On-chip (cache)
+    - 20 to 30 times lower latency than DRAM
+    - Greater than 10 times higher bandwidth than DRAM
+    - Smaller access granularity
+  - Global Memory
+    - On device memory (DRAM)
+
+### 🎯 CHECKING THE DATA LAYOUT OF SHARED MEMORY
+
+- Topics:
+  - Square versus rectangular arrays
+  - Row-major versus column-major accesses
+  - Static versus dynamic shared memory declarations
+  - File-scope versus kernel-scope shared memory
+  - Memory padding versus no memory padding
+- Considerations for SMEM programming
+  - Mapping data elements across memory banks
+  - Mapping from thread index to shared memory offset
+
+#### 📌 Square Shared Memory
+
+- A shared memory tile with 32 elements in each dimension (row-major). 
+
+|    **Byte Address**   | 0 | 4 | 8 | 12 | 16 | 20 | 24 | 28 | ... | 4088 | 4092 |
+|:---------------------:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:---:|:----:|:----:|
+| **4-Byte Word Index** | 0 | 1 | 2 |  3 |  4 |  5 |  6 |  7 | ... | 1022 | 1023 |
+
+|            | **Bank 0** | **Bank 1** | **Bank 2** | **...** | **Bank 31** |
+|:----------:|:----------:|:----------:|:----------:|:-------:|:-----------:|
+|  **Row 0** |      0     |      1     |      2     |   ...   |      31     |
+|  **Row 1** |     32     |     33     |     34     |   ...   |      63     |
+|  **Row 2** |     64     |     65     |     66     |   ...   |      95     |
+|   **...**  |     ...    |     ...    |     ...    |   ...   |     ...     |
+| **Row 31** |     992    |     993    |     994    |   ...   |     1023    |
+|            |  **Col 0** |  **Col 1** |  **Col 2** | **...** |  **Col 31** |
+
+```c++
+// Consider a grid with only one block of size (32, 32). 
+constexpr dim3 kGridDim {1U};
+constexpr dim3 kBlockDim {32U, 32U};
+__shared__ int tile[kBlockDim.x][kBlockDim.y];
+
+// Note that index dim 0 is row (corrsponding to y), 
+// and index dim 1 is column (corresponding to x)! 
+tile[threadIdx.y][threadIdx.x]  // Parallel pattern, no confict!
+tile[threadIdx.x][threadIdx.y]  // Bank conflict!
+```
+- Accessing Row-Major versus Column-Major
+  - setRowReadRow: No conflict
+  - setColReadCol: 16-way conflict
+  - [Local Test](./examples/pccp/pccp_220_smem_bank_xy_vs_yx.cu)
+```c++
+__global__
+void setRowReadRow(int * __restrict__ out)
+{
+    __shared__ int tile[kBlockDim.x][kBlockDim.y];
+    
+    auto idx = static_cast<int>(threadIdx.y * blockDim.x + threadIdx.x);
+    tile[threadIdx.y][threadIdx.x] = idx;
+    __syncthreads();
+    out[idx] = tile[threadIdx.y][threadIdx.x];
+}
+
+__global__
+void setColReadCol(int * __restrict__ out)
+{
+    __shared__ int tile[kBlockDim.x][kBlockDim.y];
+
+    auto idx = static_cast<int>(threadIdx.y * blockDim.x + threadIdx.x);
+    tile[threadIdx.x][threadIdx.y] = idx;
+    __syncthreads();
+    out[idx] = tile[threadIdx.x][threadIdx.y];
+}
+```
+```
+$ nvprof ./cmake-build-release/cumo
+
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   40.52%  3.9680us         1  3.9680us  3.9680us  3.9680us  setColReadCol(int*)
+                   29.08%  2.8480us         1  2.8480us  2.8480us  2.8480us  setRowReadRow(int*)
+
+$ ncu --metrics l1tex__data_pipe_lsu_wavefronts_mem_shared_op_ld.sum,l1tex__data_pipe_lsu_wavefronts_mem_shared_op_st.sum ./cmake-build-release/cumo
+
+  setRowReadRow(int *)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__data_pipe_lsu_wavefronts_mem_shared_op_ld.sum                                                               32
+    l1tex__data_pipe_lsu_wavefronts_mem_shared_op_st.sum                                                               32
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+  setColReadCol(int *)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__data_pipe_lsu_wavefronts_mem_shared_op_ld.sum                                                            1,024
+    l1tex__data_pipe_lsu_wavefronts_mem_shared_op_st.sum                                                            1,024
+    ---------------------------------------------------------------------- --------------- ------------------------------
+```
+- Writing Row-Major and Reading Column-Major
+  - Store: conflict-free;
+  - Load: 16-way conflict.
+```c++
+__global__
+void setRowReadCol(int * __restrict__ out)
+{
+    __shared__ int tile[kBlockDim.x][kBlockDim.y];
+
+    auto idx = static_cast<int>(threadIdx.y * blockDim.x + threadIdx.x);
+    tile[threadIdx.x][threadIdx.y] = idx;
+    __syncthreads();
+    out[idx] = tile[threadIdx.y][threadIdx.x];
+}
+
+void setRowReadColDyn(int * __restrict__ out)
+{
+    extern __shared__ int tile[];
+
+    auto idx = static_cast<int>(threadIdx.y * blockDim.x + threadIdx.x);
+    tile[threadIdx.y * blockDim.x + threadIdx.x] = idx;
+    __syncthreads();
+    out[idx] = tile[threadIdx.x * blockDim.y + threadIdx.y];
+}
+```
+```
+$ ncu --metrics l1tex__data_pipe_lsu_wavefronts_mem_shared_op_ld.sum,l1tex__data_pipe_lsu_wavefronts_mem_shared_op_st.sum ./cmake-build-release/cumo
+
+  setRowReadCol(int *)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__data_pipe_lsu_wavefronts_mem_shared_op_ld.sum                                                            1,024
+    l1tex__data_pipe_lsu_wavefronts_mem_shared_op_st.sum                                                               32
+    ---------------------------------------------------------------------- --------------- ------------------------------
+```
+- Padding Shared Memory
+  - Pad one element in each row
+  - Column elements are distributed among different banks
+  - Both reading and writing operations are conflict-free.
+```c++
+constexpr int kPad {1};
+
+__global__
+void setRowReadColPad(int * __restrict__ out)
+{
+    __shared__ int tile[kBlockDim.x][kBlockDim.y + kPad];
+
+    auto idx = static_cast<int>(threadIdx.y * blockDim.x + blockDim.x);
+    tile[threadIdx.x][threadIdx.y] = idx;
+    __syncthreads();
+    out[idx] = tile[threadIdx.y][threadIdx.x];
+}
+
+__global__
+void setRowReadColDynPad(int * __restrict__ out)
+{
+    extern __shared__ int tile[];
+
+    auto idx = static_cast<int>(threadIdx.y * blockDim.x + blockDim.x);
+    tile[threadIdx.y * (blockDim.x + kPad) + threadIdx.x] = idx;
+    __syncthreads();
+    out[idx] = tile[threadIdx.x * (blockDim.x + kPad) + threadIdx.y];
+}
+```
+
+#### 📌 Rectangular Shared Memory
+
+
+
+
+
+
 
 
 ### 🎯 

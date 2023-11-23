@@ -139,3 +139,28 @@ int main(int argc, char * argv[])
 
     return EXIT_SUCCESS;
 }
+
+/*
+$ ncu -k regex:arrayOfStructure --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct ./cmake-build-release/cumo aos
+
+  arrayOfStructure(const ss *, ss *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         544.67
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         544.67
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                             50
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                             50
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+
+$ ncu -k regex:structureOfArray --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct ./cmake-build-release/cumo soa
+
+  structureOfArray(const float *, const float *, float *, float *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         271.27
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         271.27
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                            100
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                            100
+    ---------------------------------------------------------------------- --------------- ------------------------------
+*/
