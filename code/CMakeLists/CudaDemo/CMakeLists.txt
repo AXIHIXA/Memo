@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.23)
 project(CudaDemo CUDA CXX)
+
 # Ensure correct CUDA architecture
 # NVIDIA Geforce RTX 2080 Ti has Compute Capability 7.5
 # https://developer.nvidia.com/cuda-gpus
@@ -9,20 +10,15 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-find_package(Boost REQUIRED)
-find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build/")
-
-set(CUAX
-        include/cuax/cuax.h
-        src/cuax/cuax.cu
-)
+find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build")
 
 set(UTIL
+        include/util/CudaUtil.h
         include/util/TimerGuard.h
 )
 
 set(MAIN
-        src/main.cpp
+        src/main.cu
 )
 
 set(ALL_SOURCE_FILES
@@ -36,9 +32,9 @@ set(ALL_INCLUDE_DIRS
 )
 
 set(ALL_LIBRARIES
-        Boost::boost
         cudart
         cublas
+        curand
         cusparse
         fmt::fmt
 )
@@ -61,3 +57,8 @@ target_link_libraries(${EXECUTABLE} ${ALL_LIBRARIES})
 # NOT NEEDED given CMAKE_CUDA_ARCHITECTURE is set properly
 # target_compile_options(${EXECUTABLE} PRIVATE
 #         $<$<COMPILE_LANGUAGE:CUDA>:--generate-code=arch=compute_75,code=[compute_75,sm_75]>)
+
+#if (DEFINED CMAKE_CUDA_FLAGS_RELEASE)
+#    set(CMAKE_CUDA_FLAGS_RELEASE "-O0")
+#endif ()
+

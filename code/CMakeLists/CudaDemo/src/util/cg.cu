@@ -358,9 +358,6 @@ int gpu_CG(
 //==============================================================================
 //==============================================================================
 
-namespace cuax
-{
-
 int test(int argc, char * argv[])
 {
     const int maxIterations = 10000;
@@ -573,4 +570,3 @@ int test(int argc, char * argv[])
     return EXIT_SUCCESS;
 }
 
-}  // namespace cuax

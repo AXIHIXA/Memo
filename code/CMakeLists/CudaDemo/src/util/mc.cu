@@ -8,9 +8,6 @@
 #include "util/CudaUtil.h"
 
 
-namespace cuax
-{
-
 /// Monte-Carlo intergration routine inside unit circle.
 /// Estimates value of PI.
 __global__ 
@@ -97,5 +94,3 @@ int test(int argc, char * argv[])
 
     return EXIT_SUCCESS;
 }
-
-}  // namespace cuax
