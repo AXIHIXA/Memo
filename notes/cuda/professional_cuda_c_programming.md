@@ -1805,6 +1805,9 @@ __global__ void testInnerArray(InnerArray * data, InnerArray * result, const int
 /// gld_efficiency 100.00%
 /// gst_efficiency 100.00%
 ```
+- Local Test Result
+  - [Code](./examples/pccp/pccp_171_aos_vs_soa.cu)
+  - [Result](./examples/pccp/pccp_171_aos_vs_soa_res.txt)
 
 #### 📌 Performance Tuning
 
