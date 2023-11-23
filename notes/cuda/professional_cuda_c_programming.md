@@ -2760,7 +2760,7 @@ __global__ void reduceSmemDyn(int * g_idata, int * g_odata, unsigned int n)
     // unrolling warp
     if (tid < 32)
     {
-        volatile int *vsmem = smem;
+        volatile int * vsmem = smem;
         vsmem[tid] += vsmem[tid + 32];
         vsmem[tid] += vsmem[tid + 16];
         vsmem[tid] += vsmem[tid +  8];
@@ -2821,7 +2821,7 @@ __global__ void reduceSmemUnrollDyn(int * g_idata, int * g_odata, unsigned int n
     // unrolling warp
     if (tid < 32)
     {
-        volatile int *vsmem = smem;
+        volatile int * vsmem = smem;
         vsmem[tid] += vsmem[tid + 32];
         vsmem[tid] += vsmem[tid + 16];
         vsmem[tid] += vsmem[tid +  8];
@@ -2835,15 +2835,148 @@ __global__ void reduceSmemUnrollDyn(int * g_idata, int * g_odata, unsigned int n
 }
 ```
 
-
-
-
 ### 🎯 COALESCING GLOBAL MEMORY ACCESSES
 
+```c++
+// Baseline
+__global__ void naiveGmem(float * out, float * in, const int nx, const int ny)
+{
+    // matrix coordinate (ix,iy)
+    unsigned int ix = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int iy = blockIdx.y * blockDim.y + threadIdx.y;
 
+    // transpose with boundary test
+    if (ix < nx && iy < ny)
+    {
+        out[ix * ny + iy] = in[iy * nx + ix];
+    }
+}
 
+__global__ void transposeSmemDyn(float * out, float * in, int nx, int ny)
+{
+    // dynamic shared memory
+    extern __shared__ float tile[];
 
+    // coordinate in original matrix
+    unsigned int ix, iy, ti, to;
+    ix = blockDim.x * blockIdx.x + threadIdx.x;
+    iy = blockDim.y * blockIdx.y + threadIdx.y;
 
+    // linear global memory index for original matrix
+    ti = iy * nx + ix;
+
+    // thread index in transposed block
+    unsigned int row_idx, col_idx, irow, icol;
+    row_idx = threadIdx.y * blockDim.x + threadIdx.x;
+    irow    = row_idx / blockDim.y;
+    icol    = row_idx % blockDim.y;
+    col_idx = icol * blockDim.x + irow;
+
+    // coordinate in transposed matrix
+    ix = blockDim.y * blockIdx.y + icol;
+    iy = blockDim.x * blockIdx.x + irow;
+
+    // linear global memory index for transposed matrix
+    to = iy * ny + ix;
+
+    // transpose with boundary test
+    if (ix < nx && iy < ny)
+    {
+        // load data from global memory to shared memory
+        tile[row_idx] = in[ti];
+
+        // thread synchronization
+        __syncthreads();
+
+        // store data to global memory from shared memory
+        out[to] = tile[col_idx];
+    }
+}
+
+__global__ void transposeSmemPadDyn(float * out, float * in, int nx, int ny)
+{
+    // static shared memory with padding
+    extern __shared__ float tile[];
+
+    // coordinate in original matrix
+    unsigned int ix, iy, ti, to;
+    ix = blockDim.x * blockIdx.x + threadIdx.x;
+    iy = blockDim.y * blockIdx.y + threadIdx.y;
+
+    // linear global memory index for original matrix
+    ti = iy * nx + ix;
+
+    // thread index in transposed block
+    unsigned int idx     = threadIdx.y * blockDim.x + threadIdx.x;
+    unsigned int row_idx = threadIdx.y * (blockDim.x + kPad) + threadIdx.x;
+    unsigned int irow    = idx / blockDim.y;
+    unsigned int icol    = idx % blockDim.y;
+    unsigned int col_idx = icol * (blockDim.x + kPad) + irow;
+
+    // coordinate in transposed matrix
+    ix = blockDim.y * blockIdx.y + icol;
+    iy = blockDim.x * blockIdx.x + irow;
+
+    // linear global memory index for transposed matrix
+    to = iy * ny + ix;
+
+    // transpose with boundary test
+    if (ix < nx && iy < ny)
+    {
+        // load data from global memory to shared memory
+        tile[row_idx] = in[ti];
+
+        // thread synchronization
+        __syncthreads();
+
+        // store data to global memory from shared memory
+        out[to] = tile[col_idx];
+    }
+}
+
+__global__ void transposeSmemUnrollPad(float * out, float * in, const int nx, const int ny) 
+{
+    // static 1D shared memory with padding
+    __shared__ float tile[BDIMY * (BDIMX * 2 + IPAD)];
+
+    // coordinate in original matrix
+    unsigned int ix = 2 * blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int iy = blockIdx.y * blockDim.y + threadIdx.y;
+
+    // linear global memory index for original matrix
+    unsigned int ti = iy * nx + ix;
+
+    // thread index in transposed block
+    unsigned int bidx = threadIdx.y * blockDim.x + threadIdx.x;
+    unsigned int irow = bidx / blockDim.y;
+    unsigned int icol = bidx % blockDim.y;
+
+    // coordinate in transposed matrix
+    unsigned int ix2 = blockIdx.y * blockDim.y + icol;
+    unsigned int iy2 = 2 * blockIdx.x * blockDim.x + irow;
+
+    // linear global memory index for transposed matrix
+    unsigned int to = iy2 * ny + ix2;
+
+    if (ix + blockDim.x < nx && iy < ny)
+    {
+        // load two rows from global memory to shared memory
+        unsigned int row_idx = threadIdx.y * (blockDim.x * 2 + IPAD) + threadIdx.x;
+        tile[row_idx] = in[ti];
+        tile[row_idx+BDIMX] = in[ti+BDIMX];
+
+        // thread synchronization
+        __syncthreads();
+
+        // store two rows to global memory from two columns of shared memory
+        unsigned int col_idx = icol * (blockDim.x * 2 + IPAD) + irow;
+        out[to] = tile[col_idx];
+        out[to + ny * BDIMX] = tile[col_idx + BDIMX];
+    }
+}
+```
+
+### 🎯 CONSTANT MEMORY
 
 
 
