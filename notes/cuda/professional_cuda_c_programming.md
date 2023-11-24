@@ -2012,13 +2012,13 @@ void readColumnStoreRow(float * __restrict__ dst, const float * __restrict__ src
 }
 ```
 ```
-$ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct ./cmake-build-release/exe 
+$ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct ./cmake-build-release/exe
 
   readColumnStoreRow(float *, const float *, int)
     Section: Command line profiler metrics
     ---------------------------------------------------------------------- --------------- ------------------------------
-    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         110.70
-    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                          13.84
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         887.87
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         110.98
     smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          12.50
     smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                            100
     ---------------------------------------------------------------------- --------------- ------------------------------
@@ -2026,8 +2026,8 @@ $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_s
   readRowStoreColumn(float *, const float *, int)
     Section: Command line profiler metrics
     ---------------------------------------------------------------------- --------------- ------------------------------
-    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                          13.21
-    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         105.70
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                          70.24
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         561.94
     smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                            100
     smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                          12.50
     ---------------------------------------------------------------------- --------------- ------------------------------
@@ -2036,8 +2036,8 @@ $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_s
 $ nvprof ./cmake-build-release/exe adfhklahfklasd
 
             Type  Time(%)      Time     Calls       Avg       Min       Max  Name
- GPU activities:   53.15%  12.794ms      1000  12.793us  10.880us  1.2430ms  readRowStoreColumn(float*, float const *, int)
-                   45.54%  10.961ms      1000  10.961us  10.815us  11.616us  readColumnStoreRow(float*, float const *, int)
+ GPU activities:   59.56%  59.372ms      1000  59.372us  56.255us  800.12us  readRowStoreColumn(float*, float const *, int)
+                   40.10%  39.970ms      1000  39.969us  35.936us  40.927us  readColumnStoreRow(float*, float const *, int)
 ```
 - Unrolling Transpose
   - Assign more independent work to each thread to maximize in-flight memory requests.
