@@ -3113,10 +3113,81 @@ __global__ void stencil_1d(float * in, float * out, int N)
     - where every thread in a warp accesses the same address;
   - Read-only cache is better for scattered reads. 
 
+### 🎯 THE WARP SHUFFLE INSTRUCTION
 
+- *Shuffle* Instruction 
+  - Allows threads to directly read registers of other threads in the same warp;
+  - Lower latency than shared memory;
+    - **NOT** much faster than a single, non-bank-conflicted shared memory read. 
+  - Does not consume extra memory to perform a data exchange. 
+- *Lane*
+  - A lane is simply a single thread within a warp. 
+  - Each lane: Uniquely identified by its lane index $\in [0, 31]$. 
+  ```c++
+  laneIdx = threadIdx.x % 32
+  warpIdx = threadIdx.x / 32
+  ```
 
+#### 📌 Variants of the Warp Shuffle Instruction
 
+- [Warp Shuffle Functions](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions)
+```c++
+/// Copy from thread srcLane % width. 
+T __shfl_sync(unsigned mask, T var, int srcLane, int width = warpSize);
 
+/// Copy from thread (callerLane - delta) % width. 
+/// Lower delta lanes will be unchanged if width < warpSize. 
+T __shfl_up_sync(unsigned mask, T var, unsigned int delta, int width = warpSize);
+
+/// Copy from thread (callerLane + delta) % width. 
+/// Upper delta lanes will be unchanged if width < warpSize. 
+T __shfl_down_sync(unsigned mask, T var, unsigned int delta, int width = warpSize);
+
+/// Copy from thread (callerLane xor laneMask) % width. 
+/// Each group of width consecutive threads are able to access elements from earlier groups of threads. 
+/// If they attempt to access elements from later groups of threads, their own value of var will be returned. 
+/// Implements a butterfly addressing pattern such as is used in tree reduction and broadcast.
+T __shfl_xor_sync(unsigned mask, T var, int laneMask, int width = warpSize);
+```
+- Permit exchanging of a variable between threads within a warp without use of shared memory. 
+  - Occurs simultaneously for all active threads within the warp (and named in mask);
+  - Moves 4 or 8 Bytes of data per thread depending on the type.
+  - Threads may only read data from another thread which is actively participating in the `__shfl_sync()` command. 
+    - If the target thread is inactive, the retrieved value is undefined.
+    - See `mask` (below). 
+  - Do **not** imply a memory barrier. Do **not** guarantee memory ordering.
+- `T` can be:
+  - `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float` or `double`; 
+  - `__half` or `__half2` (`#include <cuda_fp16.h>`);
+  - `__nv_bfloat16` or `__nv_bfloat162` (`#include <cuda_bf16.h>`).
+- `mask`
+  - Indicates threads participating in the call. 
+  - Bits representing particitipating threads' lane IDs must be set, otherwise is *undefined behavior*. 
+    - Each calling thread must have its own bit set in the mask, and: 
+    - All non-exited threads named in mask must execute the same intrinsic with the same mask. 
+- `width` 
+  - Must have a value which is a power of two no `<= warpSize` (i.e., 1, 2, 4, 8, 16 or 32). 
+  - Results are undefined for other values.
+
+#### 📌 Sharing Data within a Warp
+
+- Broadcast of a Value across a Warp
+```c++
+#define BDIMX 16
+
+__global__ void test_shfl_broadcast(int * d_out, int * d_in, int const srcLane)
+{
+    int value = d_in[threadIdx.x];
+    value = __shfl(value, srcLane, BDIMX);
+    d_out[threadIdx.x] = value;
+}
+
+test_shfl_broadcast<<<1, BDIMX>>>(d_outData, d_inData, 2);
+```
+| init | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
+| shfl | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 |  2 |  2 |  2 |  2 |  2 |  2 |
+- Shift Up within a Warp
 
 
 
