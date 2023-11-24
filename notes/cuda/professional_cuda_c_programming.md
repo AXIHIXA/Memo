@@ -3152,10 +3152,10 @@ T __shfl_xor_sync(unsigned mask, T var, int laneMask, int width = warpSize);
 - Permit exchanging of a variable between threads within a warp without use of shared memory. 
   - Occurs simultaneously for all active threads within the warp (and named in mask);
   - Moves 4 or 8 Bytes of data per thread depending on the type.
-  - Threads may only read data from another thread which is actively participating in the `__shfl_sync()` command. 
-    - If the target thread is inactive, the retrieved value is undefined.
-    - See `mask` (below). 
-  - Do **not** imply a memory barrier. Do **not** guarantee memory ordering.
+- Threads may only read data from another thread which is actively participating in the `__shfl_sync()` command. 
+  - If the target thread is inactive, the retrieved value is undefined.
+  - See `mask` (below). 
+- Do **not** imply a memory barrier. Do **not** guarantee memory ordering.
 - `T` can be:
   - `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float` or `double`; 
   - `__half` or `__half2` (`#include <cuda_fp16.h>`);
@@ -3166,29 +3166,229 @@ T __shfl_xor_sync(unsigned mask, T var, int laneMask, int width = warpSize);
     - Each calling thread must have its own bit set in the mask, and: 
     - All non-exited threads named in mask must execute the same intrinsic with the same mask. 
 - `width` 
-  - Must have a value which is a power of two no `<= warpSize` (i.e., 1, 2, 4, 8, 16 or 32). 
-  - Results are undefined for other values.
+  - Must have a value which is a power of two $\le \mathrm{warpSize}$ (i.e., 1, 2, 4, 8, 16 or 32). 
+  - Results are *undefined* for other values.
 
 #### 📌 Sharing Data within a Warp
 
 - Broadcast of a Value across a Warp
 ```c++
-#define BDIMX 16
+#include <cuda_runtime.h>
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
 
-__global__ void test_shfl_broadcast(int * d_out, int * d_in, int const srcLane)
+
+constexpr dim3 kBlockDim {16U, 1U, 1U};
+constexpr unsigned int kBlockSize {kBlockDim.x * kBlockDim.y * kBlockDim.z};
+constexpr unsigned int kShflMask {0xFFFFFFFFU};
+
+
+__global__ void test_shfl_broadcast(int * __restrict__ d_out, const int * __restrict__ d_in, int srcLane)
 {
     int value = d_in[threadIdx.x];
-    value = __shfl(value, srcLane, BDIMX);
+    value = __shfl_sync(kShflMask, value, srcLane, kBlockDim.x);
     d_out[threadIdx.x] = value;
 }
 
-test_shfl_broadcast<<<1, BDIMX>>>(d_outData, d_inData, 2);
+
+int main(int argc, char * argv[])
+{
+    thrust::device_vector<int> dIn(kBlockSize);
+    thrust::sequence(thrust::device, dIn.begin(), dIn.end());
+    thrust::device_vector<int> dOut(kBlockSize);
+
+    test_shfl_broadcast<<<1U, kBlockDim>>>(
+            dOut.begin().base().get(),
+            dIn.begin().base().get(),
+            2
+    );
+    cudaDeviceSynchronize();
+
+    thrust::host_vector<int> hOut = dOut;
+
+    for (int i : hOut)
+        std::cout << i << ' ';
+    std::cout << '\n';
+
+    return EXIT_SUCCESS;
+}
 ```
 | init | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
 |:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
 | shfl | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 |  2 |  2 |  2 |  2 |  2 |  2 |
 - Shift Up within a Warp
+```c++
+__global__ void test_shfl_up(int * __restrict__ d_out, const int * __restrict__ d_in, int delta = 2)
+{
+    int value = d_in[threadIdx.x];
+    value = __shfl_up_sync(kShflMask, value, delta, kBlockDim.x);
+    d_out[threadIdx.x] = value;
+}
+```
+| init | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
+| shfl | 0 | 1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |  8 |  9 | 10 | 11 | 12 | 13 |
+- Shift Down within a Warp
+```c++
+__global__ void test_shfl_down(int * __restrict__ d_out, const int * __restrict__ d_in, int delta = 2)
+{
+    int value = d_in[threadIdx.x];
+    value = __shfl_down_sync(kShflMask, value, delta, kBlockDim.x);
+    d_out[threadIdx.x] = value;
+}
+```
+| init | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| shfl | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 14 | 15 |
+- Shift within a warp with Wrap Around
+```c++
+__global__ void test_shfl_wrap(int * __restrict__ d_out, const int * __restrict__ d_in, int delta = 2)
+{
+    int value = d_in[threadIdx.x];
+    value = __shfl_sync(kShflMask, value, threadIdx.x + delta, kBlockDim.x);
+    d_out[threadIdx.x] = value;
+}
+```
+| init | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| shfl | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |  0 |  1 |
+- Butterfly Exchange across the Warp
+```c++
+__global__ void test_shfl_xor(int * __restrict__ dOut, const int * __restrict__ dIn, int laneMask = 0x1)
+{
+    int value = dIn[threadIdx.x];
+    value = __shfl_xor_sync(kShflMask, value, laneMask, kBlockDim.x);
+    dOut[threadIdx.x] = value;
+}
+```
+| init | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
+| shfl | 1 | 0 | 2 | 3 | 5 | 4 | 7 | 6 | 9 | 8 | 11 | 10 | 13 | 12 | 15 | 14 |
+- Exchange Values of an Array across a Warp
+```c++
+constexpr int kSegment {4};
 
+__global__ void test_shfl_xor_array(int * __restrict__ dOut, const int * __restrict__ dIn, int laneMask = 0x1)
+{
+    int idx = threadIdx.x * kSegment;
+    int value[kSegment];
+
+    for (int i = 0; i < kSegment; i++) value[i] = dIn[idx + i];
+
+    value[0] = __shfl_xor_sync(kShflMask, value[0], laneMask, kBlockDim.x);
+    value[1] = __shfl_xor_sync(kShflMask, value[1], laneMask, kBlockDim.x);
+    value[2] = __shfl_xor_sync(kShflMask, value[2], laneMask, kBlockDim.x);
+    value[3] = __shfl_xor_sync(kShflMask, value[3], laneMask, kBlockDim.x);
+
+    for (int i = 0; i < kSegment; i++) dOut[idx + i] = value[i];
+}
+```
+| init | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| shfl | 4 | 5 | 6 | 7 | 0 | 1 | 2 | 3 | 12 | 13 | 14 | 15 |  8 |  9 | 10 | 11 |
+- Exchange Values Using Array Indices Across a Warp
+```c++
+constexpr dim3 kBlockDim {16U, 1U, 1U};
+constexpr unsigned int kBlockSize {kBlockDim.x * kBlockDim.y * kBlockDim.z};
+constexpr unsigned int kShflMask {0xFFFFFFFFU};
+
+constexpr int kSegment {4};
+
+__inline__ __device__
+void swap(int * __restrict__ value, int laneIdx, int laneMask, int firstIdx, int secondIdx)
+{
+    bool pred = ((laneIdx / laneMask + 1) == 1);
+
+    if (pred)
+    {
+        int tmp = value[firstIdx];
+        value[firstIdx] = value[secondIdx];
+        value[secondIdx] = tmp;
+    }
+
+    value[secondIdx] = __shfl_xor_sync(kShflMask, value[secondIdx], laneMask, kBlockDim.x);
+
+    if (pred)
+    {
+        int tmp = value[firstIdx];
+        value[firstIdx] = value[secondIdx];
+        value[secondIdx] = tmp;
+    }
+}
+
+__global__
+void test_shfl_swap(int * __restrict__ dOut, const int * __restrict__ dIn, int laneMask = 0x1, int firstIdx = 0, int secondIdx = 3)
+{
+    int idx = static_cast<int>(threadIdx.x) * kSegment;
+    int value[kSegment];
+
+    for (int i = 0; i < kSegment; i++) value[i] = dIn[idx + i];
+    swap(value, static_cast<int>(threadIdx.x), laneMask, firstIdx, secondIdx);
+    for (int i = 0; i < kSegment; i++) dOut[idx + i] = value[i];
+}
+
+```
+| init | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
+| shfl | 7 | 1 | 2 | 3 | 4 | 5 | 6 | 0 | 8 | 9 | 10 | 15 | 12 | 13 | 14 | 11 |
+
+#### 📌 Parallel Reduction Using the Warp Shufﬂ e Instruction
+
+```c++
+__global__ void reduceSmemUnrollShfl(int * g_idata, int * g_odata, unsigned int n)
+{
+    // static shared memory
+    __shared__ int smem[DIM];
+
+    // set thread ID
+    unsigned int tid = threadIdx.x;
+
+    // global index
+    unsigned int idx = blockIdx.x * blockDim.x * 4 + threadIdx.x;
+
+    // unrolling 4 blocks
+    int localSum = 0;
+
+    if (idx + 3 * blockDim.x < n)
+    {
+        float a1 = g_idata[idx];
+        float a2 = g_idata[idx + blockDim.x];
+        float a3 = g_idata[idx + 2 * blockDim.x];
+        float a4 = g_idata[idx + 3 * blockDim.x];
+        localSum = a1 + a2 + a3 + a4;
+    }
+
+    smem[tid] = localSum;
+    __syncthreads();
+
+    // in-place reduction in shared memory
+    if (blockDim.x >= 1024 && tid < 512) smem[tid] += smem[tid + 512];
+    __syncthreads();
+    if (blockDim.x >=  512 && tid < 256) smem[tid] += smem[tid + 256];
+    __syncthreads();
+    if (blockDim.x >=  256 && tid < 128) smem[tid] += smem[tid + 128];
+    __syncthreads();
+    if (blockDim.x >=  128 && tid <  64) smem[tid] += smem[tid +  64];
+    __syncthreads();
+    if (blockDim.x >=   64 && tid <  32) smem[tid] += smem[tid +  32];
+    __syncthreads();
+
+    // unrolling warp
+    localSum = smem[tid];
+
+    if (tid < 32)
+    {
+        localSum += __shfl_xor(localSum, 16);
+        localSum += __shfl_xor(localSum,  8);
+        localSum += __shfl_xor(localSum,  4);
+        localSum += __shfl_xor(localSum,  2);
+        localSum += __shfl_xor(localSum,  1);
+    }
+
+    // write result for this block to global mem
+    if (tid == 0) g_odata[blockIdx.x] = localSum;
+}
+```
 
 
 
