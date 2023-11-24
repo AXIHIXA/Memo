@@ -178,6 +178,20 @@ cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
 - With `ncu` 
   - Note that `nvprof` is outdated!
   - [Metric Comparasion](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html#nvprof-metric-comparison)
+  - Most-frequently-used old metrics into ncu version:
+```bash
+--metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct 
+```
+|              Old             |                                  New                                 |
+|:----------------------------:|:--------------------------------------------------------------------:|
+| gld_efficiency               | smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct        |
+| gld_throughput               | l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second              |
+| gld_transactions             | l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum                       |
+| gld_transactions_per_request | l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio |
+| gst_efficiency               | smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct        |
+| gst_throughput               | l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second              |
+| gst_transactions             | l1tex__t_sectors_pipe_lsu_mem_global_op_st.sum                       |
+| gst_transactions_per_request | l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_st.ratio |
 
 
 
