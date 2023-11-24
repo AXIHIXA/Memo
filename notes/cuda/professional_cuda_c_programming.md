@@ -3132,23 +3132,31 @@ __global__ void stencil_1d(float * in, float * out, int N)
 
 - [Warp Shuffle Functions](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions)
 ```c++
-/// Copy from thread srcLane % width. 
+/// Copy from thread (srcLane % width). 
 T __shfl_sync(unsigned mask, T var, int srcLane, int width = warpSize);
 
-/// Copy from thread (callerLane - delta) % width. 
-/// Exception: The source lane index will NOT wrap around the value of width. 
-/// Lower delta lanes will be unchanged! 
+/// Copy from thread (callerLane - delta). 
+/// Var is shifted up the warp by delta lanes. 
+/// If width < warpSize then each subsection of the warp 
+/// behaves as a separate entity with a starting logical lane ID of 0. 
+/// The source lane will not wrap around the value of width, 
+/// so effectively the lower delta lanes will be unchanged.
 T __shfl_up_sync(unsigned mask, T var, unsigned int delta, int width = warpSize);
 
-/// Copy from thread (callerLane + delta) % width. 
-/// Exception: The source lane index will NOT wrap around the value of width. 
-/// Upper delta lanes will be unchanged! 
+/// Copy from thread (callerLane + delta). 
+/// Shifts var down the warp by delta lanes. 
+/// If width < warpSize then each subsection of the warp 
+/// behaves as a separate entity with a starting logical lane ID of 0. 
+/// The source lane will not wrap around the value of width, 
+/// and so the upper delta lanes will remain unchanged. 
 T __shfl_down_sync(unsigned mask, T var, unsigned int delta, int width = warpSize);
 
-/// Copy from thread (callerLane xor laneMask) % width. 
-/// Each group of width consecutive threads are able to access elements from earlier groups of threads. 
-/// If they attempt to access elements from later groups of threads, their own value of var will be returned. 
-/// Implements a butterfly addressing pattern such as is used in tree reduction and broadcast.
+/// Copy from thread (callerLane xor laneMask). 
+/// If width < warpSize, then each group of width consecutive threads 
+/// are able to access elements from earlier groups of threads.  
+/// However, if they attempt to access elements from later groups of threads, 
+/// their own value of var will be returned. 
+/// This mode implements a butterfly addressing pattern such as is used in tree reduction and broadcast.
 T __shfl_xor_sync(unsigned mask, T var, int laneMask, int width = warpSize);
 ```
 - Permit exchanging of a variable between threads within a warp without use of shared memory. 
