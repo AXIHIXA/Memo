@@ -3332,7 +3332,7 @@ void test_shfl_swap(int * __restrict__ dOut, const int * __restrict__ dIn, int l
 |:----:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
 | shfl | 7 | 1 | 2 | 3 | 4 | 5 | 6 | 0 | 8 | 9 | 10 | 15 | 12 | 13 | 14 | 11 |
 
-#### 📌 Parallel Reduction Using the Warp Shufﬂ e Instruction
+#### 📌 Parallel Reduction Using the Warp Shuffle Instruction
 
 ```c++
 __global__ void reduceSmemUnrollShfl(int * g_idata, int * g_odata, unsigned int n)
