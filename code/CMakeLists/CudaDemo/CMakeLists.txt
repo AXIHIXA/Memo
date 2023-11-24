@@ -22,7 +22,6 @@ set(MAIN
 )
 
 set(ALL_SOURCE_FILES
-        ${CUAX}
         ${UTIL}
         ${MAIN}
 )
