@@ -3291,7 +3291,6 @@ __global__ void test_shfl_xor_array(int * __restrict__ dOut, const int * __restr
 constexpr dim3 kBlockDim {16U, 1U, 1U};
 constexpr unsigned int kBlockSize {kBlockDim.x * kBlockDim.y * kBlockDim.z};
 constexpr unsigned int kShflMask {0xFFFFFFFFU};
-
 constexpr int kSegment {4};
 
 __inline__ __device__
@@ -3317,7 +3316,13 @@ void swap(int * __restrict__ value, int laneIdx, int laneMask, int firstIdx, int
 }
 
 __global__
-void test_shfl_swap(int * __restrict__ dOut, const int * __restrict__ dIn, int laneMask = 0x1, int firstIdx = 0, int secondIdx = 3)
+void test_shfl_swap(
+    int * __restrict__ dOut, 
+    const int * __restrict__ dIn, 
+    int laneMask = 0x1, 
+    int firstIdx = 0, 
+    int secondIdx = 3
+)
 {
     int idx = static_cast<int>(threadIdx.x) * kSegment;
     int value[kSegment];
