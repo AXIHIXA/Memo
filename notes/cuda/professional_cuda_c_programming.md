@@ -2978,8 +2978,140 @@ __global__ void transposeSmemUnrollPad(float * out, float * in, const int nx, co
 
 ### 🎯 CONSTANT MEMORY
 
+- Constant Memory
+  - Read/write permissions
+    - read-only from kernel code
+    - readable and writable from the host
+  - Resides in device DRAM (like global memory), but has dedicated on-chip cache (like L1 cache & smem)
+    - Per-SM constant cache faster than constant memory. 
+    - 64 KB constant memory cache per SM.
+  - Optimal access pattern: 
+    - All threads in a warp access the same location in constant memory. 
+    - Accesses to different addresses within a warp are serialized. 
+  - Constant memory variables: `__constant__ T var;`
+    - Exist for the lifespan of the application;
+    - Accessible from all threads within a grid;
+    - Accessible from the host through runtime functions;
+    - Visible across multiple source files when using CUDA separate compilation. 
+  - Values must be initialized from host: [cudaMemcpyToSymbol](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1g9bcf02b53644eee2bef9983d807084c7)
+  ```c++
+  __host__ 
+  ​cudaError_t cudaMemcpyToSymbol(
+        const void * symbol, 
+        const void * src, 
+        size_t count, 
+        size_t offset = 0, 
+        cudaMemcpyKind kind = cudaMemcpyHostToDevice
+  );
+  ```
 
+#### 📌 Implementing a 1D Stencil with Constant Memory
 
+A 9-point stencil for 1D 1-st order derivative: 
+$$
+f^{'}(x) \approx 
+c_0 (f(x + 4h) - f(x - 4h)) + 
+c_1 (f(x + 3h) - f(x - 3h)) + 
+c_2 (f(x + 2h) - f(x - 2h)) + 
+c_3 (f(x + h) - f(x - h))
+. 
+$$
+```c++
+#define RADIUS 4
+#define BDIM 32
+
+__constant__ float coef[RADIUS + 1];
+
+__global__ void stencil_1d(float * in, float * out, int N)
+{
+    // RADIUS defines the number of points on either side of a point x that are used to calculate its value.
+    // For this example, RADIUS is defined as 4 to form a 9-point stencil. 
+    __shared__ float smem[BDIM + 2 * RADIUS];
+
+    // index to global memory
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    while (idx < N)
+    {
+        // index to shared memory for stencil calculation
+        int sidx = threadIdx.x + RADIUS;
+
+        // Read data from global memory into shared memory
+        smem[sidx] = in[idx];
+
+        // read halo part to shared memory
+        if (threadIdx.x < RADIUS)
+        {
+            smem[sidx - RADIUS] = in[idx - RADIUS];
+            smem[sidx + BDIM] = in[idx + BDIM];
+        }
+
+        // Synchronize (ensure all the data is available)
+        __syncthreads();
+
+        // Apply the stencil
+        float tmp = 0.0f;
+
+#pragma unroll
+        for (int i = 1; i <= RADIUS; i++)
+        {
+            tmp += coef[i] * (smem[sidx + i] - smem[sidx - i]);
+        }
+
+        // Store the result
+        out[idx] = tmp;
+
+        // Loop while idx < n in case gridSize * blockSize insufficient to cover all samples
+        idx += gridDim.x * blockDim.x;
+    }
+}
+```
+
+#### 📌 Comparing with the Read-Only Cache
+
+- Use GPU texture pipeline as a read-only cache for global memory. 
+  - Separate read-only cache with separate memory bandwidth from normal global memory reads
+  - Boosts performance for bandwidth-limited kernels.
+- Two ways to access global memory through the read-only cache: 
+  - Intrinsic function `__ldg`
+    - Used in place of a normal pointer dereference
+    - Force a load to go through the read-only data cache
+  ```c++
+  __global__ void kernel(float * output, float * input)
+  {
+      // ...
+      output[idx] += __ldg(&input[idx]);
+      // ...
+  }
+  ```
+  - Qualify pointers to global memory with `const T * __restrict__`
+  ```c++
+  void kernel(float* output, const float* __restrict__ input)
+  {
+      // ...
+      output[idx] += input[idx];
+      // ...
+  }
+  ```
+- Intrinsic `__ldg` is a better choice when: 
+  - More explicit control over the read-only cache mechanism is desired; or
+  - Code is so complex that the compiler may be unable to detect that read-only cache use is safe.
+- Read-only cache is separate and distinct from constant cache. 
+  - Data loaded through constant cache:
+    - Must be relatively small, and
+    - Must be accessed uniformly for good performance. 
+      - All threads of a warp should access the same location at any given time. 
+  - Data loaded through read-only cache: 
+    - Can be much larger, and 
+    - Can be accessed in a non-uniform pattern.
+- **CONSTANT CACHE VERSUS READ-ONLY CACHE**
+  - Both are read-only from the device;
+  - Both have limited per-SM resources: 
+    - Constant cache: 64 KB,
+    - Read-only cache: 48 KB.
+  - Constant cache performs better on uniform reads:  
+    - where every thread in a warp accesses the same address;
+  - Read-only cache is better for scattered reads. 
 
 
 
