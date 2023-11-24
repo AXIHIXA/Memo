@@ -3136,11 +3136,13 @@ __global__ void stencil_1d(float * in, float * out, int N)
 T __shfl_sync(unsigned mask, T var, int srcLane, int width = warpSize);
 
 /// Copy from thread (callerLane - delta) % width. 
-/// Lower delta lanes will be unchanged if width < warpSize. 
+/// Exception: The source lane index will NOT wrap around the value of width. 
+/// Lower delta lanes will be unchanged! 
 T __shfl_up_sync(unsigned mask, T var, unsigned int delta, int width = warpSize);
 
 /// Copy from thread (callerLane + delta) % width. 
-/// Upper delta lanes will be unchanged if width < warpSize. 
+/// Exception: The source lane index will NOT wrap around the value of width. 
+/// Upper delta lanes will be unchanged! 
 T __shfl_down_sync(unsigned mask, T var, unsigned int delta, int width = warpSize);
 
 /// Copy from thread (callerLane xor laneMask) % width. 
@@ -3177,11 +3179,9 @@ T __shfl_xor_sync(unsigned mask, T var, int laneMask, int width = warpSize);
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-
 constexpr dim3 kBlockDim {16U, 1U, 1U};
 constexpr unsigned int kBlockSize {kBlockDim.x * kBlockDim.y * kBlockDim.z};
 constexpr unsigned int kShflMask {0xFFFFFFFFU};
-
 
 __global__ void test_shfl_broadcast(int * __restrict__ d_out, const int * __restrict__ d_in, int srcLane)
 {
@@ -3189,7 +3189,6 @@ __global__ void test_shfl_broadcast(int * __restrict__ d_out, const int * __rest
     value = __shfl_sync(kShflMask, value, srcLane, kBlockDim.x);
     d_out[threadIdx.x] = value;
 }
-
 
 int main(int argc, char * argv[])
 {
