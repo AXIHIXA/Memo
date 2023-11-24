@@ -1249,7 +1249,8 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - Visible to all threads in the same thread block
     - Lifetime: same as the thread block
   - Constant memory
-    - On-chip, one part of the cache memory
+    - Device memory
+    - Has per-SM dedicated constant caches on-chip
     - Read-only
     - Accessible by all threads and the host
     - Lifetime: same as the application
@@ -1661,12 +1662,13 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
     - Registers (on chip)
     - On-chip Cache
       - L1 Cache and Shared Memory (SMEM) (share 64KB cache storage)
-      - Constant Memory
-      - Read-only Memory
+      - Constant Memory Cache
+      - Read-only Memory Cache
   - L2 Cache (off chip)
   - DRAM (off-chip device memory)
     - Local Memory
     - Global Memory
+    - Constant Memory
 - Global memory 
   - a logical memory space that you can access from your kernel.
   - loads/stores are staged through caches. 
@@ -3010,6 +3012,13 @@ __global__ void transposeSmemUnrollPad(float * out, float * in, const int nx, co
         cudaMemcpyKind kind = cudaMemcpyHostToDevice
   );
   ```
+- [Specs for Compute Capability 7.5](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability) (Turing architecture, e.g., NVIDIA Geforce RTX 2080 Ti)
+  - Total amount of consant memory: 64KB
+  - Cache working set per SM for constant memory: 8KB
+- [Constant Memory](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#device-memory-accesses)
+  - The constant memory space resides in device memory and is cached in the constant cache.
+  - A request is then split into as many separate requests as there are different memory addresses in the initial request, decreasing throughput by a factor equal to the number of separate requests.
+  - The resulting requests are then serviced at the throughput of the constant cache in case of a cache hit, or at the throughput of device memory otherwise.
 
 #### 📌 Implementing a 1D Stencil with Constant Memory
 
