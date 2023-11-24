@@ -3132,7 +3132,10 @@ __global__ void stencil_1d(float * in, float * out, int N)
 
 - [Warp Shuffle Functions](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions)
 ```c++
-/// Copy from thread (srcLane % width). 
+/// Copy from thread (srcLane). 
+/// If width < warpSize then each subsection of the warp 
+/// behaves as a separate entity with a starting logical lane ID of 0. 
+/// If srcLane is outside the range [0:width-1], srcLane %= width (i.e. within the same subsection).
 T __shfl_sync(unsigned mask, T var, int srcLane, int width = warpSize);
 
 /// Copy from thread (callerLane - delta). 
