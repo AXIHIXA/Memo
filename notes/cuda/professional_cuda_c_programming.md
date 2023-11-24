@@ -2014,15 +2014,6 @@ void readColumnStoreRow(float * __restrict__ dst, const float * __restrict__ src
 ```
 $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct ./cmake-build-release/exe 
 
-  readColumnStoreColumn(float *, const float *, int)
-    Section: Command line profiler metrics
-    ---------------------------------------------------------------------- --------------- ------------------------------
-    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                          94.16
-    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                          94.16
-    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          12.50
-    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                          12.50
-    ---------------------------------------------------------------------- --------------- ------------------------------
-
   readColumnStoreRow(float *, const float *, int)
     Section: Command line profiler metrics
     ---------------------------------------------------------------------- --------------- ------------------------------
@@ -2040,15 +2031,13 @@ $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_s
     smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                            100
     smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                          12.50
     ---------------------------------------------------------------------- --------------- ------------------------------
+```
+```
+$ nvprof ./cmake-build-release/exe adfhklahfklasd
 
-  readRowStoreRow(float *, const float *, int)
-    Section: Command line profiler metrics
-    ---------------------------------------------------------------------- --------------- ------------------------------
-    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                          19.23
-    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                          19.23
-    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                            100
-    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                            100
-    ---------------------------------------------------------------------- --------------- ------------------------------
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   53.15%  12.794ms      1000  12.793us  10.880us  1.2430ms  readRowStoreColumn(float*, float const *, int)
+                   45.54%  10.961ms      1000  10.961us  10.815us  11.616us  readColumnStoreRow(float*, float const *, int)
 ```
 - Unrolling Transpose
   - Assign more independent work to each thread to maximize in-flight memory requests.
