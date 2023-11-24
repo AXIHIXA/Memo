@@ -39,18 +39,21 @@ set(ALL_LIBRARIES
         fmt::fmt
 )
 
-set(ALL_CXX_COMPILE_DEFS
+set(ALL_COMPILE_DEFS
 
 )
 
-set(ALL_CXX_COMPILE_OPTS
-
+set(ALL_COMPILE_OPTS
+        # -g is default in CMAKE_<LANG>_FLAGS_DEBUG
+        # $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:DEBUG>>:-g>
+        $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:DEBUG>>:-O0>
+        $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:DEBUG>>:-G>
 )
 
-set(EXECUTABLE cumo)
+set(EXECUTABLE exe)
 add_executable(${EXECUTABLE} ${ALL_SOURCE_FILES})
-target_compile_definitions(${EXECUTABLE} PUBLIC ${ALL_CXX_COMPILE_DEFS})
-target_compile_options(${EXECUTABLE} PUBLIC ${ALL_CXX_COMPILE_OPTS})
+target_compile_definitions(${EXECUTABLE} PUBLIC ${ALL_COMPILE_DEFS})
+target_compile_options(${EXECUTABLE} PUBLIC ${ALL_COMPILE_OPTS})
 target_include_directories(${EXECUTABLE} PUBLIC ${ALL_INCLUDE_DIRS})
 target_link_libraries(${EXECUTABLE} ${ALL_LIBRARIES})
 
@@ -58,7 +61,4 @@ target_link_libraries(${EXECUTABLE} ${ALL_LIBRARIES})
 # target_compile_options(${EXECUTABLE} PRIVATE
 #         $<$<COMPILE_LANGUAGE:CUDA>:--generate-code=arch=compute_75,code=[compute_75,sm_75]>)
 
-#if (DEFINED CMAKE_CUDA_FLAGS_RELEASE)
-#    set(CMAKE_CUDA_FLAGS_RELEASE "-O0")
-#endif ()
 
