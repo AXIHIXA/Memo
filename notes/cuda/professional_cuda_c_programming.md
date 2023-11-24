@@ -1979,73 +1979,76 @@ __global__ void copyCol(float * out, const float * in, const int nx, const int n
   - For the `NaiveCol` implementation, store requests are never replayed due to coalesced writes, 
     but load requests are replayed many times due to strided reads. 
   - Caching of loads in L1 cache can limit the negative performance impact of strided loads. 
+  - [Local Test](./examples/pccp/pccp_181_row_vs_col.cu)
 ```c++
-/// Loads by row and stores by column. 
-__global__ void transposeNaiveRow(float * out, const float * in, const int nx, const int ny) 
+__global__
+void readRowStoreColumn(float * __restrict__ dst, const float * __restrict__ src, int n)
 {
-    unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
-    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
+    auto idx = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
+    auto idy = static_cast<int>(blockIdx.y * blockDim.y + threadIdx.y);
 
-    if (ix < nx && iy < ny) 
+    if (idx < n and idy < n)
     {
-        out[ix * ny + iy] = in[iy * nx + ix];
+        dst[idx * n + idy] = src[idy * n + idx];
     }
 }
 
-/// Loads by column and stores by row. 
-/// Performs better on loading with L1-cache enabled. 
-///
-/// Xi:
-/// Suppose loads and stores are almost equally expensive (NOT TRUE in all scenarios!). 
-/// NaiveRow, Load-by-row and store-by-column: 
-///     Loading is colaesced, no extra overhead. 
-///     Storing is strided, full extra overhead. 
-/// NaiveCol, Load-by-column and store-by-row: 
-///     Loading is strided, (in concept) full extra overhead, 
-///         BUT one warp brings into L1 cache the data needed for neighboring warps (their loads), 
-///         (note that warps are colaesced w.r.t. threadIdx, and that
-///         all warps in one thread block reside on one unique SM, 
-///         sharing the same on-chip L1-cache/shared-memory block), 
-///         thus achieves sub-full extra overhead;
-///     Storing is colaesced, no extra overhead. 
-/// Overall: 
-///     NaiveCol performs better, as it utilizes the L1-cache 
-///     to negate the overhead of strided memory access patterns, 
-///     which is available only to loading operations. 
-///     So it's better to make loads strided (negated by L1-cache) 
-///     and stores coalesced (no extra overhead). 
-/// 
 /// Textbook: 
 /// While the reads performed by column will be uncoalesced 
 /// (hence bandwidth will be wasted on bytes that were not requested), 
 /// bringing those extra bytes into the L1 cache means that 
 /// the next read may be serviced out of cache rather than global memory. 
 /// Global memory writes does not go through L1-cache, no difference on performance. 
-__global__ void transposeNaiveCol(float * out, const float * in, const int nx, const int ny) 
+__global__
+void readColumnStoreRow(float * __restrict__ dst, const float * __restrict__ src, int n)
 {
-    unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
-    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
+    auto idx = static_cast<int>(blockIdx.x * blockDim.x + threadIdx.x);
+    auto idy = static_cast<int>(blockIdx.y * blockDim.y + threadIdx.y);
 
-    if (ix < nx && iy < ny) 
+    if (idx < n and idy < n)
     {
-        out[iy * nx + ix] = in[ix * ny + iy];
+        dst[idy * n + idx] = src[idx * n + idy];
     }
 }
 ```
 ```
-L1-cache Enabled: 
+$ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct ./cmake-build-release/exe 
 
-Effective Bandwidth: 
-CopyRow:  125.67 GB/s
-CopyCol:   58.76 GB/s
-NaiveRow:  64.16 GB/s
-NaiveCol:  81.64 GB/s
+  readColumnStoreColumn(float *, const float *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                          94.16
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                          94.16
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          12.50
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                          12.50
+    ---------------------------------------------------------------------- --------------- ------------------------------
 
-Throughput and Efficiency: 
-CopyRow:  gld_throughput 131.46 GB/s gst_throughput  65.32 GB/s gld_efficiency 49.81% gst_efficiency 100.00%
-CopyRow:  gld_throughput 475.67 GB/s gst_throughput 118.52 GB/s gld_efficiency  6.23% gst_efficiency  25.00%
-NaiveRow: gld_throughput 129.05 GB/s gst_throughput  64.31 GB/s gld_efficiency 50.00% gst_efficiency  25.00%
-NaiveCol: gld_throughput 642.33 GB/s gst_throughput  40.02 GB/s gld_efficiency  6.21% gst_efficiency 100.00%
+  readColumnStoreRow(float *, const float *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         110.70
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                          13.84
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          12.50
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                            100
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+  readRowStoreColumn(float *, const float *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                          13.21
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         105.70
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                            100
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                          12.50
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+  readRowStoreRow(float *, const float *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                          19.23
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                          19.23
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                            100
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                            100
+    ---------------------------------------------------------------------- --------------- ------------------------------
 ```
 - Unrolling Transpose
   - Assign more independent work to each thread to maximize in-flight memory requests.
