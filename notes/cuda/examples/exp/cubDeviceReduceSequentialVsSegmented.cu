@@ -215,3 +215,14 @@ int main(int argc, char * argv[])
 
     return EXIT_SUCCESS;
 }
+
+
+/*
+$ ./cmake-build-release/cumo seq
+tempStorageBytes = 5887
+237.3ms
+
+$ ./cmake-build-release/cumo seg
+tempStorageBytes = 1
+222.337ms
+*/
