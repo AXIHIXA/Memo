@@ -141,6 +141,26 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
 dim3 gridDim(...), blockDim(...);
 cudaKernelFunc<<<gridDim, blockDim>>>(arguments);
 ```
+- Grid size considerations: 
+  - Option 2 is better
+    - Both are valid (both provides enough number of threads);
+    - Option 1 **always** launches one more block;
+    - Option 2 launches one more block only when needed: 
+      - When `numThreadsNeeded % kBlockSize == 0U`, option 2 launches exactly number of blocks needed. 
+```c++
+constexpr dim3 kBlockDim {32U, 32U, 1U};
+constexpr unsigned int kBlockSize {kBlockDim.x * kBlockDim.y * kBlockDim.z};
+
+int numThreadsNeeded = ...;
+
+dim3 gridDimOptionOne {numThreadsNeeded / kBlockSize + 1U, 1U, 1U};
+dim3 gridDimOptionTwo {(numThreadsNeeded + kBlockSize - 1U) / kBlockSize, 1U, 1U};
+
+dim3 mGridDim = ...;
+
+cudaKernelFunc<<<mGridDim, kBlockSize>>>(...);
+cudaDeviceSynchronize();
+```
 
 ### 📌 Writing Your Kernel
 
