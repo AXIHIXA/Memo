@@ -53,7 +53,7 @@ int main(int argc, char * argv[])
     dCenter[kCenterUnrollFactor - 1] = {1.0f, 0.0f};
     dCenter[kNumCenters - 2] = {0.0f, 1.0f};
     dCenter[kNumCenters - 1] = {1.0f, 0.0f};
-    thrust::device_vector<float> dBuffer(kNumSamples * kNumCenters, 0.0f);
+    thrust::device_vector<float> dBuffer(kNumSamples * kCenterUnrollFactor, 0.0f);
     thrust::device_vector<float> dRes(kNumCenters);
 
     dim3 mGridDim {(kNumSamples + kBlockSize - 1) / kBlockSize, 1U, 1U};
@@ -113,6 +113,7 @@ int main(int argc, char * argv[])
                     dBuffer.data().get()
             );
             cudaDeviceSynchronize();
+            std::cerr << "fasdhjklasdfjklasdfjkldfas" << '\n';
 
             cub::DeviceSegmentedReduce::Sum(
                     dTempStorage.data().get(),
