@@ -2007,19 +2007,19 @@ unroll4 <<< 8192, 128 >>> offset 11 elapsed 0.000162 sec
   - E.g., if copying a $2048 \times 2048$ floating point matrix, $\mathrm{Effective Bandwidth} = \dfrac{2048 \times 2048 \times \mathrm{sizeof}(\mathbf{float}) \times 2}{10^9 \times \mathrm{TimesElapsed(s)}}$
 - Matrix Transpose Problem
   - Sample host implementation
-  ```c++
-  /// x: Row; y: Column
-  void transposeHost(float * out, const float * in, const int nx, const int ny) 
-  {
-      for (int iy = 0; iy < ny; ++iy) 
-      {
-          for (int ix = 0; ix < nx; ++ix) 
-          {
-              out[ix * ny + iy] = in[iy * nx + ix];
-          }
-      }
-  }
-  ```
+```c++
+/// x: Row; y: Column
+void transposeHost(float * out, const float * in, const int nx, const int ny) 
+{
+    for (int iy = 0; iy < ny; ++iy) 
+    {
+        for (int ix = 0; ix < nx; ++ix) 
+        {
+            out[ix * ny + iy] = in[iy * nx + ix];
+        }
+    }
+}
+```
   - **Reads**: Accessed by rows in the original matrix; results in coalesced access. 
   - **Writes**: Accessed by columns in the transposed matrix; results in strided access. 
 - Setting An Upper and Lower Performance Bound for Transpose Kernels. 
