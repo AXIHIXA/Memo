@@ -1899,72 +1899,72 @@ __global__ void testInnerArray(InnerArray * data, InnerArray * result, const int
     - Because each of these loads is independent, you can expect more concurrent memory accesses.
     - This unrolling technique has a tremendous impact on performance, even **more than address alignment**.
   - [Local Test Result](./examples/pccp/pccp_176_read_offset_unroll_block.cu)
-  ```c++
-  __global__ 
-  void readOffset(
-          const float * __restrict__ A, 
-          const float * __restrict__ B, 
-          float * __restrict__ C, 
-          int n, 
-          int offset
-  )
-  {
-      unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-      unsigned int k = i + offset;
+```c++
+__global__ 
+void readOffset(
+        const float * __restrict__ A, 
+        const float * __restrict__ B, 
+        float * __restrict__ C, 
+        int n, 
+        int offset
+)
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int k = i + offset;
 
-      if (k < n)
-      {
-          C[i] = A[k] + B[k];
-      }
-  }
+    if (k < n)
+    {
+        C[i] = A[k] + B[k];
+    }
+}
 
-  __global__ 
-  void readOffsetUnroll4(
-          const float * __restrict__ A, 
-          const float * __restrict__ B, 
-          float * __restrict__ C, 
-          int n, 
-          int offset
-  )
-  {
-      unsigned int i = blockIdx.x * blockDim.x * 4 + threadIdx.x;
-      unsigned int k = i + offset;
+__global__ 
+void readOffsetUnroll4(
+        const float * __restrict__ A, 
+        const float * __restrict__ B, 
+        float * __restrict__ C, 
+        int n, 
+        int offset
+)
+{
+    unsigned int i = blockIdx.x * blockDim.x * 4 + threadIdx.x;
+    unsigned int k = i + offset;
 
-      if (k + 3 * blockDim.x < n)
-      {
-          C[i] = A[k];
-          C[i + blockDim.x] = A[k + blockDim.x] + B[k + blockDim.x];
-          C[i + 2 * blockDim.x] = A[k + 2 * blockDim.x] + B[k + 2 * blockDim.x];
-          C[i + 3 * blockDim.x] = A[k + 3 * blockDim.x] + B[k + 3 * blockDim.x];
-      }
-  }
-  ```
-  ```
-  $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct  ./cmake-build-release/exe
+    if (k + 3 * blockDim.x < n)
+    {
+        C[i] = A[k];
+        C[i + blockDim.x] = A[k + blockDim.x] + B[k + blockDim.x];
+        C[i + 2 * blockDim.x] = A[k + 2 * blockDim.x] + B[k + 2 * blockDim.x];
+        C[i + 3 * blockDim.x] = A[k + 3 * blockDim.x] + B[k + 3 * blockDim.x];
+    }
+}
+```
+```
+$ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct  ./cmake-build-release/exe
 
-  readOffset(const float *, const float *, float *, int, int)
-    Section: Command line profiler metrics
-    ---------------------------------------------------------------------- --------------- ------------------------------
-    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         366.94
-    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         185.06
-    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          80.00
-    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                         100.00
-    ---------------------------------------------------------------------- --------------- ------------------------------
+readOffset(const float *, const float *, float *, int, int)
+  Section: Command line profiler metrics
+  ---------------------------------------------------------------------- --------------- ------------------------------
+  l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         366.94
+  l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         185.06
+  smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          80.00
+  smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                         100.00
+  ---------------------------------------------------------------------- --------------- ------------------------------
 
-  readOffsetUnroll4(const float *, const float *, float *, int, int)
-    Section: Command line profiler metrics
-    ---------------------------------------------------------------------- --------------- ------------------------------
-    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         394.44
-    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         200.37
-    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          80.00
-    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                         100.00
-    ---------------------------------------------------------------------- --------------- ------------------------------
+readOffsetUnroll4(const float *, const float *, float *, int, int)
+  Section: Command line profiler metrics
+  ---------------------------------------------------------------------- --------------- ------------------------------
+  l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         394.44
+  l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         200.37
+  smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          80.00
+  smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                         100.00
+  ---------------------------------------------------------------------- --------------- ------------------------------
 
-  $ ./cmake-build-release/exe 100
+$ ./cmake-build-release/exe 100
 
-  readOffset         9.0689  ms
-  readOffsetUnroll4  8.60923 ms
-  ```
+readOffset         9.0689  ms
+readOffsetUnroll4  8.60923 ms
+```
 - Exposing More Parallelism
   - Experiment with the grid and block size of a kernel. 
 ```
