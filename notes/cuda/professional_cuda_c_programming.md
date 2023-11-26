@@ -1918,7 +1918,6 @@ __global__ void testInnerArray(InnerArray * data, InnerArray * result, const int
       }
   }
 
-
   __global__ 
   void readOffsetUnroll4(
           const float * __restrict__ A, 
