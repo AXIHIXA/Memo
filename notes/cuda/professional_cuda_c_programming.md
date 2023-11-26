@@ -2,7 +2,7 @@
 
 
 
-## 🌱 1 Heterogeneous Parallel Computing with CUDA
+## 🌱 1. Heterogeneous Parallel Computing with CUDA
 
 - CLion clangd bug, YouTrack Issue [CPP-25855](https://youtrack.jetbrains.com/issue/CPP-25855).
   - Incorrect Clangd error for partial template specialization with default parameters (happens within Thrust headers).
@@ -12,7 +12,7 @@
     - There will be a field for additional flags which are added to the every compilation command in the project.
     - Add there `-fno-relaxed-template-template-args`.
 
-### 🎯 PARALLEL COMPUTING -- Computer Architecture
+### 🎯 1.1. PARALLEL COMPUTING -- Computer Architecture
 
 - *Flynn's Taxonomy*
   - Single Instruction Single Data (SISD)
@@ -47,7 +47,7 @@
     - Same address space (there could be multiple physical memories)
 - NVIDIA: *Single Instruction, Multiple Thread* (SIMT)
 
-### 🎯 HETEROGENEOUS COMPUTING
+### 🎯 1.2. HETEROGENEOUS COMPUTING
 
 - Performace features
   - *Peak computational performance* 
@@ -65,7 +65,7 @@
 
 
 
-## 🌱 2 CUDA Programming Model
+## 🌱 2. CUDA Programming Model
 
 - [C++ Compatibility](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#c-compatibility)
   - Host code supports full C++ syntax: 
@@ -195,9 +195,10 @@ cudaDeviceSynchronize();
 ### 📌 Timing Your Kernel
 
 - With CPU timer
-- With `ncu` 
-  - Note that `nvprof` is outdated!
-  - [Metric Comparasion](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html#nvprof-metric-comparison)
+- With `nvprof`
+  - Note that `nvprof` is outdated for metrics, yet it's still good for timing. 
+  - `ncu` does **not** support timing because of kernel replays.  
+- [Metric Comparasion](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html#nvprof-metric-comparison)
   - Most-frequently-used old metrics into ncu version:
 ```bash
 --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct 
@@ -212,12 +213,20 @@ cudaDeviceSynchronize();
 | gst_throughput               | l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second              |
 | gst_transactions             | l1tex__t_sectors_pipe_lsu_mem_global_op_st.sum                       |
 | gst_transactions_per_request | l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_st.ratio |
+- [Metric Collection](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#metric-collection)
+  - By default, the basic set is collected when no `--set`, `--section` and no `--metrics` options are passed on the command line. 
+  - The full set of sections can be collected with `--set full`. 
+  - Use `--list-sets` to see the list of currently available sets. 
+  - Use `--list-sections` to see the list of currently available sections. 
+```bash
+$ ncu -k regex:cudaKernelFunc --set full ./cmake-build-release/executable [args...]
+```
 
 
 
-## 🌱 3 CUDA Execution Model
+## 🌱 3. CUDA Execution Model
 
-### 🎯 INTRODUCTION
+### 🎯 3.1. INTRODUCTION
 
 #### 📌 GPU Architecture Overview
 
@@ -306,7 +315,7 @@ cudaDeviceSynchronize();
   - Counter values may **not** be exactly the same across repeated runs
     - Due to variations in GPU execution (E.g., thread block and warp scheduling order)
 
-### 🎯 WARP EXECUTION
+### 🎯 3.2. WARP EXECUTION
 
 #### 📌 Warps and Thread Blocks
 
@@ -495,7 +504,7 @@ __global__ void willCertainlyDiverge(float * c)
       - The only safe way to synchronize across blocks is 
         to use the global synchronization point at the end of every kernel execution
 
-### 🎯 EXPOSING PARALLELISM
+### 🎯 3.3. EXPOSING PARALLELISM
 
 - Metrics and performace
   - **No** single metric can prescribe optimal performance.
@@ -591,7 +600,7 @@ sumMatrixOnGPU2D <<<(1024,1024),(16,16)>>> Global Memory Load Efficiency 49.80%
   - **The innermost dimension (`blockDim.x`) should always be a multiple of the warp size**
   - Because otherwise we will have poor global memory access patterns (detailed Chapter 4)
 
-### 🎯 AVOIDING BRANCH DIVERGENCE
+### 🎯 3.4. AVOIDING BRANCH DIVERGENCE
 
 - Reduce or avoid branch divergence by rearranging data access patterns
 - Practice with a parallel reduction example: E.g., sum an array via airwise parallel sum 
@@ -697,7 +706,7 @@ __global__ void reduceInterleaved(int * g_idata, int * g_odata, unsigned int n)
 }
 ```
 
-### 🎯 UNROLLING LOOPS
+### 🎯 3.5. UNROLLING LOOPS
 
 - *Loop unrolling* 
   - A technique that attempts to reduce the frequency of branches and loop maintenance instructions. 
@@ -991,7 +1000,7 @@ switch (blocksize)
 }
 ```
 
-### 🎯 DYNAMIC PARALLELISM
+### 🎯 3.6. DYNAMIC PARALLELISM
 
 - So far, all kernels have been invoked from the host thread
 - CUDA *Dynamic Parallelism* allows new GPU kernels to be created and synchronized directly on the GPU
@@ -1175,9 +1184,9 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
 
 
 
-## 🌱 4 Global Memory
+## 🌱 4. Global Memory
 
-### 🎯 INTRODUCTION
+### 🎯 4.1. INTRODUCTION
 
 #### 📌 Memory Hierachy
 
@@ -1472,7 +1481,7 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
       - Both host code and device code can access pinned memory directly by simply dereferencing a pointer. 
       - Detailed in the next section
 
-### 🎯 MEMORY MANAGEMENT
+### 🎯 4.2. MEMORY MANAGEMENT
 
 #### 📌 Memory Allocation and Deallocation
 
@@ -1673,7 +1682,7 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   __host__ cudaError_t cudaMallocManaged(void ** devPtr, size_t size, unsigned int flags = cudaMemAttachGlobal);
   ```
 
-### 🎯 MEMORY ACCESS PATTERNS
+### 🎯 4.3. MEMORY ACCESS PATTERNS
 
 #### 📌 Aligned and Coalesced Access
 
@@ -1697,14 +1706,15 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
     - 128-byte: Both L1 and L2 cache is used
     - 32-byte: Only L2 cache is used
 - Two characteristics of device memory accesses for performance: 
-  - Aligned memory accesses
+  - **Aligned memory accesses**
     - Occur when the first address of a device memory transaction 
       is an even multiple of the cache granularity for the transaction
       (either 32 bytes for L2 cache or 128 bytes for L1 cache). 
       Performing a misaligned load will cause wasted bandwidth.
-  - Coalesced memory accesses
+  - **Coalesced memory accesses**
     - Occur when all 32 threads in a warp access a contiguous chunk of memory.
   - To maximize global memory throughput, organize memory operations to be both aligned and coalesced. 
+  - **Note**: In ncu, `WRN   This kernel has uncoalesced global accesses` indicates either unaligned or really uncoalesced. 
 
 #### 📌 Global Memory Reads
 
@@ -1777,11 +1787,38 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
 
 - Memory store operations: 
   - Use only L2 cache;
-  - Write-allocate policy;
+  - Write-allocate policy: Cached in the L2 cache before being sent to device memory;
   - 32-byte segment granularity, 1/2/3/4 segments at a time.
   - E.g., two addresses fall within the same 128-byte region but not within an aligned 64-byte region: 
     - One four-segment transaction will be issued. 
     - I.e., a single four-segment transaction performs better than two one-segment transactions. 
+- Example of Misaligned Writes
+```c++
+__global__ 
+void writeOffset(
+        const float * __restrict__ a, 
+        const float * __restrict__ b, 
+        float * __restrict__ c, 
+        int n, 
+        int offset
+)
+{
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int k = i + offset;
+
+    if (k < n) c[k] = a[i] + b[i];
+}
+```
+```
+writeOffset Offset 0:   gld_efficiency 100.00%
+writeOffset Offset 0:   gst_efficiency 100.00%
+
+writeOffset Offset 11:  gld_efficiency 100.00%
+writeOffset Offset 11:  gst_efficiency  80.00%
+
+writeOffset Offset 128: gld_efficiency 100.00%
+writeOffset Offset 128: gst_efficiency 100.00%
+```
 
 #### 📌 Arrays of Structures vs Structures of Arrays
 
@@ -1848,14 +1885,14 @@ __global__ void testInnerArray(InnerArray * data, InnerArray * result, const int
 #### 📌 Performance Tuning
 
 - Two goals when optimizing memory bandwidth:
-  - Aligned and coalesced memory accesses
+  - **Aligned and coalesced memory accesses**
     - Reduce wasted bandwidth
-  - Sufficient concurrent memory operations
+  - **Sufficient concurrent memory operations**
     - Hide memory latency
     - Increasing the number of independent memory operations performed within each thread.
     - Experimenting with the execution configuration of a kernel launch to expose sufficient parallelism to each SM.
 - Unrolling Techniques
-  - Unrolling loops that contain memory operations adds more independent memory operations to the pipeline. 
+  - **Unrolling loops that contain memory operations** adds more independent memory operations to the pipeline. 
     - For an I/O-bound kernel, exposing sufficient memory access parallelism is a high priority. 
   - Consider the earlier `readSegment` example. 
     - Revise the `readOffset` kernel such that each thread performs four independent memory operations. 
@@ -1927,12 +1964,12 @@ unroll4 <<< 8192, 128 >>> offset 11 elapsed 0.000162 sec
 - **MAXIMIZING BANDWIDTH UTILIZATION**
   - Two major factors on the performance of device memory operations:
     - Efficient use of bytes moving between device DRAM and SM on-chip memory:
-      - Memory access patterns should be aligned and coalesced.
+      - **Memory access patterns should be aligned and coalesced**.
     - Number of memory operations concurrently in-flight: 
-      - Unrolling, yielding more independent memory accesses per thread; 
+      - **Unrolling, yielding more independent memory accesses per thread**; 
       - Modifying the execution confiuration of a kernel launch.
 
-### 🎯 WHAT BANDWIDTH CAN A KERNEL ACHIEVE?
+### 🎯 4.4. WHAT BANDWIDTH CAN A KERNEL ACHIEVE?
 
 - *Memory Latency*
   - The time to satisfy an individual memory request. 
@@ -2169,7 +2206,7 @@ transposeNaiveCol<<<grid (128x128), block (16x16)>>> ran for 0.09071ms, effectiv
 transposeNaiveCol<<<grid (256x64), block (8x32)>>> ran for 0.074991ms, effective bandwidth 447.4461010914167 GB/s
 ```
 
-### 🎯 MATRIX ADDITION WITH UNIFIED MEMORY
+### 🎯 4.5. MATRIX ADDITION WITH UNIFIED MEMORY
 
 - Manual:
 ```c++
@@ -2265,9 +2302,9 @@ cudaFree(C);
 
 
 
-## 🌱 5 Shared Memory and Constant Memory
+## 🌱 5. Shared Memory and Constant Memory
 
-### 🎯 INTRODUCING CUDA SHARED MEMORY
+### 🎯 5.1. INTRODUCING CUDA SHARED MEMORY
 
 #### 📌 Shared Memory (SMEM)
 
@@ -2567,7 +2604,7 @@ cudaFree(C);
   - Global Memory
     - On device memory (DRAM)
 
-### 🎯 CHECKING THE DATA LAYOUT OF SHARED MEMORY
+### 🎯 5.2. CHECKING THE DATA LAYOUT OF SHARED MEMORY
 
 - Topics:
   - Square versus rectangular arrays
@@ -2722,8 +2759,11 @@ void setRowReadColDynPad(int * __restrict__ out)
 }
 ```
 
-### 🎯 REDUCING GLOBAL MEMORY ACCESS
+### 🎯 5.3. REDUCING GLOBAL MEMORY ACCESS
 
+- One of the primary reasons to use shared memory is to cache data on-chip. 
+  - Thereby reduce the number of global memory accesses. 
+  - Improves performance **when we access a same global address more than once**. 
 - Baseline Parallel Reduction
 ```c++
 // unroll4 + complete unroll for loop + gmem
@@ -2737,7 +2777,8 @@ __global__ void reduceGmem(int * g_idata, int * g_odata, unsigned int n)
     unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
 
-    // in-place reduction in global memory
+    // in-place reduction in global memory, 
+    // fold idata[0:1024] into idata[0:63]
     if (blockDim.x >= 1024 && tid < 512) idata[tid] += idata[tid + 512];
     __syncthreads();
     if (blockDim.x >=  512 && tid < 256) idata[tid] += idata[tid + 256];
@@ -2747,10 +2788,11 @@ __global__ void reduceGmem(int * g_idata, int * g_odata, unsigned int n)
     if (blockDim.x >=  128 && tid <  64) idata[tid] += idata[tid +  64];
     __syncthreads();
 
-    // unrolling warp
+    // unrolling warp, 
+    // fold idata[0:63] into idata[0]
     if (tid < 32)
     {
-        volatile int *vsmem = idata;
+        volatile int * vsmem = idata;
         vsmem[tid] += vsmem[tid + 32];
         vsmem[tid] += vsmem[tid + 16];
         vsmem[tid] += vsmem[tid +  8];
@@ -2771,11 +2813,13 @@ __global__ void reduceSmemDyn(int * g_idata, int * g_odata, unsigned int n)
     unsigned int tid = threadIdx.x;
     int * idata = g_idata + blockIdx.x * blockDim.x;
 
-    // set to smem by each threads
+    // set to smem by each threads, 
+    // set smem[0:1024] to idata[0:1024]
     smem[tid] = idata[tid];
     __syncthreads();
 
-    // in-place reduction in global memory
+    // in-place reduction in shared memory, 
+    // fold smem[0:1024] into smem[0:63]
     if (blockDim.x >= 1024 && tid < 512) smem[tid] += smem[tid + 512];
     __syncthreads();
     if (blockDim.x >=  512 && tid < 256) smem[tid] += smem[tid + 256];
@@ -2785,7 +2829,8 @@ __global__ void reduceSmemDyn(int * g_idata, int * g_odata, unsigned int n)
     if (blockDim.x >=  128 && tid <  64) smem[tid] += smem[tid +  64];
     __syncthreads();
 
-    // unrolling warp
+    // unrolling warp, 
+    // fold smem[0:63] into smem[0]
     if (tid < 32)
     {
         volatile int * vsmem = smem;
@@ -2798,7 +2843,7 @@ __global__ void reduceSmemDyn(int * g_idata, int * g_odata, unsigned int n)
     }
 
     // write result for this block to global mem
-    if (tid == 0)  g_odata[blockIdx.x] = smem[0];
+    if (tid == 0) g_odata[blockIdx.x] = smem[0];
 }
 ```
 ```
@@ -2808,7 +2853,17 @@ Time(%)  Time      Calls  Avg       Min       Max       Name
 1.10%    1.1536ms  1      1.1536ms  1.1536ms  1.1536ms  reduceSmem()
 ```
 - Parallel Reduction with Unrolling
+  - In the preceding kernels, each thread block handles one block of data.
   - Unroll blocks to improve kernel performance by enabling multiple I/O operations to be in-flight at once.
+  - The following kernel unrolls four blocks: 
+    - I.e., each thread handles data elements from four data blocks. 
+    - **However**, each thread takes one data element from one data block only. 
+  - Analysis:
+    - Number of global memory loads: unchanged; 
+    - Number of global memory stores: reduced by one-fourth.
+    - With four global loads in-flight, GPU has more flexibility in scheduling them concurrently: 
+      - potentially leading to better global memory utilization.
+- In general, merits of block unrolling: 
   - Increased global memory throughput by exposing more parallel I/O per thread
   - Reduction of global memory store transactions by one-fourth
   - Overall kernel performance improvement
@@ -2817,7 +2872,8 @@ __global__ void reduceSmemUnrollDyn(int * g_idata, int * g_odata, unsigned int n
 {
     extern __shared__ int smem[];
 
-    // set thread ID
+    // set thread ID. 
+    // note: this kernel is invoked with 1d grid and 1d block. 
     unsigned int tid = threadIdx.x;
     unsigned int idx = blockIdx.x * blockDim.x * 4 + threadIdx.x;
 
@@ -2833,10 +2889,12 @@ __global__ void reduceSmemUnrollDyn(int * g_idata, int * g_odata, unsigned int n
         tmpSum = a1 + a2 + a3 + a4;
     }
 
+    // fold g_idata[idx:idx+4:blockDim.x] into smem[0:blockDim.x]
     smem[tid] = tmpSum;
     __syncthreads();
 
-    // in-place reduction in global memory
+    // in-place reduction in shared memory, 
+    // fold smem[0:1024] into smem[0:63]
     if (blockDim.x >= 1024 && tid < 512) smem[tid] += smem[tid + 512];
     __syncthreads();
     if (blockDim.x >=  512 && tid < 256) smem[tid] += smem[tid + 256];
@@ -2846,7 +2904,8 @@ __global__ void reduceSmemUnrollDyn(int * g_idata, int * g_odata, unsigned int n
     if (blockDim.x >=  128 && tid <  64) smem[tid] += smem[tid +  64];
     __syncthreads();
 
-    // unrolling warp
+    // unrolling warp, 
+    // fold smem[0:63] into smem[0]
     if (tid < 32)
     {
         volatile int * vsmem = smem;
@@ -2863,10 +2922,13 @@ __global__ void reduceSmemUnrollDyn(int * g_idata, int * g_odata, unsigned int n
 }
 ```
 
-### 🎯 COALESCING GLOBAL MEMORY ACCESSES
+### 🎯 5.4. COALESCING GLOBAL MEMORY ACCESSES
 
+- Using shared memory also helps avoid non-coalesced global memory access. 
+  - E.g., Matrix transpose: Coalesced loads (good), strided stores (the worst pattern!). 
+  - Transpose in shared memory, and then perform coalesced writes to global memory. 
 ```c++
-// Baseline
+// Baseline, read rows and store columns
 __global__ void naiveGmem(float * out, float * in, const int nx, const int ny)
 {
     // matrix coordinate (ix,iy)
@@ -3004,7 +3066,7 @@ __global__ void transposeSmemUnrollPad(float * out, float * in, const int nx, co
 }
 ```
 
-### 🎯 CONSTANT MEMORY
+### 🎯 5.5. CONSTANT MEMORY
 
 - Constant Memory
   - Read/write permissions
@@ -3148,7 +3210,7 @@ __global__ void stencil_1d(float * in, float * out, int N)
     - where every thread in a warp accesses the same address;
   - Read-only cache is better for scattered reads. 
 
-### 🎯 THE WARP SHUFFLE INSTRUCTION
+### 🎯 5.6. THE WARP SHUFFLE INSTRUCTION
 
 - *Shuffle* Instruction 
   - Allows threads to directly read registers of other threads in the same warp;
@@ -3442,13 +3504,26 @@ __global__ void reduceSmemUnrollShfl(int * g_idata, int * g_odata, unsigned int 
 
 
 
-### 🎯 
+## 🌱 6. Streams And Concurrency
+
+
+### 🎯 6.1. INTRODUCING STREAMS AND EVENTS
 
 #### 📌 
 
 
 
 
+
+
+
+
+
+
+
+### 🎯 
+
+#### 📌 
 
 
 
