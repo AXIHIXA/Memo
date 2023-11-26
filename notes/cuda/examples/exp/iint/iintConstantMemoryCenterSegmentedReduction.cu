@@ -19,6 +19,7 @@ __global__
 void f2(
         const float2 * __restrict__ sample,
         int sampleLen,
+        int sampleLenPadded,
         int centerLen,
         float * __restrict__ res
 )
@@ -35,66 +36,99 @@ void f2(
             if (ci < centerLen)
             {
                 float2 c = center[ci];
-                res[sampleLen * ci + idx] = (r.x - c.x) * (r.x - c.x) + (r.y - c.y) * (r.y - c.y);
+                float dx = r.x - c.x;
+                float dy = r.y - c.y;
+                res[sampleLenPadded * ci + idx] = dx * dx + dy * dy;
             }
         }
     }
 }
 
 
+std::pair<int, int> padTo32k(int a)
+{
+    static constexpr int k32 = 32;
+
+    if (int b = a % k32; b == 0)
+    {
+        return {a, 0};
+    }
+    else
+    {
+        return {a + k32 - b, b};
+    }
+}
+
+
 int main(int argc, char * argv[])
 {
-    constexpr int kNumSamples = 10240010;
-    constexpr int kNumCenters = 34;
-    int numCentersLastBatch = kNumCenters % kCenterUnrollFactor;
-
-    thrust::device_vector<float2> dSample(kNumSamples, {1.0f, 0.0f});
-    thrust::device_vector<float2> dCenter(kNumCenters, {0.0f, 0.0f});
-    dCenter[kCenterUnrollFactor - 1] = {1.0f, 0.0f};
-    dCenter[kNumCenters - 2] = {0.0f, 1.0f};
-    dCenter[kNumCenters - 1] = {1.0f, 0.0f};
-    thrust::device_vector<float> dBuffer(kNumSamples * kCenterUnrollFactor, 0.0f);
-    thrust::device_vector<float> dRes(kNumCenters);
-
-    dim3 mGridDim {(kNumSamples + kBlockSize - 1) / kBlockSize, 1U, 1U};
-
     int numDuplication = (argc == 2) ? std::stoi(argv[1]) : 1;
 
+    static constexpr int kNumSamplesInit = 10240010;
+    static constexpr int kNumCentersInit = 36;
+
+    int numSamples = kNumSamplesInit;
+    int numCenters = kNumCentersInit;
+    int numCentersLastBatch = numCenters % kCenterUnrollFactor;
+
+    thrust::device_vector<float2> dSample(numSamples, {1.0f, 0.0f});
+    thrust::device_vector<float2> dCenter(numCenters, {0.0f, 0.0f});
+    dCenter[numCenters - 4] = {1.0f, 0.0f};
+    dCenter[numCenters - 3] = {1.0f, 0.0f};
+    dCenter[numCenters - 2] = {0.0f, 1.0f};
+    dCenter[numCenters - 1] = {1.0f, 0.0f};
+    
+    // Pad numSamples to multiple of 32 
+    // (32 * sizeof(float) == 128, L1 cache line granularity)
+    // for aligned & coalesced memory access pattern.
+    auto [numSamplesPadded, remainder] = padTo32k(numSamples);
+    // int numSamplesPadded = numSamples;  // Test for non-aligned pattern. Slower!
+    thrust::device_vector<float> dBuffer(numSamplesPadded * kCenterUnrollFactor, 0.0f);
+
+    dim3 mGridDim {(numSamples + kBlockSize - 1) / kBlockSize, 1U, 1U};
+
     // Warmup
-    f2<<<mGridDim, kBlockDim>>>(
-            dSample.data().get(),
-            kNumSamples,
-            kNumCenters,
-            dBuffer.data().get()
-    );
-    cudaDeviceSynchronize();
+    if (1 < numDuplication)
+    {
+        f2<<<mGridDim, kBlockDim>>>(
+                dSample.data().get(),
+                numSamples,
+                numSamplesPadded,
+                numCenters,
+                dBuffer.data().get()
+        );
+        cudaDeviceSynchronize();
+    }
 
     // atomicAdd
     // Dump global array and cub::DeviceReduce::Sum
     auto ss = std::chrono::high_resolution_clock::now();
 
-    thrust::device_vector<int> dOffset(kNumCenters + 1);
-    thrust::sequence(thrust::device, dOffset.begin(), dOffset.end(), 0, kNumSamples);
+    thrust::device_vector<int> dBeginOffset(numCenters);
+    thrust::device_vector<int> dEndOffset(numCenters);
+    thrust::device_vector<float> dResult(numCenters);
+    thrust::sequence(thrust::device, dBeginOffset.begin(), dBeginOffset.end(), 0, numSamplesPadded);
+    thrust::sequence(thrust::device, dEndOffset.begin(), dEndOffset.end(), numSamples, numSamplesPadded);
 
     std::size_t tempStorageBytes;
     cub::DeviceSegmentedReduce::Sum(
             nullptr,
             tempStorageBytes,
             dBuffer.data().get(),
-            dRes.data().get(),
-            kNumCenters,
-            dOffset.data().get(),
-            dOffset.data().get() + 1
+            dResult.data().get(),
+            numCenters,
+            dBeginOffset.data().get(),
+            dEndOffset.data().get()
     );
     cudaDeviceSynchronize();
     thrust::device_vector<unsigned char> dTempStorage(tempStorageBytes);
 
     for (int _ = 0; _ != numDuplication; ++_)
     {
-        for (int ci = 0; ci < kNumCenters; ci += kCenterUnrollFactor)
+        for (int ci = 0; ci < numCenters; ci += kCenterUnrollFactor)
         {
             int numCentersThisBatch =
-                    (numCentersLastBatch != 0 and kNumCenters < ci + kCenterUnrollFactor) ?
+                    (numCentersLastBatch != 0 and numCenters < ci + kCenterUnrollFactor) ?
                     numCentersLastBatch :
                     kCenterUnrollFactor;
 
@@ -108,21 +142,21 @@ int main(int argc, char * argv[])
 
             f2<<<mGridDim, kBlockDim>>>(
                     dSample.data().get(),
-                    kNumSamples,
+                    numSamples,
+                    numSamplesPadded,
                     numCentersThisBatch,
                     dBuffer.data().get()
             );
             cudaDeviceSynchronize();
-            std::cerr << "fasdhjklasdfjklasdfjkldfas" << '\n';
 
             cub::DeviceSegmentedReduce::Sum(
                     dTempStorage.data().get(),
                     tempStorageBytes,
                     dBuffer.data().get(),
-                    dRes.data().get() + ci,
+                    dResult.data().get() + ci,
                     numCentersThisBatch,
-                    dOffset.data().get(),
-                    dOffset.data().get() + 1
+                    dBeginOffset.data().get(),
+                    dEndOffset.data().get()
             );
             cudaDeviceSynchronize();
         }
@@ -134,11 +168,14 @@ int main(int argc, char * argv[])
               << static_cast<double>(tic) * 1e-6 / static_cast<double>(numDuplication)
               << " ms\n\n";
 
-    thrust::host_vector<float> hRes = dRes;
-
-    for (int i = 0; i != kNumCenters; ++i)
+    if (numDuplication == 1)
     {
-        std::cout << hRes[i] << (i == kNumCenters - 1 ? '\n' : ' ');
+        thrust::host_vector<float> hRes = dResult;
+
+        for (int i = 0; i != numCenters; ++i)
+        {
+            std::cout << "sum @ center[" << i << "] = " << hRes[i] << '\n';
+        }
     }
 
     return EXIT_SUCCESS;
