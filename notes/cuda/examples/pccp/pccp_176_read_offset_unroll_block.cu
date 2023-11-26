@@ -22,7 +22,7 @@ __global__ void readOffsetUnroll4(const float * __restrict__ A, const float * __
 
     if (k + 3 * blockDim.x < n)
     {
-        C[i] = A[k];
+        C[i] = A[k] + B[k];  // NOTE: The textbook omitted + B[k], leading to fake results!
         C[i + blockDim.x] = A[k + blockDim.x] + B[k + blockDim.x];
         C[i + 2 * blockDim.x] = A[k + 2 * blockDim.x] + B[k + 2 * blockDim.x];
         C[i + 3 * blockDim.x] = A[k + 3 * blockDim.x] + B[k + 3 * blockDim.x];
@@ -45,14 +45,14 @@ int main(int argc, char * argv[])
     // ReadOffset
     dim3 mGridDim {(numSamples + (1 * kBlockSize) - 1) / (1 * kBlockSize), 1U, 1U};
 
-//    readOffset<<<mGridDim, kBlockDim>>>(
-//            dA.data().get(),
-//            dB.data().get(),
-//            dC.data().get(),
-//            numSamples,
-//            11
-//    );
-//    cudaDeviceSynchronize();
+    readOffset<<<mGridDim, kBlockDim>>>(
+            dA.data().get(),
+            dB.data().get(),
+            dC.data().get(),
+            numSamples,
+            11
+    );
+    cudaDeviceSynchronize();
 
     auto ss = std::chrono::high_resolution_clock::now();
 
@@ -77,14 +77,14 @@ int main(int argc, char * argv[])
     // readOffsetUnroll4
     mGridDim.x /= 4;
 
-//    readOffsetUnroll4<<<mGridDim, kBlockDim>>>(
-//            dA.data().get(),
-//            dB.data().get(),
-//            dC.data().get(),
-//            numSamples,
-//            11
-//    );
-//    cudaDeviceSynchronize();
+    readOffsetUnroll4<<<mGridDim, kBlockDim>>>(
+            dA.data().get(),
+            dB.data().get(),
+            dC.data().get(),
+            numSamples,
+            11
+    );
+    cudaDeviceSynchronize();
 
     ss = std::chrono::high_resolution_clock::now();
 
@@ -116,8 +116,8 @@ $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_s
   readOffset(const float *, const float *, float *, int, int)
     Section: Command line profiler metrics
     ---------------------------------------------------------------------- --------------- ------------------------------
-    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         366.94
-    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         185.06
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         367.24
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         185.19
     smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          80.00
     smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                         100.00
     ---------------------------------------------------------------------- --------------- ------------------------------
@@ -125,14 +125,14 @@ $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_s
   readOffsetUnroll4(const float *, const float *, float *, int, int)
     Section: Command line profiler metrics
     ---------------------------------------------------------------------- --------------- ------------------------------
-    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         394.44
-    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         200.37
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         411.00
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         184.68
     smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          80.00
     smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                         100.00
     ---------------------------------------------------------------------- --------------- ------------------------------
 
 $ ./cmake-build-release/exe 100
 
-readOffset         9.0689  ms
-readOffsetUnroll4  8.60923 ms
+  readOffset        9.08116 ms
+  readOffsetUnroll4 9.13725 ms
 */
