@@ -44,9 +44,9 @@ set(ALL_COMPILE_DEFS
 
 set(ALL_COMPILE_OPTS
         # -g is default in CMAKE_<LANG>_FLAGS_DEBUG
-        # $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:DEBUG>>:-g>
         $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:DEBUG>>:-O0>
         $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:DEBUG>>:-G>
+        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
 )
 
 set(EXECUTABLE exe)

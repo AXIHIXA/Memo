@@ -1,141 +1,91 @@
 #include <random>
 
 #include <cuda_runtime.h>
+#include <curand_kernel.h>
 #include <thrust/device_vector.h>
 #include <thrust/random.h>
 
+#include "util/CudaUtil.h"
 
-namespace
+
+/// Monte-Carlo intergration routine inside unit circle.
+/// Estimates value of PI.
+__global__
+void iint(
+        const float2 * __restrict__ sample,
+        int len,
+        int * __restrict__ mask
+)
 {
+    auto idx = static_cast<int>(blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
 
-constexpr int kVecLen = 640000000;
-
-}  // namespace anomynous
-
-
-int dumpRandomVector()
-{
-    unsigned int seed = std::random_device()();
-    std::cout << "seed = " << seed << '\n';
-    std::default_random_engine e(seed);
-    std::uniform_real_distribution<float> g(-1.0f, 1.0f);
-
-    std::vector<float> hVec(kVecLen, 0.0f);
-
-    for (int i = 0LL; i != kVecLen; ++i)
+    if (idx < len)
     {
-        hVec[i] = g(e);
+        float2 r = sample[idx];
+        mask[idx] = r.x * r.x + r.y * r.y <= 1.0f;
     }
-
-    if (std::FILE * fp = std::fopen("var/vec.bin", "wb"); fp)
-    {
-        std::fwrite(hVec.begin().base(), sizeof(float) * hVec.size(), 0UL, fp);
-        std::fclose(fp);
-    }
-    else
-    {
-        std::fclose(fp);
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
 }
 
 
-struct ss
+class UniformFloat2
 {
-    float x;
-    float y;
+public:
+    UniformFloat2() = delete;
+
+    UniformFloat2(unsigned int seed, float xMin, float xMax, float yMin, float yMax)
+            : e(seed), dx(xMin, xMax), dy(yMin, yMax)
+    {
+        // Nothing needed here.
+    }
+
+    __host__ __device__
+    float2 operator()(unsigned long long i)
+    {
+        e.discard(i);
+        return {dx(e), dy(e)};
+    }
+
+private:
+    thrust::default_random_engine e;
+    thrust::uniform_real_distribution<float> dx;
+    thrust::uniform_real_distribution<float> dy;
 };
-
-
-__global__
-void arrayOfStructure(
-    const ss * __restrict__ aos,
-    ss * __restrict__ res,
-    int len
-)
-{
-    auto i = static_cast<int>(blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
-
-    if (i < len)
-    {
-        ss tmp = aos[i];
-        tmp.x += 0.0001f;
-        tmp.y += 0.0001f;
-        res[i]= tmp;
-    }
-}
-
-
-__global__
-void structureOfArray(
-        const float * __restrict__ x,
-        const float * __restrict__ y,
-        float * __restrict__ resX,
-        float * __restrict__ resY,
-        int len
-)
-{
-    auto i = static_cast<int>(blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
-
-    if (i < len)
-    {
-        float tmpX = x[i];
-        float tmpY = y[i];
-        tmpX += 0.0001f;
-        tmpY += 0.0001f;
-        resX[i] = tmpX;
-        resY[i] = tmpY;
-    }
-}
 
 
 int main(int argc, char * argv[])
 {
-    std::vector<float> hVec(kVecLen);
+    static constexpr int kNumSamples {50000000};
+    static constexpr dim3 kBlockDim {32U, 32U, 1U};
+    static constexpr unsigned int kBlockSize {kBlockDim.x * kBlockDim.y * kBlockDim.z};
 
-    if (std::FILE * fp = std::fopen("var/vec.bin", "rb"))
-    {
-        [[maybe_unused]] std::size_t numObjectsRead = std::fread(hVec.begin().base(), sizeof(float), kVecLen, fp);
-        std::fclose(fp);
-    }
-    else
-    {
-        std::fclose(fp);
-        return EXIT_FAILURE;
-    }
+    unsigned int seed = std::random_device()();
+    std::printf("seed = %u\n", seed);
 
-    thrust::device_vector<float> dVec = hVec;
-    thrust::device_vector<float> dRes(kVecLen);
+    int numSamples = kNumSamples;
+    thrust::device_vector<float2> dSample(numSamples);
 
-    auto dAos = reinterpret_cast<ss *>(dVec.begin().base().get());
-    auto dAosRes = reinterpret_cast<ss *>(dRes.begin().base().get());
+    thrust::transform(
+        thrust::device,
+        thrust::make_counting_iterator(0),
+        thrust::make_counting_iterator(numSamples),
+        dSample.begin(),
+        UniformFloat2(seed, -1.0f, 1.0f, -1.0f, 1.0f)
+    );
 
-    auto dX = dVec.begin().base().get();
-    auto dY = dX + (kVecLen >> 1U);
-    auto dXRes = dRes.begin().base().get();
-    auto dYRes = dXRes + (kVecLen >> 1U);
+    thrust::device_vector<int> dMask(numSamples, 0);
 
-    if (argc != 2)
-    {
-        return EXIT_FAILURE;
-    }
+    dim3 iintGridDim {(numSamples + kBlockSize - 1U) / kBlockSize, 1U, 1U};
 
-    if (std::string(argv[1]) == "aos")
-    {
-        arrayOfStructure<<<dim3((kVecLen >> 1U) / 1024 + 1, 1, 1), dim3(32, 32, 1)>>>(
-            dAos, dAosRes, kVecLen >> 1U
-        );
-    }
-    else
-    {
-        structureOfArray<<<dim3((kVecLen >> 1U) / 1024 + 1, 1, 1), dim3(32, 32, 1)>>>(
-            dX, dY, dXRes, dYRes, kVecLen >> 1U
-        );
-    }
+    iint<<<iintGridDim, kBlockDim, 0U, nullptr>>>(
+            dSample.data().get(),
+            numSamples,
+            dMask.data().get()
+    );
+    CUDA_CHECK_LAST_ERROR();
+    CUDA_CHECK(cudaDeviceSynchronize());
 
-    cudaDeviceSynchronize();
+    int numInside = thrust::reduce(thrust::device, dMask.begin(), dMask.end());
+    std::printf("Monte-Carlo PI = %lf\n", static_cast<double>(numInside) / static_cast<double>(numSamples) * 4.0);
 
     return EXIT_SUCCESS;
 }
