@@ -1977,12 +1977,12 @@ $ nvprof ./cmake-build-release/exe 1000
     - This unrolling technique has a tremendous impact on performance, even **more than address alignment**.
   - [Local Test Result](./examples/pccp/pccp_176_read_offset_unroll_block.cu)
     - **MANUAL BLOCK UNROLLING IS NOT AS EFFICIENT AS DESCRIBED IN THIS TEXTBOOK!**
-    - **THIS EXAMPLE DOES NOT DELIVER BETTER PERFORMANCE!**
+    - **THIS EXAMPLE DOES NOT SHOW BETTER PERFORMANCE!**
       - This example does not reduce total number of global loads and stores. 
-      - Only "exposing more independent memory operations" coudld degrade the overall efficiency. 
-  - Another example (iint reduction):
-    - Total number of global loads could not be modified (that's the input!);
-    - Total number of global stores is reduced by 3/4 (by block unrolling);
+      - Only "exposing more independent memory operations" could even degrade the overall efficiency. 
+  - Another example (iint unrolling, iint reduction, with a block unrolling factor of 4):
+    - Number of global loads untouched (that's the input!);
+    - Number of global stores reduced by 3/4 (by block unrolling);
     - 3x speedup. 
     - [Before Unrolling](./examples/exp/iint/unrolling/iint-before-samp-unroll.cu)
     - [After Unrolling](./examples/exp/iint/unrolling/iint-after-samp-unroll.cu)
@@ -2987,10 +2987,6 @@ Time(%)  Time      Calls  Avg       Min       Max       Name
   - Increased global memory throughput by exposing more parallel I/O per thread
   - Reduction of global memory store transactions by one-fourth
   - Overall kernel performance improvement
-- Local Tests using the iint routine: 
-  - **DEGRADED EFFICIENCY EVEN THOUGH ONLY 1/4 GLOBAL WRITES**!
-  - [Before Unrolling]()
-  - [After Unrolling]()
 ```c++
 __global__ void reduceSmemUnrollDyn(int * g_idata, int * g_odata, unsigned int n)
 {
