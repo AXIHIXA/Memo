@@ -3633,13 +3633,104 @@ __global__ void reduceSmemUnrollShfl(int * g_idata, int * g_odata, unsigned int 
 
 ### 🎯 6.1. INTRODUCING STREAMS AND EVENTS
 
+- CUDA *Stream*
+  - A sequence of asynchronous CUDA operations;
+    - Host-device data transfer;
+    - Kernel launches;
+    - Most other commands issued by host and handled by device. 
+  - Execute on device in the order issued by the host code. 
+    - Operations in the same stream: Strict ordering;
+    - Operations in different streams: No restrictions. 
+  - Always asynchronous w.r.t. the host. 
+    - Must synchronize before using the results. 
+  - CUDA streams expose *grid level concurrency*: 
+    - The prior contents are all *kernel level concurrency*. 
+- Different Streams
+  - Software's point of view: CUDA operations in different streams run concurrently;
+  - Hardware's point of view: May still be sequential, depending on : 
+    - PCIe bus contention;
+    - Availability of per-SM resources. 
+
+#### 📌 6.1.1. CUDA Streams
+
+- All CUDA operations run in a stream: 
+  - Implicitly-declared stream (*NULL stream*)
+    - The *default stream* if not explicitly specifying one. 
+  - Exiplicitly-declared stream (non-NULL stream)
+- *Coarse-grain concurrency*:
+  - Overlapped host computation and device computation;
+  - Overlapped host computation and host-device data transfer;
+  - Overlapped host-device data transfer and device computation;
+  - Concurrent device computation. 
+```c++
+cudaError_t cudaMemcpyAsync(
+    void * dst, 
+    const void * src, 
+    size_t count,
+    cudaMemcpyKind kind, 
+    cudaStream_t stream = 0
+);
+
+cudaError_t cudaStreamCreate(cudaStream_t * pStream);
+cudaError_t cudaStreamDestroy(cudaStream_t stream);
+```
+- Pinned Host Memory Required
+  - When performing an asynchronous data transfer. 
+  - Pinned memory can be allocated using:
+```c++
+cudaError_t cudaMallocHost(void ** ptr, size_t size);
+cudaError_t cudaHostAlloc(void ** pHost, size_t size, unsigned int flags);
+```
+```c++
+cudaStream_t stream;
+cudaStreamCreate(&stream);
+cudaKernelFunc<<<gridDim, blockDim, sharedMemSize, stream>>>(argumentList);
+```
+- Stream Synchronization
+```c++
+/// Blocks the host until all operations in the provided stream have completed. 
+cudaError_t cudaStreamSynchronize(cudaStream_t stream);
+
+/// Checks if all operations in a stream have completed. 
+/// Does not block the host if they have not completed. 
+/// Returns cudaSuccess if all operations are complete, 
+/// or cudaErrorNotReady otherwise.
+cudaError_t cudaStreamQuery(cudaStream_t stream);
+```
+- Example
+```c++
+for (int i = 0; i < nStreams; i++) 
+{
+    int offset = i * bytesPerStream;
+    cudaMemcpyAsync(d_a + offset, h_a + offset, bytePerStream, streams[i]);
+    kernel<<grid, block, 0, streams[i]>>(d_a + offset);
+    cudaMemcpyAsync(h_a + offset, d_a + offset, bytesPerStream, streams[i]);
+}
+
+for (int i = 0; i < nStreams; i++) 
+{
+    cudaStreamSynchronize(streams[i]);
+}
+```
+|      0      |         1        |         2        |         3        |         4        |         5        |      6      |      7      |      8      |
+|:-----------:|:----------------:|:----------------:|:----------------:|:----------------:|:----------------:|:-----------:|:-----------:|:-----------:|
+| Memcpy HtoD |    Memcpy HtoD   |    Memcpy HtoD   | Kernel Execution | Kernel Execution | Kernel Execution | Memcpy DtoH | Memcpy DtoH | Memcpy DtoH |
+|             |                  |                  |                  |                  |                  |             |             |             |
+| Memcpy HtoD | Kernel Execution |    Memcpy DtoH   |                  |                  |                  |             |             |             |
+|             |    Memcpy HtoD   | Kernel Execution |    Memcpy DtoH   |                  |                  |             |             |             |
+|             |                  |    Memcpy HtoD   | Kernel Execution |    Memcpy DtoH   |                  |             |             |             |
+
+
+
+
+
+
+
+
+
+### 🎯 
+
 #### 📌 
-
-
-
-
-
-
 
 
 
