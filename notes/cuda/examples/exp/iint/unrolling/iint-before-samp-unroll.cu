@@ -36,9 +36,7 @@ void f2(
             if (ci < centerLen)
             {
                 float2 c = center[ci];
-                float dx = r.x - c.x;
-                float dy = r.y - c.y;
-                res[sampleLenPadded * ci + idx] = dx * dx + dy * dy;
+                res[sampleLenPadded * ci + idx] = (r.x - c.x) * (r.x - c.x) + (r.y - c.y) * (r.y - c.y);
             }
         }
     }
@@ -65,7 +63,7 @@ int main(int argc, char * argv[])
     int numDuplication = (argc == 2) ? std::stoi(argv[1]) : 1;
 
     static constexpr int kNumSamplesInit = 10240000;
-    static constexpr int kNumCentersInit = 32;
+    static constexpr int kNumCentersInit = 8196;
 
     int numSamples = kNumSamplesInit;
     int numCenters = kNumCentersInit;
@@ -74,7 +72,7 @@ int main(int argc, char * argv[])
     thrust::device_vector<float2> dSample(numSamples, {1.0f, 0.0f});
     thrust::device_vector<float2> dCenter(numCenters, {0.0f, 0.0f});
     dCenter[numCenters - 4] = {1.0f, 0.0f};
-    dCenter[numCenters - 3] = {1.0f, 0.0f};
+    dCenter[numCenters - 3] = {1.0f, 1.0f};
     dCenter[numCenters - 2] = {0.0f, 1.0f};
     dCenter[numCenters - 1] = {1.0f, 0.0f};
 
@@ -87,21 +85,7 @@ int main(int argc, char * argv[])
 
     dim3 mGridDim {(numSamples + kBlockSize - 1) / kBlockSize, 1U, 1U};
 
-    // Warmup
-    if (1 < numDuplication)
-    {
-        f2<<<mGridDim, kBlockDim>>>(
-                dSample.data().get(),
-                numSamples,
-                numSamplesPadded,
-                numCenters,
-                dBuffer.data().get()
-        );
-        cudaDeviceSynchronize();
-    }
-
-    // atomicAdd
-    // Dump global array and cub::DeviceReduce::Sum
+    // Test
     auto ss = std::chrono::high_resolution_clock::now();
 
     thrust::device_vector<int> dBeginOffset(numCenters);
@@ -123,31 +107,38 @@ int main(int argc, char * argv[])
     cudaDeviceSynchronize();
     thrust::device_vector<unsigned char> dTempStorage(tempStorageBytes);
 
+    cudaStream_t cs1;
+    cudaStream_t cs2;
+    cudaStreamCreate(&cs1);
+    cudaStreamCreate(&cs2);
+
+    cudaMemsetAsync(dBuffer.data().get(), 0, sizeof(float) * dBuffer.size(), nullptr);
+
     for (int _ = 0; _ != numDuplication; ++_)
     {
         for (int ci = 0; ci < numCenters; ci += kCenterUnrollFactor)
         {
             int numCentersThisBatch =
-                    (numCentersLastBatch != 0 and numCenters < ci + kCenterUnrollFactor) ?
+                    (numCentersLastBatch != 0 and numCenters <= ci + kCenterUnrollFactor) ?
                     numCentersLastBatch :
                     kCenterUnrollFactor;
 
-            cudaMemcpyToSymbol(
+            cudaMemcpyToSymbolAsync(
                     center,
                     dCenter.data().get() + ci,
                     numCentersThisBatch * sizeof(float2),
                     0UL,
-                    cudaMemcpyDeviceToDevice
+                    cudaMemcpyDeviceToDevice,
+                    cs1
             );
 
-            f2<<<mGridDim, kBlockDim>>>(
+            f2<<<mGridDim, kBlockDim, 0U, nullptr>>>(
                     dSample.data().get(),
                     numSamples,
                     numSamplesPadded,
                     numCentersThisBatch,
                     dBuffer.data().get()
             );
-            cudaDeviceSynchronize();
 
             cub::DeviceSegmentedReduce::Sum(
                     dTempStorage.data().get(),
@@ -156,15 +147,18 @@ int main(int argc, char * argv[])
                     dResult.data().get() + ci,
                     numCentersThisBatch,
                     dBeginOffset.data().get(),
-                    dEndOffset.data().get()
+                    dEndOffset.data().get(),
+                    nullptr
             );
-            cudaDeviceSynchronize();
+
+            cudaMemsetAsync(dBuffer.data().get(), 0, sizeof(float) * dBuffer.size(), nullptr);
         }
     }
 
+    cudaDeviceSynchronize();
     auto tic = (std::chrono::high_resolution_clock::now() - ss).count();
 
-    std::cout << "ConstantCenter + cub::DeviceSegmentedReduce::Sum "
+    std::cout << "Before Unrolling "
               << static_cast<double>(tic) * 1e-6 / static_cast<double>(numDuplication)
               << " ms\n\n";
 
@@ -183,8 +177,8 @@ int main(int argc, char * argv[])
 
 
 /*
-$ ./cmake-build-release/exe 100
-ConstantCenter + cub::DeviceSegmentedReduce::Sum 7.02152 ms
+$ ./cmake-build-release/exe 40
 
-1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 1.024e+07 0 2.048e+07 0
+Before Unrolling 1933.27 ms
+Before Unrolling 1967.84 ms
 */

@@ -11,6 +11,7 @@
   - [CUDA Compiler Driver NVCC](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html)
   - [CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
   - [CUDA C++ Best Practices Guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html)
+    - [9.1.2. Asynchronous and Overlapping Transfers with Computation](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#asynchronous-and-overlapping-transfers-with-computation)
     - [11.1. Arithmetic Instructions Optimization](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#arithmetic-instructions)
   - [Nsight Compute (NCU)](https://docs.nvidia.com/nsight-compute/index.html)
     - [Nsight Compute Command Line Interface](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html)
@@ -1975,8 +1976,16 @@ $ nvprof ./cmake-build-release/exe 1000
     - Because each of these loads is independent, you can expect more concurrent memory accesses.
     - This unrolling technique has a tremendous impact on performance, even **more than address alignment**.
   - [Local Test Result](./examples/pccp/pccp_176_read_offset_unroll_block.cu)
-    - **FOR RELEASE BUILDS, MANUAL BLOCK UNROLLING IS NOT AS EFFICIENT AS DESCRIBED IN THIS TEXTBOOK!**
-    - **FOR THE EXAMPLE, IT DOES NOT DELIVER BETTER PERFORMANCE!**
+    - **MANUAL BLOCK UNROLLING IS NOT AS EFFICIENT AS DESCRIBED IN THIS TEXTBOOK!**
+    - **THIS EXAMPLE DOES NOT DELIVER BETTER PERFORMANCE!**
+      - This example does not reduce total number of global loads and stores. 
+      - Only "exposing more independent memory operations" coudld degrade the overall efficiency. 
+  - Another example (iint reduction):
+    - Total number of global loads could not be modified (that's the input!);
+    - Total number of global stores is reduced by 3/4 (by block unrolling);
+    - 3x speedup. 
+    - [Before Unrolling](./examples/exp/iint/unrolling/iint-before-samp-unroll.cu)
+    - [After Unrolling](./examples/exp/iint/unrolling/iint-after-samp-unroll.cu)
 ```c++
 __global__ 
 void readOffset(
@@ -2955,8 +2964,20 @@ Time(%)  Time      Calls  Avg       Min       Max       Name
   - In the preceding kernels, each thread block handles one block of data.
   - Unroll blocks to improve kernel performance by enabling multiple I/O operations to be in-flight at once.
   - The following kernel unrolls four blocks: 
-    - I.e., each thread handles data elements from four data blocks. 
-    - **However**, each thread takes one data element from one data block only. 
+    - I.e., each thread handles four data elements from four data blocks. 
+    - **However**, each thread takes only one data element from each data block. 
+  ```c++
+  auto idx = static_cast<int>(blockIdx.x * (4 * blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
+  auto actualThreadIdx = static_cast<int>(blockIdx.x * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x);
+  
+  if (idx + (3 * blockDim.x * blockDim.y) < sampleLen) 
+  {
+      T s0 = sample[idx                                ];
+      T s1 = sample[idx + (    blockDim.x * blockDim.y)];
+      T s2 = sample[idx + (2 * blockDim.x * blockDim.y)];
+      T s3 = sample[idx + (3 * blockDim.x * blockDim.y)];
+  }
+  ```
   - Analysis:
     - Number of global memory loads: unchanged; 
     - Number of global memory stores: reduced by one-fourth.
@@ -2966,6 +2987,10 @@ Time(%)  Time      Calls  Avg       Min       Max       Name
   - Increased global memory throughput by exposing more parallel I/O per thread
   - Reduction of global memory store transactions by one-fourth
   - Overall kernel performance improvement
+- Local Tests using the iint routine: 
+  - **DEGRADED EFFICIENCY EVEN THOUGH ONLY 1/4 GLOBAL WRITES**!
+  - [Before Unrolling]()
+  - [After Unrolling]()
 ```c++
 __global__ void reduceSmemUnrollDyn(int * g_idata, int * g_odata, unsigned int n)
 {
