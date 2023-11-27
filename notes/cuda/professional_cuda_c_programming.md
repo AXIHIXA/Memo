@@ -2,6 +2,22 @@
 
 
 
+- Documentations And Guides
+  - [CUDA Toolkit Documentation](https://docs.nvidia.com/cuda/index.html)
+    - [CUDA Runtime API](https://docs.nvidia.com/cuda/cuda-runtime-api/index.html)
+      - [6.9. Memory Management](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY)
+    - [CUDA Math API](https://docs.nvidia.com/cuda/cuda-math-api/index.html)
+    - [Floating Point and IEEE 754 Compliance for NVIDIA GPUs](https://docs.nvidia.com/cuda/floating-point/)
+  - [CUDA Compiler Driver NVCC](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html)
+  - [CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
+  - [CUDA C++ Best Practices Guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html)
+    - [11.1. Arithmetic Instructions Optimization](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#arithmetic-instructions)
+  - [Nsight Compute (NCU)](https://docs.nvidia.com/nsight-compute/index.html)
+    - [Nsight Compute Command Line Interface](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html)
+    - [Nsight Compute Kernel Profiling Guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html)
+
+
+
 ## 🌱 1. Heterogeneous Parallel Computing with CUDA
 
 - CLion clangd bug, YouTrack Issue [CPP-25855](https://youtrack.jetbrains.com/issue/CPP-25855).
