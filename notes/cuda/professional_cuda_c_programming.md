@@ -3250,8 +3250,12 @@ __global__ void stencil_1d(float * in, float * out, int N)
 #### 📌 Comparing with the Read-Only Cache
 
 - Use GPU texture pipeline as a read-only cache for global memory. 
-  - Separate read-only cache with separate memory bandwidth from normal global memory reads
+  - Separate read-only cache with separate memory bandwidth from normal global memory reads. 
   - Boosts performance for bandwidth-limited kernels.
+  - There is a total of 48 KB of read-only cache per Kepler SM. 
+  - The read-only cache is better for scattered reads than the L1 cache. 
+  - The read-only cache should not be used when threads in a warp all read the same address. 
+  - The granularity of the read-only cache is 32 bytes.
 - Two ways to access global memory through the read-only cache: 
   - Intrinsic function `__ldg`
     - Used in place of a normal pointer dereference
