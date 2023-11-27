@@ -3744,8 +3744,25 @@ for (int i = 0; i < nStreams; i++)
 
 #### 📌 6.1.3. Stream Priorities
 
-
-
+- A stream can be created with a specific priority:
+  - By convention, lower integer values indicate a higher stream priority. 
+```c++
+cudaError_t cudaStreamCreateWithPriority(
+        cudaStream_t * pStream, 
+        unsigned int flags,
+        int priority
+);
+```
+- Grids queued to a higher priority stream may *preempt* work already executing in a low priority stream. 
+- Stream priorities have **no** effect on data transfer operations, only on compute kernels. 
+- Priority range
+  - If the specified priority is outside the meaningful range for a device,
+  - it will automatically be clamped to the lowest or the highest number in the range.
+  - Query meaningful range:
+```c++
+/// Returns zero in both parameters if the current device does not support stream priorities.
+cudaError_t cudaDeviceGetStreamPriorityRange(int * leastPriority, int * greatestPriority);
+```
 
 #### 📌 6.1.4. CUDA Events
 
