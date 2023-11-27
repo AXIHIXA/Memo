@@ -1820,31 +1820,20 @@ writeOffset Offset 128: gld_efficiency 100.00%
 writeOffset Offset 128: gst_efficiency 100.00%
 ```
 
-#### 📌 Arrays of Structures vs Structures of Arrays
+#### 📌 Array of Structure vs Structure of Array
 
 - SIMD-style parallel programming paradigms prefer SoA. 
 - In CUDA C programming, SoA is also typically preferred. 
   - Data elements are pre-arranged for efficient coalesced access to global memory. 
-- *Array of structure* (AoS)
+- *Array of structure* (AoS) vs *Structure of Array* (SoA)
+  - [Local Test Result](./examples/pccp/pccp_171_aos_vs_soa.cu)
+  - **Note that**, there is **no significant difference in efficiency** (execution time) between these three kernels!
 ```c++
-struct InnerStruct
+struct Float2
 {
     float x;
     float y;
 };
-
-__global__ void testInnerStruct(InnerStruct * data, InnerStruct * result, const int n) 
-{
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (i < n) 
-    {
-        InnerStruct tmp = data[i];
-        tmp.x += 10.f;
-        tmp.y += 20.f;
-        result[i] = tmp;
-    }
-}
 
 /// gld_efficiency 50.00%
 /// gst_efficiency 50.00%
@@ -1853,34 +1842,105 @@ __global__ void testInnerStruct(InnerStruct * data, InnerStruct * result, const 
 /// Every time a memory transaction is performed to load the values of a particular field, 
 /// exactly half of the bytes loaded must also belong to the other field. 
 /// Thus, 50 percent of all required load and store bandwidth is unused. 
-```
-- *Structure of Array* (SoA)
-```c++
-struct InnerArray
+__global__
+void testArrayOfStructure(
+    const Float2 * __restrict__ sample,
+    Float2 * __restrict__ res,
+    int len
+)
 {
-    float x[kN];
-    float y[kN];
-};
+    auto i = static_cast<int>(blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
 
-__global__ void testInnerArray(InnerArray * data, InnerArray * result, const int n) 
-{
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (i < n) 
+    if (i < len)
     {
-        float tmpx = data->x[i];
-        float tmpy = data->y[i];
-        tmpx += 10.f;
-        tmpy += 20.f;
-        result->x[i] = tmpx;
-        result->y[i] = tmpy;
+        Float2 tmp = sample[i];
+        tmp.x += 0.0001f;
+        tmp.y += 0.0002f;
+        res[i]= tmp;
     }
 }
 
 /// gld_efficiency 100.00%
 /// gst_efficiency 100.00%
+/// CUDA's built-in float2 vec type is somewhat optimized. 
+__global__
+void testArrayOfCudaFloat2(
+    const float2 * __restrict__ sample,
+    float2 * __restrict__ res,
+    int len
+)
+{
+    auto i = static_cast<int>(blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
+
+    if (i < len)
+    {
+        float2 tmp = sample[i];
+        tmp.x += 0.0001f;
+        tmp.y += 0.0002f;
+        res[i]= tmp;
+    }
+}
+
+/// gld_efficiency 100.00%
+/// gst_efficiency 100.00%
+__global__
+void testStructureOfArray(
+        const float * __restrict__ x,
+        const float * __restrict__ y,
+        float * __restrict__ resX,
+        float * __restrict__ resY,
+        int len
+)
+{
+    auto i = static_cast<int>(blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
+
+    if (i < len)
+    {
+        float tmpX = x[i];
+        float tmpY = y[i];
+        tmpX += 0.0001f;
+        tmpY += 0.0002f;
+        resX[i] = tmpX;
+        resY[i] = tmpY;
+    }
+}
 ```
-- [Local Test Result](./examples/pccp/pccp_171_aos_vs_soa.cu)
+```
+$ ncu -k regex:arrayOfStructure --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second,l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second,smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct,smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct ./cmake-build-release/exe
+
+  testArrayOfStructure(const Float2 *, Float2 *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         544.40
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         544.40
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                          50.00
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                          50.00
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+  testArrayOfCudaFloat2(const float2 *, float2 *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         273.14
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         273.14
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                         100.00
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                         100.00
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+  testStructureOfArray(const float *, const float *, float *, float *, int)
+    Section: Command line profiler metrics
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_second                   Gbyte/second                         266.64
+    l1tex__t_bytes_pipe_lsu_mem_global_op_st.sum.per_second                   Gbyte/second                         266.64
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct                        %                         100.00
+    smsp__sass_average_data_bytes_per_sector_mem_global_op_st.pct                        %                         100.00
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+$ nvprof ./cmake-build-release/exe 1000
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   33.34%  2.48828s      1000  2.4883ms  2.4504ms  3.3896ms  testStructureOfArray(float const *, float const *, float*, float*, int)
+                   33.33%  2.48748s      1000  2.4875ms  2.4511ms  3.7301ms  testArrayOfCudaFloat2(float2 const *, float2*, int)
+                   33.23%  2.48024s      1000  2.4802ms  2.3999ms  3.2394ms  testArrayOfStructure(Float2 const *, Float2*, int)
+```
 
 #### 📌 Performance Tuning
 
