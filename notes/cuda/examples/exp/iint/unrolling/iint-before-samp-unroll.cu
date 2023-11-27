@@ -4,6 +4,30 @@
 #include <thrust/host_vector.h>
 
 
+// CUDA API error checking
+inline constexpr int kCudaUtilsBufferSize = 1024;
+
+#define CUDA_CHECK(err)                                                                            \
+    do {                                                                                           \
+        cudaError_t err_ = (err);                                                                  \
+        if (err_ != cudaSuccess) {                                                                 \
+            char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
+            std::sprintf(checkBuf, "%s at %s:%d\n", cudaGetErrorString(err_), __FILE__, __LINE__); \
+            throw std::runtime_error(checkBuf);                                                    \
+        }                                                                                          \
+    } while (false)
+
+#define CUDA_CHECK_LAST_ERROR()                                                                    \
+    do {                                                                                           \
+        cudaError_t err_ = cudaGetLastError();                                                     \
+        if (err_ != cudaSuccess) {                                                                 \
+            char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
+            std::sprintf(checkBuf, "%s at %s:%d\n", cudaGetErrorString(err_), __FILE__, __LINE__); \
+            throw std::runtime_error(checkBuf);                                                    \
+        }                                                                                          \
+    } while (false)
+
+
 constexpr dim3 kBlockDim {32U, 32U, 1U};
 
 constexpr unsigned int kBlockSize {kBlockDim.x * kBlockDim.y * kBlockDim.z};
@@ -43,7 +67,7 @@ void f2(
 }
 
 
-std::pair<int, int> padTo32k(int a)
+inline std::pair<int, int> padTo32k(int a)
 {
     static constexpr int k32 = 32;
 
@@ -62,7 +86,7 @@ int main(int argc, char * argv[])
 {
     int numDuplication = (argc == 2) ? std::stoi(argv[1]) : 1;
 
-    static constexpr int kNumSamplesInit = 10240000;
+    static constexpr int kNumSamplesInit = 10244321;
     static constexpr int kNumCentersInit = 8196;
 
     int numSamples = kNumSamplesInit;
@@ -82,7 +106,6 @@ int main(int argc, char * argv[])
     auto [numSamplesPadded, remainder] = padTo32k(numSamples);
     // int numSamplesPadded = numSamples;  // Test for non-aligned pattern. Slower!
     thrust::device_vector<float> dBuffer(numSamplesPadded * kCenterUnrollFactor, 0.0f);
-
     dim3 mGridDim {(numSamples + kBlockSize - 1) / kBlockSize, 1U, 1U};
 
     // Test
@@ -95,24 +118,28 @@ int main(int argc, char * argv[])
     thrust::sequence(thrust::device, dEndOffset.begin(), dEndOffset.end(), numSamples, numSamplesPadded);
 
     std::size_t tempStorageBytes;
-    cub::DeviceSegmentedReduce::Sum(
-            nullptr,
-            tempStorageBytes,
-            dBuffer.data().get(),
-            dResult.data().get(),
-            numCenters,
-            dBeginOffset.data().get(),
-            dEndOffset.data().get()
+    CUDA_CHECK(
+            cub::DeviceSegmentedReduce::Sum(
+                    nullptr,
+                    tempStorageBytes,
+                    dBuffer.data().get(),
+                    dResult.data().get(),
+                    numCenters,
+                    dBeginOffset.data().get(),
+                    dEndOffset.data().get()
+            )
     );
-    cudaDeviceSynchronize();
+    CUDA_CHECK(cudaDeviceSynchronize());
     thrust::device_vector<unsigned char> dTempStorage(tempStorageBytes);
 
-    cudaStream_t cs1;
-    cudaStream_t cs2;
-    cudaStreamCreate(&cs1);
-    cudaStreamCreate(&cs2);
-
-    cudaMemsetAsync(dBuffer.data().get(), 0, sizeof(float) * dBuffer.size(), nullptr);
+    CUDA_CHECK(
+            cudaMemsetAsync(
+                    dBuffer.data().get(),
+                    0,
+                    sizeof(float) * dBuffer.size(),
+                    nullptr
+            )
+    );
 
     for (int _ = 0; _ != numDuplication; ++_)
     {
@@ -123,13 +150,15 @@ int main(int argc, char * argv[])
                     numCentersLastBatch :
                     kCenterUnrollFactor;
 
-            cudaMemcpyToSymbolAsync(
-                    center,
-                    dCenter.data().get() + ci,
-                    numCentersThisBatch * sizeof(float2),
-                    0UL,
-                    cudaMemcpyDeviceToDevice,
-                    cs1
+            CUDA_CHECK(
+                    cudaMemcpyToSymbolAsync(
+                            center,
+                            dCenter.data().get() + ci,
+                            numCentersThisBatch * sizeof(float2),
+                            0UL,
+                            cudaMemcpyDeviceToDevice,
+                            nullptr
+                    )
             );
 
             f2<<<mGridDim, kBlockDim, 0U, nullptr>>>(
@@ -139,23 +168,33 @@ int main(int argc, char * argv[])
                     numCentersThisBatch,
                     dBuffer.data().get()
             );
+            CUDA_CHECK_LAST_ERROR();
 
-            cub::DeviceSegmentedReduce::Sum(
-                    dTempStorage.data().get(),
-                    tempStorageBytes,
-                    dBuffer.data().get(),
-                    dResult.data().get() + ci,
-                    numCentersThisBatch,
-                    dBeginOffset.data().get(),
-                    dEndOffset.data().get(),
-                    nullptr
+            CUDA_CHECK(
+                    cub::DeviceSegmentedReduce::Sum(
+                            dTempStorage.data().get(),
+                            tempStorageBytes,
+                            dBuffer.data().get(),
+                            dResult.data().get() + ci,
+                            numCentersThisBatch,
+                            dBeginOffset.data().get(),
+                            dEndOffset.data().get(),
+                            nullptr
+                    )
             );
 
-            cudaMemsetAsync(dBuffer.data().get(), 0, sizeof(float) * dBuffer.size(), nullptr);
+            CUDA_CHECK(
+                    cudaMemsetAsync(
+                            dBuffer.data().get(),
+                            0,
+                            sizeof(float) * dBuffer.size(),
+                            nullptr
+                    )
+            );
         }
     }
 
-    cudaDeviceSynchronize();
+    CUDA_CHECK(cudaDeviceSynchronize());
     auto tic = (std::chrono::high_resolution_clock::now() - ss).count();
 
     std::cout << "Before Unrolling "

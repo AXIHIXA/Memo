@@ -4,11 +4,37 @@
 #include <thrust/host_vector.h>
 
 
+// CUDA API error checking
+inline constexpr int kCudaUtilsBufferSize = 1024;
+
+#define CUDA_CHECK(err)                                                                            \
+    do {                                                                                           \
+        cudaError_t err_ = (err);                                                                  \
+        if (err_ != cudaSuccess) {                                                                 \
+            char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
+            std::sprintf(checkBuf, "%s at %s:%d\n", cudaGetErrorString(err_), __FILE__, __LINE__); \
+            throw std::runtime_error(checkBuf);                                                    \
+        }                                                                                          \
+    } while (false)
+
+#define CUDA_CHECK_LAST_ERROR()                                                                    \
+    do {                                                                                           \
+        cudaError_t err_ = cudaGetLastError();                                                     \
+        if (err_ != cudaSuccess) {                                                                 \
+            char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
+            std::sprintf(checkBuf, "%s at %s:%d\n", cudaGetErrorString(err_), __FILE__, __LINE__); \
+            throw std::runtime_error(checkBuf);                                                    \
+        }                                                                                          \
+    } while (false)
+
+
 constexpr dim3 kBlockDim {32U, 32U, 1U};
 
 constexpr unsigned int kBlockSize {kBlockDim.x * kBlockDim.y * kBlockDim.z};
 
 constexpr int kCenterUnrollFactor = 32;
+
+constexpr int kBlockUnrollFactor = 16;
 
 
 __constant__
@@ -19,21 +45,26 @@ __global__
 void f2(
         const float2 * __restrict__ sample,
         int sampleLen,
-        int sampleLenPadded,
+        int segmentLenPadded,
         int centerLen,
         float * __restrict__ res
 )
 {
-    auto idx = static_cast<int>(blockIdx.x * (4 * kBlockDim.x * kBlockDim.y) + threadIdx.y * blockDim.x + threadIdx.x);
+    auto blockSize = static_cast<int>(blockDim.x * blockDim.y);
+    auto idx = static_cast<int>(blockIdx.x * (kBlockUnrollFactor * blockSize) + threadIdx.y * blockDim.x + threadIdx.x);
 
-    if (idx + 3 * kBlockDim.x * kBlockDim.y < sampleLen)
+    if (idx < sampleLen)
     {
-        float2 r0 = sample[idx];
-        float2 r1 = sample[idx +     kBlockDim.x * kBlockDim.y];
-        float2 r2 = sample[idx + 2 * kBlockDim.x * kBlockDim.y];
-        float2 r3 = sample[idx + 3 * kBlockDim.x * kBlockDim.y];
+        bool flag[kBlockUnrollFactor] = {false};
+        float2 r[kBlockUnrollFactor] = {};
 
-        auto resIdx = static_cast<int>(blockIdx.x * kBlockDim.x * kBlockDim.y + threadIdx.y * blockDim.x + threadIdx.x);
+        for (int ri = 0, si = idx; ri < kBlockUnrollFactor and si < sampleLen; ++ri, si += blockSize)
+        {
+            flag[ri] = true;
+            r[ri] = sample[si];
+        }
+
+        auto resIdx = static_cast<int>(blockIdx.x * blockSize + threadIdx.y * blockDim.x + threadIdx.x);
 
         #pragma unroll
         for (int ci = 0; ci != kCenterUnrollFactor; ++ci)
@@ -41,28 +72,33 @@ void f2(
             if (ci < centerLen)
             {
                 float2 c = center[ci];
-                float nr0c = (r0.x - c.x) * (r0.x - c.x) + (r0.y - c.y) * (r0.y - c.y);
-                float nr1c = (r1.x - c.x) * (r1.x - c.x) + (r1.y - c.y) * (r1.y - c.y);
-                float nr2c = (r2.x - c.x) * (r2.x - c.x) + (r2.y - c.y) * (r2.y - c.y);
-                float nr3c = (r3.x - c.x) * (r3.x - c.x) + (r3.y - c.y) * (r3.y - c.y);
-                res[sampleLenPadded * ci + resIdx] = nr0c + nr1c + nr2c + nr3c;
+
+                volatile float tmp = 0.0f;
+
+                for (int ri = 0; ri < kBlockUnrollFactor and flag[ri]; ++ri)
+                {
+                    tmp += (r[ri].x - c.x) * (r[ri].x - c.x) + (r[ri].y - c.y) * (r[ri].y - c.y);
+                }
+
+                res[segmentLenPadded * ci + resIdx] = tmp;
+//                printf("idx = %d, resIdx = %d, res[%d] = %f\n", idx, resIdx, segmentLenPadded * ci + resIdx, tmp);
             }
         }
     }
 }
 
 
-std::pair<int, int> padTo32k(int a)
+inline std::pair<int, int> padTo32k(int a)
 {
     static constexpr int k32 = 32;
 
-    if (int b = a % k32; b == 0)
+    if (int r = a % k32; r == 0)
     {
         return {a, 0};
     }
     else
     {
-        return {a + k32 - b, b};
+        return {a + k32 - r, r};
     }
 }
 
@@ -71,7 +107,7 @@ int main(int argc, char * argv[])
 {
     int numDuplication = (argc == 2) ? std::stoi(argv[1]) : 1;
 
-    static constexpr int kNumSamplesInit = 10240000;
+    static constexpr int kNumSamplesInit = 10244321;
     static constexpr int kNumCentersInit = 8196;
 
     int numSamples = kNumSamplesInit;
@@ -88,11 +124,13 @@ int main(int argc, char * argv[])
     // Pad numSamples to multiple of 32
     // (32 * sizeof(float) == 128, L1 cache line granularity)
     // for aligned & coalesced memory access pattern.
-    auto [numSamplesPadded, remainder] = padTo32k(numSamples >> 2U);
+    int numSamplesPerBlock = kBlockSize * kBlockUnrollFactor;
+    unsigned int numBlocks = (numSamples + numSamplesPerBlock - 1) / numSamplesPerBlock;
+    int segmentLen = static_cast<int>(numBlocks * kBlockSize);
+    auto [segmentLenPadded, remainder] = padTo32k(segmentLen);
     // int numSamplesPadded = numSamples;  // Test for non-aligned pattern. Slower!
-    thrust::device_vector<float> dBuffer(numSamplesPadded * kCenterUnrollFactor, 0.0f);
-
-    dim3 mGridDim {(numSamples + 2 * kBlockSize - 1) / (2 * kBlockSize), 1U, 1U};
+    thrust::device_vector<float> dBuffer(segmentLenPadded * kCenterUnrollFactor, 0.0f);
+    dim3 mGridDim {numBlocks, 1U, 1U};
 
     // Test
     auto ss = std::chrono::high_resolution_clock::now();
@@ -100,23 +138,31 @@ int main(int argc, char * argv[])
     thrust::device_vector<int> dBeginOffset(numCenters);
     thrust::device_vector<int> dEndOffset(numCenters);
     thrust::device_vector<float> dResult(numCenters);
-    thrust::sequence(thrust::device, dBeginOffset.begin(), dBeginOffset.end(), 0, numSamplesPadded);
-    thrust::sequence(thrust::device, dEndOffset.begin(), dEndOffset.end(), numSamples >> 2U, numSamplesPadded);
+    thrust::sequence(thrust::device, dBeginOffset.begin(), dBeginOffset.end(), 0, segmentLenPadded);
+    thrust::sequence(thrust::device, dEndOffset.begin(), dEndOffset.end(), segmentLen, segmentLenPadded);
 
     std::size_t tempStorageBytes;
-    cub::DeviceSegmentedReduce::Sum(
-            nullptr,
-            tempStorageBytes,
-            dBuffer.data().get(),
-            dResult.data().get(),
-            numCenters,
-            dBeginOffset.data().get(),
-            dEndOffset.data().get()
-    );
-    cudaDeviceSynchronize();
+    CUDA_CHECK(
+            cub::DeviceSegmentedReduce::Sum(
+                    nullptr,
+                    tempStorageBytes,
+                    dBuffer.data().get(),
+                    dResult.data().get(),
+                    numCenters,
+                    dBeginOffset.data().get(),
+                    dEndOffset.data().get()
+            ));
+    CUDA_CHECK(cudaDeviceSynchronize());
     thrust::device_vector<unsigned char> dTempStorage(tempStorageBytes);
 
-    cudaMemsetAsync(dBuffer.data().get(), 0, sizeof(float) * dBuffer.size(), nullptr);
+    CUDA_CHECK(
+            cudaMemsetAsync(
+                    dBuffer.data().get(),
+                    0,
+                    sizeof(float) * dBuffer.size(),
+                    nullptr
+            )
+    );
 
     for (int _ = 0; _ != numDuplication; ++_)
     {
@@ -127,39 +173,59 @@ int main(int argc, char * argv[])
                     numCentersLastBatch :
                     kCenterUnrollFactor;
 
-            cudaMemcpyToSymbolAsync(
-                    center,
-                    dCenter.data().get() + ci,
-                    numCentersThisBatch * sizeof(float2),
-                    0UL,
-                    cudaMemcpyDeviceToDevice,
-                    nullptr
+            CUDA_CHECK(
+                    cudaMemcpyToSymbolAsync(
+                            center,
+                            dCenter.data().get() + ci,
+                            numCentersThisBatch * sizeof(float2),
+                            0UL,
+                            cudaMemcpyDeviceToDevice,
+                            nullptr
+                    )
             );
 
             f2<<<mGridDim, kBlockDim, 0U, nullptr>>>(
                     dSample.data().get(),
                     numSamples,
-                    numSamplesPadded,
+                    segmentLenPadded,
                     numCentersThisBatch,
                     dBuffer.data().get()
             );
+            CUDA_CHECK_LAST_ERROR();
 
-            cub::DeviceSegmentedReduce::Sum(
-                    dTempStorage.data().get(),
-                    tempStorageBytes,
-                    dBuffer.data().get(),
-                    dResult.data().get() + ci,
-                    numCentersThisBatch,
-                    dBeginOffset.data().get(),
-                    dEndOffset.data().get(),
-                    nullptr
+//            cudaDeviceSynchronize();
+//            thrust::host_vector<float> hBuffer = dBuffer;
+//            for (float ff : hBuffer)
+//            {
+//                std::cout << ff << ' ';
+//            }
+//            std::printf("\n%10.2f\n", thrust::reduce(thrust::device, dBuffer.begin(), dBuffer.end()));
+
+            CUDA_CHECK(
+                    cub::DeviceSegmentedReduce::Sum(
+                            dTempStorage.data().get(),
+                            tempStorageBytes,
+                            dBuffer.data().get(),
+                            dResult.data().get() + ci,
+                            numCentersThisBatch,
+                            dBeginOffset.data().get(),
+                            dEndOffset.data().get(),
+                            nullptr
+                    )
             );
 
-            cudaMemsetAsync(dBuffer.data().get(), 0, sizeof(float) * dBuffer.size(), nullptr);
+            CUDA_CHECK(
+                    cudaMemsetAsync(
+                            dBuffer.data().get(),
+                            0,
+                            sizeof(float) * dBuffer.size(),
+                            nullptr
+                    )
+            );
         }
     }
 
-    cudaDeviceSynchronize();
+    CUDA_CHECK(cudaDeviceSynchronize());
     auto tic = (std::chrono::high_resolution_clock::now() - ss).count();
 
     std::cout << "After Unrolling "
@@ -172,7 +238,7 @@ int main(int argc, char * argv[])
 
         for (int i = 0; i != numCenters; ++i)
         {
-            std::cout << "sum @ center[" << i << "] = " << hRes[i] << '\n';
+            std::printf("sum @ center[%d] = %10.2f\n", i, hRes[i]);
         }
     }
 
@@ -183,6 +249,15 @@ int main(int argc, char * argv[])
 /*
 $ ./cmake-build-release/exe 40
 
+# Block Unroll 4
 After Unrolling 587.185 ms
 After Unrolling 551.579 ms
+
+# Block Unroll 8
+After Unrolling 284.009 ms
+After Unrolling 284.418 ms
+
+# Block Unroll 16
+After Unrolling 206.704 ms
+After Unrolling 207.629 ms
 */
