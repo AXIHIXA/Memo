@@ -10,20 +10,24 @@ set(CMAKE_CUDA_ARCHITECTURES 75)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 
-set(Python_ROOT_DIR "$ENV{HOME}/opt/anaconda3/envs/py3/")
+set(Python_ROOT_DIR "$ENV{HOME}/opt/anaconda3/envs/py3")
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
 # CMAKE_PREFIX_PATH can be gotten from `python -m "import torch;print(torch.utils.cmake_prefix_path)"`
 # libTorch conda build conflicts with OpenCV, so download compiled library directly from pytorch.org.
 # libtorch REQUIRES CMAKE_CUDA_STANDARD <= 17 and CMAKE_CXX_STANDARD <= 17.
 set(CAFFE2_USE_CUDNN ON)
-set(Torch_ROOT_DIR "${Python_ROOT_DIR}/lib/python3.10/site-packages/torch/")
-find_package(Torch REQUIRED CONFIG HINTS "${Torch_ROOT_DIR}/share/cmake/")
+set(Torch_ROOT_DIR "${Python_ROOT_DIR}/lib/python3.10/site-packages/torch")
+find_package(Torch REQUIRED CONFIG HINTS "${Torch_ROOT_DIR}/share/cmake")
+
+
 
 # Hard-coded from ninja outputs by PyTorch's offical setuptools.
 # libTorch's Find module lacks essential components for CUDA/C++ extensions!
 set(TORCH_EXTENSION pte)
-add_library(${TORCH_EXTENSION} SHARED src/main.cu)
+add_library(${TORCH_EXTENSION} SHARED
+        src/main.cu
+)
 set_target_properties(${TORCH_EXTENSION} PROPERTIES PREFIX "" OUTPUT_NAME ${TORCH_EXTENSION} SUFFIX ".so")
 target_include_directories(${TORCH_EXTENSION} PUBLIC
         ${CMAKE_SOURCE_DIR}/include
@@ -41,9 +45,9 @@ target_compile_definitions(${TORCH_EXTENSION} PUBLIC
         -D__CUDA_NO_HALF2_OPERATORS__
 )
 target_compile_options(${TORCH_EXTENSION} PUBLIC
+        --use_fast_math
         --expt-relaxed-constexpr
-        --compiler-options
-        -fPIC
+        --compiler-options -fPIC
         -DTORCH_API_INCLUDE_EXTENSION_H
         -DPYBIND11_COMPILER_TYPE="_gcc"
         -DPYBIND11_STDLIB="_libstdcpp"
@@ -60,6 +64,7 @@ target_link_libraries(${TORCH_EXTENSION} PUBLIC
         c10
         c10_cuda
         cudart
+        curand
         torch
         torch_cpu
         torch_cuda
