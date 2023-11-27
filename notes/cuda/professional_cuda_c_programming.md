@@ -3720,9 +3720,55 @@ for (int i = 0; i < nStreams; i++)
 |             |    Memcpy HtoD   | Kernel Execution |    Memcpy DtoH   |                  |                  |             |             |             |
 |             |                  |    Memcpy HtoD   | Kernel Execution |    Memcpy DtoH   |                  |             |             |             |
 
+#### 📌 6.1.2. Stream Scheduling
+
+- *False Dependency*
+  - All streams are placed into a single hardware work queue. 
+  - When selecting a grid to execute, the task at the front of the queue is scheduled by CUDA runtime.
+  - CUDA runtime checks for task dependencies: 
+    - Waits for any pending dependencies on to complete; 
+    - Dispatch the new task to available SMs when  dependencies are satisfied.
+  - A blocked operation in the queue **blocks all subsequent operations** in the queue
+    - Even when they belong to different streams.
+  - Example: 
+    - Stream 1: Task `A -> B -> C`, successors rely on predecessors. 
+    - Stream 2: Task `D -> E -> F`, successors rely on predecessors. 
+    - Stream 3: Task `G -> H -> I`, successors rely on predecessors. 
+    - Results in queue: 
+      - `[ A -> B -> C   D -> E -> F   G -> H -> I ]`
+    - Only two pairs of kernels, C & D, F & G, will be launched simultaneously!
+      - CUDA runtime will block before launching every other grid. 
+- *Hyper-Q*
+  - Using multiple hardware work queues. 
+  - Available starting from Kepler architecture. 
+
+#### 📌 6.1.3. Stream Priorities
 
 
 
+
+#### 📌 6.1.4. CUDA Events
+
+
+
+
+#### 📌 6.1.5. Stream Synchronization
+
+
+
+
+
+
+
+### 🎯 6.2. CONCURRENT KERNEL EXECUTION
+
+
+
+
+
+
+
+#### 📌 
 
 
 

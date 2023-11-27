@@ -73,7 +73,7 @@ void f2(
             {
                 float2 c = center[ci];
 
-                volatile float tmp = 0.0f;
+                float tmp = 0.0f;
 
                 for (int ri = 0; ri < kBlockUnrollFactor and flag[ri]; ++ri)
                 {
@@ -81,7 +81,6 @@ void f2(
                 }
 
                 res[segmentLenPadded * ci + resIdx] = tmp;
-//                printf("idx = %d, resIdx = %d, res[%d] = %f\n", idx, resIdx, segmentLenPadded * ci + resIdx, tmp);
             }
         }
     }
