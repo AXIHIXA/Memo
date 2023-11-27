@@ -1899,7 +1899,8 @@ __global__ void testInnerArray(InnerArray * data, InnerArray * result, const int
     - Because each of these loads is independent, you can expect more concurrent memory accesses.
     - This unrolling technique has a tremendous impact on performance, even **more than address alignment**.
   - [Local Test Result](./examples/pccp/pccp_176_read_offset_unroll_block.cu)
-    - **UNROLLING IS NOT AS DESCRIBED IN THIS TEXTBOOK! THE EXAMPLE DOES NOT SHOW BETTER PERFORMANCE!**
+    - **FOR RELEASE BUILDS, MANUAL BLOCK UNROLLING IS NOT AS EFFICIENT AS DESCRIBED IN THIS TEXTBOOK!**
+    - **FOR THE EXAMPLE, IT DOES NOT DELIVER BETTER PERFORMANCE!**
 ```c++
 __global__ 
 void readOffset(
@@ -1963,8 +1964,13 @@ $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_s
 
 $ ./cmake-build-release/exe 100
 
+  Release build (-O3 -NDEBUG)
   readOffset        9.08116 ms
   readOffsetUnroll4 9.13725 ms
+
+  Debug build (-g -G -O0), where -G is critical!
+  readOffset 11.7668 ms
+  readOffsetUnroll4 9.64555 ms
 ```
 - Exposing More Parallelism
   - Experiment with the grid and block size of a kernel. 

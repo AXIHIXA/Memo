@@ -133,6 +133,11 @@ $ ncu -k regex:read --metrics l1tex__t_bytes_pipe_lsu_mem_global_op_ld.sum.per_s
 
 $ ./cmake-build-release/exe 100
 
+  Release build (-O3 -NDEBUG)
   readOffset        9.08116 ms
   readOffsetUnroll4 9.13725 ms
+
+  Debug build (-g -G -O0), where -G is critical!
+  readOffset 11.7668 ms
+  readOffsetUnroll4 9.64555 ms
 */
