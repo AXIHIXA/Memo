@@ -3139,8 +3139,9 @@ __global__ void transposeSmemDyn(float * out, float * in, int nx, int ny)
     unsigned int ti = iy * nx + ix;
 
     // row_idx: Row-majored offset of this thread in the local block. 
-    // This thread will also write the row_idx-th element in the transposed block. 
-    // That element is the col_idx-th element in the original block. 
+    // This thread will write the row_idx-th element in the transposed block. 
+    // That element is the col_idx-th element in the original block
+    // (which, is read into shared memory by another thread). 
     // row_idx = threadIdx.y * blockDim.x + threadIdx.x
     //         = i_row       * blockDim.y + i_col
     unsigned int row_idx = threadIdx.y * blockDim.x + threadIdx.x;
