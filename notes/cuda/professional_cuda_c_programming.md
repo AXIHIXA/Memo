@@ -1257,7 +1257,7 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - Unified L1 Data Cache / Shared Memory
     - Texture Units
     - RT Cores
-  - [Turing Archiecture Whitepaper](https://images.nvidia.com/aem-dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf)
+  - [NVIDIA Turing Architecture Whitepaper](https://images.nvidia.com/aem-dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf)
     - PP.17: 
       - The Turing SM is partitioned into four processing blocks, each with
         - 16 FP32 Cores, 
@@ -1431,7 +1431,6 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - Thread execution can **not** be synchronized across thread blocks
     - Potential hazard of data race (*undefined behavior*)
   - Resides in device memory
-    - Accessible via 32-Byte, 64-Byte, or 128-Byte memory transactions
     - These transactions must be naturally aligned
       - The first address must be a multiple of 32 Bytes, 64 Bytes, or 128 Bytes
   - Number of transactions required to satisfy a warp memory request (load/store operation)
@@ -1452,7 +1451,12 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - Read-only texture 
       - One per SM
       - (INTRODUCED IN THE KEPLER ARCHITECTURE)
-      - (MERGED INTO UNIFIED L1/TEX CACHE NO LATER THAN TURING ARCHITECTURE)
+      - (MERGED INTO UNIFIED L1/TEX CACHE IN TURING ARCHITECTURE)
+      - [NVIDIA Turing Architecture Whitepaper](https://images.nvidia.com/aem-dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf), PP.9:
+        - The SM memory path has been redesigned to unify into one unit (unified L1/Tex Cache): 
+          - shared memory, 
+          - texture caching, and 
+          - memory load caching. 
   - Only memory load operations can be cached
     - On CPU, both store and load can be cached
 - **Static Global Memory**
@@ -1729,9 +1733,9 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - SM (chip includes the following)
     - Registers (on chip)
     - On-chip Cache
-      - L1 Cache and Shared Memory (SMEM) (share 64KB cache storage)
+      - Unified L1/Tex Cache and Shared Memory (SMEM) 
+        - Share 96KB cache storage (for Turing architecture)
       - Constant Memory Cache
-      - Read-only Memory Cache
   - L2 Cache (off chip)
   - DRAM (off-chip device memory)
     - Local Memory
