@@ -1257,6 +1257,26 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - Unified L1 Data Cache / Shared Memory
     - Texture Units
     - RT Cores
+  - [Turing Archiecture Whitepaper](https://images.nvidia.com/aem-dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf)
+    - PP.17: 
+      - The Turing SM is partitioned into four processing blocks, each with
+        - 16 FP32 Cores, 
+        - 16 INT32 Cores, 
+        - two Tensor Cores, 
+        - one warp scheduler, and 
+        - one dispatch unit. 
+      - Each block includes a new L0 instruction cache and a 64 KB register file. 
+      - The four processing blocks share a combined 96 KB L1 data cache/shared memory. 
+        - Traditional graphics workloads partition the 96 KB L1/shared memory as 
+          - 64 KB of dedicated graphics shader RAM and 
+          - 32 KB for texture cache and register file spill area. 
+        - Compute workloads can divide the 96 KB into 
+          - 32 KB shared memory and 64 KB L1 cache, or 
+          - 64 KB shared memory and 32 KB L1 cache.
+    - PP.19:
+      - Turing’s SM also introduces a new unified architecture for shared memory, L1, and texture caching. 
+        - The Turing L1 can be as large as 64 KB in size, combined with a 32 KB per SM shared memory allocation, or 
+        - it can reduce to 32 KB, allowing 64 KB of allocation to be used for shared memory. 
 - Warp
   - All warps from the same thread block will also be assigned on the same SM. 
   - Allocated to a sub partition and resides on the sub partition from launch to completion. 
@@ -1420,8 +1440,8 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
       - Alignment of memory addresses per transaction
 - **GPU Caches**
   - Non-programmable memory (like CPU caches)
-  - Four types of cache
-    - L1
+  - Three types of cache
+    - Unified L1/Tex
       - One per SM
       - Stores data in local and global memory (including register spills)
     - L2
@@ -1429,8 +1449,10 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
       - Stores data in local and global memory (including register spills)
     - Read-only constant
       - One per SM
-    - Read-only texture
+    - Read-only texture 
       - One per SM
+      - (INTRODUCED IN THE KEPLER ARCHITECTURE)
+      - (MERGED INTO UNIFIED L1/TEX CACHE NO LATER THAN TURING ARCHITECTURE)
   - Only memory load operations can be cached
     - On CPU, both store and load can be cached
 - **Static Global Memory**
