@@ -1363,11 +1363,35 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
       - Large local structures or arrays that would consume too much register space
       - Any variable that does not fit within the kernel register limit
   - *local* is misleading 
-    - Values spilled to local memory reside in the same physical location as global memory
-    - Local memory accesses are characterized by high latency and low bandwidth 
+    - **Spills**
+      - Large structures exceeding capacity of register file are spilled into local memory. 
+    - Local memory reside in the same physical location as global memory. 
+      - As high latency and low bandwidth as global memory. 
+      - **Avoid using local memory**. 
     - Local memory accesses are subject to the requirements for efficient memory access
       - To be detailed in the section Memory Access Patterns found later in this chapter. 
     - Local memory data is also cached in a per-SM L1 and per-device L2 cache.
+  - Judge spill loads:
+    - A kernel may use: Registers, local memory, shared memory, and constant memory. 
+    - Compile with nvcc option `-Xptxas -v`. 
+    - Sample output:
+```
+# Example one: 
+# This file Green.cu has global device variables and a kernel laplacianGreenFunction. 
+# Global variables: No registers, no local/shared memory, 528 Bytes constant memory. 
+# Kernel function:  56 registers, no local/shared memory, 400 Bytes constant memory. 
+[1/6] Building CUDA object CMakeFiles/pte.dir/src/integral/Green.cu.o
+ptxas info    : 0 bytes gmem, 520 bytes cmem[3]
+ptxas info    : Compiling entry function '_ZN8integral22laplacianGreenFunctionEPK6float2iiiffPf' for 'sm_75'
+ptxas info    : Function properties for _ZN8integral22laplacianGreenFunctionEPK6float2iiiffPf
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 56 registers, 392 bytes cmem[0], 8 bytes cmem[2]
+
+# Example two:
+# Kernel function: 47 registers, 60 Bytes local memory, 44 Bytes shared memory, 352 Bytes constant memory. 
+ptxas info	: Compiling entry function '_Z5tT_1DPfS_S_j'
+ptxas info	: Used 47 registers, 60+0 bytes lmem, 28+16 bytes smem, 352 bytes cmem[1]
+```
 - *Shared Memory*
   - Variables decorated with `__shared__` attribute in a kernel
   - Shared memory is on-chip
