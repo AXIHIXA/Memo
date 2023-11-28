@@ -3766,10 +3766,119 @@ cudaError_t cudaDeviceGetStreamPriorityRange(int * leastPriority, int * greatest
 
 #### 📌 6.1.4. CUDA Events
 
+- CUDA *Event* 
+  - Marker in a CUDA stream associated with a certain point in the flow of operations in that stream. 
+  - You can use events to perform the following two basic tasks:
+    - Synchronize stream execution;
+    - Monitor device progress.
+  - CUDA Runtime API allows:
+    - Insert events at any point in a stream 
+    - Query for event completion. 
+  - Event completion
+    - An event recorded on a given stream will only be complete (satisfied) when all preceding operations in the same stream have completed. 
+    - Events specified on the default stream apply to all preceding operations in all CUDA streams.
+- Creation and Destruction
+  - If the event has not yet been satisfied when `cudaEventDestroy` is called: 
+    - The call returns immediately;
+    - Resources associated with that event are released automatically when the event is marked complete.
+```c++
+cudaEvent_t event;
 
+cudaError_t cudaEventCreate(cudaEvent_t * event);
+cudaError_t cudaEventDestroy(cudaEvent_t event);
+```
+- Recording Events and Measuring Elapsed Time
+  - Events mark a point in stream execution. 
+    - Can be used to check if the executing stream operations have reached a given point. 
+    - Operations added to a CUDA stream 
+      - whose only action when popped from the head of the work queue 
+      - is to raise a host-side flag to indicate completion. 
+  - The passed event can be used to either wait or test for:
+    - Completion of all preceding operations in the specified stream. 
+  - Waiting for an event *blocks* the calling host thread. 
+```c++
+/// Queue the event to a CUDA stream. 
+cudaError_t cudaEventRecord(cudaEvent_t event, cudaStream_t stream = 0);
 
+/// Waiting for an event blocks the calling host thread.  
+/// Analogous to cudaStreamSynchronize for streams, 
+/// but allows the host to wait for an intermediate point in stream execution.
+cudaError_t cudaEventSynchronize(cudaEvent_t event);
+
+/// Test if an event has completed without blocking the host application. 
+cudaError_t cudaEventQuery(cudaEvent_t event);
+
+/// Measure the elapsed time of CUDA operations marked by two events. 
+cudaError_t cudaEventElapsedTime(float * ms, cudaEvent_t start, cudaEvent_t stop);
+```
+- Example
+```c++
+// create two events
+cudaEvent_t start, stop;
+cudaEventCreate(&start);
+cudaEventCreate(&stop);
+// record start event on the default stream
+cudaEventRecord(start);
+// execute kernel
+kernel<<<grid, block>>>(arguments);
+// record stop event on the default stream
+cudaEventRecord(stop);
+// wait until the stop event completes
+cudaEventSynchronize(stop);
+// calculate the elapsed time between two events
+float time;
+cudaEventElapsedTime(&time, start, stop);
+// clean up the two events
+cudaEventDestroy(start);
+cudaEventDestroy(stop);
+```
 
 #### 📌 6.1.5. Stream Synchronization
+
+- All operations in non-default streams are non-blocking w.r.t. the host thread. 
+- Synchronize the host with operations running in a stream.
+- Two main categories of CUDA operations (host's perspective):
+  - Memory-related operations;
+    - Asynchronous streams (non-NULL streams)
+      - All operations applied to it do not block host execution. 
+    - Synchronous streams (the NULL/default stream)
+      - Declared implicitly, synchronous w.r.t. the host. 
+  - Kernel launches. 
+    - Always asynchronous w.r.t. the host. 
+- Non-NULL streams 
+  - Non-NULL streams are non-blocking with respect to the host; 
+  - Operations within a non-NULL stream could be blocked by operations in the NULL stream. 
+    - Blocking streams: Does not block on operations in the NULL stream. 
+    - Non-blocking streams: The NULL stream can block operations in it.
+- Blocking and Non-Blocking Streams
+  - Streams created using `cudaStreamCreate` are blocking streams. 
+    - Operations in the NULL stream and operations in blocking streams *block each other*:
+      - Any operation issued to the NULL stream, before executing:
+        - will wait on all operations previously issued to all blocking streams. 
+      - Any operation issued to blocking streams, before executing:
+        - will wait on all preceding operations in the NULL stream.
+  - Customization of a non-NULL stream's behavior in relation to the NULL stream: 
+    - Specifying `cudaStreamNonBlocking` disables the blocking behavior of non-NULL streams relative to the NULL stream. 
+```c++
+/// The flags argument determines the behavior of the created stream:
+///     cudaStreamDefault:     Default stream creation flag (blocking); 
+///     cudaStreamNonBlocking: Asynchronous stream creation flag (non-blocking). 
+cudaError_t cudaStreamCreateWithFlags(cudaStream_t * pStream, unsigned int flags);
+```
+```c++
+// These kernels are scheduled in sequential manner
+// if stream_1 and stream_2 are created with cudaStreamCreate. 
+kernel_1<<<1, 1, 0, stream_1>>>();
+kernel_2<<<1, 1>>>();
+kernel_3<<<1, 1, 0, stream_2>>>();
+
+// If created with cudaStreamNonBlocking, 
+// none of the kernel executions would be blocked 
+// waiting for completion of any of the other kernels.
+```
+- Implicit Synchronization
+- Explicit Synchronization
+- Configurable Events
 
 
 
