@@ -3123,43 +3123,50 @@ __global__ void naiveGmem(float * out, float * in, const int nx, const int ny)
     }
 }
 
+// 1. Read rows from global memory and write rows into shared memory;
+// 2. Read columns from shared memory and write rows into global memory. 
+// Global reads/writes are coalesced, 
+// but reading columns from shared memory triggers bank conflicts. 
+// Thus we further pad the shared memory (in the next routine).
 __global__ void transposeSmemDyn(float * out, float * in, int nx, int ny)
 {
-    // dynamic shared memory
+    // Dynamic shared memory. 
     extern __shared__ float tile[];
 
-    // coordinate in original matrix
-    unsigned int ix, iy, ti, to;
-    ix = blockDim.x * blockIdx.x + threadIdx.x;
-    iy = blockDim.y * blockIdx.y + threadIdx.y;
+    // 2D coordinate of this thread
+    // (as well as in the original 2D matrix). 
+    unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
+    unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
 
-    // linear global memory index for original matrix
-    ti = iy * nx + ix;
+    // Linear global memory index for of this thread element in the original matrix. 
+    unsigned int ti = iy * nx + ix;
 
-    // thread index in transposed block
-    unsigned int row_idx, col_idx, irow, icol;
-    row_idx = threadIdx.y * blockDim.x + threadIdx.x;
-    irow    = row_idx / blockDim.y;
-    icol    = row_idx % blockDim.y;
-    col_idx = icol * blockDim.x + irow;
+    // row_idx: Row-majored offset of this thread in the local block. 
+    // row_idx = threadIdx.y * blockDim.x + threadIdx.x
+    //         = i_row       * blockDim.y + i_col
+    unsigned int row_idx = threadIdx.y * blockDim.x + threadIdx.x;
+    unsigned int irow    = row_idx / blockDim.y;
+    unsigned int icol    = row_idx % blockDim.y;
 
-    // coordinate in transposed matrix
+    // Linear offset this thread should read from the shared memory
+    // when performing row-majored writes to the transposed global matrix. 
+    unsigned int col_idx = icol * blockDim.x + irow;
+
+    // Linear global memory index this thread should write to the transposed matrix (in row-major order). 
     ix = blockDim.y * blockIdx.y + icol;
     iy = blockDim.x * blockIdx.x + irow;
+    unsigned int to = iy * ny + ix;
 
-    // linear global memory index for transposed matrix
-    to = iy * ny + ix;
-
-    // transpose with boundary test
+    // Transpose with boundary test. 
     if (ix < nx && iy < ny)
     {
-        // load data from global memory to shared memory
+        // Load data from global memory to shared memory. 
         tile[row_idx] = in[ti];
 
-        // thread synchronization
+        // Thread synchronization. 
         __syncthreads();
 
-        // store data to global memory from shared memory
+        // Store data to global memory from shared memory. 
         out[to] = tile[col_idx];
     }
 }
