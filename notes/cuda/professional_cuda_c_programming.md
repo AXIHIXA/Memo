@@ -3848,8 +3848,8 @@ cudaEventDestroy(stop);
 - Non-NULL streams 
   - Non-NULL streams are non-blocking with respect to the host; 
   - Operations within a non-NULL stream could be blocked by operations in the NULL stream. 
-    - Blocking streams: Does not block on operations in the NULL stream. 
-    - Non-blocking streams: The NULL stream can block operations in it.
+    - Blocking streams: The NULL stream can block operations in it.
+    - Non-blocking streams: Does not block on operations in the NULL stream. 
 - Blocking and Non-Blocking Streams
   - Streams created using `cudaStreamCreate` are blocking streams. 
     - Operations in the NULL stream and operations in blocking streams *block each other*:
@@ -3866,25 +3866,53 @@ cudaEventDestroy(stop);
 cudaError_t cudaStreamCreateWithFlags(cudaStream_t * pStream, unsigned int flags);
 ```
 ```c++
-// These kernels are scheduled in sequential manner
+// These kernels will be scheduled in a sequential manner
 // if stream_1 and stream_2 are created with cudaStreamCreate. 
 kernel_1<<<1, 1, 0, stream_1>>>();
 kernel_2<<<1, 1>>>();
 kernel_3<<<1, 1, 0, stream_2>>>();
 
-// If created with cudaStreamNonBlocking, 
+// If stream_1 and stream_2 are created with cudaStreamNonBlocking, 
 // none of the kernel executions would be blocked 
 // waiting for completion of any of the other kernels.
 ```
 - Implicit Synchronization
+  - E.g., `cudaMemcpy` implicitly synchronizes the device and host. 
+    - The host application blocks until the data transfer completes.
+    - The main purpose of this function is **not** synchronization. 
+      - Its synchronization side effects are implicit. 
+  - Inadvertently calling a function that implicitly synchronizes **degrades performance**!
+  - Many memory-related operations implies implicit synchronization:
+    - A page-locked host memory allocation;
+    - A device memory allocation;
+    - A device memset;
+    - A memory copy between two addresses on the same device;
+    - A modification to the L1/shared memory configuration. 
 - Explicit Synchronization
+  - The CUDA runtime supports several ways of explicitly synchronizing a CUDA program at the grid level:
+    - Synchronizing the device: `cudaDeviceSynchronize();`;
+    - Synchronizing a stream: `cudaStreamSynchronize(stream);`, `cudaStreamQuery(stream);`;
+    - Synchronizing an event in a stream: `cudaStreamWaitEvent(stream, event);`;
+      - `cudaStreamWaitEvent` causes the specified stream to wait on the specified event 
+      - before executing any operation queued in stream after the call to `cudaStreamWaitEvent`. 
+      - The event may be associated with either the same stream, or a different stream.
+    - Synchronizing across streams using an event: `cudaEventSynchronize(event);`, `cudaEventQuery(event);`.
 - Configurable Events
-
-
-
-
-
-
+```c++
+/// Customize the behavior and properties of events. 
+/// Flags:
+///     cudaEventDefault:
+///     cudaEventBlockingSync:  Synchronizing on this event with cudaEventSynchronize 
+///                             will block the calling thread. 
+///                             Common usage: spin on the event and 
+///                             constantly check its status using CPU cycles.
+///     cudaEventDisableTiming: This event is only used for synchronization 
+///                             and does not need to record timing data. 
+///                             Improves the performance of calls to 
+///                             cudaStreamWaitEvent and cudaEventQuery.
+///     cudaEventInterprocess:  This event may be used as an inter-process event.
+cudaError_t cudaEventCreateWithFlags(cudaEvent_t * event, unsigned int flags);
+```
 
 ### 🎯 6.2. CONCURRENT KERNEL EXECUTION
 
