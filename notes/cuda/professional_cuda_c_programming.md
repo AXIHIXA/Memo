@@ -16,6 +16,10 @@
   - [Nsight Compute (NCU)](https://docs.nvidia.com/nsight-compute/index.html)
     - [Nsight Compute Command Line Interface](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html)
     - [Nsight Compute Kernel Profiling Guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html)
+  - NVIDIA Turing Architecture
+    - [16.6. Compute Capability 7.x](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capability-7-x)
+    - [Turing Tuning Guide](https://docs.nvidia.com/cuda/turing-tuning-guide/index.html)
+    - [NVIDIA Turing Architecture Whitepaper](https://images.nvidia.com/aem-dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf)
 
 
 
@@ -1270,7 +1274,7 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
         - Traditional graphics workloads partition the 96 KB L1/shared memory as 
           - 64 KB of dedicated graphics shader RAM and 
           - 32 KB for texture cache and register file spill area. 
-        - Compute workloads can divide the 96 KB into 
+        - Compute workloads can divide the 96 KB into (**note** that only these two caveouts are supported!)
           - 32 KB shared memory and 64 KB L1 cache, or 
           - 64 KB shared memory and 32 KB L1 cache.
     - PP.19:
@@ -2563,6 +2567,7 @@ cudaFree(C);
     - For instance, in the example above, 50% of the 96KB maximum is 48KB, 
       - which is not a supported shared memory capacity. 
       - Thus, the preference is rounded up to 64KB.
+      - **NOTE THAT, ASIDE FROM SETTING THE CARVEOUT, 64KB SMEM REQUIRES ANOTHER EXPLICIT OPT-IN AS FOLLOWS**
   ```c++
   template <class T>
   inline __host__ ​cudaError_t cudaFuncSetAttribute(T * entry, cudaFuncAttribute attr, int value);
@@ -2588,8 +2593,8 @@ cudaFree(C);
   ```
   - A single thread block can address the full capacity of shared memory (64KB on Turing). 
     - Kernels relying on shared memory allocations over 48KB per block are architecture-specific, 
-      - as such they must use dynamic shared memory (rather than statically sized arrays)
-      - require an explicit opt-in using `cudaFuncSetAttribute` as follows.
+      - as such they must use dynamic shared memory (rather than statically sized arrays). 
+      - **NOTE THAT, ASIDE FROM SETTING THE CARVEOUT, 64KB SMEM REQUIRES ANOTHER EXPLICIT OPT-IN AS FOLLOWS**
   ```c++
   // Device code
   __global__ void myKernel(...)
