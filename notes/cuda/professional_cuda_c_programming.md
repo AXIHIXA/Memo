@@ -3133,11 +3133,9 @@ __global__ void transposeSmemDyn(float * out, float * in, int nx, int ny)
     // Dynamic shared memory. 
     extern __shared__ float tile[];
 
-    // 2D coordinate of this thread element in the original matrix. 
+    // Linear index for of this thread element in the original matrix. 
     unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
-
-    // Linear index for of this thread element in the original matrix. 
     unsigned int ti = iy * nx + ix;
 
     // row_idx: Row-majored offset of this thread in the local block. 
