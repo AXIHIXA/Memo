@@ -2567,7 +2567,12 @@ cudaFree(C);
     - For instance, in the example above, 50% of the 96KB maximum is 48KB, 
       - which is not a supported shared memory capacity. 
       - Thus, the preference is rounded up to 64KB.
-      - **NOTE THAT, ASIDE FROM SETTING THE CARVEOUT, 64KB SMEM REQUIRES ANOTHER EXPLICIT OPT-IN AS FOLLOWS**
+    - Notes
+      - This is only a hint, and the function could be launched explicitly with different configurations. 
+      - Shared memory $\ge 48 \mathrm{KB}$ requires dynamic shared memory `extern __shared__`. 
+        - Dynamic shared memory has an implicit upper bar `cudaFuncAttributeMaxDynamicSharedMemorySize` (defaults to $48 \mathrm{KB}$). 
+        - Launching a kernel with shared memory size exceeding this bar yields **invalid argument** error. 
+        - Thus, using shared memory $\ge 48 \mathrm{KB}$ further requires an explicit override of `cudaFuncAttributeMaxDynamicSharedMemorySize`! 
   ```c++
   template <class T>
   inline __host__ ​cudaError_t cudaFuncSetAttribute(T * entry, cudaFuncAttribute attr, int value);
@@ -2594,19 +2599,20 @@ cudaFree(C);
   - A single thread block can address the full capacity of shared memory (64KB on Turing). 
     - Kernels relying on shared memory allocations over 48KB per block are architecture-specific, 
       - as such they must use dynamic shared memory (rather than statically sized arrays). 
-      - **NOTE THAT, ASIDE FROM SETTING THE CARVEOUT, 64KB SMEM REQUIRES ANOTHER EXPLICIT OPT-IN AS FOLLOWS**
+      - **NOTE THAT, 64KB SMEM REQUIRES ANOTHER EXPLICIT OPT-IN AS FOLLOWS**:
   ```c++
   // Device code
-  __global__ void myKernel(...)
+  __global__ 
+  void cudaKernelFunc(...)
   {
       extern __shared__ float buffer[];
       ...
   }
 
   // Host code
-  constexpr int kMaxBytes = 64 * 1024;  // 64KB
-  cudaFuncSetAttribute(myKernel, cudaFuncAttributeMaxDynamicSharedMemorySize, kMaxBytes);
-  kernel<<<grid, block, kMaxBytes>>>(...);
+  constexpr int kMaxSharedMemorySize = 64 * 1024;  // 64KB
+  cudaFuncSetAttribute(myKernel, cudaFuncAttributeMaxDynamicSharedMemorySize, kMaxSharedMemorySize);
+  cudaKernelFunc<<<mGridDim, mBlockDim, kMaxSharedMemorySize>>>(...);
   ```
 - Synchronization
   - CUDA runtime functions for intra-block synchronization: 
