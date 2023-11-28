@@ -3133,26 +3133,24 @@ __global__ void transposeSmemDyn(float * out, float * in, int nx, int ny)
     // Dynamic shared memory. 
     extern __shared__ float tile[];
 
-    // 2D coordinate of this thread
-    // (as well as in the original 2D matrix). 
+    // 2D coordinate of this thread element in the original matrix. 
     unsigned int ix = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned int iy = blockDim.y * blockIdx.y + threadIdx.y;
 
-    // Linear global memory index for of this thread element in the original matrix. 
+    // Linear index for of this thread element in the original matrix. 
     unsigned int ti = iy * nx + ix;
 
     // row_idx: Row-majored offset of this thread in the local block. 
+    // This thread will also write the row_idx-th element in the transposed block. 
+    // That element is the col_idx-th element in the original block. 
     // row_idx = threadIdx.y * blockDim.x + threadIdx.x
     //         = i_row       * blockDim.y + i_col
     unsigned int row_idx = threadIdx.y * blockDim.x + threadIdx.x;
     unsigned int irow    = row_idx / blockDim.y;
     unsigned int icol    = row_idx % blockDim.y;
-
-    // Linear offset this thread should read from the shared memory
-    // when performing row-majored writes to the transposed global matrix. 
     unsigned int col_idx = icol * blockDim.x + irow;
 
-    // Linear global memory index this thread should write to the transposed matrix (in row-major order). 
+    // Linear index this thread should write to the transposed matrix. 
     ix = blockDim.y * blockIdx.y + icol;
     iy = blockDim.x * blockIdx.x + irow;
     unsigned int to = iy * ny + ix;
