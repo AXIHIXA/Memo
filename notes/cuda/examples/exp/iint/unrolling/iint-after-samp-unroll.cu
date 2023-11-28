@@ -55,13 +55,12 @@ void f2(
 
     if (idx < sampleLen)
     {
-        bool flag[kBlockUnrollFactor] = {false};
         float2 r[kBlockUnrollFactor] = {};
+        int riMax = 0;
 
-        for (int ri = 0, si = idx; ri < kBlockUnrollFactor and si < sampleLen; ++ri, si += blockSize)
+        for (int si = idx; riMax != kBlockUnrollFactor and si < sampleLen; ++riMax, si += blockSize)
         {
-            flag[ri] = true;
-            r[ri] = sample[si];
+            r[riMax] = sample[si];
         }
 
         auto resIdx = static_cast<int>(blockIdx.x * blockSize + threadIdx.y * blockDim.x + threadIdx.x);
@@ -75,7 +74,7 @@ void f2(
 
                 float tmp = 0.0f;
 
-                for (int ri = 0; ri < kBlockUnrollFactor and flag[ri]; ++ri)
+                for (int ri = 0; ri != riMax; ++ri)
                 {
                     tmp += (r[ri].x - c.x) * (r[ri].x - c.x) + (r[ri].y - c.y) * (r[ri].y - c.y);
                 }
