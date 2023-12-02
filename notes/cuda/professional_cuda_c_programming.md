@@ -1363,7 +1363,7 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
       - Large local structures or arrays that would consume too much register space
       - Any variable that does not fit within the kernel register limit
   - *local* is misleading 
-    - **Spills**
+    - **Variable Spills**
       - Large structures exceeding capacity of register file are spilled into local memory. 
     - Local memory reside in the same physical location as global memory. 
       - As high latency and low bandwidth as global memory. 
@@ -1371,7 +1371,7 @@ __global__ void gpuRecursiveReduce2(int * g_idata, int * g_odata, int iStride, i
     - Local memory accesses are subject to the requirements for efficient memory access
       - To be detailed in the section Memory Access Patterns found later in this chapter. 
     - Local memory data is also cached in a per-SM L1 and per-device L2 cache.
-  - Judge spill loads:
+  - Variable spill statistics:
     - A kernel may use: Registers, local memory, shared memory, and constant memory. 
     - Compile with nvcc option `-Xptxas -v`. 
     - Sample output:
@@ -3352,12 +3352,7 @@ __global__ void stencil_1d(float * in, float * out, int N)
 #### 📌 Comparing with the Read-Only Cache
 
 - Use GPU texture pipeline as a read-only cache for global memory. 
-  - Separate read-only cache with separate memory bandwidth from normal global memory reads. 
-  - Boosts performance for bandwidth-limited kernels.
-  - There is a total of 48 KB of read-only cache per Kepler SM. 
-  - The read-only cache is better for scattered reads than the L1 cache. 
-  - The read-only cache should not be used when threads in a warp all read the same address. 
-  - The granularity of the read-only cache is 32 bytes.
+  - Read-only cache is merged into unified L1/Texture cache starting from Turing architecture. 
 - Two ways to access global memory through the read-only cache: 
   - Intrinsic function `__ldg`
     - Used in place of a normal pointer dereference
@@ -3394,7 +3389,8 @@ __global__ void stencil_1d(float * in, float * out, int N)
   - Both are read-only from the device;
   - Both have limited per-SM resources: 
     - Constant cache: 64 KB,
-    - Read-only cache: 48 KB.
+    - Read-only cache: Merged into unified L1/Texture cache.
+      - Shared with shared memory, 96 KB in total. 
   - Constant cache performs better on uniform reads:  
     - where every thread in a warp accesses the same address;
   - Read-only cache is better for scattered reads. 
