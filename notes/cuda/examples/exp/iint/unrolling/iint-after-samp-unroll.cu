@@ -7,9 +7,6 @@
 // CUDA API error checking
 inline constexpr int kCudaUtilsBufferSize = 1024;
 
-// CUDA API error checking
-inline constexpr int kCudaUtilsBufferSize = 1024;
-
 #define CUDA_CHECK(err)                                                                            \
     do {                                                                                           \
         cudaError_t err_ = (err);                                                                  \
