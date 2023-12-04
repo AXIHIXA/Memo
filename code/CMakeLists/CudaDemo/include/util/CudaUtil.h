@@ -12,6 +12,7 @@ inline constexpr int kCudaUtilsBufferSize = 1024;
         if (err_ != AMGX_RC_OK) {                                                                  \
             char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
             std::sprintf(checkBuf, "AMGX error %d at %s:%d\n", err_, __FILE__, __LINE__);          \
+            cudaDeviceReset();                                                                     \
             throw std::runtime_error(checkBuf);                                                    \
         }                                                                                          \
     } while (false)
@@ -24,6 +25,7 @@ inline constexpr int kCudaUtilsBufferSize = 1024;
         if (err_ != CUBLAS_STATUS_SUCCESS) {                                                       \
             char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
             std::sprintf(checkBuf, "cuBLAS error %d at %s:%d\n", err_, __FILE__, __LINE__);        \
+            cudaDeviceReset();                                                                     \
             throw std::runtime_error(checkBuf);                                                    \
         }                                                                                          \
     } while (false)
@@ -36,6 +38,7 @@ inline constexpr int kCudaUtilsBufferSize = 1024;
         if (err_ != cudaSuccess) {                                                                 \
             char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
             std::sprintf(checkBuf, "%s at %s:%d\n", cudaGetErrorString(err_), __FILE__, __LINE__); \
+            cudaDeviceReset();                                                                     \
             throw std::runtime_error(checkBuf);                                                    \
         }                                                                                          \
     } while (false)
@@ -48,6 +51,7 @@ inline constexpr int kCudaUtilsBufferSize = 1024;
         if (err_ != cudaSuccess) {                                                                 \
             char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
             std::sprintf(checkBuf, "%s at %s:%d\n", cudaGetErrorString(err_), __FILE__, __LINE__); \
+            cudaDeviceReset();                                                                     \
             throw std::runtime_error(checkBuf);                                                    \
         }                                                                                          \
     } while (false)
@@ -60,6 +64,7 @@ inline constexpr int kCudaUtilsBufferSize = 1024;
         if (err_ != CUSOLVER_STATUS_SUCCESS) {                                                     \
             char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
             std::sprintf(checkBuf, "cuSOLVER error %d at %s:%d\n", err_, __FILE__, __LINE__);      \
+            cudaDeviceReset();                                                                     \
             throw std::runtime_error(checkBuf);                                                    \
         }                                                                                          \
     } while (false)
@@ -72,6 +77,7 @@ inline constexpr int kCudaUtilsBufferSize = 1024;
         if (err_ != CUSPARSE_STATUS_SUCCESS) {                                                     \
             char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
             std::sprintf(checkBuf, "cuSPARSE error %d at %s:%d\n", err_, __FILE__, __LINE__);      \
+            cudaDeviceReset();                                                                     \
             throw std::runtime_error(checkBuf);                                                    \
         }                                                                                          \
     } while (false)

@@ -13,6 +13,7 @@ inline constexpr int kCudaUtilsBufferSize = 1024;
         if (err_ != cudaSuccess) {                                                                 \
             char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
             std::sprintf(checkBuf, "%s at %s:%d\n", cudaGetErrorString(err_), __FILE__, __LINE__); \
+            cudaDeviceReset();                                                                     \
             throw std::runtime_error(checkBuf);                                                    \
         }                                                                                          \
     } while (false)
@@ -23,6 +24,7 @@ inline constexpr int kCudaUtilsBufferSize = 1024;
         if (err_ != cudaSuccess) {                                                                 \
             char checkBuf[kCudaUtilsBufferSize] {'\0'};                                            \
             std::sprintf(checkBuf, "%s at %s:%d\n", cudaGetErrorString(err_), __FILE__, __LINE__); \
+            cudaDeviceReset();                                                                     \
             throw std::runtime_error(checkBuf);                                                    \
         }                                                                                          \
     } while (false)
