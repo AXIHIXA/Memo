@@ -28,3 +28,17 @@
   - Calculate the number of 1-bits for bit 0 to 31 for all elements in this array;
   - Extract bits whose number of 1-bits is not multiple of m;
   - The result is the extracted number. 
+
+## Unrolled Bin Count
+
+```c++
+int binCount(unsigned int n)
+{
+    n = (n & 0x55555555U) + ((n & 0xaaaaaaaaU) >> 1U);
+    n = (n & 0x33333333U) + ((n & 0xccccccccU) >> 2U);
+    n = (n & 0x0f0f0f0fU) + ((n & 0xf0f0f0f0U) >> 4U);
+    n = (n & 0xff00ffU)   + ((n & 0xff00ff00U) >> 8U);
+    n = (n & 0xffffU)     + ((n & 0xffff0000U) >> 16U);
+    return n;
+}
+```
