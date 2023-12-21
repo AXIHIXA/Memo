@@ -39,7 +39,11 @@
     4. [System Management](./notes/system/04-system-management.md)
     5. [System Programming](./notes/system/05-system-programming.md)
     6. [WSL 2](./notes/system/06-wsl-2.md)
-
+- [DSA](./notes/dsa)
+  - Bit Operations
+  - [SSA](./notes/dsa/ssa.cpp)
+  - [Trie](./notes/dsa/Trie.cpp)
+  - [Unroll Copy](./notes/dsa/unroll_copy.cpp)
 
 
 ## 🌱 Sample Code
@@ -77,5 +81,3 @@
     - [Code Styles](./code/ide%20preferences)
 - Windows Terminal config
     - [settings.json](./code/Windows%20Terminal)
-- [DSA](./code/dsa)
-
