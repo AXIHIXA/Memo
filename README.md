@@ -77,5 +77,5 @@
     - [Code Styles](./code/ide%20preferences)
 - Windows Terminal config
     - [settings.json](./code/Windows%20Terminal)
-- [DSA](./notes/dsa)
+- [DSA](./code/dsa)
 
