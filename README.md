@@ -40,7 +40,7 @@
     5. [System Programming](./notes/system/05-system-programming.md)
     6. [WSL 2](./notes/system/06-wsl-2.md)
 - [DSA](./notes/dsa)
-  - Bit Operations
+  - [Bit Operations](./notes/dsa/bit_operations.md)
   - [SSA](./notes/dsa/ssa.cpp)
   - [Trie](./notes/dsa/Trie.cpp)
   - [Unroll Copy](./notes/dsa/unroll_copy.cpp)
