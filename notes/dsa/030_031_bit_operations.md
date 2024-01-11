@@ -64,11 +64,14 @@ int near2power(int n)
     }
 
     n--;
+    
+    // 把n最高位1开始往后所有bit全部刷成1
     n |= n >> 1;
     n |= n >> 2;
     n |= n >> 4;
     n |= n >> 8;
     n |= n >> 16;
+    
     return n + 1;
 }
 
