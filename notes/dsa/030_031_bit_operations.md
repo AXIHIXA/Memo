@@ -38,7 +38,7 @@
 // 测试链接 : https://leetcode.cn/problems/power-of-two/
 bool isPowerOfTwo(int n) 
 {
-		return n > 0 && n == (n & -n);
+    return n > 0 && n == (n & -n);
 }
 
 // 判断一个整数是不是3的幂
@@ -50,7 +50,7 @@ bool isPowerOfTwo(int n)
 // 反之如果1162261467 % n != 0 说明n一定含有其他因子
 bool isPowerOfThree(int n) 
 {
-		return n > 0 && 1162261467 % n == 0;
+    return n > 0 && 1162261467 % n == 0;
 }
 
 // 已知n是非负数
@@ -58,18 +58,18 @@ bool isPowerOfThree(int n)
 // 如果int范围内不存在这样的数，返回整数最小值
 int near2power(int n) 
 {
-		if (n <= 0) 
+    if (n <= 0) 
     {
         return 1;
-		}
+    }
 
-		n--;
-		n |= n >>> 1;
-		n |= n >>> 2;
-		n |= n >>> 4;
-		n |= n >>> 8;
-		n |= n >>> 16;
-		return n + 1;
+    n--;
+    n |= n >>> 1;
+    n |= n >>> 2;
+    n |= n >>> 4;
+    n |= n >>> 8;
+    n |= n >>> 16;
+    return n + 1;
 }
 
 // 给你两个整数 left 和 right ，表示区间 [left, right]
@@ -78,12 +78,12 @@ int near2power(int n)
 // 测试链接 : https://leetcode.cn/problems/bitwise-and-of-numbers-range/
 int rangeBitwiseAnd(int left, int right) 
 {
-		while (left < right) 
+    while (left < right) 
     {
         right -= right & -right;
-		}
+    }
 
-		return right;
+    return right;
 }
 
 
@@ -91,12 +91,12 @@ int rangeBitwiseAnd(int left, int right)
 // 测试链接 : https://leetcode.cn/problems/reverse-bits/
 int reverseBits(int n) 
 {
-		n = ((n & 0xaaaaaaaa) >>> 1) | ((n & 0x55555555) << 1);
-		n = ((n & 0xcccccccc) >>> 2) | ((n & 0x33333333) << 2);
-		n = ((n & 0xf0f0f0f0) >>> 4) | ((n & 0x0f0f0f0f) << 4);
-		n = ((n & 0xff00ff00) >>> 8) | ((n & 0x00ff00ff) << 8);
-		n = (n >>> 16) | (n << 16);
-		return n;
+    n = ((n & 0xaaaaaaaa) >>> 1) | ((n & 0x55555555) << 1);
+    n = ((n & 0xcccccccc) >>> 2) | ((n & 0x33333333) << 2);
+    n = ((n & 0xf0f0f0f0) >>> 4) | ((n & 0x0f0f0f0f) << 4);
+    n = ((n & 0xff00ff00) >>> 8) | ((n & 0x00ff00ff) << 8);
+    n = (n >>> 16) | (n << 16);
+    return n;
 }
 
 // 返回n的二进制中有几个1
