@@ -40,7 +40,6 @@ private:
 int powf(int a, int b, int p)
 {
     a %= p;
-    b %= p;
 
     int r = 1;
 
@@ -48,7 +47,7 @@ int powf(int a, int b, int p)
     {
         if (b & 1)
         {
-            r = (r * b) % p;
+            r = (r * a) % p;
         }
 
         a = (a * a) % p;
