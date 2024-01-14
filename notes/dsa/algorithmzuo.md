@@ -235,7 +235,145 @@ private:
 ```
 
 
+## 018 Binary Tree Traversal Iteration
 
+```c++
+#include <iostream>
+#include <stack>
+#include <vector>
+
+
+struct Node
+{
+    Node() = default;
+    Node(int v) : val(v) {}
+    
+    int val {0};
+    Node * left {nullptr};
+    Node * right {nullptr};
+};
+
+
+void preOrderTraverse(Node * head)
+{
+    if (!head)
+    {
+        return;
+    }
+
+
+    std::stack<Node *> st;
+    st.push(head);
+
+    while (!st.empty())
+    {
+        head = st.top();
+        st.pop();
+
+        std::cout << head->val << ' ';
+
+        if (head->right)
+        {
+            st.push(head->right);
+        }
+
+        if (head->left)
+        {
+            st.push(head->left);
+        }
+    }
+
+    std::cout << '\n';
+}
+
+
+void midOrderTraverse(Node * head)
+{
+    if (!head)
+    {
+        return;
+    }
+    
+    std::stack<Node *> st;
+
+    while (!st.empty() || head)
+    {
+        if (head)
+        {
+            st.push(head);
+            head = head->left;
+        }
+        else
+        {
+            head = st.top();
+            st.pop();
+            std::cout << head->val << ' ';
+            head = head->right;
+        }
+    }
+
+    std::cout << '\n';
+}
+
+
+void postOrderTraverse(Node * head)
+{
+    if (!head)
+    {
+        return;
+    }
+
+    std::stack<Node *> st;
+    st.push(head);
+
+    // head remains root node until a leaf node gets printed. 
+    // After that, head denotes the previous node printed.     
+    while (!st.empty())
+    {
+        Node * cur = st.top();
+
+        if (cur->left && head != cur->left && head != cur->right)
+        {
+            // Has left subtree and left subtree unresolved.
+            st.push(cur->left);
+        }
+        else if (cur->right && head != cur->right)
+        {
+            // Has right subtree and right subtree unresolved.
+            st.push(cur->right);
+        }
+        else 
+        {
+            // Leaf node or all subtrees resolved.
+            std::cout << cur->val << ' ';
+            head = cur;
+            st.pop();
+        }
+    }
+
+    std::cout << '\n';
+}
+
+
+int main()
+{
+    std::vector<Node> bb {0, 1, 2, 3, 4, 5, 6, 7};
+
+    Node * head = &bb[1];
+    head->left = &bb[2];
+    head->right = &bb[3];
+    head->left->left = &bb[4];
+    head->left->right = &bb[5];
+    head->right->left = &bb[6];
+    head->right->right = &bb[7];
+
+    preOrderTraverse(head);
+    midOrderTraverse(head);
+    postOrderTraverse(head);
+    
+    return EXIT_SUCCESS;
+}
+```
 
 
 
