@@ -3,7 +3,7 @@ class Solution
 public:
     vector<int> sortArray(vector<int> & nums) 
     {
-        quickSort(nums.data(), 0, nums.size());
+        mergeSortIterative(nums.data(), 0, nums.size());
         return nums;
     }
 
@@ -54,11 +54,12 @@ private:
         }
     }
 
+    // a[lo, hi)
     static void merge(int * arr, int lo, int mi, int hi) 
     {   
         int * a = arr + lo;
 
-        int * b = new int[mi - lo];
+        int * b = new int [mi - lo];
         int lb = mi - lo;
         for (int i = 0; i != mi - lo; ++i) b[i] = a[i];
 
@@ -74,6 +75,7 @@ private:
         delete [] b;
     }
 
+    // a[lo, hi)
     static void mergeSort(int * arr, int lo, int hi)
     {
         if (hi < lo + 2) return;
@@ -94,13 +96,12 @@ private:
 
         // Invoke merge routine sequentially along arr
         // with granularity 1, 2, 4, 8, ...
-        for (int step = 1, ll, mi, rr; step < n; step <<= 1)
+        for (int step = 1, ll = 0, mi, rr; step < n; step <<= 1, ll = 0)
         {
-            ll = 0;
-
             while (ll < n)
             {
                 mi = ll + step;
+                if (n - 1 < mi) break;  // Left part is sorted already. 
                 rr = std::min(mi + step, n);
                 merge(arr, ll, mi, rr);
                 ll = rr;
