@@ -242,7 +242,6 @@ private:
 #include <stack>
 #include <vector>
 
-
 struct Node
 {
     Node() = default;
@@ -252,7 +251,6 @@ struct Node
     Node * left {nullptr};
     Node * right {nullptr};
 };
-
 
 // Root Left Right. 
 void preOrderTraverse(Node * head)
@@ -287,7 +285,6 @@ void preOrderTraverse(Node * head)
     std::cout << '\n';
 }
 
-
 // Left Root Right. 
 void midOrderTraverse(Node * head)
 {
@@ -317,7 +314,6 @@ void midOrderTraverse(Node * head)
 
     std::cout << '\n';
 }
-
 
 void postOrderTraverse(Node * head)
 {
@@ -356,7 +352,6 @@ void postOrderTraverse(Node * head)
 
     std::cout << '\n';
 }
-
 
 int main()
 {
@@ -402,7 +397,6 @@ void merge(int * arr, int lo, int mi, int hi)
     delete [] b;
 }
 
-
 void mergeSort(int * arr, int lo, int hi)
 {
     if (hi < lo + 2) return;
@@ -413,7 +407,6 @@ void mergeSort(int * arr, int lo, int hi)
 
     merge(arr, lo, mi, hi);
 }
-
 
 void mergeSortIterative(int * arr, int lo, int hi)
 {
