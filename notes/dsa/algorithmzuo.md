@@ -431,6 +431,84 @@ void mergeSortIterative(int * arr, int lo, int hi)
 }
 ```
 
+## 022 Merge
+
+1. 思考一个问题在大范围上的答案，是否等于，左部分的答案 + 右部分的答案 + 跨越左右产生的答案
+2. 计算“跨越左右产生的答案”时，如果加上左、右各自有序这个设定，会不会获得计算的便利性
+3. 如果以上两点都成立，那么该问题很可能被归并分治解决（话不说满，因为总有很毒的出题人）
+4. 求解答案的过程中只需要加入归并排序的过程即可，因为要让左、右各自有序，来获得计算的便利性
+
+```c++
+// 小和问题
+// 假设数组 s = [ 1, 3, 5, 2, 4, 6 ]
+// 在s[0]的左边所有 <= s[0]的数的总和为0
+// 在s[1]的左边所有 <= s[1]的数的总和为1
+// 在s[2]的左边所有 <= s[2]的数的总和为4
+// 在s[3]的左边所有 <= s[3]的数的总和为1
+// 在s[4]的左边所有 <= s[4]的数的总和为6
+// 在s[5]的左边所有 <= s[5]的数的总和为15
+// 所以s数组的“小和”为 : 0 + 1 + 4 + 1 + 6 + 15 = 27
+// 给定一个数组arr，实现函数返回arr的“小和”
+// https://www.nowcoder.com/practice/edfe05a1d45c4ea89101d936cac32469
+long long smallSum(int * arr, int lo, int hi) 
+{
+    if (hi < lo + 2) return 0;
+    int mi = (lo + hi) / 2;
+    return smallSum(arr, lo, mi) + smallSum(arr, mi, hi) + mergeSmallSum(arr, lo, mi, hi);
+}
+
+// 返回跨左右产生的小和累加和，左侧有序、右侧有序，让左右两侧整体有序
+// arr[l...m] arr[m+1...r]
+long long mergeSmallSum(int * arr, int lo, int mi, int hi) 
+{
+    // 统计部分
+    long long ans = 0;
+    
+    for (int i = lo, j = mi, sum = 0; j < hi; ++j) 
+    {
+        while (i < mi && arr[i] <= arr[j]) 
+        {
+            sum += arr[i++];
+        }
+
+        ans += sum;
+    }
+
+    // 正常merge
+    merge(arr, lo, mi, hi);
+
+    return ans;
+}
+
+// LC 493. Reverse Pairs 
+// https://leetcode.cn/problems/reverse-pairs/
+int count(int * arr, int lo, int hi) 
+{
+    if (hi < lo + 2) return 0;
+    int mi = (lo + hi) / 2;
+    return count(arr, lo, mi) + count(arr, mi, hi) + mergeCount(arr, lo, mi, hi);
+}
+
+int mergeCount(int * arr, int lo, int mi, int hi) 
+{
+    // 统计部分
+    int ans = 0;
+    
+    for (int i = lo, j = mi; i < mi; ++i) 
+    {
+        while (j < hi && 2 * static_cast<long long>(arr[j]) < static_cast<long long>(arr[i])) ++j;
+        ans += j - mi;
+    }
+
+    // 正常merge
+    merge(arr, lo, mi, hi);
+
+    return ans;
+}
+```
+
+## 023 Quick Sort
+
 ```c++
 // arr[lo, hi], NOTE that it's a CLOSED inverval! 
 int partition(int * a, int lo, int hi)
