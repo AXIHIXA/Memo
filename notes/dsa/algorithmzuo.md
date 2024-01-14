@@ -254,6 +254,7 @@ struct Node
 };
 
 
+// Root Left Right. 
 void preOrderTraverse(Node * head)
 {
     if (!head)
@@ -287,6 +288,7 @@ void preOrderTraverse(Node * head)
 }
 
 
+// Left Root Right. 
 void midOrderTraverse(Node * head)
 {
     if (!head)
@@ -296,6 +298,7 @@ void midOrderTraverse(Node * head)
     
     std::stack<Node *> st;
 
+    // Stack is empty when resolving root's right subtree. 
     while (!st.empty() || head)
     {
         if (head)
@@ -376,6 +379,67 @@ int main()
 ```
 
 
+## 021 Merge Sort
+
+```c++
+void merge(int * arr, int lo, int mi, int hi) 
+{
+    int * a = arr + lo;
+
+    int * b = new int[mi - lo];
+    int lb = mi - lo;
+    for (int i = 0; i != mi - lo; ++i) b[i] = a[i];
+
+    int * c = arr + mi;
+    int lc = hi - mi;
+
+    for (int i = 0, j = 0, k = 0; j < lb || k < lc; )
+    {
+        if (j < lb && (lc <= k || b[j] <= c[k])) a[i++] = b[j++];
+        if (k < lc && (lb <= j || c[k] <  b[j])) a[i++] = c[k++];
+    }
+
+    delete [] b;
+}
+
+
+void mergeSort(int * arr, int lo, int hi)
+{
+    if (hi < lo + 2) return;
+
+    int mi = lo + ((hi - lo) >> 1);
+    mergeSort(arr, lo, mi);
+    mergeSort(arr, mi + 1, hi);
+
+    merge(arr, lo, mi, hi);
+}
+
+
+void mergeSortIterative(int * arr, int lo, int hi)
+{
+    if (hi < lo + 2) return;
+    
+    arr += lo;
+    int n = hi - lo;
+
+    // Invoke merge routine sequentially along arr
+    // with granularity 1, 2, 4, 8, ...
+    for (int step = 1, ll, mi, rr; step < n; step <<= 1)
+    {
+        ll = 0;
+
+        while (ll < n)
+        {
+            mi = ll + step - 1;
+            if (n < mi + 2) break;
+
+            rr = std::min(ll + (step << 1) - 1, n - 1);
+            merge(arr, ll, mi, rr);
+            ll = rr + 1;
+        }
+    }
+}
+```
 
 
 
