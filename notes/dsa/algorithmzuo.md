@@ -382,52 +382,6 @@ int main()
 ## 021 Merge Sort
 
 ```c++
-// arr[lo, hi], NOTE that it's a CLOSED inverval! 
-static int partition(int * a, int lo, int hi)
-{
-    std::swap(a[lo], a[lo + std::rand() % (hi - lo + 1)]);
-    int p = a[lo];
-
-    while (lo < hi)
-    {
-        while (lo < hi && p < a[hi]) --hi;
-        if (lo < hi) a[lo++] = a[hi];
-        while (lo < hi && a[lo] < p) ++lo;
-        if (lo < hi) a[hi--] = a[lo];
-    }
-
-    a[lo] = p;
-    return lo;
-}
-
-// a[lo, hi)
-static void quickSort(int * a, int lo, int hi)
-{
-    if (hi < lo + 2) return;
-
-    int mi = partition(a, lo, hi - 1);
-    quickSort(a, lo, mi);
-    quickSort(a, mi + 1, hi);
-}
-
-// a[lo, hi)
-void quickSortIterative(int * a, int lo, int hi)
-{
-    std::stack<std::pair<int, int>> st;
-    st.emplace(lo, hi);
-
-    while (!st.empty())
-    {
-        auto [ll, rr] = st.top();
-        st.pop();
-        if (rr < ll + 2) continue;
-
-        int mi = partition(a, ll, rr - 1);
-        st.emplace(mi + 1, rr);
-        st.emplace(ll, mi);
-    }
-}
-
 void merge(int * arr, int lo, int mi, int hi) 
 {
     int * a = arr + lo;
@@ -485,20 +439,50 @@ void mergeSortIterative(int * arr, int lo, int hi)
 }
 ```
 
+```c++
+// arr[lo, hi], NOTE that it's a CLOSED inverval! 
+int partition(int * a, int lo, int hi)
+{
+    std::swap(a[lo], a[lo + std::rand() % (hi - lo + 1)]);
+    int p = a[lo];
 
+    while (lo < hi)
+    {
+        while (lo < hi && p < a[hi]) --hi;
+        if (lo < hi) a[lo++] = a[hi];
+        while (lo < hi && a[lo] < p) ++lo;
+        if (lo < hi) a[hi--] = a[lo];
+    }
 
+    a[lo] = p;
+    return lo;
+}
 
+// a[lo, hi)
+void quickSort(int * a, int lo, int hi)
+{
+    if (hi < lo + 2) return;
 
+    int mi = partition(a, lo, hi - 1);
+    quickSort(a, lo, mi);
+    quickSort(a, mi + 1, hi);
+}
 
+// a[lo, hi)
+void quickSortIterative(int * a, int lo, int hi)
+{
+    std::stack<std::pair<int, int>> st;
+    st.emplace(lo, hi);
 
+    while (!st.empty())
+    {
+        auto [ll, rr] = st.top();
+        st.pop();
+        if (rr < ll + 2) continue;
 
-
-
-
-
-
-
-
-
-
-
+        int mi = partition(a, ll, rr - 1);
+        st.emplace(mi + 1, rr);
+        st.emplace(ll, mi);
+    }
+}
+```
