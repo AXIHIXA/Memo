@@ -1,6 +1,51 @@
 # algorithmzuo
 
 
+## 000 STL Random Routines
+
+```c++
+// True random device. Expensive. Non-configurable. 
+auto seed = std::random_device()();
+
+// Random number engine, manual seed. 
+std::default_random_engine::result_type e(seed);
+
+// Uniform distribution. 
+std::uniform_int_distribution dd();     // U[0, INT_MAX]
+std::uniform_int_distribution d(a, b);  // U[a, b]
+
+// Generate random number. 
+int r1 = d(e);                          // Sample U[a, b]
+int r2 = d(e, {c, d})                   // Sample U[c, d]
+
+// Two equivalent itoa vectors. 
+std::vector<int> v(50001);
+std::iota(v.begin(), v.end(), 0);
+std::generate(v.begin(), v.end(), [n = 0] mutable { return n++; });
+
+// Random shuffle. 
+// std::random_shuffle is deprecated. Use std::shuffle. 
+std::shuffle(v.begin(), v.end(), e);
+```
+Possible implementation of [`std::shuffle`](https://en.cppreference.com/w/cpp/algorithm/random_shuffle)(Fisher-Yates Algorithm: For each element, swap with a uniform rand successor): 
+```c++
+template <class RandomIt, class URBG>
+void shuffle(RandomIt first, RandomIt last, URBG && g)
+{
+    typedef typename std::iterator_traits<RandomIt>::difference_type diff_t;
+    typedef std::uniform_int_distribution<diff_t> distr_t;
+    typedef typename distr_t::param_type param_t;
+ 
+    distr_t D;
+
+    for (diff_t i = last - first - 1; i > 0; --i)
+    {
+        using std::swap;
+        swap(first[i], first[D(g, param_t(0, i))]);
+    }
+}
+```
+
 
 ## 006 Binary Search
 
@@ -605,5 +650,24 @@ int quickSelect(int * a, int lo, int hi, int k)
     }
 
     return -1;
+}
+```
+
+## 025 Heap
+
+```c++
+void makeHeap(int * a, int n)
+{
+
+}
+
+void pushHeap(int * a, int n)
+{
+
+}
+
+void popHeap(int * a, int n)
+{
+
 }
 ```

@@ -28,6 +28,35 @@
   - Calculate the number of 1-bits for bit 0 to 31 for all elements in this array;
   - Extract bits whose number of 1-bits is not multiple of m;
   - The result is the extracted number. 
+```c++
+int find(int[] arr, int m) 
+{
+    // cnts[0] : 0位上有多少个1
+    // cnts[i] : i位上有多少个1
+    // cnts[31] : 31位上有多少个1
+    int cnts[32] {0};
+
+    for (int num : arr) 
+    {
+        for (int i = 0; i < 32; i++) 
+        {
+            cnts[i] += (num >> i) & 1;
+        }
+    }
+
+    int ans = 0;
+
+    for (int i = 0; i < 32; i++) 
+    {
+        if (cnts[i] % m != 0) 
+        {
+          ans |= 1 << i;
+        }
+    }
+    
+    return ans;
+}
+```
 
 ## Zuo's Sample Problems
 
@@ -89,16 +118,30 @@ int rangeBitwiseAnd(int left, int right)
     return right;
 }
 
-// 逆序二进制的状态
-// 测试链接 : https://leetcode.cn/problems/reverse-bits/
-int reverseBits(int n) 
+// LC 190. Reverse Bits
+// https://leetcode.cn/problems/reverse-bits/
+uint32_t reverseBits(uint32_t n) 
 {
-    n = ((n & 0xaaaaaaaa) >> 1) | ((n & 0x55555555) << 1);
-    n = ((n & 0xcccccccc) >> 2) | ((n & 0x33333333) << 2);
-    n = ((n & 0xf0f0f0f0) >> 4) | ((n & 0x0f0f0f0f) << 4);
-    n = ((n & 0xff00ff00) >> 8) | ((n & 0x00ff00ff) << 8);
-    n = (n >>> 16) | (n << 16);
+    n = ((n & 0xaaaaaaaaU) >> 1U) | ((n & 0x55555555U) << 1U);
+    n = ((n & 0xccccccccU) >> 2U) | ((n & 0x33333333U) << 2U);
+    n = ((n & 0xf0f0f0f0U) >> 4U) | ((n & 0x0f0f0f0fU) << 4U);
+    n = ((n & 0xff00ff00U) >> 8U) | ((n & 0x00ff00ffU) << 8U);
+    n = (n >> 16U) | (n << 16U);
     return n;
+}
+
+// This solution takes 0ms while the fancy masking version takes 4ms. 
+uint32_t reverseBits(uint32_t n) 
+{
+    uint32_t ans = 0U;
+
+    for (int i = 0; i != 32; ++i, n >>= 1U)
+    {
+        ans <<= 1U;
+        ans |= (n & 1U);
+    }
+
+    return ans;
 }
 
 // 返回n的二进制中有几个1
