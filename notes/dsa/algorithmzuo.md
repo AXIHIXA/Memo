@@ -18,7 +18,7 @@ std::uniform_int_distribution d(a, b);  // U[a, b]
 int r1 = d(e);                          // Sample U[a, b]
 int r2 = d(e, {c, d})                   // Sample U[c, d]
 
-// Two equivalent itoa vectors. 
+// Two equivalent iota vectors. 
 std::vector<int> v(50001);
 std::iota(v.begin(), v.end(), 0);
 std::generate(v.begin(), v.end(), [n = 0] mutable { return n++; });
