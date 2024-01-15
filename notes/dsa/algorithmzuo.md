@@ -509,6 +509,34 @@ int mergeCount(int * arr, int lo, int mi, int hi)
 
 ## 023 Quick Sort
 
+Dutch Flag style quick sort:
+```c++
+// a[lo, hi], NOTE it's a RIGHT-CLOSE interval!
+std::pair<int, int> partition(int * a, int lo, int hi)
+{
+    int p = a[lo + std::rand() % (hi - lo + 1)];
+    int mi = lo;
+
+    while (mi <= hi)
+    {
+        if (a[mi] < p)       std::swap(a[lo++], a[mi++]);
+        else if (a[mi] == p) ++mi;
+        else                 std::swap(a[hi--], a[mi]);
+    }
+
+    return {lo, hi};
+}
+
+void quickSort(int * a, int lo, int hi)
+{
+    if (hi < lo + 2) return;
+
+    auto [l, r] = partition(a, lo, hi - 1);
+    quickSort(a, lo, l);
+    quickSort(a, r + 1, hi);
+}
+```
+Legacy quick sort:
 ```c++
 // arr[lo, hi], NOTE that it's a CLOSED inverval! 
 int partition(int * a, int lo, int hi)
@@ -528,7 +556,6 @@ int partition(int * a, int lo, int hi)
     return lo;
 }
 
-// a[lo, hi)
 void quickSort(int * a, int lo, int hi)
 {
     if (hi < lo + 2) return;
@@ -538,7 +565,6 @@ void quickSort(int * a, int lo, int hi)
     quickSort(a, mi + 1, hi);
 }
 
-// a[lo, hi)
 void quickSortIterative(int * a, int lo, int hi)
 {
     std::stack<std::pair<int, int>> st;
@@ -554,5 +580,30 @@ void quickSortIterative(int * a, int lo, int hi)
         st.emplace(mi + 1, rr);
         st.emplace(ll, mi);
     }
+}
+```
+
+## 024 Quick Select
+
+```c++
+// LC 215. Kth Largest Element in an Array
+// https://leetcode.com/problems/kth-largest-element-in-an-array/
+// Pass in hi - lo - k for k-th largest element with non-decreasing partition. 
+int quickSelect(int * a, int lo, int hi, int k)
+{
+    a += lo;
+    hi -= lo;
+    lo = 0;
+
+    while (lo < hi)
+    {
+        auto [ll, rr] = partition(a, lo, hi - 1);
+        
+        if (k < ll)      hi = ll;
+        else if (rr < k) lo = rr + 1;
+        else             return a[k];
+    }
+
+    return -1;
 }
 ```

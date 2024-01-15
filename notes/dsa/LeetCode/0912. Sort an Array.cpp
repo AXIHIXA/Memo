@@ -3,12 +3,36 @@ class Solution
 public:
     vector<int> sortArray(vector<int> & nums) 
     {
-        mergeSortIterative(nums.data(), 0, nums.size());
+        quickSortDutchFlag(nums.data(), 0, nums.size());
         return nums;
     }
 
 private:
-    // arr[lo, hi], NOTE that it's a CLOSED inverval! 
+    // a[lo, hi], NOTE that it's a CLOSED inverval! 
+    static std::pair<int, int> partitionDutchFlag(int * a, int lo, int hi)
+    {
+        int p = a[lo + std::rand() % (hi - lo + 1)], mi = lo;
+
+        while (mi <= hi)
+        {
+            if (a[mi] < p)       std::swap(a[lo++], a[mi++]);
+            else if (a[mi] == p) ++mi;
+            else                 std::swap(a[hi--], a[mi]);
+        }
+
+        return {lo, hi};
+    }
+
+    static void quickSortDutchFlag(int * a, int lo, int hi)
+    {
+        if (hi < lo + 2) return;
+
+        auto [l, r] = partitionDutchFlag(a, lo, hi - 1);
+        quickSortDutchFlag(a, lo, l);
+        quickSortDutchFlag(a, r + 1, hi);
+    }
+
+    // a[lo, hi], NOTE that it's a CLOSED inverval! 
     static int partition(int * a, int lo, int hi)
     {
         std::swap(a[lo], a[lo + std::rand() % (hi - lo + 1)]);
@@ -26,7 +50,6 @@ private:
         return lo;
     }
 
-    // a[lo, hi)
     static void quickSort(int * a, int lo, int hi)
     {
         if (hi < lo + 2) return;
@@ -36,7 +59,6 @@ private:
         quickSort(a, mi + 1, hi);
     }
 
-    // a[lo, hi)
     static void quickSortIterative(int * a, int lo, int hi)
     {
         std::stack<std::pair<int, int>> st;
@@ -54,7 +76,6 @@ private:
         }
     }
 
-    // a[lo, hi)
     static void merge(int * arr, int lo, int mi, int hi) 
     {   
         int * a = arr + lo;
@@ -75,7 +96,6 @@ private:
         delete [] b;
     }
 
-    // a[lo, hi)
     static void mergeSort(int * arr, int lo, int hi)
     {
         if (hi < lo + 2) return;
