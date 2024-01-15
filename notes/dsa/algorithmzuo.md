@@ -24,26 +24,9 @@ std::iota(v.begin(), v.end(), 0);
 std::generate(v.begin(), v.end(), [n = 0] mutable { return n++; });
 
 // Random shuffle. 
+// https://en.cppreference.com/w/cpp/algorithm/random_shuffle
 // std::random_shuffle is deprecated. Use std::shuffle. 
 std::shuffle(v.begin(), v.end(), e);
-```
-Possible implementation of [`std::shuffle`](https://en.cppreference.com/w/cpp/algorithm/random_shuffle)(Fisher-Yates Algorithm: For each element, swap with a uniform rand successor): 
-```c++
-template <class RandomIt, class URBG>
-void shuffle(RandomIt first, RandomIt last, URBG && g)
-{
-    typedef typename std::iterator_traits<RandomIt>::difference_type diff_t;
-    typedef std::uniform_int_distribution<diff_t> distr_t;
-    typedef typename distr_t::param_type param_t;
- 
-    distr_t D;
-
-    for (diff_t i = last - first - 1; i > 0; --i)
-    {
-        using std::swap;
-        swap(first[i], first[D(g, param_t(0, i))]);
-    }
-}
 ```
 
 
