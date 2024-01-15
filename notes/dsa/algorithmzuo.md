@@ -8,7 +8,7 @@
 auto seed = std::random_device()();
 
 // Random number engine, manual seed. 
-std::default_random_engine::result_type e(seed);
+std::default_random_engine e(seed);
 
 // Uniform distribution. 
 std::uniform_int_distribution dd();     // U[0, INT_MAX]
