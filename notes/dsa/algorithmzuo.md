@@ -283,11 +283,7 @@ struct Node
 // Root Left Right. 
 void preOrderTraverse(Node * head)
 {
-    if (!head)
-    {
-        return;
-    }
-
+    if (!head) return;
 
     std::stack<Node *> st;
     st.push(head);
@@ -299,27 +295,17 @@ void preOrderTraverse(Node * head)
 
         std::cout << head->val << ' ';
 
-        if (head->right)
-        {
-            st.push(head->right);
-        }
-
-        if (head->left)
-        {
-            st.push(head->left);
-        }
+        if (head->right) st.push(head->right);
+        if (head->left)  st.push(head->left);
     }
 
     std::cout << '\n';
 }
 
 // Left Root Right. 
-void midOrderTraverse(Node * head)
+void inOrderTraverse(Node * head)
 {
-    if (!head)
-    {
-        return;
-    }
+    if (!head) return;
     
     std::stack<Node *> st;
 
@@ -345,10 +331,7 @@ void midOrderTraverse(Node * head)
 
 void postOrderTraverse(Node * head)
 {
-    if (!head)
-    {
-        return;
-    }
+    if (!head) return;
 
     std::stack<Node *> st;
     st.push(head);
@@ -394,7 +377,7 @@ int main()
     head->right->right = &bb[7];
 
     preOrderTraverse(head);
-    midOrderTraverse(head);
+    inOrderTraverse(head);
     postOrderTraverse(head);
     
     return EXIT_SUCCESS;

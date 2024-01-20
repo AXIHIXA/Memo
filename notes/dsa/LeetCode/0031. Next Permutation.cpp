@@ -1,14 +1,14 @@
 class Solution 
 {
 public:
-    void nextPermutation(vector<int>& nums) 
+    void nextPermutation(std::vector<int> & nums) 
     {
         next_permutation(nums.begin(), nums.end());
     }
 
 private:
-    template<class BidirIt>
-    bool next_permutation(BidirIt first, BidirIt last)
+    template <class BidirIt>
+    static bool next_permutation(BidirIt first, BidirIt last)
     {
         auto r_first = std::make_reverse_iterator(last);
         auto r_last = std::make_reverse_iterator(first);
