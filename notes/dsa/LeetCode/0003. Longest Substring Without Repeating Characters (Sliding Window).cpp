@@ -1,3 +1,11 @@
+int init = []
+{
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    std::cout.tie(nullptr);
+    return 0;
+}();
+
 class Solution 
 {
 public:
@@ -10,17 +18,18 @@ public:
         // If s[j + 1] occurs more than once, 
         // drop the leftmost characters until there are no duplicate characters.
 
-        // lmi[c] denotes the index of the leftmost char c so far. 
-        std::vector<int> lmi(10 + std::numeric_limits<char>::max(), -1);
-        lmi[s[0]] = 0;
+        // rmi[c] denotes the index of the rightmost char c so far. 
+        std::vector<int> rmi(10 + std::numeric_limits<char>::max(), -1);
+        rmi[s[0]] = 0;
 
         int ans = 1;
 
         for (int ll = 0, rr = 0; rr < n; ++rr)
         {
-            if (int ic = lmi[s[rr]]; ll <= ic) ll = std::min(ic + 1, rr);
+            char c = s[rr];
+            if (ll <= rmi[c]) ll = std::min(rr, rmi[c] + 1);
             ans = std::max(ans, rr - ll + 1);
-            lmi[s[rr]] = rr;
+            rmi[c] = rr;
         }
 
         return ans;
