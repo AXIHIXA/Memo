@@ -1,28 +1,25 @@
 class Solution 
 {
 public:
-    vector<vector<string>> groupAnagrams(vector<string> & strs)
+    std::vector<std::vector<std::string>> groupAnagrams(std::vector<std::string> & strs)
     {
-        vector<vector<string>> ans;
-        unordered_map<string, int> index;
+        if (strs.size() == 1) return {{strs[0]}};
+        
+        std::unordered_map<std::string, std::vector<std::string>> idx;
 
-        for (const string & str : strs)
+        for (const std::string & str : strs)
         {
-            string k = str;
-            sort(k.begin(), k.end());
-            
-            if (auto it = index.find(k); it == index.end())
-            {
-                index[k] = ans.size();
-                ans.push_back({});
-                ans.back().emplace_back(str);
-            }
-            else
-            {
-                ans[it->second].emplace_back(str);
-            }
+            std::string k = str;
+            std::sort(k.begin(), k.end());
+            auto it = idx.find(k);
+
+            if (it == idx.end()) idx.emplace_hint(it, k, std::vector {str});
+            else                 it->second.push_back(str);
         }
 
+        std::vector<std::vector<std::string>> ans;
+        for (auto & [_, vec] : idx) ans.push_back(std::move(vec));
+        
         return ans;
     }
 };
