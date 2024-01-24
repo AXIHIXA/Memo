@@ -5,7 +5,7 @@ public:
     
     void push(int val) 
     {
-        st.emplace(val, st.empty() ? val : min(val, st.top().minValSoFar));
+        st.emplace(val, st.empty() ? val : std::min(val, st.top().second));
     }
     
     void pop() 
@@ -15,25 +15,16 @@ public:
     
     int top() 
     {
-        return st.top().val;
+        return st.top().first;
     }
     
     int getMin() 
     {
-        return st.top().minValSoFar;
+        return st.top().second;
     }
 
 private:
-    struct Node 
-    {
-        Node() = default;
-        Node(int v, int m) : val(v), minValSoFar(m) {}
-
-        int val {0};
-        int minValSoFar {0};
-    };
-
-    stack<Node> st;
+    std::stack<std::pair<int, int>> st;
 };
 
 /**

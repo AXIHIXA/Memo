@@ -13,25 +13,19 @@ class Solution
 public:
     ListNode * reverseList(ListNode * head)
     {
-        if (!head || !head->next)
-        {
-            return head;
-        }
+        if (!head || !head->next) return head;
         
-        for (ListNode * p = head, * pred = nullptr, * pNext = nullptr; ;)
-        {
-            pNext = p->next;
-            p->next = pred;
+        ListNode * p1 = nullptr;
+        ListNode * p2 = head;
 
-            if (pNext)
-            {
-                pred = p;
-                p = pNext;
-            }
-            else  // p is end of list
-            {
-                return p;
-            }
+        while (p2)
+        {
+            ListNode * tmp = p2->next;
+            p2->next = p1;
+            p1 = p2;
+            p2 = tmp;
         }
+
+        return p1;
     }
 };

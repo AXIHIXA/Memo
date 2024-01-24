@@ -19,17 +19,14 @@ class Solution
 public:
     Node * copyRandomList(Node * head) 
     {
-        if (!head)
-        {
-            return head;
-        }
+        if (!head) return nullptr;
         
         // Interweave new nodes into original list
         for (Node * node = head; node; )
         {
-            Node * newNode = new Node(node->val);
             Node * nodeNext = node->next;
-
+            Node * newNode = new Node(node->val);
+            
             node->next = newNode;
             newNode->next = nodeNext;
             node = nodeNext;
@@ -42,20 +39,21 @@ public:
         }
 
         // Unweave the interweaved list
-        Node * node = head;
-        Node * newNode = head->next;
+        Node * n1 = head;
+        Node * n2 = head->next;
         Node * newHead = head->next;
 
-        while (newNode->next)
+        while (n2->next)
         {
-            node->next = newNode->next;
-            node = node->next;
+            n1->next = n2->next;
+            n1 = n1->next;
 
-            newNode->next = node->next;
-            newNode = newNode->next;
+            n2->next = n1->next;
+            n2 = n2->next;
         }
 
-        node->next = nullptr;
+        // Nexts for the last nodes in two lists are left unmodified. 
+        n1->next = nullptr;
 
         return newHead;
     }
