@@ -622,18 +622,66 @@ int quickSelect(int * a, int lo, int hi, int k)
 ## 025 Heap
 
 ```c++
-void makeHeap(int * a, int n)
+// a[0..i) denotes a heap, push a[i] into heap. 
+void pushHeap(int * a, int i)
 {
-
+    while (a[(i - 1) / 2], a[i]) 
+    {
+        std::swap(a[(i - 1) / 2], a[i]);
+        i = (i - 1) / 2;
+    }
 }
 
-void pushHeap(int * a, int n)
+// i位置的数，变小了，又想维持大根堆结构
+// 向下调整大根堆
+// 当前堆的大小为size
+void heapify(int * a, int i, int size)
 {
+    int l = 2 * i + 1;
 
+    while (l < size)
+    {
+        // 有左孩子，l
+		// 右孩子，l+1
+		// 评选，最强的孩子，是哪个下标的孩子
+        int best = l + 1 < size && a[l] < a[l + 1] ? l + 1 : l;
+        
+        // 上面已经评选了最强的孩子，接下来，当前的数和最强的孩子之前，最强下标是谁
+        best = a[i] < a[best] ? best : i;
+
+        if (best == i) break;
+        
+        std::swap(a[best], a[i]);
+        i = best;
+        l = i * 2 + 1;
+    }
 }
 
-void popHeap(int * a, int n)
+// 从顶到底建立大根堆，O(n * logn)
+// 依次弹出堆内最大值并排好序，O(n * logn)
+// 整体时间复杂度O(n * logn)
+void heapSort1(int * arr, int n) 
 {
+    for (int i = 0; i < n; i++) pushHeap(a, i);
+    
+    for (int size = n; 1 < size; )
+    {
+        std::swap(a[0], --size);
+        heapify(a, 0, size);
+    }
+}
 
+// 从底到顶建立大根堆，O(n)
+// 依次弹出堆内最大值并排好序，O(n * logn)
+// 整体时间复杂度O(n * logn)
+void heapSort2(int * arr, int n) 
+{
+    for (int i = n - 1; 0 <= i; --i) heapify(arr, i, n);
+
+    for (int size = n; 1 < size; )
+    {
+        std::swap(a[0], --size);
+        heapify(a, 0, size);
+    }
 }
 ```
