@@ -660,7 +660,7 @@ void heapify(int * a, int i, int size)
 // 从顶到底建立大根堆，O(n * logn)
 // 依次弹出堆内最大值并排好序，O(n * logn)
 // 整体时间复杂度O(n * logn)
-void heapSort1(int * arr, int n) 
+void heapSort1(int * a, int n) 
 {
     for (int i = 0; i < n; i++) pushHeap(a, i);
     
@@ -674,9 +674,9 @@ void heapSort1(int * arr, int n)
 // 从底到顶建立大根堆，O(n)
 // 依次弹出堆内最大值并排好序，O(n * logn)
 // 整体时间复杂度O(n * logn)
-void heapSort2(int * arr, int n) 
+void heapSort2(int * a, int n) 
 {
-    for (int i = n - 1; 0 <= i; --i) heapify(arr, i, n);
+    for (int i = n - 1; 0 <= i; --i) heapify(a, i, n);
 
     for (int size = n; 1 < size; )
     {
