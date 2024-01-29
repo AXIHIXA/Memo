@@ -14,25 +14,28 @@ public:
     ListNode * mergeTwoLists(ListNode * list1, ListNode * list2)
     {
         std::unique_ptr<ListNode> pp = std::make_unique<ListNode>();
-        ListNode * i = pp.get(), * j = list1, * k = list2;
+        ListNode * i = pp.get();
+        ListNode * j = list1;
+        ListNode * k = list2;
 
         while (j && k)
         {
-            if (j && j->val <= k->val)
+            if (j && (!k || j->val <= k->val))
             {
                 i->next = j;
+                i = i->next;
                 j = j->next;
             }
-            else
+
+            if (k && (!j || k->val < j->val))
             {
                 i->next = k;
-                k = k->next;
+                i = i->next;
+                k = k->next; 
             }
-
-            i = i->next;
         }
 
-        i->next = j ? j : k;
+        if (j || k) i->next = (j ? j : k);
 
         return pp->next;
     }
