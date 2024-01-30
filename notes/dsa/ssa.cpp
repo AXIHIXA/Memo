@@ -4,65 +4,6 @@
 #include <vector>
 
 
-int partition(int * a, int lo, int hi)
-{
-    // a[lo, hi]
-    std::swap(a[lo], a[lo + std::rand() % (hi - lo + 1)]);
-    int pivot = a[lo];
-
-    // if (lo < hi) enforced in all modfications of lo and hi, s.t. lo == hi after this while
-    while (lo < hi)
-    {
-        // Version 2: Swap-first, good when lots of dup elements
-        while (lo < hi && pivot < a[hi]) --hi;
-        if (lo < hi) a[lo++] = a[hi];
-        while (lo < hi && a[lo] < pivot) ++lo;
-        if (lo < hi) a[hi--] = a[lo];
-    }
-
-    // assert(lo == hi);
-    a[lo] = pivot;
-    return lo;
-}
-
-
-void sort(int * a, int lo, int hi)
-{
-    // a[lo, hi)
-    if (hi - lo < 2) return;
-
-    int mi = partition(a, lo, hi - 1);
-    sort(a, lo, mi);
-    sort(a, mi + 1, hi);
-}
-
-
-int quickSelect(std::vector<int> & a, int k)
-{
-    for (int lo = 0, hi = static_cast<int>(a.size()) - 1; lo < hi; )
-    {
-        int i = lo;
-        int j = hi;
-        int pivot = a[lo];
-
-        while (i < j)
-        {
-            while (i < j and pivot < a[j]) --j;
-            if (i < j) a[i++] = a[j];
-            while (i < j and a[i] < pivot) ++i;
-            if (i < j) a[j--] = a[i];
-        }
-
-        a[i] = pivot;
-
-        if (k <= i) hi = i - 1;
-        if (i <= k) lo = i + 1;
-    }
-
-    return a[k];
-}
-
-
 class UnionFind
 {
 public:
@@ -98,19 +39,31 @@ private:
 };
 
 
-/// (a * b) % p == ((a % p) * (b % p)) % p
-long long fpow(long long a, long long b, long long p)
+// 快速幂，求 a ** b % p
+int pow(int a, int b, int p)
 {
-    long long r = 1;
-    a %= p;
+    int ans = 1;
 
-    while (b)
+    for (; b; b >>= 1)
     {
-        if (b & 1) r = (r * a) % p;
-        a = (a * a) % p;
-        b >>= 1;
+        if (b & 1) ans = static_cast<long long>(ans) * a % p;
+        a = static_cast<long long>(a) * a % p;
     }
 
-    return r;
+    return ans;
 }
 
+
+// 64位整数乘法的 O(log b) 算法
+long long mul(long long a, long long b, long long p)
+{
+    long long ans = 1LL;
+    
+    for (; b; b >>= 1)
+    {
+        if (b & 1) ans = (ans + a) % p;
+        a = a * 2 % p;
+    }
+
+    return ans;
+}

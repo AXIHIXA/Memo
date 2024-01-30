@@ -5,6 +5,12 @@
 - `x & (x - 1)`: Unset lowest 1 bit;
   - Usage: Bin count, etc. 
 - `x & (-x)` or `x & (~x + 1)`: Extract lowest 1 bit (unset all other bits);
+```c++
+inline unsigned int lowbit(unsigned int x)
+{
+    return x & (-x);
+}
+```
 - If `n` is power of 2, then `x % n` equals `x & (n - 1)`. 
 
 ## Bitwise XOR
