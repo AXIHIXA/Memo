@@ -15,10 +15,8 @@ public:
         // Parent node, Number of children unvisited. 
         std::stack<std::pair<TreeNode *, int>> st;
         st.emplace(root, 2);
-
-        bool foundPOrQ = false;
+        bool foundOneNode = false;
         TreeNode * lca = nullptr;
-        TreeNode * child = nullptr;
 
         while (!st.empty())
         {
@@ -26,15 +24,18 @@ public:
 
             if (numChildrenUnvisited)
             {
+                TreeNode * child = nullptr;
+                
                 if (numChildrenUnvisited == 2)
                 {
                     if (curr == p || curr == q)
                     {
-                        if (foundPOrQ) return lca;
-                        foundPOrQ = true;
+                        if (!foundOneNode) foundOneNode = true;
+                        else               return lca;
+
                         lca = curr;
                     }
-
+                    
                     child = curr->left;
                 }
                 else
@@ -48,11 +49,7 @@ public:
             else
             {
                 st.pop();
-
-                if (lca == curr && foundPOrQ)
-                {
-                    lca = st.top().first;
-                }
+                if (lca == curr && foundOneNode) lca = st.top().first;
             }
         }
 
