@@ -67,3 +67,47 @@ long long mul(long long a, long long b, long long p)
 
     return ans;
 }
+
+
+// Sieve of Eratosthenes Algorithm. 
+std::vector<int> primeDecompose(int x)
+{
+    std::vector<int> ans;
+
+    for (int factor = 2; factor * factor <= x; )
+    {
+        if (x % factor == 0)
+        {
+            x /= factor;
+            ans.emplace_back(factor);
+        }
+        else
+        {
+            ++factor;
+        }
+    }
+
+    // Loop ends when x becomes a prime number. 
+    // Append this final prime factor. 
+    ans.emplace_back(x);
+
+    return ans;
+}
+
+
+// Eucilidean Algorithm. 
+// Always replace larger number with remainder large % small
+// until remainder == 0, gcd is the remaining non-zero. 
+int gcd(int a, int b)
+{
+    if (a < b) std::swap(a, b);
+
+    while (b)
+    {
+        int t = b;
+        b = a % b;
+        a = t;
+    }
+
+    return a;
+}
