@@ -688,12 +688,16 @@ void heapSort2(int * a, int n)
 
 ## 059 Graph
 
+- Graph with n nodes and m edges. 
 - 邻接矩阵 Adjacency Matrix
+  - O(n**2) space
   - `std::vector<std::vector<int>> am;`
 - 邻接表 Adjacency List
+  - O(nm) space
   - `std::vector<std::vector<std::pair>> al;`
   - `al[source]` stores all edges originating from vertex `source`, in pair `{target, weight}`.  
 - 链式前向星 (1-indexed!)
+  - O(n + m) space
   - E.g., Edges added in order `#1 (1 -> 2)`, `#2 (1 -> 3)`
     - `head == {0, 2, 0, 0}`
     - `next == {0, 0, 1}`
