@@ -685,3 +685,72 @@ void heapSort2(int * a, int n)
     }
 }
 ```
+
+## 059 Graph
+
+- 邻接矩阵 Adjacency Matrix
+  - `std::vector<std::vector<int>> am;`
+- 邻接表 Adjacency List
+  - `std::vector<std::vector<std::pair>> al;`
+  - `al[source]` stores all edges originating from vertex `source`, in pair `{target, weight}`.  
+- 链式前向星 (1-indexed!)
+  - E.g., Edges added in order `#1 (1 -> 2)`, `#2 (1 -> 3)`
+    - `head == {0, 2, 0, 0}`
+    - `next == {0, 0, 1}`
+    - `to == {0, 2, 3}`
+    - `cnt == 3`
+```c++
+constexpr int kMaxM = 21;  // 边的最大数量
+constexpr int kMaxN = 11;  // 点的最大数量
+
+// Index: Vertex ID. 
+// Value: ID of the most-recently-added edge originating from this vertex. 
+int head[kMaxN] {0}; 
+
+// Index: Edge ID. 
+// Value: ID of the previously-added edge originating from the same source vertex. 
+int next[kMaxM] {0};
+
+// Index: Edge ID. 
+// Value: ID of target vertex of this edge. 
+int to[kMaxM] {0};
+
+// Index for the next edge to add. 
+int cnt {1};
+
+// 如果边有权重，那么需要这个数组
+int weight[kMaxM] {0};
+
+// Totally n vertices, indexed from 1 to n. 
+void build(int n)
+{
+    cnt = 1;
+    std::fill(head + 1, head + n + 1, 0);
+}
+
+// Edge (s -> t), weight w. 
+void addEdge(int s, int t, int w)
+{
+    next[cnt] = head[s];
+    to[cnt] = t;
+    weight[cnt] = w;
+    head[s] = cnt++;
+}
+
+// Add two directed edges for undirected graphs. 
+
+void traverse(int n)
+{
+    for (int i = 1; i <= n; ++i)
+    {
+        std::cout << i << " (neighbor, weight): ";
+
+        for (int ei = head[i]; 0 < ei; ei = next[ei])
+        {
+            std::cout << "( " << to[ei] << ", " << weight[ei] << " ) ";
+        }
+    }
+
+    std::cout << '\n';
+}
+```
