@@ -763,12 +763,13 @@ void traverse(int n)
 int n = numVertices;
 int m = numEdges;
 
+// Vertices and edges are all 1-indexed!
 std::vector<int> head(n + 1, 0);
 std::vector<int> next(m + 1, 0);
 std::vector<int> to(m + 1, 0);
 int cnt = 1;
 
-// Build graph. 
+// Build graph, vertices are 1-indexed. 
 for (auto [s, t] : edges)
 {
     next[cnt] = head[s];
@@ -803,7 +804,7 @@ while (!heap.empty())
 {
     int curr = heap.top();
     heap.pop();
-    ans.emplace_back(curr - 1);
+    ans.emplace_back(curr);  // 1-indexed!
 
     for (int e = head[curr]; 0 < e; e = next[e])
     {
