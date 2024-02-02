@@ -815,3 +815,5 @@ while (!heap.empty())
     }
 }
 ```
+- [LC 269 Alien Dictionary](../LeetCode/0269. Alien Dictionary (Graph with consecutive word pairs, topological sort).cpp)
+- 1
