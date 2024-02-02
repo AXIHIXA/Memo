@@ -693,11 +693,11 @@ void heapSort2(int * a, int n)
   - O(n**2) space
   - `std::vector<std::vector<int>> am;`
 - 邻接表 Adjacency List
-  - O(nm) space
+  - O(nm) space (if requires static mem prealloc)
   - `std::vector<std::vector<std::pair>> al;`
   - `al[source]` stores all edges originating from vertex `source`, in pair `{target, weight}`.  
 - 链式前向星 (1-indexed!)
-  - O(n + m) space
+  - O(n + m) space (even for static mem prealloc)
   - E.g., Edges added in order `#1 (1 -> 2)`, `#2 (1 -> 3)`
     - `head == {0, 2, 0, 0}`
     - `next == {0, 0, 1}`
@@ -756,5 +756,55 @@ void traverse(int n)
     }
 
     std::cout << '\n';
+}
+```
+- Topological Sort (with Minimal Dict Order)
+```c++
+int n = numVertices;
+int m = numEdges;
+
+std::vector<int> head(n + 1, 0);
+std::vector<int> next(m + 1, 0);
+std::vector<int> to(m + 1, 0);
+int cnt = 1;
+
+// Build graph. 
+
+std::vector<int> ans;
+ans.reserve(n);
+
+std::vector<int> inDegree(n + 1, 0);
+
+for (int s = 1; s <= n; ++s)
+{
+    for (int e = head[s]; 0 < e; e = next[e])
+    {
+        ++inDegree[to[e]];
+    }
+}
+
+std::priority_queue<int, std::vector<int>, std::greater<int>> heap;
+
+for (int i = 1; i <= n; ++i)
+{
+    if (!inDegree[i])
+    {
+        heap.push(i);
+    }
+}
+
+while (!heap.empty())
+{
+    int curr = heap.top();
+    heap.pop();
+    ans.emplace_back(curr - 1);
+
+    for (int e = head[curr]; 0 < e; e = next[e])
+    {
+        if (!--inDegree[to[e]])
+        {
+            heap.push(to[e]);
+        }
+    }
 }
 ```
