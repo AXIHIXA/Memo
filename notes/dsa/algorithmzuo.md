@@ -769,6 +769,12 @@ std::vector<int> to(m + 1, 0);
 int cnt = 1;
 
 // Build graph. 
+for (auto [s, t] : edges)
+{
+    next[cnt] = head[s];
+    to[cnt] = t;
+    head[s] = cnt++;
+}
 
 std::vector<int> ans;
 ans.reserve(n);
