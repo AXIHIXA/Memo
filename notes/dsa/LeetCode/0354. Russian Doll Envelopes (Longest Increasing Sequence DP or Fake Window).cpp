@@ -59,7 +59,8 @@ private:
         std::vector<int> g(n + 1, std::numeric_limits<int>::max());
         g[0] = 0;
 
-        // len: Known max Russian doll sequence length, with width < envelopes[i]. 
+        // len: 1 + known max Russian doll sequence length, with width < envelopes[i]. 
+        // (Note that len is used to off-the-end g, g is meaningful from index 1.)
         // When there are neighboring same-width envelopes:
         // j -> 1st in same-width group, 
         // g and len not updated (update f[i] with old g and len)
