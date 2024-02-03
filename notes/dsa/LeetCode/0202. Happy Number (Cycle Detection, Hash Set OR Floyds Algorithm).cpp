@@ -7,7 +7,7 @@ public:
         if (n == 2) return false;
         
         int slow = n;
-        int fast = next(slow);
+        int fast = next(next(slow));
 
         while (fast != 1 && fast != slow)
         {

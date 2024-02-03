@@ -48,18 +48,6 @@ int binSearch(int a, int lo, int hi, int num)
     return -1;
 }
 
-// 有多个命中元素时，总能保证返回秩最大者；查找失败时，能够返回失败的位置
-int binSearch(int a, int lo, int hi, int num)
-{
-    while (lo < hi)
-    {
-        int mi = lo + ((hi - lo) >> 1);
-        (num < A[mi]) ? hi = mi : lo = mi + 1;
-    }
-
-    return --lo;
-}
-
 // 有序数组中找 >= num 的最左位置
 int lowerBound(int a, int lo, int hi, int num)
 {
@@ -84,6 +72,8 @@ int lowerBound(int a, int lo, int hi, int num)
 }
 
 // 有序数组中找 <= num 的最右位置
+// Differs from std::upper_bound, 
+// which locates 1st element > num (num < element == true). 
 int upperBound(int a, int lo, int hi, int num)
 {
     int ans = -1;
@@ -105,52 +95,10 @@ int upperBound(int a, int lo, int hi, int num)
 
     return ans;
 }
-
-// LC 162 https://leetcode.com/problems/find-peak-element/
-// 峰值元素是指其值严格大于左右相邻值的元素
-// 给你一个整数数组 nums，已知任何两个相邻的值都不相等
-// 找到峰值元素并返回其索引
-// 数组可能包含多个峰值，在这种情况下，返回 任何一个峰值 所在位置即可。
-// 你可以假设 nums[-1] = nums[n] = 无穷小
-// 你必须实现时间复杂度为 O(log n) 的算法来解决此问题。
-int findPeakElement(std::vector<int> & nums) 
-{
-    if (nums.size() == 1 || nums[1] < nums.front())
-    {
-        return 0;
-    }
-
-    if (*(nums.end() - 2) < nums.back()) 
-    {
-        return nums.size() - 1;
-    }
-
-    int lo = 1, hi = nums.size() - 1, ans = -1;
-
-    // If the mid element happens to be lying in a local falling slope, 
-    // it means that the peak will always lie towards the left of this element.
-    while (lo < hi)
-    {
-        int mi = lo + ((hi - lo) >> 1);
-
-        if (nums[mi] < nums[mi - 1])
-        {
-            hi = mi;
-        }
-        else if (nums[mi] < nums[mi + 1])
-        {
-            lo = mi + 1;
-        }
-        else
-        {
-            ans = mi;
-            break;
-        }
-    }
-
-    return ans;
-}
 ```
+- [LC 162 Find Peak Element](https://leetcode.com/problems/find-peak-element/)
+  - A peak element is an element that is strictly greater than its neighbors.
+  - Binary search. Go left/right corresponding on slope of prev curr next. 
 
 ## 016 Circular Deque
 
@@ -281,7 +229,7 @@ struct Node
 };
 
 // Root Left Right. 
-void preOrderTraverse(Node * head)
+void preorderTraverse(Node * head)
 {
     if (!head) return;
 
@@ -296,14 +244,14 @@ void preOrderTraverse(Node * head)
         std::cout << head->val << ' ';
 
         if (head->right) st.push(head->right);
-        if (head->left)  st.push(head->left);
+        if (head->left) st.push(head->left);
     }
 
     std::cout << '\n';
 }
 
 // Left Root Right. 
-void inOrderTraverse(Node * head)
+void inorderTraverse(Node * head)
 {
     if (!head) return;
     
@@ -329,7 +277,7 @@ void inOrderTraverse(Node * head)
     std::cout << '\n';
 }
 
-void postOrderTraverse(Node * head)
+void postorderTraverse(Node * head)
 {
     if (!head) return;
 
@@ -376,9 +324,9 @@ int main()
     head->right->left = &bb[6];
     head->right->right = &bb[7];
 
-    preOrderTraverse(head);
-    inOrderTraverse(head);
-    postOrderTraverse(head);
+    preorderTraverse(head);
+    inorderTraverse(head);
+    postorderTraverse(head);
     
     return EXIT_SUCCESS;
 }
@@ -448,7 +396,9 @@ void mergeSortIterative(int * arr, int lo, int hi)
 2. 计算“跨越左右产生的答案”时，如果加上左、右各自有序这个设定，会不会获得计算的便利性
 3. 如果以上两点都成立，那么该问题很可能被归并分治解决（话不说满，因为总有很毒的出题人）
 4. 求解答案的过程中只需要加入归并排序的过程即可，因为要让左、右各自有序，来获得计算的便利性
-
+- [LC 493. Reverse Pairs](https://leetcode.cn/problems/reverse-pairs/) 
+  - Merge and regular merge sort. 
+- [小和问题](https://www.nowcoder.com/practice/edfe05a1d45c4ea89101d936cac32469)
 ```c++
 // 小和问题
 // 假设数组 s = [ 1, 3, 5, 2, 4, 6 ]
@@ -460,7 +410,6 @@ void mergeSortIterative(int * arr, int lo, int hi)
 // 在s[5]的左边所有 <= s[5]的数的总和为15
 // 所以s数组的“小和”为 : 0 + 1 + 4 + 1 + 6 + 15 = 27
 // 给定一个数组arr，实现函数返回arr的“小和”
-// https://www.nowcoder.com/practice/edfe05a1d45c4ea89101d936cac32469
 long long smallSum(int * arr, int lo, int hi) 
 {
     if (hi < lo + 2) return 0;
@@ -490,33 +439,8 @@ long long mergeSmallSum(int * arr, int lo, int mi, int hi)
 
     return ans;
 }
-
-// LC 493. Reverse Pairs 
-// https://leetcode.cn/problems/reverse-pairs/
-int count(int * arr, int lo, int hi) 
-{
-    if (hi < lo + 2) return 0;
-    int mi = (lo + hi) / 2;
-    return count(arr, lo, mi) + count(arr, mi, hi) + mergeCount(arr, lo, mi, hi);
-}
-
-int mergeCount(int * arr, int lo, int mi, int hi) 
-{
-    // 统计部分
-    int ans = 0;
-    
-    for (int i = lo, j = mi; i < mi; ++i) 
-    {
-        while (j < hi && 2 * static_cast<long long>(arr[j]) < static_cast<long long>(arr[i])) ++j;
-        ans += j - mi;
-    }
-
-    // 正常merge
-    merge(arr, lo, mi, hi);
-
-    return ans;
-}
 ```
+
 
 ## 023 Quick Sort
 
@@ -596,9 +520,8 @@ void quickSortIterative(int * a, int lo, int hi)
 
 ## 024 Quick Select
 
+- [LC 215 Kth Largest Element in an Array](https://leetcode.com/problems/kth-largest-element-in-an-array/)
 ```c++
-// LC 215. Kth Largest Element in an Array
-// https://leetcode.com/problems/kth-largest-element-in-an-array/
 // Pass in hi - lo - k for k-th largest element with non-decreasing partition. 
 int quickSelect(int * a, int lo, int hi, int k)
 {
@@ -625,7 +548,7 @@ int quickSelect(int * a, int lo, int hi, int k)
 // a[0..i) denotes a heap, push a[i] into heap. 
 void pushHeap(int * a, int i)
 {
-    while (a[(i - 1) / 2], a[i]) 
+    while (a[(i - 1) / 2] < a[i]) 
     {
         std::swap(a[(i - 1) / 2], a[i]);
         i = (i - 1) / 2;
@@ -815,5 +738,6 @@ while (!heap.empty())
     }
 }
 ```
-- [LC 269 Alien Dictionary](../LeetCode/0269. Alien Dictionary (Graph with consecutive word pairs, topological sort).cpp)
+- [LC 269 Alien Dictionary](https://leetcode.com/problems/alien-dictionary/)
+  - Build graph with consecutive word pairs, topological sort. 
 - 1
