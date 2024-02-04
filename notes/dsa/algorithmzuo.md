@@ -1,8 +1,30 @@
 # algorithmzuo
 
 
-## 000 STL Random Routines
+## 000 Routines
 
+- OJ Stuff
+```c++
+#define DEBUG
+
+#ifdef DEBUG
+#define dprintf(S, ...) do { printf(S, ##__VA_ARGS__); } while (false)
+#define dfor(E, S) for (const auto & (E) : (S))
+#else
+#define dprintf(S, ...)
+#define dfor(E, S)
+static const int init = []
+{
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    std::cout.tie(nullptr);
+    // std::setvbuf(stdin, nullptr, _IOFBF, 1 << 20);
+    // std::setvbuf(stdout, nullptr, _IOFBF, 1 << 20);
+    return 0;
+}();
+#endif  // #ifdef DEBUG
+```
+- STL Random
 ```c++
 // True random device. Expensive. Non-configurable. 
 auto seed = std::random_device()();
