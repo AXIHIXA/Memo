@@ -1,13 +1,15 @@
-#include <algorithm>
-#include <array>
-#include <iostream>
-#include <string>
+static const int init = []
+{
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    std::cout.tie(nullptr);
+    return 0;
+}();
 
-
-class Trie
+class TrieImpl
 {
 public:
-    Trie() = default;
+    TrieImpl() = default;
 
     void insert(const std::string & word)
     {
@@ -83,53 +85,13 @@ public:
         {
             std::fill(node.begin(), node.end(), 0);
         }
-
+        
         std::fill(pass.begin(), pass.end(), 0);
         std::fill(end.begin(), end.end(), 0);
     }
 
-    int countWildcard(const std::string & word)
-    {
-        if (word.empty()) return end[1];
-        return countWildcardImpl(1, word, word[0], 1);
-    }
-
 private:
-    // UPDATE with respect to data size!
     static constexpr int kMaxSize = 50003;
-
-    int countWildcardImpl(int cur, const std::string & word, char c, int i)
-    {
-        if (c == '.')
-        {
-            for (c = 'a'; c <= 'z'; ++c)
-            {
-                int path = c - 'a';
-                if (tree[cur][path] == 0) continue;
-
-                if (i < word.size())
-                {
-                    int ct = countWildcardImpl(tree[cur][path], word, word[i], i + 1);
-                    if (0 < ct) return ct;
-                    continue;
-                }
-                else
-                {
-                    if (0 < end[tree[cur][path]]) return end[tree[cur][path]];
-                    continue;
-                }
-            }
-        }
-        else
-        {
-            int path = c - 'a';
-            cur = tree[cur][path];
-            if (cur == 0) return 0;
-            return i < word.size() ? countWildcardImpl(cur, word, word[i], i + 1) : end[cur];
-        }
-
-        return 0;
-    }
 
     // All chars are stored as edges;
     // each node has its own pass and end variable.
@@ -146,25 +108,34 @@ private:
     int cnt = 1;
 };
 
-
-int main(int argc, char * argv[])
+class Trie 
 {
-    Trie trie;
-    trie.insert("add");
-    trie.insert("eat");
-    trie.insert("addition");
+public:
+    Trie() = default;
+    
+    void insert(std::string word)
+    {
+        impl.insert(word);
+    }
+    
+    bool search(std::string word)
+    {
+        return 0 < impl.count(word);
+    }
+    
+    bool startsWith(std::string prefix)
+    {
+        return 0 < impl.prefixNumber(prefix);
+    }
 
-    std::printf("%d\n", trie.count("add"));
-    std::printf("%d\n", trie.count("eat"));
-    std::printf("%d\n", trie.count("addition"));
-    std::printf("%d\n", trie.count("adc"));
-    std::printf("%d\n", trie.count("add"));
-    std::printf("%d\n", trie.count("ad."));
-    std::printf("%d\n", trie.count(".d."));
-    std::printf("%d\n", trie.count("add."));
-    std::printf("%d\n", trie.countWildcard("ad."));
-    std::printf("%d\n", trie.countWildcard(".d."));
-    std::printf("%d\n", trie.countWildcard("add."));
+private:
+    TrieImpl impl {};
+};
 
-    return EXIT_SUCCESS;
-}
+/**
+ * Your Trie object will be instantiated and called as such:
+ * Trie* obj = new Trie();
+ * obj->insert(word);
+ * bool param_2 = obj->search(word);
+ * bool param_3 = obj->startsWith(prefix);
+ */
