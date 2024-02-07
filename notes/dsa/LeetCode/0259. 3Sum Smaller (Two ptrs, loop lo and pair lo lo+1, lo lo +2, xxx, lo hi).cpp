@@ -1,4 +1,4 @@
-int init = []
+static const int init = []
 {
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(nullptr);
@@ -9,7 +9,7 @@ int init = []
 class Solution
 {
 public:
-    int threeSumSmaller(vector<int> & nums, int target)
+    int threeSumSmaller(std::vector<int> & nums, int target)
     {
         int n = nums.size();
         if (n < 3) return 0;
