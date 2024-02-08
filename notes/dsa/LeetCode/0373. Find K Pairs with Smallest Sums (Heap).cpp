@@ -23,6 +23,8 @@ public:
         // NOTE: MUST pass in cmp as argument to heap constructor, 
         // because lambdas have no constructors 
         // (and thus could not be default-constructed). 
+        // OR go this syntax (with C++17 deduction guide): 
+        // std::priority_queue heap(cmp, std::vector<std::pair<int, int>> {});  
         std::priority_queue<
                 std::pair<int, int>, 
                 std::vector<std::pair<int, int>>, 
