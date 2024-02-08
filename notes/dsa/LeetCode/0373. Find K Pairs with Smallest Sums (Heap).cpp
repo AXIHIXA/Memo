@@ -44,7 +44,4 @@ public:
 
         return ans;
     }
-
-private:
-    static constexpr int kIntMax = std::numeric_limits<int>::max();
 };
