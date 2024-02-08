@@ -40,6 +40,17 @@ public:
 
             ans.push_back({nums1[i], nums2[j]});
 
+            // Avoid duplicates by extending j iff. current smallest i == 0. 
+            // Proof of correctness:
+            // Current pair i, j, i != 0. 
+            // Does not include i, j + 1 because it's either not the next optimal, 
+            // or in heap already. 
+            // Since we have i, j, in heap, 
+            // we must have 0, j in heap previously (which is now popped already). 
+            // Upon its popping, 0, j + 1 is pushed into heap. 
+            // If 0, j + 1 is still in heap, then i, j + 1 is NOT the next optimal. 
+            // If 0, j + 1 is popped, then 1, j + 1 should be in heap, ...
+            // Thus i, j + 1 is either NOT the next optimal or already in heap. 
             if (i == 0 && j < n - 1) heap.emplace(i, j + 1);
             if (i < m - 1)           heap.emplace(i + 1, j);
         }
