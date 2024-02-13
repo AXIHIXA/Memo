@@ -18,8 +18,8 @@ static const int init = []
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(nullptr);
     std::cout.tie(nullptr);
-    // std::setvbuf(stdin, nullptr, _IOFBF, 1 << 20);
-    // std::setvbuf(stdout, nullptr, _IOFBF, 1 << 20);
+    std::setvbuf(stdin, nullptr, _IOFBF, 1 << 20);
+    std::setvbuf(stdout, nullptr, _IOFBF, 1 << 20);
     return 0;
 }();
 #endif  // #ifdef DEBUG

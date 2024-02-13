@@ -1,51 +1,33 @@
-class Solution 
+class Solution
 {
 public:
-    Solution()
+    int minDistance(std::string word1, std::string word2)
     {
-        std::ios_base::sync_with_stdio(false);
-        std::cin.tie(nullptr);
-        std::cout.tie(nullptr);
-    }
+        auto m = static_cast<int>(word1.size());
+        auto n = static_cast<int>(word2.size());
+        if (m == 0) return n;
+        if (n == 0) return m;
 
-    int minDistance(string word1, string word2) 
-    {   
-        if (word1.empty()) return word2.size();
-        if (word2.empty()) return word1.size();
-        
-        // dp[i][j] denotes edit distance between word1[:i] and word2[:j].
-        // dp[i][j] == 
-        //     if word1[i - 1] == word2[j - 1]: 
-        //         dp[i - 1][j - 1]
-        //     else: 
-        //         min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]) + 1
-        //             del word1[i]; del word2[j]; mod word1[i] -> word2[j]
-        // std::vector<std::vector<int>> dp(word1.size() + 1, std::vector<int>(word2.size() + 1, 0));
+        // dp[i][j]: Edit distance between word1[:i] and word2[:j]. 
+        // After conversion, word1[i - 1] could still present, or get modified. 
+        // So does word2[j - 1]. 
+        std::vector dp(m + 1, std::vector<int>(n + 1));
+        dp[0][0] = 0;
+        for (int i = 1; i <= m; ++i) dp[i][0] = i;
+        for (int j = 1; j <= n; ++j) dp[0][j] = j;
 
-        for (int i = 1; i <= word1.size(); ++i) dp[i][0] = i;
-        for (int j = 1; j <= word2.size(); ++j) dp[0][j] = j;
-
-        for (int i = 1; i <= word1.size(); ++i)
+        for (int i = 1; i <= m; ++i)
         {
-            for (int j = 1; j <= word2.size(); ++j)
+            for (int j = 1; j <= n; ++j)
             {
-                if (word1[i - 1] == word2[j - 1])
-                {
-                    dp[i][j] = dp[i - 1][j - 1];
-                }
-                else
-                {
-                    dp[i][j] = std::min({dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]}) + 1;
-                }
+                dp[i][j] = std::min({
+                        dp[i - 1][j - 1] + !(word1[i - 1] == word2[j - 1]), 
+                        dp[i - 1][j] + 1,
+                        dp[i][j - 1] + 1
+                });
             }
         }
 
-        return dp[word1.size()][word2.size()];
+        return dp.back().back();
     }
-
-private:
-    static constexpr int kMaxLen {510};
-    static int dp[kMaxLen][kMaxLen];
 };
-
-int Solution::dp[kMaxLen][kMaxLen] {0};
