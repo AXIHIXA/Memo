@@ -65,16 +65,17 @@ public:
             for (int i = 0, path; i < word.size(); ++i)
             {
                 path = word[i] - 'a';
-                cur = tree[cur][path];
-
+                
                 // Needed!
-                if (--pass[cur] == 0)
+                if (--pass[tree[cur][path]] == 0)
                 {
                     tree[cur][path] = 0;
                     return;
                 }
-            }
 
+                cur = tree[cur][path];
+            }
+            
             --end[cur];
         }
     }
