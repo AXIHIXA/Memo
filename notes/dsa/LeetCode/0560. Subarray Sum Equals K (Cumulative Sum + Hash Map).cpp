@@ -1,33 +1,25 @@
 class Solution 
 {
 public:
-    int subarraySum(vector<int> & nums, int k) 
+    int subarraySum(std::vector<int> & nums, int k) 
     {
-        int ans = 0, sum = 0;
+        auto n = static_cast<const int>(nums.size());
 
-        // Cumulative sum cs[k] = sum(nums[0]...nums[k]). 
-        // cs[j] - s[i] == k means sum(nums[i + 1]...nums[j]) == k.
+        // {Cumulative sum, #Occurance}. 
+        std::unordered_map<int, int> hmp {{0, 1}};
 
-        unordered_map<int, int> mp;
-        mp.emplace(0, 1);
+        int ans = 0;
 
-        for (int n : nums)
+        for (int i = 0, cs = 0; i < n; ++i)
         {
-            sum += n;
+            cs += nums[i];
+            
+            // Whether the current cumulative sum MINUS 
+            // a preceeding cumulative sum EQUALS k. 
+            auto it = hmp.find(cs - k);
+            if (it != hmp.end()) ans += it->second;
 
-            if (auto it = mp.find(sum - k); it != mp.end())
-            {
-                ans += it->second;
-            }
-
-            if (auto it = mp.find(sum); it != mp.end())
-            {
-                ++(it->second);
-            }
-            else
-            {
-                mp.emplace(sum, 1);
-            }
+            ++hmp[cs];
         }
 
         return ans;
