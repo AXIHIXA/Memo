@@ -5,14 +5,6 @@
 
 - OJ Stuff
 ```c++
-#define DEBUG
-
-#ifdef DEBUG
-#define dprintf(S, ...) do { printf(S, ##__VA_ARGS__); } while (false)
-#define dfor(E, S) for (const auto & (E) : (S))
-#else
-#define dprintf(S, ...)
-#define dfor(E, S)
 static const int init = []
 {
     std::ios_base::sync_with_stdio(false);
@@ -22,7 +14,6 @@ static const int init = []
     std::setvbuf(stdout, nullptr, _IOFBF, 1 << 20);
     return 0;
 }();
-#endif  // #ifdef DEBUG
 ```
 - STL Random
 ```c++
@@ -244,7 +235,8 @@ struct Node
 {
     Node() = default;
     Node(int v) : val(v) {}
-    
+    Node(int v, Node * l, Node * r) : val(v), left(l), right(r) {}
+
     int val {0};
     Node * left {nullptr};
     Node * right {nullptr};
@@ -256,7 +248,7 @@ void preorderTraverse(Node * head)
     if (!head) return;
 
     std::stack<Node *> st;
-    st.push(head);
+    st.emplace(head);
 
     while (!st.empty())
     {
@@ -266,7 +258,7 @@ void preorderTraverse(Node * head)
         std::cout << head->val << ' ';
 
         if (head->right) st.push(head->right);
-        if (head->left) st.push(head->left);
+        if (head->left)  st.push(head->left);
     }
 
     std::cout << '\n';
@@ -284,7 +276,7 @@ void inorderTraverse(Node * head)
     {
         if (head)
         {
-            st.push(head);
+            st.emplace(head);
             head = head->left;
         }
         else
@@ -304,7 +296,7 @@ void postorderTraverse(Node * head)
     if (!head) return;
 
     std::stack<Node *> st;
-    st.push(head);
+    st.emplace(head);
 
     // head remains root node until a leaf node gets printed. 
     // After that, head denotes the previous node printed.     
@@ -315,12 +307,12 @@ void postorderTraverse(Node * head)
         if (cur->left && head != cur->left && head != cur->right)
         {
             // Has left subtree and left subtree unresolved.
-            st.push(cur->left);
+            st.emplace(cur->left);
         }
         else if (cur->right && head != cur->right)
         {
             // Has right subtree and right subtree unresolved.
-            st.push(cur->right);
+            st.emplace(cur->right);
         }
         else 
         {
@@ -334,22 +326,100 @@ void postorderTraverse(Node * head)
     std::cout << '\n';
 }
 
-int main()
+void preorderTraverseMorris(Node * root)
 {
-    std::vector<Node> bb {0, 1, 2, 3, 4, 5, 6, 7};
+    while (root)
+    {
+        if (!root->left)
+        {
+            std::cout << root->val << ' ';
+            root = root->right;
+        }
+        else
+        {
+            // prev->right == root iff. when this left subtree is traversed twice; 
+            // this happens after root = root->right (!root->left). 
+            Node * prev = root->left;
+            while (prev->right && prev->right != root) prev = prev->right;
 
-    Node * head = &bb[1];
-    head->left = &bb[2];
-    head->right = &bb[3];
-    head->left->left = &bb[4];
-    head->left->right = &bb[5];
-    head->right->left = &bb[6];
-    head->right->right = &bb[7];
+            if (!prev->right)
+            {
+                std::cout << root->val << ' ';
+                prev->right = root;
+                root = root->left;
+            }
+            else
+            {
+                prev->right = nullptr;
+                root = root->right;
+            }
+        }
+    }
 
-    preorderTraverse(head);
-    inorderTraverse(head);
-    postorderTraverse(head);
-    
+    std::cout << '\n';
+}
+
+void inorderTraverseMorris(Node * root)
+{
+    while (root)
+    {
+        if (!root->left)
+        {
+            std::cout << root->val << ' ';
+            root = root->right;
+        }
+        else
+        {
+            // prev->right == root iff. when this left subtree is traversed twice; 
+            // this happens after root = root->right (!root->left). 
+            Node * prev = root->left;
+            while (prev->right && prev->right != root) prev = prev->right;
+
+            if (!prev->right)
+            {
+                prev->right = root;
+                root = root->left;
+            }
+            else
+            {
+                std::cout << root->val << ' ';
+                prev->right = nullptr;
+                root = root->right;
+            }
+        }
+    }
+
+    std::cout << '\n';
+}
+
+int main(int argc, char * argv[])
+{
+    //           0
+    //      1         2
+    //  3      4    5     6
+    //    7  8    9  10      
+    std::vector<Node> buf(11);
+    buf[0] = {0, &buf[1], &buf[2]};
+    buf[1] = {1, &buf[3], &buf[4]};
+    buf[2] = {2, &buf[5], &buf[6]};
+    buf[3] = {3, nullptr, &buf[7]};
+    buf[4] = {4, &buf[8], nullptr};
+    buf[5] = {5, &buf[9], &buf[10]};
+    buf[6] = {6, nullptr, nullptr};
+    buf[7] = {7, nullptr, nullptr};
+    buf[8] = {8, nullptr, nullptr};
+    buf[9] = {9, nullptr, nullptr};
+    buf[10] = {10, nullptr, nullptr};
+    Node * root = &buf[0];
+
+    preorderTraverse(root);
+    preorderTraverseMorris(root);
+
+    inorderTraverse(root);
+    inorderTraverseMorris(root);
+
+    postorderTraverse(root);
+
     return EXIT_SUCCESS;
 }
 ```

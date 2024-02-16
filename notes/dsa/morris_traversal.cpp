@@ -6,6 +6,7 @@
 struct Node
 {
     Node() = default;
+    Node(int v) : val(v) {}
     Node(int v, Node * l, Node * r) : val(v), left(l), right(r) {}
 
     int val {0};
@@ -17,16 +18,20 @@ struct Node
 void preorderTraverse(Node * root)
 {
     if (!root) return;
+
     std::stack<Node *> st;
     st.emplace(root);
+
     while (!st.empty())
     {
         Node * curr = st.top();
         st.pop();
         std::cout << curr->val << ' ';
+
         if (curr->right) st.emplace(curr->right);
-        if (curr->left) st.emplace(curr->left);
+        if (curr->left)  st.emplace(curr->left);
     }
+
     std::cout << '\n';
 }
 
@@ -34,7 +39,9 @@ void preorderTraverse(Node * root)
 void inorderTraverse(Node * root)
 {
     if (!root) return;
+
     std::stack<Node *> st;
+
     while (!st.empty() || root)
     {
         if (root)
@@ -50,6 +57,7 @@ void inorderTraverse(Node * root)
             root = root->right;
         }
     }
+
     std::cout << '\n';
 }
 
@@ -57,11 +65,14 @@ void inorderTraverse(Node * root)
 void postorderTraverse(Node * root)
 {
     if (!root) return;
+
     std::stack<Node *> st;
     st.emplace(root);
+
     while (!st.empty())
     {
         Node * curr = st.top();
+
         if (curr->left && curr->left != root && curr->right != root)
         {
             st.emplace(curr->left);
@@ -77,6 +88,7 @@ void postorderTraverse(Node * root)
             st.pop();
         }
     }
+
     std::cout << '\n';
 }
 
@@ -92,6 +104,8 @@ void preorderTraverseMorris(Node * root)
         }
         else
         {
+            // prev->right == root iff. when this left subtree is traversed twice; 
+            // this happens after root = root->right (!root->left). 
             Node * prev = root->left;
             while (prev->right && prev->right != root) prev = prev->right;
 
@@ -108,6 +122,7 @@ void preorderTraverseMorris(Node * root)
             }
         }
     }
+
     std::cout << '\n';
 }
 
@@ -123,6 +138,8 @@ void inorderTraverseMorris(Node * root)
         }
         else
         {
+            // prev->right == root iff. when this left subtree is traversed twice; 
+            // this happens after root = root->right (!root->left). 
             Node * prev = root->left;
             while (prev->right && prev->right != root) prev = prev->right;
 
@@ -139,6 +156,7 @@ void inorderTraverseMorris(Node * root)
             }
         }
     }
+
     std::cout << '\n';
 }
 
