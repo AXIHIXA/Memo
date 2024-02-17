@@ -701,6 +701,38 @@ void heapSort2(int * a, int n)
 }
 ```
 
+## 027 堆结构常见题
+
+- [LC 23. Merge k Sorted Lists](https://leetcode.com/problems/merge-k-sorted-lists/)
+- [LC 2208. Minimum Operations to Halve Array Sum](https://leetcode.com/problems/minimum-operations-to-halve-array-sum/)
+- [最多线段重合问题](https://www.nowcoder.com/practice/1ae8d0b6bb4e4bcdbf64ec491f63fc37)
+```c++
+std::sort(lines.cbegin(), lines.cend());
+std::priority_queue<int, std::vector<int>, std::greater<int>> heap;
+int ans = 0;
+for (std::vector<int> & line : lines) 
+{
+    while (!heap.empty() && heap.top() <= line[0]) heap.pop();
+    heap.emplace(line[1]);
+    ans = std::max(ans, heap.size());
+}
+return ans;
+```
+
+## 028 基数排序 Radix Sort
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## 059 Graph
 
 - Graph with n nodes and m edges. 

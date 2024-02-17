@@ -3,7 +3,7 @@ class Solution
 public:
     int findMinArrowShots(std::vector<std::vector<int>> & points)
     {
-        int n = points.size();
+        auto n = static_cast<const int>(points.size());
         if (n == 1) return 1;
 
         std::sort(points.begin(), points.end());

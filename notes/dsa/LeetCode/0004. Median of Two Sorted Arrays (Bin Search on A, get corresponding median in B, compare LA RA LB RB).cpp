@@ -1,51 +1,50 @@
 class Solution 
 {
 public:
-    double findMedianSortedArrays(vector<int> & nums1, vector<int> & nums2) 
+    double findMedianSortedArrays(std::vector<int> & nums1, std::vector<int> & nums2) 
     {
         return nums1.size() < nums2.size() ? f(nums1, nums2) : f(nums2, nums1);
     }
 
 private:
-    static constexpr int kIntMax = numeric_limits<int>::max();
-    static constexpr int kIntMin = numeric_limits<int>::min();
+    static constexpr int k_int_max = numeric_limits<int>::max();
+    static constexpr int k_int_min = numeric_limits<int>::min();
 
-    double f(vector<int> & a, vector<int> & b)
+    double f(std::vector<int> & a, std::vector<int> & b)
     {
-        int m = a.size(), n = b.size();
-        int ll = 0, rr = m;
+        auto m = static_cast<const int>(a.size());
+        auto n = static_cast<const int>(b.size());
 
-        while (ll <= rr)
+        double ans = 0.0;
+
+        for (int ll = 0, rr = m, ma, mb; ll <= rr; )
         {
-            int mA = (ll + rr) >> 1;
-            int mB = ((m + n + 1) >> 1) - mA;
+            ma = ll + ((rr - ll) >> 1);
+            mb = ((m + n + 1) >> 1) - ma;
 
-            int maxLa = (mA == 0) ? kIntMin : a[mA - 1];
-            int minRa = (mA == m) ? kIntMax : a[mA];
-            int maxLb = (mB == 0) ? kIntMin : b[mB - 1];
-            int minRb = (mB == n) ? kIntMax : b[mB];
+            int max_la = 0 < ma ? a[ma - 1] : k_int_min;
+            int min_ra = ma < m ? a[ma] : k_int_max;
+            int max_lb = 0 < mb ? b[mb - 1] : k_int_min;
+            int min_rb = mb < n ? b[mb] : k_int_max;
 
-            if (maxLa <= minRb and maxLb <= minRa)
+            if (max_la <= min_rb && max_lb <= min_ra)
             {
-                if ((m + n) & 1)
-                {
-                    return max(maxLa, maxLb);
-                }
-                else
-                {
-                    return static_cast<double>(max(maxLa, maxLb) + min(minRa, minRb)) / 2.0;
-                }
+                ans = (m + n) & 1 ? 
+                      std::max(max_la, max_lb) : 
+                      0.5 * static_cast<double>(std::max(max_la, max_lb) + 
+                                                std::min(min_ra, min_rb));
+                break;
             }
-            else if (minRb < maxLa)
+            else if (min_rb < max_la)
             {
-                rr = mA - 1;
+                rr = ma - 1;
             }
             else
             {
-                ll = mA + 1;
+                ll = ma + 1;
             }
         }
 
-        return 0.0;
+        return ans;
     }
 };

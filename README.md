@@ -44,8 +44,11 @@
     - [030 & 031 Bit Operations](./notes/dsa/030_031_bit_operations.md)
     - [algorithmzuo/algorithm-journey](https://github.com/algorithmzuo/algorithm-journey)
   - [KMP](./notes/dsa/kmp.cpp)
+    - buildNext: NOTE j in `[0, m - 1)`!!! MUST - 1!!!
   - [Morris Traversal](./notes/dsa/morris_traversal.cpp)
+  - [Rolling Hash](./notes/dsa/rolling_hash.cpp)
   - [SSA](./notes/dsa/ssa.cpp)
+    - UnionFind: NOTE merge `root[rx] = ry`!!! NOT `root[x]`!!!
   - [Trie](./notes/dsa/Trie.cpp)
   - [Unroll Copy](./notes/dsa/unroll_copy.cpp)
 
