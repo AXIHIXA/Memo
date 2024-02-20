@@ -7,7 +7,7 @@ std::vector<int> buildNext(const std::string & p)
     auto m = static_cast<const int>(p.size());
     std::vector<int> next(m, -1);
 
-    // next[j]为p[:j]的最长公共前后缀的长度
+    // next[j]为p[:j]的最长公共前后缀 (Proper Prefix) 的长度
     // next[j]由前缀DP求得
     // 求解next[j]时，t为next[j - 1]
     for (int t = -1, j = 0; j < m - 1; )
@@ -26,9 +26,9 @@ std::vector<int> buildNext(const std::string & p)
     return next;
 }
 
-std::vector<int> buildNi(const std::string & s)
+std::vector<int> solveProperPrefix(const std::string & s)
 {
-    // dp[j]为s[:j+1]的最长公共前后缀的长度(With OPTIMIZATIONS!)
+    // dp[j]为s[:j+1]的最长公共前后缀的长度 (with OPTIMIZATIONS!)
     // dp[j]由前缀DP求得
     // 求解dp[j]时，t为dp[j - 1]
     auto m = static_cast<const int>(s.size());
@@ -62,24 +62,24 @@ int kmp(const std::string & pattern, const std::string & target)
 
 int main()
 {
-    std::string pattern = "ABBABAABABAA";
-    std::vector<int> next = buildNext(pattern);
-    std::vector<int> ni = buildNi(pattern);
+    std::string s = "ABBABAABABAA";
+    std::vector<int> next = buildNext(s);
+    std::vector<int> ppl = solveProperPrefix(s);
 
-    for (int i = 0; i != pattern.size(); ++i) 
+    for (int i = 0; i != s.size(); ++i) 
         std::printf("%4d ", i);
     std::printf("\n");
 
-    for (int i = 0; i != pattern.size(); ++i) 
-        std::printf("%4c ", pattern[i]);
+    for (int i = 0; i != s.size(); ++i) 
+        std::printf("%4c ", s[i]);
     std::printf("\n");
     
     for (int i = 0; i != next.size(); ++i) 
         std::printf("%4d ", next[i]);
     std::printf("\n");
 
-    for (int i = 0; i != ni.size(); ++i) 
-        std::printf("%4d ", ni[i]);
+    for (int i = 0; i != ppl.size(); ++i) 
+        std::printf("%4d ", ppl[i]);
     std::printf("\n");
     
     return EXIT_SUCCESS;
