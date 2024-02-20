@@ -7,9 +7,18 @@ public:
     }
 
 private:
-    static constexpr int k_int_max = numeric_limits<int>::max();
-    static constexpr int k_int_min = numeric_limits<int>::min();
-
+    static constexpr int kLargeInt = numeric_limits<int>::max();
+    static constexpr int kSmallInt = numeric_limits<int>::min();
+    
+    // So we divide both a and b into two parts: 
+    // [ LA <= a[mA - 1] ] <= [ a[mA] <= RA ]
+    // [ LB <= b[mB - 1] ] <= [ a[mB] <= RB ]
+    // We do binary search on a, and make sure 
+    // #elements in LA and LB equals half size of a + b. 
+    // Then as long as LA, LB lies on the left of RA and RB, 
+    // the median will be a[mA], b[mB] and their predcessors. 
+    // We also need to prepend dummies to a[-1] and a[a.size()] to make sure
+    // the left/right parts could cover the whole a array; so does array b. 
     double f(std::vector<int> & a, std::vector<int> & b)
     {
         auto m = static_cast<const int>(a.size());
@@ -17,31 +26,30 @@ private:
 
         double ans = 0.0;
 
-        for (int ll = 0, rr = m, ma, mb; ll <= rr; )
+        for (int ll = 0, rr = m, mA, mB; ll <= rr; )
         {
-            ma = ll + ((rr - ll) >> 1);
-            mb = ((m + n + 1) >> 1) - ma;
+            mA = ll + ((rr - ll) >> 1);
+            mB = ((m + n + 1) >> 1) - mA;
 
-            int max_la = 0 < ma ? a[ma - 1] : k_int_min;
-            int min_ra = ma < m ? a[ma] : k_int_max;
-            int max_lb = 0 < mb ? b[mb - 1] : k_int_min;
-            int min_rb = mb < n ? b[mb] : k_int_max;
+            int maxLa = 0 < mA ? a[mA - 1] : kSmallInt;
+            int minRa = mA < m ? a[mA] : kLargeInt;
+            int maxLb = 0 < mB ? b[mB - 1] : kSmallInt;
+            int minRb = mB < n ? b[mB] : kLargeInt;
 
-            if (max_la <= min_rb && max_lb <= min_ra)
+            if (maxLa <= minRb && maxLb <= minRa)
             {
                 ans = (m + n) & 1 ? 
-                      std::max(max_la, max_lb) : 
-                      0.5 * static_cast<double>(std::max(max_la, max_lb) + 
-                                                std::min(min_ra, min_rb));
+                      std::max(maxLa, maxLb) : 
+                      0.5 * static_cast<double>(std::max(maxLa, maxLb) + std::min(minRa, minRb));
                 break;
             }
-            else if (min_rb < max_la)
+            else if (minRb < maxLa)
             {
-                rr = ma - 1;
+                rr = mA - 1;
             }
             else
             {
-                ll = ma + 1;
+                ll = mA + 1;
             }
         }
 
