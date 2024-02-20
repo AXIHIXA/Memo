@@ -2,20 +2,20 @@
 #include <string>
 #include <vector>
 
-std::vector<int> buildNext(const std::string & pattern)
+std::vector<int> buildNext(const std::string & p)
 {
-    int m = pattern.size();
+    auto m = static_cast<const int>(p.size());
     std::vector<int> next(m, -1);
 
-    // next[j]为pattern[:j]的最长公共前后缀的长度
+    // next[j]为p[:j]的最长公共前后缀的长度
     // next[j]由前缀DP求得
     // 求解next[j]时，t为next[j - 1]
     for (int t = -1, j = 0; j < m - 1; )
     {
-        if (t < 0 || pattern[t] == pattern[j])
+        if (t < 0 || p[t] == p[j])
         {
             ++t, ++j;
-            next[j] = pattern[t] == pattern[j] ? next[t] : t;
+            next[j] = p[t] == p[j] ? next[t] : t;
         }
         else
         {
@@ -24,6 +24,23 @@ std::vector<int> buildNext(const std::string & pattern)
     }
     
     return next;
+}
+
+std::vector<int> buildNi(const std::string & s)
+{
+    // dp[j]为s[:j+1]的最长公共前后缀的长度(With OPTIMIZATIONS!)
+    // dp[j]由前缀DP求得
+    // 求解dp[j]时，t为dp[j - 1]
+    auto m = static_cast<const int>(s.size());
+    std::vector<int> dp(m, 0);
+
+    for (int t = 0, j = 1; j < m; ++j)
+    {
+        while (0 < t && s[t] != s[j]) t = dp[t - 1];
+        t = dp[j] = t + (s[t] == s[j]);
+    }
+
+    return dp;
 }
 
 int kmp(const std::string & pattern, const std::string & target) 
@@ -47,6 +64,7 @@ int main()
 {
     std::string pattern = "ABBABAABABAA";
     std::vector<int> next = buildNext(pattern);
+    std::vector<int> ni = buildNi(pattern);
 
     for (int i = 0; i != pattern.size(); ++i) 
         std::printf("%4d ", i);
@@ -58,6 +76,10 @@ int main()
     
     for (int i = 0; i != next.size(); ++i) 
         std::printf("%4d ", next[i]);
+    std::printf("\n");
+
+    for (int i = 0; i != ni.size(); ++i) 
+        std::printf("%4d ", ni[i]);
     std::printf("\n");
     
     return EXIT_SUCCESS;
