@@ -1,131 +1,133 @@
 class Solution 
 {
 public:
-    vector<int> sortArray(vector<int> & nums) 
+    std::vector<int> sortArray(std::vector<int> & nums) 
     {
-        quickSortDutchFlag(nums.data(), 0, nums.size());
+        radixSort(nums.data(), 0, nums.size());
+        // mergeSort(nums.data(), 0, nums.size());
+        // quickSort(nums.data(), 0, nums.size() - 1);
         return nums;
     }
 
 private:
-    // a[lo, hi], NOTE that it's a CLOSED inverval! 
-    static std::pair<int, int> partitionDutchFlag(int * a, int lo, int hi)
+    // a[lo, hi)
+    void radixSort(int * a, int lo, int hi) 
     {
-        int p = a[lo + std::rand() % (hi - lo + 1)], mi = lo;
-
-        while (mi <= hi)
-        {
-            if (a[mi] < p)       std::swap(a[lo++], a[mi++]);
-            else if (a[mi] == p) ++mi;
-            else                 std::swap(a[hi--], a[mi]);
-        }
-
-        return {lo, hi};
+        // Offset indices into a[0, hi). 
+        a += lo;
+        hi -= lo;
+        
+        // Offset values into non-negative, radix sort, then offset back. 
+        int minimum = *std::min_element(a, a + hi);
+        for (int i = 0; i < hi; ++i) a[i] -= minimum;
+        radixSortImpl(a, 0, hi);
+        for (int i = 0; i < hi; ++i) a[i] += minimum;
     }
 
-    static void quickSortDutchFlag(int * a, int lo, int hi)
+    // a[lo, hi), MUST be all non-negative. 
+    void radixSortImpl(int * a, int lo, int hi, int base = 10)
+    {
+        cnt.resize(base);
+        
+        // Offset into a[0, hi). 
+        a += lo;
+        hi -= lo;
+        tmp.resize(hi);
+
+        // Number of bits in radix base. 
+        int bits = 0;
+        for (int x = *std::max_element(a, a + hi); 0 < x; x /= base) ++bits;
+        
+        for (int offset = 1; 0 < bits; offset *= base, --bits)
+        {
+            // Count bits into culmulative sum. 
+            // Block write-back in REVERSE order for stability. 
+            std::fill_n(cnt.data(), base, 0);
+            for (int i = 0; i < hi; ++i) ++cnt[(a[i] / offset) % base];
+            for (int i = 1; i < base; ++i) cnt[i] += cnt[i - 1];
+            for (int i = hi - 1; 0 <= i; --i) tmp[--cnt[(a[i] / offset) % base]] = a[i];
+            std::copy_n(tmp.data(), hi, a);
+        }
+    }
+
+private:
+    // a[lo, hi)
+    void mergeSort(int * a, int lo, int hi)
     {
         if (hi < lo + 2) return;
-
-        auto [l, r] = partitionDutchFlag(a, lo, hi - 1);
-        quickSortDutchFlag(a, lo, l);
-        quickSortDutchFlag(a, r + 1, hi);
-    }
-
-    // a[lo, hi], NOTE that it's a CLOSED inverval! 
-    static int partition(int * a, int lo, int hi)
-    {
-        std::swap(a[lo], a[lo + std::rand() % (hi - lo + 1)]);
-        int p = a[lo];
-
-        while (lo < hi)
+        
+        // Offset into a[0, hi). 
+        a += lo;
+        hi -= lo;
+        tmp.resize(hi);
+        
+        for (int size = 1; size < hi; size <<= 1)
         {
-            while (lo < hi && p < a[hi]) --hi;
-            if (lo < hi) a[lo++] = a[hi];
-            while (lo < hi && a[lo] < p) ++lo;
-            if (lo < hi) a[hi--] = a[lo];
+            for (int i = 0, j, k; i < hi; i += (size << 1))
+            {
+                j = i + size;
+                if (hi <= j) break;
+                k = std::min(j + size, hi);
+                merge(a, i, j, k);
+            }
         }
-
-        a[lo] = p;
-        return lo;
     }
 
-    static void quickSort(int * a, int lo, int hi)
+    // a[lo, hi)
+    void merge(int * a, int lo, int mi, int hi)
     {
-        if (hi < lo + 2) return;
+        std::copy(a + lo, a + mi, tmp.data() + lo);
+        int * b = tmp.data() + lo;
+        const int m = mi - lo;
 
-        int mi = partition(a, lo, hi - 1);
-        quickSort(a, lo, mi);
-        quickSort(a, mi + 1, hi);
+        int * c = a + mi;
+        const int n = hi - mi;
+
+        for (int i = lo, j = 0, k = 0; j < m || k < n; )
+        {
+            if (j < m && (n <= k || b[j] <= c[k])) a[i++] = b[j++];
+            if (k < n && (m <= j || c[k] <  b[j])) a[i++] = c[k++];
+        }
     }
 
-    static void quickSortIterative(int * a, int lo, int hi)
+private:
+    // a[lo, hi]
+    void quickSort(int * a, int lo, int hi)
     {
+        if (hi < lo + 1) return;
+
         std::stack<std::pair<int, int>> st;
         st.emplace(lo, hi);
 
         while (!st.empty())
         {
-            auto [ll, rr] = st.top();
+            std::tie(lo, hi) = st.top();
             st.pop();
-            if (rr < ll + 2) continue;
-
-            int mi = partition(a, ll, rr - 1);
-            st.emplace(mi + 1, rr);
-            st.emplace(ll, mi);
+            auto [ll, rr] = partition(a, lo, hi);
+            if (rr + 1 < hi) st.emplace(rr + 1, hi);
+            if (lo < ll - 1) st.emplace(lo, ll - 1);
         }
     }
 
-    static void merge(int * arr, int lo, int mi, int hi) 
-    {   
-        int * a = arr + lo;
-
-        int * b = new int [mi - lo];
-        int lb = mi - lo;
-        for (int i = 0; i != mi - lo; ++i) b[i] = a[i];
-
-        int * c = arr + mi;
-        int lc = hi - mi;
-
-        for (int i = 0, j = 0, k = 0; j < lb || k < lc; )
-        {
-            if (j < lb && (lc <= k || b[j] <= c[k])) a[i++] = b[j++];
-            if (k < lc && (lb <= j || c[k] <  b[j])) a[i++] = c[k++];
-        }
-
-        delete [] b;
-    }
-
-    static void mergeSort(int * arr, int lo, int hi)
+    // a[lo, hi]
+    std::pair<int, int> partition(int * a, int lo, int hi)
     {
-        if (hi < lo + 2) return;
+        int p = a[lo + std::rand() % (hi - lo + 1)];
+        int mi = lo;
 
-        int mi = lo + ((hi - lo) >> 1);
-        mergeSort(arr, lo, mi);
-        mergeSort(arr, mi, hi);
-
-        merge(arr, lo, mi, hi);
-    }
-
-    static void mergeSortIterative(int * arr, int lo, int hi)
-    {
-        if (hi < lo + 2) return;
-        
-        arr += lo;
-        int n = hi - lo;
-
-        // Invoke merge routine sequentially along arr
-        // with granularity 1, 2, 4, 8, ...
-        for (int step = 1, ll = 0, mi, rr; step < n; step <<= 1, ll = 0)
+        while (mi <= hi)
         {
-            while (ll < n)
-            {
-                mi = ll + step;
-                if (n - 1 < mi) break;  // Left part is sorted already. 
-                rr = std::min(mi + step, n);
-                merge(arr, ll, mi, rr);
-                ll = rr;
-            }
+            if (a[mi] < p) std::swap(a[lo++], a[mi++]);
+            else if (a[mi] == p) ++mi;
+            else std::swap(a[hi--], a[mi]);
         }
+
+        return {lo, hi};
     }
+
+private:
+    // Helper space used for merge sort and radix sort routines. 
+    std::vector<int> cnt;
+    std::vector<int> tmp;
 };
+

@@ -425,29 +425,11 @@ int main(int argc, char * argv[])
 ```
 
 
+
 ## 021 Merge Sort
 
 ```c++
-void merge(int * arr, int lo, int mi, int hi) 
-{
-    int * a = arr + lo;
-
-    int * b = new int [mi - lo];
-    int lb = mi - lo;
-    for (int i = 0; i != mi - lo; ++i) b[i] = a[i];
-
-    int * c = arr + mi;
-    int lc = hi - mi;
-
-    for (int i = 0, j = 0, k = 0; j < lb || k < lc; )
-    {
-        if (j < lb && (lc <= k || b[j] <= c[k])) a[i++] = b[j++];
-        if (k < lc && (lb <= j || c[k] <  b[j])) a[i++] = c[k++];
-    }
-
-    delete [] b;
-}
-
+// a[lo, hi), recursive version. 
 void mergeSort(int * arr, int lo, int hi)
 {
     if (hi < lo + 2) return;
@@ -459,27 +441,47 @@ void mergeSort(int * arr, int lo, int hi)
     merge(arr, lo, mi, hi);
 }
 
-void mergeSortIterative(int * arr, int lo, int hi)
+// a[lo, hi), iterative version. 
+void mergeSort(int * a, int lo, int hi)
 {
     if (hi < lo + 2) return;
     
-    arr += lo;
-    int n = hi - lo;
-
-    // Invoke merge routine sequentially along arr
-    // with granularity 1, 2, 4, 8, ...
-    for (int step = 1, ll = 0, mi, rr; step < n; step <<= 1, ll = 0)
+    // Offset into a[0, hi). 
+    a += lo;
+    hi -= lo;
+    tmp.resize(hi);
+    
+    for (int size = 1; size < hi; size <<= 1)
     {
-        while (ll < n)
+        for (int i = 0, j, k; i < hi; i += (size << 1))
         {
-            mi = ll + step;
-            if (n - 1 < mi) break;  // Left part is sorted already. 
-            rr = std::min(mi + step, n);
-            merge(arr, ll, mi, rr);
-            ll = rr;
+            j = i + size;
+            if (hi <= j) break;
+            k = std::min(j + size, hi);
+            merge(a, i, j, k);
         }
     }
 }
+
+// a[lo, hi)
+void merge(int * a, int lo, int mi, int hi)
+{
+    std::copy(a + lo, a + mi, tmp.data() + lo);
+    int * b = tmp.data() + lo;
+    const int m = mi - lo;
+
+    int * c = a + mi;
+    const int n = hi - mi;
+
+    for (int i = lo, j = 0, k = 0; j < m || k < n; )
+    {
+        if (j < m && (n <= k || b[j] <= c[k])) a[i++] = b[j++];
+        if (k < n && (m <= j || c[k] <  b[j])) a[i++] = c[k++];
+    }
+}
+
+// Helper space. 
+std::vector<int> tmp;
 ```
 
 ## 022 Merge
@@ -536,24 +538,9 @@ long long mergeSmallSum(int * arr, int lo, int mi, int hi)
 
 ## 023 Quick Sort
 
-Dutch Flag style quick sort:
+- Dutch Flag style quick sort:
 ```c++
-// a[lo, hi], NOTE it's a RIGHT-CLOSE interval!
-std::pair<int, int> partition(int * a, int lo, int hi)
-{
-    int p = a[lo + std::rand() % (hi - lo + 1)];
-    int mi = lo;
-
-    while (mi <= hi)
-    {
-        if (a[mi] < p)       std::swap(a[lo++], a[mi++]);
-        else if (a[mi] == p) ++mi;
-        else                 std::swap(a[hi--], a[mi]);
-    }
-
-    return {lo, hi};
-}
-
+// a[lo, hi], recursive version. 
 void quickSort(int * a, int lo, int hi)
 {
     if (hi < lo + 2) return;
@@ -562,10 +549,44 @@ void quickSort(int * a, int lo, int hi)
     quickSort(a, lo, l);
     quickSort(a, r + 1, hi);
 }
+
+// a[lo, hi], iterative version. 
+void quickSort(int * a, int lo, int hi)
+{
+    if (hi < lo + 1) return;
+
+    std::stack<std::pair<int, int>> st;
+    st.emplace(lo, hi);
+
+    while (!st.empty())
+    {
+        std::tie(lo, hi) = st.top();
+        st.pop();
+        auto [ll, rr] = partition(a, lo, hi);
+        if (rr + 1 < hi) st.emplace(rr + 1, hi);
+        if (lo < ll - 1) st.emplace(lo, ll - 1);
+    }
+}
+
+// a[lo, hi]
+std::pair<int, int> partition(int * a, int lo, int hi)
+{
+    int p = a[lo + std::rand() % (hi - lo + 1)];
+    int mi = lo;
+
+    while (mi <= hi)
+    {
+        if (a[mi] < p) std::swap(a[lo++], a[mi++]);
+        else if (a[mi] == p) ++mi;
+        else std::swap(a[hi--], a[mi]);
+    }
+
+    return {lo, hi};
+}
 ```
-Legacy quick sort:
+- Legacy partition routine:
 ```c++
-// arr[lo, hi], NOTE that it's a CLOSED inverval! 
+// a[lo, hi]
 int partition(int * a, int lo, int hi)
 {
     std::swap(a[lo], a[lo + std::rand() % (hi - lo + 1)]);
@@ -581,32 +602,6 @@ int partition(int * a, int lo, int hi)
 
     a[lo] = p;
     return lo;
-}
-
-void quickSort(int * a, int lo, int hi)
-{
-    if (hi < lo + 2) return;
-
-    int mi = partition(a, lo, hi - 1);
-    quickSort(a, lo, mi);
-    quickSort(a, mi + 1, hi);
-}
-
-void quickSortIterative(int * a, int lo, int hi)
-{
-    std::stack<std::pair<int, int>> st;
-    st.emplace(lo, hi);
-
-    while (!st.empty())
-    {
-        auto [ll, rr] = st.top();
-        st.pop();
-        if (rr < ll + 2) continue;
-
-        int mi = partition(a, ll, rr - 1);
-        st.emplace(mi + 1, rr);
-        st.emplace(ll, mi);
-    }
 }
 ```
 
@@ -721,6 +716,52 @@ return ans;
 
 ## 028 基数排序 Radix Sort
 
+- [LC 912. Sort an Array](https://leetcode.com/problems/sort-an-array/)
+```c++
+// a[lo, hi)
+void radixSort(int * a, int lo, int hi) 
+{
+    // Offset indices into a[0, hi). 
+    a += lo;
+    hi -= lo;
+    
+    // Offset values into non-negative, radix sort, then offset back. 
+    int minimum = *std::min_element(a, a + hi);
+    for (int i = 0; i < hi; ++i) a[i] -= minimum;
+    radixSortImpl(a, 0, hi);
+    for (int i = 0; i < hi; ++i) a[i] += minimum;
+}
+
+// a[lo, hi), MUST be all non-negative. 
+void radixSortImpl(int * a, int lo, int hi, int base = 10)
+{
+    cnt.resize(base);
+    
+    // Offset into a[0, hi). 
+    a += lo;
+    hi -= lo;
+    tmp.resize(hi);
+
+    // Number of bits in radix base. 
+    int bits = 0;
+    for (int x = *std::max_element(a, a + hi); 0 < x; x /= base) ++bits;
+    
+    for (int offset = 1; 0 < bits; offset *= base, --bits)
+    {
+        // Count bits into culmulative sum. 
+        // Block write-back in REVERSE order for stability. 
+        std::fill_n(cnt.data(), base, 0);
+        for (int i = 0; i < hi; ++i) ++cnt[(a[i] / offset) % base];
+        for (int i = 1; i < base; ++i) cnt[i] += cnt[i - 1];
+        for (int i = hi - 1; 0 <= i; --i) tmp[--cnt[(a[i] / offset) % base]] = a[i];
+        std::copy_n(tmp.data(), hi, a);
+    }
+}
+
+// Helper space. 
+std::vector<int> cnt;
+std::vector<int> tmp;
+```
 
 
 
