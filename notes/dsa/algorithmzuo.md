@@ -789,7 +789,8 @@ int near2power(int n)
   - Store as a vector, with an unordered_map index for duplicate lookup. 
   - Delete: Swap with back element and remove
 - [381. Insert Delete GetRandom O(1) - Duplicates allowed](https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/)
-
+  - Store as a vector, with an `unordered_map<int, unordered_map<int>>` for duplicate lookup. 
+  - Delete: Swap any occurance with back element and remove. 
 
 
 
