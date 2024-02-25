@@ -21,6 +21,8 @@ public:
         int bak = data.back();
         int j = data.size() - 1;
 
+        // Special care MUST be taken for identical val/bak values!
+        // Doing push/pops on the same index HashSet will be buggy!
         if (val == bak)
         {
             valIds.erase(j);
@@ -35,6 +37,7 @@ public:
         }
 
         data.pop_back();
+
         if (valIds.empty()) index.erase(it);
 
         return true;
