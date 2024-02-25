@@ -782,21 +782,28 @@ int near2power(int n)
 
 ## 035 数据结构设计高频题
 
-- [0146. LRU Cache](https://leetcode.com/problems/lru-cache/)
+- [LC 146. LRU Cache](https://leetcode.com/problems/lru-cache/)
   - Nodes stored as linked list, LRU nodes moved to front;
   - Hashmap value to node for indexing. 
-- [0380. Insert Delete GetRandom O(1)](https://leetcode.com/problems/insert-delete-getrandom-o1/)
+- [LC 380. Insert Delete GetRandom O(1)](https://leetcode.com/problems/insert-delete-getrandom-o1/)
   - Store as a vector, with an unordered_map index for duplicate lookup. 
   - Delete: Swap with back element and remove
-- [381. Insert Delete GetRandom O(1) - Duplicates allowed](https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/)
+- [LC 381. Insert Delete GetRandom O(1) - Duplicates allowed](https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/)
   - Store as a vector, with an `unordered_map<int, unordered_map<int>>` for duplicate lookup. 
   - Delete: Swap any occurance with back element and remove. 
   - Special care MUST be taken for identical val/bak values!
     - Doing push/pops on the same index HashSet will be buggy!
-
-
-
-
+- [LC 295. Find Median from Data Stream](https://leetcode.com/problems/find-median-from-data-stream/)
+  - One small heap and one large heap. 
+- [LC 895. Maximum Frequency Stack](https://leetcode.com/problems/maximum-frequency-stack/)
+  - One data storage `unordered_map<int, stack<int>>` of Frequency, f-th occurances of elements. 
+  - Another index `unordered_map<int, int>` stores frequencies of values. 
+- [LC 432. All O`one Data Structure](https://leetcode.com/problems/all-oone-data-structure/)
+  - Increase/decrease frequencies of elements by 1;
+  - Get one of the elements with max/min frequency. 
+  - Data storage: `list<int, string>` of frequency, value, in ascending order. 
+  - Index: `unordered_map<string, list<int, string>::iterator>`, index to list node. 
+  - Inc/dec by 1: Move to neighbors, possibly merging or freeing. 
 
 
 
