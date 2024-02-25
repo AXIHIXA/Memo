@@ -805,8 +805,16 @@ int near2power(int n)
   - Data storage: `list<int, string>` of frequency, value, in ascending order. 
   - Index: `unordered_map<string, list<int, string>::iterator>`, index to list node. 
   - Inc/dec by 1: Move to neighbors, possibly merging or freeing. 
-
-
+- [LC 716. Max Stack](https://leetcode.com/problems/max-stack/)
+  - Implementation ONE
+    - `Heap<val, timeStamp>` and `Stack<val, timeStamp>`, with lazy removal tag `HashSet<timeStamp>`. 
+    - For each push/pop/peekMax/popMax, first remove all top lazy-tagged items. 
+  - Implementation TWO
+    - `List<val, timeStamp>` and `TreeSet<Pair<val, timeStamp>, ListIterator>`
+    - Note that reversed iterators are shifted!!!
+      - `*tree.rbegin() == *std::prev(tree.end())`, but
+      - `tree.rbegin().base() != std::prev(tree.end())`!!!
+      - `tree.rbegin().base() == tree.end()`!!! 
 
 
 
