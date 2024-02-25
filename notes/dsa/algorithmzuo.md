@@ -774,6 +774,7 @@ int near2power(int n)
 - [LC 138. Copy List with Random Pointer](https://leetcode.com/problems/copy-list-with-random-pointer/)
   - Interweave new nodes into old list and unweave them. 
 - [LC 234. Palindrome Linked List](https://leetcode.com/problems/palindrome-linked-list/)
+  - Reverse the latter half of the list and loop, finally restore. 
 - [LC 142. Linked List Cycle II](https://leetcode.com/problems/linked-list-cycle-ii/)
 - [LC 148. Sort List](https://leetcode.com/problems/sort-list/)
   - Bottom-up merge sort. 
