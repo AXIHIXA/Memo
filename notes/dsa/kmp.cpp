@@ -60,7 +60,7 @@ int kmp(const std::string & pattern, const std::string & target)
     return i - j;
 }
 
-int main()
+int main(int argc, char * argv[])
 {
     std::string s = "ABBABAABABAA";
     std::vector<int> next = buildNext(s);

@@ -818,6 +818,19 @@ int near2power(int n)
       - `*tree.rbegin() == *std::prev(tree.end())`, but
       - `tree.rbegin().base() != std::prev(tree.end())`!!!
       - `tree.rbegin().base() == tree.end()`!!! 
+- [LC 460. LFU Cache](https://leetcode.com/problems/lfu-cache/)
+  - Data: `HashSet<Freq, List<Key, Value>>`;
+  - Index: `HashSet<Key, Pair<Freq, ListIter>>`;
+  - Deal with `insert(k, v, f)` and `erase(k)` and reuse.
+
+
+
+
+
+
+
+
+
 
 
 
