@@ -17,7 +17,7 @@ private:
             const std::string & evil, 
             const std::vector<int> & prefix, 
             int sp,  // Current good string construction index
-            int ep,  // Constructed string's suffix matches evil[:ep]
+            int ep,  // Constructed string's suffix matches evil[0..ep)
             bool boundLeft,  // This index's char should >= s1[sp]
             bool boundRight  // This index's char should <= s2[sp]
     )
