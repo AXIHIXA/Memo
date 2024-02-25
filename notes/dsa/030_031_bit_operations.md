@@ -22,50 +22,24 @@ inline unsigned int lowbit(unsigned int x)
 - XOR self equals zero: `x ^ x == 0`;
 - `swap`: `a ^= b, b ^= a, a ^= b;` 
   - Note that this expression is wrong when `&a == &b`!
-- Missing Number: `a[0:n]`, ranging from 0 to n, missing one number. 
+- [LC 268. Missing Number](https://leetcode.com/problems/missing-number/)
+  - Missing Number: `a[0:n]`, ranging from 0 to n, missing one number. 
   - `n ^ (i ^ a[i] for i in range(n))`
-- [LC 136. Single Number](https://leetcode.com/problems/single-number/description/)
+- [LC 136. Single Number](https://leetcode.com/problems/single-number/)
   - One number odd occurance, all other numbers even occurance, find this number: 
   - XOR all elements in array and the result is this odd-occurance number;
-- [LC 260. Single Number III](https://leetcode.com/problems/single-number-iii/description/)
+- [LC 260. Single Number III](https://leetcode.com/problems/single-number-iii/)
   - Two numbers odd occurence, all other numbers even occurence, find these two numbers:
   - XOR all elements in array, extract lowest 1 bit in the result;
   - The elements in this array could be divided in two groups (checking this extracted bit);
   - Each group contains one of the two odd-occurance numbers. 
-- [LC 137. Single Number II](https://leetcode.com/problems/single-number-ii/description/)
+- [LC 137. Single Number II](https://leetcode.com/problems/single-number-ii/)
   - One number occurs less than m times, all other numbers occur exactly m times, find this number:
   - Calculate the number of 1-bits for bit 0 to 31 for all elements in this array;
   - Extract bits whose number of 1-bits is not multiple of m;
   - The result is the extracted number. 
-```c++
-int find(int[] arr, int m) 
-{
-    // cnts[0] : 0位上有多少个1
-    // cnts[i] : i位上有多少个1
-    // cnts[31] : 31位上有多少个1
-    int cnts[32] {0};
 
-    for (int num : arr) 
-    {
-        for (int i = 0; i < 32; i++) 
-        {
-            cnts[i] += (num >> i) & 1;
-        }
-    }
 
-    int ans = 0;
-
-    for (int i = 0; i < 32; i++) 
-    {
-        if (cnts[i] % m != 0) 
-        {
-          ans |= 1 << i;
-        }
-    }
-    
-    return ans;
-}
-```
 
 ## Zuo's Sample Problems
 

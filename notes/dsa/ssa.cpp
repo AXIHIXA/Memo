@@ -7,25 +7,26 @@
 class UnionFind
 {
 public:
-    explicit UnionFind(int sz) : root(sz), rank(sz, 1)
+    explicit UnionFind(int size) : root(size), rank(size, 0)
     {
         std::iota(root.begin(), root.end(), 0);
     }
 
     int find(int x)
     {
-        if (x == root[x]) return x;
+        if (root[x] == x) return x;
         return root[x] = find(root[x]);
     }
 
-    void merge(int x, int y)
+    void unite(int x, int y)
     {
-        if (int rx = find(x), ry = find(y); rx != ry)
-        {
-            if (rank[rx] < rank[ry]) root[rx] = ry;
-            else if (rank[ry] < rank[rx]) root[ry] = rx;
-            else { root[ry] = rx; ++rank[rx]; }
-        }
+        int rx = find(x);
+        int ry = find(y); 
+        if (rx == ry) return;
+
+        if (rank[rx] < rank[ry]) root[rx] = ry;
+        else if (rank[ry] < rank[rx]) root[ry] = rx;
+        else root[ry] = rx, ++rank[rx];
     }
 
     bool connected(int x, int y)
@@ -33,7 +34,21 @@ public:
         return find(x) == find(y);
     }
 
+    void reset(int x)
+    {
+        // NOT guaranteed safe under all scenarios!
+        root[x] = x;
+        rank[x] = 0;
+    }
+
+    void reset()
+    {
+        std::iota(root.begin(), root.end(), 0);
+        rank.assign(size, 0);
+    }
+
 private:
+    int size = 0;
     std::vector<int> root;
     std::vector<int> rank;
 };

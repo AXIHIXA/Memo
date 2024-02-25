@@ -43,6 +43,7 @@ std::shuffle(v.begin(), v.end(), e);
 ```
 
 
+
 ## 006 Binary Search
 
 ```c++
@@ -113,115 +114,12 @@ int upperBound(int a, int lo, int hi, int num)
   - A peak element is an element that is strictly greater than its neighbors.
   - Binary search. Go left/right corresponding on slope of prev curr next. 
 
+
+
 ## 016 Circular Deque
 
-```c++
-/// LC 641. Design Circular Deque
-/// https://leetcode.com/problems/design-circular-deque/
-class MyCircularDeque 
-{
-public:
-    MyCircularDeque(int k) : l(0), r(0), size(0), limit(k), deque(k)
-    {
+- [LC 641. Design Circular Deque](https://leetcode.com/problems/design-circular-deque/)
 
-    }
-
-    bool insertFront(int value) 
-    {
-        if (isFull()) 
-        {
-            return false;
-        } 
-
-        if (isEmpty()) 
-        {
-            l = r = 0;
-            deque[0] = value;
-        } 
-        else 
-        {
-            l = (l == 0) ? (limit - 1) : (l - 1);
-            deque[l] = value;
-        }
-
-        size++;
-        return true;
-    }
-
-    bool insertLast(int value) 
-    {
-        if (isFull()) 
-        {
-            return false;
-        } 
-
-        if (isEmpty()) 
-        {
-            l = r = 0;
-            deque[0] = value;
-        } 
-        else 
-        {
-            r = (r == limit - 1) ? 0 : (r + 1);
-            deque[r] = value;
-        }
-
-        size++;
-        return true;
-    }
-
-    bool deleteFront() 
-    {
-        if (isEmpty()) 
-        {
-            return false;
-        } 
-
-        l = (l == limit - 1) ? 0 : (l + 1);
-        size--;
-        return true;
-    }
-
-    bool deleteLast() 
-    {
-        if (isEmpty()) 
-        {
-            return false;
-        } 
-
-        r = (r == 0) ? (limit - 1) : (r - 1);
-        size--;
-        return true;
-    }
-
-    int getFront() 
-    {
-        return isEmpty() ? -1 : deque[l];
-    }
-
-    int getRear() 
-    {
-        return isEmpty() ? -1 : deque[r];
-    }
-
-    bool isEmpty() 
-    {
-        return size == 0;
-    }
-
-    bool isFull() 
-    {
-        return size == limit;
-    }
-
-private:
-    std::vector<int> deque;
-    int l;
-    int r;
-    int size;
-    int limit;
-};
-```
 
 
 ## 018 Binary Tree Traversal Iteration
@@ -484,6 +382,8 @@ void merge(int * a, int lo, int mi, int hi)
 std::vector<int> tmp;
 ```
 
+
+
 ## 022 Merge
 
 1. 思考一个问题在大范围上的答案，是否等于，左部分的答案 + 右部分的答案 + 跨越左右产生的答案
@@ -534,6 +434,7 @@ long long mergeSmallSum(int * arr, int lo, int mi, int hi)
     return ans;
 }
 ```
+
 
 
 ## 023 Quick Sort
@@ -605,6 +506,8 @@ int partition(int * a, int lo, int hi)
 }
 ```
 
+
+
 ## 024 Quick Select
 
 - [LC 215 Kth Largest Element in an Array](https://leetcode.com/problems/kth-largest-element-in-an-array/)
@@ -628,6 +531,8 @@ int quickSelect(int * a, int lo, int hi, int k)
     return -1;
 }
 ```
+
+
 
 ## 025 Heap
 
@@ -696,6 +601,8 @@ void heapSort2(int * a, int n)
 }
 ```
 
+
+
 ## 027 堆结构常见题
 
 - [LC 23. Merge k Sorted Lists](https://leetcode.com/problems/merge-k-sorted-lists/)
@@ -713,6 +620,8 @@ for (std::vector<int> & line : lines)
 }
 return ans;
 ```
+
+
 
 ## 028 基数排序 Radix Sort
 
@@ -762,6 +671,124 @@ void radixSortImpl(int * a, int lo, int hi, int base = 10)
 std::vector<int> cnt;
 std::vector<int> tmp;
 ```
+
+## 003/030/031 二进制和位运算 异或运算的骚操作 位运算的骚操作 Bitwise XOR
+
+### Bitwise AND
+
+- `x & (x - 1)`: Unset lowest 1 bit;
+  - Usage: Bin count, etc. 
+- Brian Kernighan Algorithm: `x & (-x)` or `x & (~x + 1)`
+  - Extract lowest 1 bit (unset all other bits);
+  - Usage e.g.: Binary Indexed Trees. 
+- If `n` is power of 2, then `x % n` equals `x & (n - 1)`. 
+
+### Bitwise XOR
+
+- Basics
+  - Carry-less addition; 
+  - Communicative; 
+  - Associative. 
+  - XOR zero equals self: `x ^ 0 == x`;
+  - XOR self equals zero: `x ^ x == 0`;
+- `swap`: `{ a ^= b; b ^= a; a ^= b; }` 
+  - Note that this expression is **wrong** when `&a == &b`!
+- `flip` or `toggle` a bit: `x ^ 1`
+  - `x` must be either `0` or `1`!
+  - `0 -> 1`, `1 -> 0`
+- 不用任何判断语句和比较操作，返回两个数的最大值
+```c++
+int getMax(int a, int b)
+{
+    // c可能是溢出的
+    int c = a - b;
+    // a的符号
+    int sa = sign(a);
+    // b的符号
+    int sb = sign(b);
+    // c的符号
+    int sc = sign(c);
+    // 判断A和B，符号是不是不一样，如果不一样diffAB=1，如果一样diffAB=0
+    int diffAB = sa ^ sb;
+    // 判断A和B，符号是不是一样，如果一样sameAB=1，如果不一样sameAB=0
+    int sameAB = diffAB ^ 1;
+    int returnA = diffAB * sa + sameAB * sc;
+    int returnB = returnA ^ 1;
+    return a * returnA + b * returnB;
+}
+```
+
+### General Bitwise Operations
+
+- [LC 231. Power of Two](https://leetcode.com/problems/power-of-two/)
+- [LC 326. Power of Three](https://leetcode.com/problems/power-of-three/)
+- 返回大于等于n的最小的2某次方，把n最高位1开始往后所有bit全部刷成1
+```c++
+// 已知n是非负数
+// 返回大于等于n的最小的2某次方
+// 如果int范围内不存在这样的数，返回整数最小值
+int near2power(int n) 
+{
+    if (n <= 0) return 1;
+    --n;
+    
+    // 把n最高位1开始往后所有bit全部刷成1
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    
+    return n + 1;
+}
+```
+- [LC 201. Bitwise AND of Numbers Range](https://leetcode.com/problems/bitwise-and-of-numbers-range/)
+- [LC 190. Reverse Bits](https://leetcode.com/problems/reverse-bits/)
+- [LC 461. Hamming Distance](https://leetcode.com/problems/hamming-distance/)
+
+
+
+## 032 位图 Bit Set
+
+- [LC 2166. Design Bitset](https://leetcode.com/problems/design-bitset/)
+
+
+
+## 033 位运算实现加减乘除
+
+- [位运算实现加减乘除](https://github.com/algorithmzuo/algorithm-journey/blob/main/src/class033/BitOperationAddMinusMultiplyDivide.java)
+
+
+
+## 034 链表高频题目和必备技巧
+
+- Slow/fast Pointers:
+  - Floyd's algorithm to find 1st node in circle;
+  - Find mid node of a forward list; 
+  - ...
+- [LC 160. Intersection of Two Linked Lists](https://leetcode.com/problems/intersection-of-two-linked-lists/)
+  - Two pointers EQUAL stepsize. 
+  - When one finishes, go to head of THE OTHER. 
+  - Meets at intersection node because of equal steps taken. 
+- [LC 25. Reverse Nodes in k-Group](https://leetcode.com/problems/reverse-nodes-in-k-group/)
+- [LC 138. Copy List with Random Pointer](https://leetcode.com/problems/copy-list-with-random-pointer/)
+  - Interweave new nodes into old list and unweave them. 
+- [LC 234. Palindrome Linked List](https://leetcode.com/problems/palindrome-linked-list/)
+- [LC 142. Linked List Cycle II](https://leetcode.com/problems/linked-list-cycle-ii/)
+- [LC 148. Sort List](https://leetcode.com/problems/sort-list/)
+  - Bottom-up merge sort. 
+
+
+
+## 035 数据结构设计高频题
+
+- [0146. LRU Cache](https://leetcode.com/problems/lru-cache/)
+  - Nodes stored as linked list, LRU nodes moved to front;
+  - Hashmap value to node for indexing. 
+- [0380. Insert Delete GetRandom O(1)](https://leetcode.com/problems/insert-delete-getrandom-o1/)
+  - Store as a vector, with an unordered_map index for duplicate lookup. 
+  - Delete: Swap with back element and remove
+- [381. Insert Delete GetRandom O(1) - Duplicates allowed](https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/)
 
 
 
