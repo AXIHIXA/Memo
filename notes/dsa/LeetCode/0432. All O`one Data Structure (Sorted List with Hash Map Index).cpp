@@ -1,104 +1,101 @@
-class AllOne 
+class AllOne
 {
 public:
-    AllOne()
-    {
-        ios_base::sync_with_stdio(false);
-        cin.tie(nullptr);
-        cout.tie(nullptr);
-    }
+    AllOne() = default;
     
-    void inc(string key)
+    void inc(std::string key)
     {
-        // Ensure a dummy (or real) node with key
-        if (idx.find(key) == idx.end())
-        {
-            idx[key] = lst.insert(lst.begin(), {0, {key}});
-        }
+        auto idxIt = idx.find(key);
         
-        // Insert key into the next node
-        // (existing node or a new node inserted before the next node)
-        auto bktItNext = idx[key], bktIt = bktItNext++;
-
-        if (bktItNext == lst.end() or bktIt->val + 1 < bktItNext->val)
+        if (idxIt == idx.end())
         {
-            bktItNext = lst.insert(bktItNext, {bktIt->val + 1, {}});
-        }
+            if (lst.empty() || lst.front().count != 1)
+            {
+                lst.emplace_front(key);
+            }
+            else
+            {
+                lst.front().data.emplace(key);
+            }
 
-        bktItNext->keys.insert(key);
-        idx[key] = bktItNext;
-
-        // Erase the old node (real or dummy)
-        bktIt->keys.erase(key);
-
-        if (bktIt->keys.empty())
-        {
-            lst.erase(bktIt);
-        }
-    }
-    
-    void dec(string key)
-    {
-        if (auto it = idx.find(key); it == idx.end())
-        {
-            // Existance of key ensured by problem statement; 
-            // for completeness only. 
-            return;
+            idx.emplace(key, lst.begin());
         }
         else
         {
-            // Insert into the prev node
-            // (existing node or a newly-inserted one)
-            auto bktItPrev = it->second, bktIt = bktItPrev--;
-            idx.erase(key);
+            auto currNode = idxIt->second;
+            auto targetNode = std::next(currNode);
 
-            if (1 < bktIt->val)
+            if (targetNode == lst.end() || targetNode->count != currNode->count + 1)
             {
-                if (bktIt == lst.begin() or bktItPrev->val + 1 < bktIt->val)
-                {
-                    bktItPrev = lst.insert(bktIt, {bktIt->val - 1, {}});
-                }
-                
-                bktItPrev->keys.insert(key);
-                idx[key] = bktItPrev;
+                targetNode = lst.emplace(targetNode, currNode->count + 1, key);
+            }
+            else
+            {
+                targetNode->data.emplace(key);
             }
 
-            // Erase the old node if empty
-            bktIt->keys.erase(key);
-
-            if (bktIt->keys.empty())
-            {
-                lst.erase(bktIt);
-            }
+            idx.at(key) = targetNode;
+            currNode->data.erase(key);
+            if (currNode->data.empty()) lst.erase(currNode);
         }
     }
     
-    string getMaxKey()
+    void dec(std::string key)
     {
-        return lst.empty() ? "" : *(lst.back().keys.begin());
+        // It is guaranteed that key exists in the data structure before the decrement.
+        auto currNode = idx.at(key);
+        
+        if (currNode->count == 1)
+        {
+            idx.erase(key);
+            currNode->data.erase(key);
+            if (currNode->data.empty()) lst.erase(currNode);
+        }
+        else
+        {
+            auto targetNode = std::prev(currNode);
+            
+            if (currNode == lst.begin() || targetNode->count != currNode->count - 1)
+            {
+                targetNode = lst.emplace(currNode, currNode->count - 1, key);
+            }
+            else
+            {
+                targetNode->data.emplace(key);
+            }
+
+            idx.at(key) = targetNode;
+            currNode->data.erase(key);
+            if (currNode->data.empty()) lst.erase(currNode);
+        }
     }
     
-    string getMinKey()
+    std::string getMaxKey()
     {
-        return lst.empty() ? "" : *(lst.front().keys.begin());
+        return lst.empty() ? "" : *lst.back().data.begin();
+    }
+    
+    std::string getMinKey()
+    {
+        return lst.empty() ? "" : *lst.front().data.begin();
     }
 
 private:
     struct Bucket
     {
-        Bucket() = default;
-        Bucket(int v, std::initializer_list<std::string> l) : val(v), keys(std::move(l)) {}
+        explicit Bucket(std::string key) : count(1), data {key} {}
+        Bucket(int count, std::string key) : count(count), data {key} {}
         
-        int val {0};
-        std::unordered_set<std::string> keys {};
+        int count = 0;
+        std::unordered_set<std::string> data;
     };
 
-    using BucketList = std::list<Bucket>;
+    using List = std::list<Bucket>;
+    using ListIter = List::iterator;
 
-    BucketList lst {};
-    std::unordered_map<std::string, BucketList::iterator> idx {};
+    List lst;
+    std::unordered_map<std::string, ListIter> idx;
 };
-
 
 /**
  * Your AllOne object will be instantiated and called as such:

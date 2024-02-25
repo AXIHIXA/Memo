@@ -805,6 +805,9 @@ int near2power(int n)
   - Data storage: `list<int, string>` of frequency, value, in ascending order. 
   - Index: `unordered_map<string, list<int, string>::iterator>`, index to list node. 
   - Inc/dec by 1: Move to neighbors, possibly merging or freeing. 
+  - **Don't** show-off. 
+    - Just go if/else blocks even if this duplicates code; 
+    - First make the mind clear and the program run. 
 - [LC 716. Max Stack](https://leetcode.com/problems/max-stack/)
   - Implementation ONE
     - `Heap<val, timeStamp>` and `Stack<val, timeStamp>`, with lazy removal tag `HashSet<timeStamp>`. 
