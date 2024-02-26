@@ -3,9 +3,9 @@ class Solution
 public:
     int findGoodStrings(int n, std::string s1, std::string s2, std::string evil)
     {
-        std::vector<int> pfx = buildPrefix(evil);
+        std::vector<int> prefix = buildPrefix(evil);
         std::memset(dp, 0, sizeof(int) * 501 * 51 * 2 * 2);
-        return dfs(s1, s2, evil, pfx, 0, 0, true, true);
+        return dfs(s1, s2, evil, prefix, 0, 0, true, true);
     }
 
 private:
@@ -27,21 +27,22 @@ private:
 
         if (!dp[sp][ep][boundLeft][boundRight])
         {
-            for (char c = (boundLeft ? s1[sp] : 'a'); c <= (boundRight ? s2[sp] : 'z'); ++c)
-            {
-                auto t = ep;
-                while (0 < t && c != evil[t]) t = prefix[t - 1];
+            long long tmp = 0LL;
 
-                dp[sp][ep][boundLeft][boundRight] = (
-                        dp[sp][ep][boundLeft][boundRight] 
-                        + 
-                        dfs(s1, s2, evil, prefix, 
-                            sp + 1, 
-                            c == evil[t] ? t + 1 : 0, 
-                            boundLeft && (c == s1[sp]), 
-                            boundRight && (c == s2[sp]))
+            for (int c = (boundLeft ? s1[sp] : 'a'); c <= (boundRight ? s2[sp] : 'z'); ++c)
+            {
+                int t = ep;
+                while (0 < t && evil[t] != c) t = prefix[t - 1];
+
+                tmp = (tmp + dfs(s1, s2, evil, prefix, 
+                                 sp + 1, 
+                                 c == evil[t] ? t + 1 : 0, 
+                                 boundLeft && (c == s1[sp]), 
+                                 boundRight && (c == s2[sp]))
                 ) % p;
             }
+
+            dp[sp][ep][boundLeft][boundRight] = tmp;
         }
 
         return dp[sp][ep][boundLeft][boundRight];
@@ -50,18 +51,18 @@ private:
     static std::vector<int> buildPrefix(const std::string & s)
     {
         auto m = static_cast<const int>(s.size());
-        std::vector<int> dp(m, 0);
+        std::vector<int> prefix(m, 0);
 
         for (int t = 0, j = 1; j < m; ++j)
         {
-            while (0 < t && s[t] != s[j]) t = dp[t - 1];
-            t = dp[j] = t + (s[t] == s[j]);
+            while (0 < t && s[t] != s[j]) t = prefix[t - 1];
+            t = prefix[j] = t + (s[t] == s[j]);
         }
 
-        return dp;
+        return prefix;
     }
 
     static int dp[501][51][2][2];
 };
 
-int Solution::dp[501][51][2][2];
+int Solution::dp[501][51][2][2] = {0};
