@@ -822,8 +822,9 @@ int near2power(int n)
   - Data: `HashSet<Freq, List<Key, Value>>`;
   - Index: `HashSet<Key, Pair<Freq, ListIter>>`;
   - Deal with `insert(k, v, f)` and `erase(k)` and reuse.
-
-
+- [LC 2336. Smallest Number in Infinite Set](https://leetcode.com/problems/smallest-number-in-infinite-set/)
+  - (1) HashSet and Heap (both added numbers) 
+  - (2) TreeSet (added numbers)
 
 
 

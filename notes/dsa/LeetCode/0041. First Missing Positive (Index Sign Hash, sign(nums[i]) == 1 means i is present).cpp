@@ -1,55 +1,38 @@
+static const int _ = []
+{
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    std::cout.tie(nullptr);
+    std::setvbuf(stdin, nullptr, _IOFBF, 1 << 20);
+    std::setvbuf(stdout, nullptr, _IOFBF, 1 << 20);
+    return 0;
+}();
+
 class Solution 
 {
 public:
-    int firstMissingPositive(vector<int> & nums) 
+    int firstMissingPositive(std::vector<int> & nums) 
     {
-        std::ios_base::sync_with_stdio(false);
-        std::cin.tie(nullptr);
+        // Use the input array itself as a hash table. 
+        // Except two special cases [0..n - 1] (lacks n) or [1..n] (lacks n + 1), 
+        // the answer will lie in [1..n - 1].  
+        // First make sure one (smallest positive possible) is present. 
+        // 1st pass: Map all non-positives to one. 
+        // 2nd pass: For x in nums, negate nums[x] if not yet negated. 
+        // 3rd pass: Return 1st positive index. 
+        auto n = static_cast<const int>(nums.size());
+        if (std::find(nums.cbegin(), nums.cend(), 1) == nums.cend()) return 1;
+        for (int & x : nums) if (x <= 0 || n < x) x = 1;
         
-        // The smallest missing positive integer must be in range [1, n + 1]. 
-        int n = nums.size();
-
-        // Make sure `1` is present in nums.
-        bool oneIsPresent = false;
-
-        for (int num : nums)
+        for (int x : nums)
         {
-            if (num == 1)
-            {
-                oneIsPresent = true;
-                break;
-            }
+            x = std::abs(x);
+            if (x == n) x = 0;
+            nums[x] = -std::abs(nums[x]);
         }
 
-        if (!oneIsPresent) return 1;
+        for (int i = 1; i < n; ++i) if (0 < nums[i]) return i;
 
-        // Filter negatives, zeros, or > n. 
-        // Now all elements in `nums` are in range [1, n]. 
-        for (int & num : nums)
-        {
-            if (num <= 0 || n < num) num = 1;
-        }
-
-        // Use index as a hash key and number sign as a presence detector.
-        // For example, if nums[1] is negative,
-        // that means that `1` is present in nums. 
-        // If nums[2] is positive, then `2` is missing.
-        for (int num : nums)
-        {
-            int a = std::abs(num);
-            if (a == n) a = 0;
-            nums[a] = -std::abs(nums[a]);
-        }
-
-        // Now the index of the first positive number 
-        // is equal to first missing positive.
-        for (int i = 1; i != n; ++i)
-        {
-            if (0 < nums[i]) return i;
-        }
-
-        if (0 < nums[0]) return n;
-
-        return n + 1;
+        return 0 < nums[0] ? n : n + 1;
     }
 };
