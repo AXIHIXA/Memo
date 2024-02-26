@@ -6,6 +6,13 @@ public:
     {
         auto n = static_cast<const int>(height.size());
 
+        // We add the index of the bar to the stack
+        // if bar is smaller than or equal to the bar at top of stack, 
+        // which means that the current bar is bounded by the previous bar in the stack. 
+        // If we found a bar longer than that at the top, 
+        // we are sure that the bar at the top of the stack 
+        // is bounded by the current bar and a previous bar in the stack, 
+        // hence, we can pop it and add resulting trapped water to ans.
         int ans = 0;
         std::stack<int> st;
         
