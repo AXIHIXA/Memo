@@ -1,31 +1,36 @@
 class FreqStack
 {
 public:
+    using K = int;
+    using Freq = int;
+
+public:
     FreqStack() = default;
     
-    void push(int x)
+    void push(K x)
     {
-        maxFreq = std::max(maxFreq, ++freq[x]);
-        group[freq.at(x)].emplace(x);
+        Freq freq = ++frequency[x];
+        group[freq].emplace(x);
+        maxFreq = std::max(maxFreq, freq);
     }
     
-    int pop()
+    K pop()
     {
-        std::stack<int> & g = group.at(maxFreq);
-        int x = g.top();
-        g.pop();
-        if (group.at(freq.at(x)--).empty()) --maxFreq;
+        K x = group.at(maxFreq).top();
+        group.at(maxFreq).pop();
+        --frequency.at(x);
+        if (group.at(maxFreq).empty()) --maxFreq;
         return x;
     }
 
 private:
     int maxFreq = 0;
 
-    // freq.at(x): Frequency of number x. 
-    std::unordered_map<int, int> freq;
+    // frequency.at(x): Frequency of number x. 
+    std::unordered_map<K, Freq> frequency;
 
-    // group.at(f): Stack containing the f-th occurances of numbers. 
-    std::unordered_map<int, std::stack<int>> group;
+    // group.at(freq): Stack containing the freq-th occurances of numbers. 
+    std::unordered_map<Freq, std::stack<K>> group;
 };
 
 /**
