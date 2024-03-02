@@ -1,63 +1,62 @@
 class Solution 
 {
 public:
-    int visiblePoints(vector<vector<int>> & points, int angle, vector<int> & location) 
+    int visiblePoints(
+            std::vector<std::vector<int>> & points, 
+            int angle, 
+            std::vector<int> & location) 
     {
-        vector<double> theta;
-        theta.reserve(points.size() << 1);
+        auto n = static_cast<const int>(points.size());
+        std::vector<double> pts;
+        pts.reserve(n << 1);
 
-        int numOrigin = 0;
+        // Location may be one of the points!
+        int onViewPos = 0;
 
-        for (const auto & p : points)
+        double x0 = location[0];
+        double y0 = location[1];
+
+        for (int i = 0; i < n; ++i)
         {
-            int x = p[0] - location[0];
-            int y = p[1] - location[1];
+            double x1 = points[i][0];
+            double y1 = points[i][1];
 
-            if (x == 0 and y == 0)
+            if (points[i] == location)
             {
-                ++numOrigin;
-                continue;
+                ++onViewPos;
             }
-
-            double degree = atan2(y, x) * M_1_PIl * 180.0;
-            
-            if (degree < 0.0)
+            else
             {
-                degree += 360.0;
+                pts.emplace_back(std::atan2(y1 - y0, x1 - x0) * 180.0 * kOneOverPi);
             }
-
-            theta.emplace_back(degree);
         }
+        
+        // Make sure we don't count one point twice when cycling!
+        std::sort(pts.begin(), pts.end());
+        auto m = static_cast<const int>(pts.size());
 
-        sort(theta.begin(), theta.end());
-
-        int oldSize = theta.size();
-        theta.insert(theta.end(), theta.cbegin(), theta.cend());
-
-        for (int i = oldSize; i != theta.size(); ++i)
+        std::transform(pts.cbegin(), pts.cend(), std::back_inserter(pts), [](double p)
         {
-            theta[i] += 360.0;
-        }
-
-        // for (auto f : theta) cout << f << ' ';
-        // cout << '\n';
-        // cout << "windowSize = " << angle << '\n';
+            return p + 360.0;
+        });
 
         int ans = 0;
 
-        for (int i = 0, j = 0; i != theta.size(); ++i)
+        for (int i = 0, rr = 0; i < n; ++i)
         {
-            while (j < theta.size() and theta[j] - theta[i] <= angle + kEps)
+            while (rr < i + m && pts[rr] - pts[i] < angle + kEps)
             {
-                ++j;
+                ++rr;
             }
 
-            ans = max(ans, j - i);
+            ans = std::max(ans, rr - i);
         }
 
-        return ans + numOrigin;
+        return ans + onViewPos;
     }
 
 private:
     static constexpr double kEps = 1e-9;
+
+    static constexpr double kOneOverPi = M_1_PIf64;
 };
