@@ -1,35 +1,28 @@
 class Solution 
 {
 public:
-    bool isValid(string s) 
+    bool isValid(std::string s) 
     {
-        stack<char> st;
+        auto n = static_cast<const int>(s.size());
+        if (n & 1) return false;
+        std::stack<char> stk;
 
-        auto match = [](char l, char r)
+        for (int i = 0; i < n; ++i)
         {
-            return (l == '(' and r == ')') or 
-                   (l == '[' and r == ']') or
-                   (l == '{' and r == '}');
-        };
-
-        for (char c : s)
-        {
-            if (c == '(' or c == '[' or c == '{')
+            if (s[i] == '(' || s[i] == '[' || s[i] == '{')
             {
-                st.push(c);
-                continue;
+                stk.emplace(s[i]);
             }
-            
-            if (not st.empty() and match(st.top(), c))
+            else 
             {
-                st.pop();
-            }
-            else
-            {
-                return false;
+                if (stk.empty()) return false;
+                if (s[i] == ')' && stk.top() != '(') return false;
+                if (s[i] == ']' && stk.top() != '[') return false;
+                if (s[i] == '}' && stk.top() != '{') return false;
+                stk.pop();
             }
         }
 
-        return st.empty();
+        return stk.empty();
     }
 };
