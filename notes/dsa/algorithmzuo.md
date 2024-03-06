@@ -828,11 +828,24 @@ int near2power(int n)
 
 
 
+## 036二叉树高频题目-上-不含树型DP
 
-
-
-
-
+- [LC 102. Binary Tree Level Order Traversal](https://leetcode.com/problems/binary-tree-level-order-traversal/)
+  - Binary tree level size == Size of BFS queue (Solve all nodes in this level in a for loop).  
+- [LC 103. Binary Tree Zigzag Level Order Traversal](https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/)
+- [LC 662. Maximum Width of Binary Tree](https://leetcode.com/problems/maximum-width-of-binary-tree/)
+- [LC 104. Maximum Depth of Binary Tree](https://leetcode.com/problems/maximum-depth-of-binary-tree/)
+- [LC 297. Serialize and Deserialize Binary Tree](https://leetcode.com/problems/serialize-and-deserialize-binary-tree/)
+  - 二叉树可以通过先序、后序或者按层遍历的方式序列化和反序列化
+  - 但是，二叉树**无法**通过中序遍历的方式实现序列化和反序列化
+  - 因为不同的两棵树，可能得到同样的中序序列，即便补了空位置也可能一样。
+  - 比如`1 <- 2 -> NULL`和`NULL <- 1 -> 2`
+  - 补足空位置的中序遍历结果都是`null, 1, null, 2, null`
+- [LC 105. Construct Binary Tree from Preorder and Inorder Traversal](https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/)
+  - A binary tree is incomplete iff. 
+    - We see a node with right chlid but without left child, or:
+    - We are at bottom level (have seen a node with 1 child or none), and see a node with child(ren). 
+- []
 
 
 
@@ -847,7 +860,7 @@ int near2power(int n)
   - O(nm) space (if requires static mem prealloc)
   - `std::vector<std::vector<std::pair>> al;`
   - `al[source]` stores all edges originating from vertex `source`, in pair `{target, weight}`.  
-- 链式前向星 (1-indexed!)
+- 链式前向星 (Static Adjacency List) (1-indexed!)
   - O(n + m) space (even for static mem prealloc)
   - E.g., Edges added in order `#1 (1 -> 2)`, `#2 (1 -> 3)`
     - `head == {0, 2, 0, 0}`

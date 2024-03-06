@@ -14,25 +14,24 @@ class Solution
 public:
     TreeNode * buildTree(std::vector<int> & preorder, std::vector<int> & inorder)
     {
-        if (preorder.size() == 1) return new TreeNode(preorder.front());
-        for (int i = 0; i < inorder.size(); ++i) hm.emplace(inorder[i], i);
-        return buildTree(preorder, 0, preorder.size());
+        auto n = static_cast<const int>(preorder.size());
+        std::unordered_map<int, int> indexInInorder;
+        for (int i = 0; i < n; ++i) indexInInorder.emplace(inorder[i], i);
+
+        std::function<TreeNode * (int, int, int, int)> build = 
+        [&preorder, &inorder, &indexInInorder, &build]
+        (int l1, int r1, int l2, int r2) -> TreeNode *
+        {
+            if (r1 < l1 || r2 < l2) return nullptr;
+            TreeNode * root = new TreeNode(preorder[l1]);
+            int m2 = indexInInorder.at(preorder[l1]);
+            int leftSubtreeSize = m2 - l2;
+            root->left = build(l1 + 1, l1 + leftSubtreeSize, l2, m2 - 1);
+            int rightSubtreeSize = r2 - m2;
+            root->right = build(l1 + leftSubtreeSize + 1, r1, m2 + 1, r2);
+            return root;
+        };
+
+        return build(0, n - 1, 0, n - 1);
     }
-
-private:
-    TreeNode * buildTree(const std::vector<int> & preorder, int left, int right)
-    {
-        if (right < left + 1) return nullptr;
-
-        int v = preorder[preorderIndex++];
-        TreeNode * root = new TreeNode(v);
-
-        root->left = buildTree(preorder, left, hm.at(v));
-        root->right = buildTree(preorder, hm.at(v) + 1, right);
-
-        return root;
-    }
-
-    std::unordered_map<int, int> hm;
-    int preorderIndex {0};
 };
