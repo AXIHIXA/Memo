@@ -13,18 +13,13 @@ class Solution
 public:
     TreeNode * lowestCommonAncestor(TreeNode * root, TreeNode * p, TreeNode * q)
     {
-        TreeNode * node = root;
-        int pv = p->val;
-        int qv = q->val;
-
-        while (node)
+        while (root)
         {
-            int v = node->val;
-            if (v < pv && v < qv)      node = node->right;
-            else if (pv < v && qv < v) node = node->left;
-            else                       return node;
+            if (p->val < root->val && q->val < root->val) root = root->left;
+            else if (root->val < p->val && root->val < q->val) root = root->right;
+            else return root;
         }
-
+        
         return nullptr;
     }
 };

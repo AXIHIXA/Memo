@@ -7,52 +7,83 @@
  *     TreeNode(int x) : val(x), left(NULL), right(NULL) {}
  * };
  */
-class Solution
+class Recursion
 {
 public:
     TreeNode * lowestCommonAncestor(TreeNode * root, TreeNode * p, TreeNode * q)
     {
-        // Parent node, Number of children unvisited. 
-        std::stack<std::pair<TreeNode *, int>> st;
-        st.emplace(root, 2);
-        bool foundOneNode = false;
-        TreeNode * lca = nullptr;
+        if (!root || root == p || root == q) return root;
 
-        while (!st.empty())
+        TreeNode * left = lowestCommonAncestor(root->left, p, q);
+        TreeNode * right = lowestCommonAncestor(root->right, p, q);
+        
+        if (left && right) return root;
+        if (!left && !right) return nullptr;
+
+        return left ? left : right;
+    }
+};
+
+class Iteration
+{
+public:
+    TreeNode * lowestCommonAncestor(TreeNode * root, TreeNode * p, TreeNode * q)
+    {
+        std::stack<std::pair<TreeNode *, int>> stk;
+        stk.emplace(root, 0);
+
+        int targetNodesFound = 0;
+        TreeNode * ans = nullptr;
+
+        while (!stk.empty())
         {
-            auto & [curr, numChildrenUnvisited] = st.top();
+            auto & [node, childrenVisited] = stk.top();
 
-            if (numChildrenUnvisited)
+            if (childrenVisited < 2)
             {
-                TreeNode * child = nullptr;
-                
-                if (numChildrenUnvisited == 2)
+                if (childrenVisited == 0)
                 {
-                    if (curr == p || curr == q)
+                    if (node == p || node == q)
                     {
-                        if (!foundOneNode) foundOneNode = true;
-                        else               return lca;
+                        ++targetNodesFound;
 
-                        lca = curr;
+                        if (targetNodesFound == 2)
+                        {
+                            return ans;
+                        }
+
+                        ans = node;
                     }
-                    
-                    child = curr->left;
+
+                    if (node->left)
+                    {
+                        stk.emplace(node->left, 0);
+                    }
                 }
                 else
                 {
-                    child = curr->right;
+                    if (node->right)
+                    {
+                        stk.emplace(node->right, 0);
+                    }
                 }
 
-                --numChildrenUnvisited;
-                if (child) st.emplace(child, 2);
+                ++childrenVisited;
             }
             else
             {
-                st.pop();
-                if (lca == curr && foundOneNode) lca = st.top().first;
+                stk.pop();
+
+                if (ans == node && !stk.empty())
+                {
+                    ans = stk.top().first;
+                }
             }
         }
 
         return nullptr;
     }
 };
+
+// using Solution = Recursion;
+using Solution = Iteration;

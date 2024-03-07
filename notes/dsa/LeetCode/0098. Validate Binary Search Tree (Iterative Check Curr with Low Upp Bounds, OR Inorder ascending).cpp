@@ -14,25 +14,28 @@ class Solution
 public:
     bool isValidBST(TreeNode * root)
     {
-        if (!root) return true;
-
-        // Node, lower limit, upper limit. 
-        std::stack<std::tuple<TreeNode *, TreeNode *, TreeNode *>> st;
-        st.emplace(root, nullptr, nullptr);
-
-        while (!st.empty())
+        bool ans = true;
+        
+        std::function<void (TreeNode *, long long, long long)> dfs = 
+        [&dfs, &ans](TreeNode * p, long long lo, long long hi)
         {
-            auto [curr, lo, hi] = st.top();
-            st.pop();
+            if (!ans)
+            {
+                return;
+            }
 
-            if (!curr) continue;
-            if (lo && curr->val <= lo->val) return false;
-            if (hi && hi->val <= curr->val) return false;
+            if (p->val <= lo || hi <= p->val)
+            {
+                ans = false;
+                return;
+            }
 
-            st.emplace(curr->right, curr, hi);
-            st.emplace(curr->left, lo, curr);
-        }
+            if (p->left) dfs(p->left, lo, p->val);
+            if (p->right) dfs(p->right, p->val, hi);
+        };
 
-        return true;
+        dfs(root, std::numeric_limits<long long>::min(), std::numeric_limits<long long>::max());
+
+        return ans;
     }
 };

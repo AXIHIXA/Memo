@@ -828,7 +828,7 @@ int near2power(int n)
 
 
 
-## 036二叉树高频题目-上-不含树型DP
+## 036 二叉树高频题目-上-不含树型DP
 
 - [LC 102. Binary Tree Level Order Traversal](https://leetcode.com/problems/binary-tree-level-order-traversal/)
   - Binary tree level size == Size of BFS queue (Solve all nodes in this level in a for loop).  
@@ -845,7 +845,63 @@ int near2power(int n)
   - A binary tree is incomplete iff. 
     - We see a node with right chlid but without left child, or:
     - We are at bottom level (have seen a node with 1 child or none), and see a node with child(ren). 
-- []
+- [LC 222. Count Complete Tree Nodes](https://leetcode.com/problems/count-complete-tree-nodes/)
+  - Binary search on bottom level
+  - Whether the k-th node on bottom level exists: Iterate k's bin expr from msb to lsb, 0 left 1 right. 
+
+
+
+## 037二叉树高频题目-下-不含树型DP
+
+- [LC 236. Lowest Common Ancestor of a Binary Tree](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/)
+  - Recursion
+  - Iteration, `std::stack<TreeNode *, ChildrenVisited>`, pop iff.  all 2 subtrees visited. 
+```c++
+TreeNode * lca(TreeNode * root, TreeNode * p, TreeNode * q)
+{
+    if (!root || root == p || root == q) return root;
+    TreeNode * ll = lca(root->left, p, q);
+    TreeNode * rr = lca(root->right, p, q);
+    if (ll && rr) return root;
+    if (!ll && !rr) return nullptr;
+    return ll ? ll : rr;
+}
+```
+- [LC 235. Lowest Common Ancestor of a Binary Search Tree](https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/)
+```c++
+while (root)
+{
+    if (p->val < root->val && q->val < root->val) root = root->left;
+    else if (root->val < p->val && root->val < q->val) root = root->right;
+    else return root;
+}
+```
+- [LC 113. Path Sum II](https://leetcode.com/problems/path-sum-ii/)
+- [LC 110. Balanced Binary Tree](https://leetcode.com/problems/balanced-binary-tree/)
+- [LC 98. Validate Binary Search Tree](https://leetcode.com/problems/validate-binary-search-tree/)
+  - Compare with threholds of type `long long` in case single node `INT_MAX`. 
+- [LC 669. Trim a Binary Search Tree](https://leetcode.com/problems/trim-a-binary-search-tree/)
+- [LC 337. House Robber III](https://leetcode.com/problems/house-robber-iii/)
+
+
+
+## 038 常见经典递归过程解析
+
+- [LC 90. Subsets II](https://leetcode.com/problems/subsets-ii/)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
