@@ -888,13 +888,113 @@ while (root)
 ## 038 常见经典递归过程解析
 
 - [LC 90. Subsets II](https://leetcode.com/problems/subsets-ii/)
+  - Dups from not taking same number of eles in dup chunk. 
+  - E.g., `1 2 2 3 ...`, the following decisions results in a same subset:
+    - Not taking 1st 2 and taking 2nd 2; 
+    - Taking 1st 2 and not taking 2nd 2. 
+  - For each ele:
+    - Take ele, and backtrack;
+    - Ignore 1, 2, ..., len(chunk) ele(s) in this dup chunk, and backtrack. 
+- [LC 46. Permutations](https://leetcode.com/problems/permutations/)
+- [LC 47. Permutations II](https://leetcode.com/problems/permutations-ii/)
+  - Dups from backtracking with identical curr element. 
+- Sort stack with recursion and O(1) aux space:
+```c++
+#include <bits/stdc++.h>
 
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 
+template <typename T, typename BinaryOperation>
+T accumulate(std::stack<T> & stk, T init, BinaryOperation op)
+{
+    if (stk.empty()) return init;
+    T top = stk.top();
+    stk.pop();
+    init = accumulate(stk, op(init, top), op);
+    stk.emplace(top);
+    return init;
+}
 
+template <typename T, typename BinaryOperation>
+T accumulateDepth(std::stack<T> & stk, int depth, T init, BinaryOperation op)
+{
+    if (depth <= 0 || stk.empty()) return init;
+    T top = stk.top();
+    stk.pop();
+    init = accumulateDepth(stk, depth - 1, op(init, top), op);
+    stk.emplace(top);
+    return init;
+}
 
+// 从栈当前的顶部开始，往下数deep层，已知最大值是max，出现了k次
+// 请把这k个最大值沉底，剩下的数据状况不变
+void down(std::stack<int> & stk, int depth, int maxi, int k)
+{
+    if (depth <= 0)
+    {
+        for (int i = 0; i < k; i++) stk.emplace(maxi);
+    }
+    else
+    {
+        int top = stk.top();
+        stk.pop();
+        down(stk, depth - 1, maxi, k);
+        if (top != maxi) stk.push(top);
+    }
+}
 
+// 用递归函数排序栈
+// 栈只提供push、pop、empty三个方法
+// 请完成无序栈的排序，要求排完序之后，从栈顶到栈底从小到大
+// 只能使用栈提供的push、pop、empty三个方法、以及递归函数
+// 除此之外不能使用任何的容器，数组也不行
+// 就是排序过程中只能用：
+// 1) 栈提供的push、pop、empty三个方法
+// 2) 递归函数，并且返回值最多为单个整数
+void sort(std::stack<int> & stk)
+{
+    // 返回栈的深度
+	// 不改变栈的数据状况
+    int depth = accumulate(stk, 0, [](int d, int) { return 1 + d; });
 
+    while (0 < depth)
+    {
+        // 从栈当前的顶部开始，往下数deep层
+	    // 返回这deep层里的最大值
+        int maxi = accumulateDepth(stk, depth, std::numeric_limits<int>::min(), [](int a, int b) 
+        {
+            return std::max(a, b); 
+        });
 
+        // 从栈当前的顶部开始，往下数deep层，已知最大值是max了
+	    // 返回，max出现了几次，不改变栈的数据状况
+        int k = accumulateDepth(stk, depth, 0, [maxi](int a, int b) 
+        {
+            return a + (b == maxi); 
+        });
+
+        down(stk, depth, maxi, k);
+        depth -= k;
+    }
+}
+
+int main(int argc, char * argv[])
+{
+    std::deque<int> deq {1, 2, 3, 3, 3, 4, 5, 6, 10, 10};
+    std::stack<int> stk(deq);
+    sort(stk);
+
+    fmt::print("{}\n", stk);
+    // Prints: [10, 10, 6, 5, 4, 3, 3, 3, 2, 1]
+
+    return EXIT_SUCCESS;
+}
+```
+
+## 040 N皇后问题-重点是位运算的版本
+
+- [LC 52. N-Queens II](https://leetcode.com/problems/n-queens-ii/)
 
 
 

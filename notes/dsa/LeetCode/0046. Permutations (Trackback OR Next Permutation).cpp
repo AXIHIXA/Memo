@@ -3,51 +3,33 @@ class Solution
 public:
     std::vector<std::vector<int>> permute(std::vector<int> & nums) 
     {
-        std::sort(nums.begin(), nums.end());
-        std::vector<std::vector<int>> ans {nums};
+        auto n = static_cast<const int>(nums.size());
+        std::vector<std::vector<int>> ans;
+        std::vector<int> tmp;
+        std::vector<unsigned char> taken(n, false);
 
-        while (next_permutation(nums.begin(), nums.end()))
+        std::function<void ()> backtrack = [&nums, n, &ans, &tmp, &taken, &backtrack]()
         {
-            ans.emplace_back(nums);
-        }
+            if (tmp.size() == n)
+            {
+                ans.push_back(tmp);
+                return;
+            }
+
+            for (int i = 0; i < n; ++i)
+            {
+                if (taken[i]) continue;
+
+                taken[i] = true;
+                tmp.emplace_back(nums[i]);
+                backtrack();
+                tmp.pop_back();
+                taken[i] = false;
+            }
+        };
+
+        backtrack();
 
         return ans;
     }
-
-private:
-    template<class BidirIt>
-    bool next_permutation(BidirIt first, BidirIt last)
-    {
-        auto r_first = std::make_reverse_iterator(last);
-        auto r_last = std::make_reverse_iterator(first);
-        auto left = std::is_sorted_until(r_first, r_last);
-    
-        if (left != r_last)
-        {
-            auto right = std::upper_bound(r_first, left, *left);
-            std::iter_swap(left, right);
-        }
-    
-        std::reverse(left.base(), last);
-        return left != r_last;
-    }
-
-    // void backtrack(vector<int> & curr, vector<vector<int>> & ans, vector<int> & nums)
-    // {
-    //     if (curr.size() == nums.size())
-    //     {
-    //         ans.emplace_back(curr);
-    //         return;
-    //     }
-
-    //     for (int n : nums)
-    //     {
-    //         if (find(curr.cbegin(), curr.cend(), n) == curr.cend())
-    //         {
-    //             curr.emplace_back(n);
-    //             backtrack(curr, ans, nums);
-    //             curr.pop_back();
-    //         }
-    //     }
-    // }
 };
