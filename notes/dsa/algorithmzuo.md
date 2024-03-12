@@ -41,20 +41,6 @@ std::generate(v.begin(), v.end(), [n = 0] mutable { return n++; });
 // std::random_shuffle is deprecated. Use std::shuffle. 
 std::shuffle(v.begin(), v.end(), e);
 ```
-```c++
-struct PairHash
-{
-    std::size_t operator()(const std::pair<long long, long long> & p) const
-    {
-        return (hf(p.first) << 32) ^ hf(p.second);
-    }
-
-private:
-    static std::hash<long long> hf;
-};
-
-std::hash<long long> PairHash::hf;
-```
 
 
 

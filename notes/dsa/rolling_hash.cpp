@@ -45,7 +45,7 @@ public:
     }
 
 private:
-    // Commonly-seen large primes for hashing: 1926'0817, 9999'9989, 1e9 + 7, ...
+    // Commonly-seen large primes for hashing: 1926'0817, 9999'9989, 1e9 + 7, 1e9 + 9, ...
     static constexpr long long p = 19260817LL;
     static constexpr long long a = 26LL;
     
@@ -54,3 +54,16 @@ private:
     mutable long long pow = 1LL;
     mutable char front = '\0';
 };
+
+struct PairHash
+{
+    std::size_t operator()(const std::pair<long long, long long> & p) const
+    {
+        return (hf(p.first) << 16) ^ hf(p.second);
+    }
+
+private:
+    static std::hash<long long> hf;
+};
+
+std::hash<long long> PairHash::hf;

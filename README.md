@@ -42,6 +42,7 @@
 - [DSA](./notes/dsa)
   - [algorithmzuo](./notes/dsa/algorithmzuo.md)
     - [algorithmzuo/algorithm-journey](https://github.com/algorithmzuo/algorithm-journey)
+  - [Implementation Notes](./notes/dsa/implementation_notes.md)
   - [KMP](./notes/dsa/kmp.cpp)
     - buildNext: NOTE j in `[0, m - 1)`!!! MUST - 1!!!
   - [Morris Traversal](./notes/dsa/morris_traversal.cpp)
@@ -52,9 +53,8 @@
   - [Unroll Copy](./notes/dsa/unroll_copy.cpp)
 
 
+
 ## 🌱 Sample Code
-
-
 
 - `CMakeLists`
     - [Boost](./code/CMakeLists/Boost/CMakeLists.txt)
