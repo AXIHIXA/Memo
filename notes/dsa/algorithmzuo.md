@@ -47,68 +47,58 @@ std::shuffle(v.begin(), v.end(), e);
 ## 006 Binary Search
 
 ```c++
-// 二分查找：在有序数组的区间 a[lo, hi) 内查找元素 num
-int binSearch(int a, int lo, int hi, int num)
+// 二分查找：在有序数组的区间 a[lo, hi) 内查找元素 e
+int binSearch(int a, int lo, int hi, int e)
 {
     while (lo < hi)
     {
         int mi = lo + ((hi - lo) >> 1);
 
-        if      (num < A[mi]) hi = mi;
-        else if (A[mi] < num) lo = mi + 1;
-        else                  return mi;
+        if      (e < a[mi]) hi = mi;
+        else if (a[mi] < e) lo = mi + 1;
+        else                return mi;
     }
 
     return -1;
 }
 
-// 有序数组中找 >= num 的最左位置
-int lowerBound(int a, int lo, int hi, int num)
+// Analogous to std::lower_bound. 
+// Locates in a[lo, hi) for 1st a[i] s.t. e <= a[i]. 
+// See libstdc++: 
+// https://github.com/gcc-mirror/gcc/blob/d9375e490072d1aae73a93949aa158fcd2a27018/libstdc%2B%2B-v3/include/bits/stl_algobase.h#L1023
+int lowerBound(int * a, int lo, int hi, int e)
 {
-    int ans = -1;
-    
     while (lo < hi)
     {
         int mi = lo + ((hi - lo) >> 1);
-
-        if (num <= a[mi])
-        {
-            ans = mi;
-            hi = mi;
-        }
-        else
-        {
-            lo = mi + 1;
-        }
+        if (a[mi] < e) lo = mi + 1;
+        else hi = mi;
     }
 
-    return ans;
+    return lo;
 }
 
-// 有序数组中找 <= num 的最右位置
-// Differs from std::upper_bound, 
-// which locates 1st element > num (num < element == true). 
-int upperBound(int a, int lo, int hi, int num)
+// Analogous to std::upper_bound. 
+// Locates in a[lo, hi) for 1st a[i] s.t. e < a[i]. 
+// See libstdc++:
+// https://github.com/gcc-mirror/gcc/blob/d9375e490072d1aae73a93949aa158fcd2a27018/libstdc%2B%2B-v3/include/bits/stl_algo.h#L2028
+int upperBound(int * a, int lo, int hi, int e)
 {
-    int ans = -1;
-    
     while (lo < hi)
     {
         int mi = lo + ((hi - lo) >> 1);
-
-        if (a[mi] <= num)
-        {
-            ans = mi;
-            lo = mi + 1;
-        }
-        else
-        {
-            hi = mi;
-        }
+        if (e < a[mi]) hi = mi;
+        else lo = mi + 1;
     }
 
-    return ans;
+    return lo;
 }
+
+// Equal range: 
+// ... < < < < = = = = = < < < < ...
+//             |         |
+//            ll         rr
+//    lowerBound         upperBound
 ```
 - [LC 162 Find Peak Element](https://leetcode.com/problems/find-peak-element/)
   - A peak element is an element that is strictly greater than its neighbors.
@@ -992,17 +982,178 @@ int main(int argc, char * argv[])
 }
 ```
 
+
+
+## 039 嵌套类问题的递归解题套路
+
+- Overall Process:
+  - Declare global index `i`;
+  - Recursive function `f(s)`: 
+    - Comsume `s[i...]` until termination condition (end-of-input or closing brakets): 
+      - `for ( ; i < s.size() && s[i] != ')'; ++i) { ... }`;
+    - Return result for this chunk;
+    - Updates global index `i` for successors. 
+- [LC 394. Decode String](https://leetcode.com/problems/decode-string/)
+- [LC 726. Number of Atoms](https://leetcode.com/problems/number-of-atoms/)
+- [LC 772. Basic Calculator III](https://leetcode.com/problems/basic-calculator-iii/)
+```c++
+class Solution
+{
+public:
+    int calculate(std::string s)
+    {
+        i = 0;
+        return f(s);
+    }
+
+private:
+    int f(const std::string & s)
+    {
+        auto n = static_cast<const int>(s.size());
+
+        std::vector<char> oper;
+        std::vector<int> oprd;
+
+        int cur = 0;
+
+        for ( ; i < n && s[i] != ')'; ++i)
+        {
+            int c = s[i];
+
+            if (std::isdigit(c))
+            {
+                cur = cur * 10 + c - '0';
+            }
+            else if (c != '(')  // + - * /
+            {
+                // Note: ')' will be consumed automatically
+                // by the for update after recursive f() call. 
+                push(oper, oprd, c, cur);
+                cur = 0;
+            }
+            else  // (
+            {
+                ++i;
+                cur = f(s);
+            }
+        }
+
+        // Consume the last operand. 
+        // The operator could be anything. 
+        push(oper, oprd, '+', cur);
+
+        return compute(oper, oprd);
+    }
+
+    void push(std::vector<char> & oper, std::vector<int> & oprd, char op, int cur)
+    {
+        if (oprd.empty() || oper.back() == '+' || oper.back() == '-')
+        {
+            oper.emplace_back(op);
+            oprd.emplace_back(cur);
+        }
+        else
+        {
+            oprd.back() = oper.back() == '*' ? oprd.back() * cur : oprd.back() / cur;
+            oper.back() = op;
+        }
+    }
+
+    int compute(std::vector<char> & oper, std::vector<int> & oprd)
+    {
+        auto n = static_cast<const int>(oprd.size());
+        int ans = oprd[0];
+
+        for (int i = 1; i < n; ++i)
+        {
+            ans = oper[i - 1] == '+' ? ans + oprd[i] : ans - oprd[i];
+        }
+
+        return ans;
+    }
+
+    // Current index-of-processing of string s. 
+    int i = 0;
+};
+```
+
+
+
 ## 040 N皇后问题-重点是位运算的版本
 
 - [LC 52. N-Queens II](https://leetcode.com/problems/n-queens-ii/)
 
 
 
+## 041最大公约数、同余原理
+
+- Modulo: Result modulo `p`. Replace every operation with: 
+  - Plus: `a + b -> (a + b) % p`
+  - Minus: `a - b -> (a - b + p) % p`
+  - Multiplies: `a * b -> (a * b) % p`
+  - Divides: TODO
+- Eulicid's Algorithm
+```c++
+// int gcd(int a, int b)
+// {
+//     if (a < b) std::swap(a, b);
+
+//     for (int t; b; )
+//     {
+//         t = b;
+//         b = a % b;
+//         a = t;
+//     }
+
+//     return a;
+// }
+
+int gcd(int a, int b)
+{
+    return b == 0 ? a : gcd(b, a % b);
+}
+
+int lcm(int a, int b)
+{
+    return a / gcd(a, b) * b;
+    // OR 
+    // return static_cast<long long>(a * b) / gcd(a, b);
+}
+```
+- [LC 878. Nth Magical Number](https://leetcode.com/problems/nth-magical-number/)
+
+
+## 042 对数器打表找规律的技巧
+
+- TODO
 
 
 
+## 043 根据数据量猜解法的技巧-天字第一号重要技巧
+
+- Time Constraint:
+  - 1s for C/C++;
+  - 1-2s for Java/Python/Go...
+- Corresponding number of constant instructions:
+  - 1e7-1e8. 
+  - Regardless of platform, CPU, ...
+- Required complexity with respect to input size:
+  - `> 1e8`: **O(log n)**
+  - `<= 1e7`: **O(n)**, O(log n)
+  - `<= 1e6`: **O(n log n)**, O(n), O(log n)
+  - `<= 1e5`: **O(n sqrt n)**, O(n log n), O(n), O(log n)
+  - `<= 5000`: **O(n^2)**, O(n sqrt n), O(n log n), O(n), O(log n)
+  - `<= 25`: **O(2^n)**, O(n^2), O(n sqrt n), O(n log n), O(n), O(log n)
+  - `<= 11`: **O(n!)**, O(2^n), O(n^2), O(n sqrt n), O(n log n), O(n), O(log n)
+- [LC 9. Palindrome Number](https://leetcode.com/problems/palindrome-number/)
+- [LC 906. Super Palindromes](https://leetcode.com/problems/super-palindromes/)
 
 
+## 044 前缀树原理和代码详解
+
+- [Trie](../../notes/dsa/Trie.cpp)
+- [LC 421. Maximum XOR of Two Numbers in an Array](https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/)
+- [LC 212. Word Search II](https://leetcode.com/problems/word-search-ii/)
 
 
 

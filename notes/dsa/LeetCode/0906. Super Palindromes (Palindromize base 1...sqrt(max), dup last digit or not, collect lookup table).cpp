@@ -1,78 +1,77 @@
 class Solution
 {
 public:
-    Solution()
+    Solution() 
     {
-        static int _ = collect();
-    }
+        static int init = collect();
+    }    
 
     int superpalindromesInRange(std::string left, std::string right)
     {
-        // 1e18 - 1 < std::numeric_limits<long long>::max();
-        int ans = 0;
-        auto b = std::upper_bound(table.cbegin(), table.cend(), std::stoll(left), std::less_equal<long long>());
-        auto e = std::upper_bound(table.cbegin(), table.cend(), std::stoll(right));
-        return e - b;
+        // std::numeric_limits<long long>::max() == 9223372036854775807, 20 digits. 
+        // 1 <= left.size(), right.size() <= 18. 
+
+        return std::upper_bound(table.cbegin(), table.cend(), std::stoll(right)) - 
+               std::lower_bound(table.cbegin(), table.cend(), std::stoll(left));
     }
 
 private:
     static int collect()
     {
-        static auto rr = static_cast<long long>(std::sqrt(std::numeric_limits<long long>::max()));
-
-        for (int base = 1; ; ++base)
+        const long long maxi = std::sqrt(std::numeric_limits<long long>::max()) + 1LL;
+        
+        for (long long x = 1; ; ++x)
         {
-            long long p1 = palindromize(base, false);
-            if (rr < p1) break;
-            long long sp1 = p1 * p1;
-            if (isPalindrome(sp1)) table.emplace_back(sp1);
+            long long p = generate(x, false);
+            if (maxi < p) break;
+            long long p2 = p * p;
+            if (isPalindrome(p2)) table.emplace_back(p2);
         }
 
-        for (int base = 1; ; ++base)
+        for (long long x = 1; ; ++x)
         {
-            long long p2 = palindromize(base, true);
-            if (rr < p2) break;
-            long long sp2 = p2 * p2;
-            if (isPalindrome(sp2)) table.emplace_back(sp2);
+            long long p = generate(x, true);
+            if (maxi < p) break;
+            long long p2 = p * p;
+            if (isPalindrome(p2)) table.emplace_back(p2);
         }
 
         std::sort(table.begin(), table.end());
 
-        return static_cast<int>(table.size());
+        return 0;
     }
 
-    static long long palindromize(int base, bool duplicateLastDigit)
+    static bool isPalindrome(long long x)
     {
-        long long prefix = base;
-        if (!duplicateLastDigit) prefix /= 10LL;
+        if (x < 0LL || (x % 10LL == 0LL && x != 0LL)) return false;
+        if (x < 10LL) return true;
 
         long long reverse = 0LL;
 
-        for (int x = base; 0 < x; x /= 10)
+        while (reverse < x)
         {
-            prefix *= 10LL;
-            reverse = reverse * 10LL + (x % 10);
-        }
-
-        return prefix + reverse;
-    }
-
-    static long long isPalindrome(long long x)
-    {
-        if (x < 0LL || x % 10LL == 0LL && x != 0LL) return false;
-        if (x < 10LL) return true;
-
-        long long y = 0;
-        
-        while (y < x)
-        {
-            y = y * 10LL + (x % 10LL);
+            reverse = reverse * 10LL + x % 10LL;
             x /= 10LL;
         }
 
-        return x == y || x == y / 10LL;
+        return reverse == x || reverse / 10LL == x;
     }
 
+    static long long generate(long long x, bool duplicateBack)
+    {
+        long long ans = x;
+        if (!duplicateBack) ans /= 10LL;
+
+        while (x)
+        {
+            ans = ans * 10LL + x % 10LL;
+            x /= 10LL;
+        }
+
+        return ans;
+    }
+
+private:
     static std::vector<long long> table;
 };
 
