@@ -1,4 +1,4 @@
-# 233
+# Implementation Notes - Coding/Algorithm
 
 
 
@@ -43,3 +43,37 @@
     - **Sliding Window?**
   - (a) Prefix sum and HashMap. 
   - (b) Sliding window of number of subarrays summing up to at most goal, prefix sum manner minus. 
+    - Note that, (b) holds iff. all elements are non-negative!!!
+- [560. Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/)
+  - Note that this could be done only with prefix sum + HashMap method. 
+  - Prefix sum could be computed with rolling number manner in O(1) space. 
+  - Note that (b) for 930 does **not** work for this problem!!!
+- [2602. Minimum Operations to Make All Array Elements Equal](https://leetcode.com/problems/minimum-operations-to-make-all-array-elements-equal/)
+  - Sort and Prefix Sum. 
+
+
+
+## Monotonic Stack
+
+- Consider when asking:
+  - Farthest prefixes not exceeding, greater than, ..., curr. 
+- ?
+
+
+## BFS
+
+- So the BFS queue could contain
+  - Either "raw" states (unprocessed), 
+  - Or "done"/"processed" states
+    - Processed before enqueued, 
+    - Usually when we have outer memory tables, e.g:
+- [864. Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/)
+  - State compression BFS, enqueue done/processed states.  
+  - Prune with recorded min step vector for each (row, col, state). 
+  - **Handle updates in direction loop** s.t. sub-optimal steps won't be added to queue. 
+
+
+
+
+
+

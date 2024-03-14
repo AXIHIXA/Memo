@@ -1,46 +1,10 @@
 # algorithmzuo
 
 
-## 000 Routines
+## 000 Implementation Notes
 
-- OJ Stuff
-```c++
-static const int init = []
-{
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-    std::cout.tie(nullptr);
-    std::setvbuf(stdin, nullptr, _IOFBF, 1 << 20);
-    std::setvbuf(stdout, nullptr, _IOFBF, 1 << 20);
-    return 0;
-}();
-```
-- STL Random
-```c++
-// True random device. Expensive. Non-configurable. 
-auto seed = std::random_device()();
-
-// Random number engine, manual seed. 
-std::default_random_engine e(seed);
-
-// Uniform distribution. 
-std::uniform_int_distribution dd();     // U[0, INT_MAX]
-std::uniform_int_distribution d(a, b);  // U[a, b]
-
-// Generate random number. 
-int r1 = d(e);                          // Sample U[a, b]
-int r2 = d(e, {c, d})                   // Sample U[c, d]
-
-// Two equivalent iota vectors. 
-std::vector<int> v(50001);
-std::iota(v.begin(), v.end(), 0);
-std::generate(v.begin(), v.end(), [n = 0] mutable { return n++; });
-
-// Random shuffle. 
-// https://en.cppreference.com/w/cpp/algorithm/random_shuffle
-// std::random_shuffle is deprecated. Use std::shuffle. 
-std::shuffle(v.begin(), v.end(), e);
-```
+- [Implementation Notes - STL](./implementation_notes_stl.md)
+- [Implementation Notes - Coding/Algorithm](./implementation_notes_lc.md)
 
 
 
@@ -1154,6 +1118,38 @@ int lcm(int a, int b)
 - [Trie](../../notes/dsa/Trie.cpp)
 - [LC 421. Maximum XOR of Two Numbers in an Array](https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/)
 - [LC 212. Word Search II](https://leetcode.com/problems/word-search-ii/)
+  - Trie all words to search;
+  - Prune DFS with this Trie. 
+
+
+
+## 046 构建前缀信息的技巧-解决子数组相关问题
+
+- [LC 303. Range Sum Query - Immutable](https://leetcode.com/problems/range-sum-query-immutable/)
+- [LC 560. Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/)
+  - Note that the at most k sliding window won't work for this problem as element may be negative. 
+  - [LC 930. Binary Subarrays With Sum](https://leetcode.com/problems/binary-subarrays-with-sum/)
+  - Prefix sum could be computed with rolling variable manner in O(1) space. 
+- [未排序数组中所有子数组中正数与负数个数相等的最长子数组的长](https://www.nowcoder.com/practice/545544c060804eceaed0bb84fcd992fb)
+  - Treat positive as 1 and negative as -1. 
+  - A.k.a. Subarray Sum Equals 0. 
+- [LC 1124. Longest Well-Performing Interval](https://leetcode.com/problems/longest-well-performing-interval/)
+  - Array of -1 and 1, ask for the longest subarray with a positive sum. 
+  - `HashMap<PrefixSum, LowestIndex>`
+  - When sum go non-positive, the sum must have decreased by 1. 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

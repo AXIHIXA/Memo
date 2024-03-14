@@ -42,7 +42,9 @@
 - [DSA](./notes/dsa)
   - [algorithmzuo](./notes/dsa/algorithmzuo.md)
     - [algorithmzuo/algorithm-journey](https://github.com/algorithmzuo/algorithm-journey)
-  - [Implementation Notes](./notes/dsa/implementation_notes.md)
+  - Implementation Notes
+    - [Implementation Notes - STL](./notes/dsa/implementation_notes_stl.md)
+    - [Implementation Notes - Code/Algorithm](./notes/dsa/implementation_notes_lc.md)
   - [KMP](./notes/dsa/kmp.cpp)
     - buildNext: NOTE j in `[0, m - 1)`!!! MUST - 1!!!
   - [Morris Traversal](./notes/dsa/morris_traversal.cpp)
