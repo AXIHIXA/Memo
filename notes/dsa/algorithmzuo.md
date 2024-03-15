@@ -1113,7 +1113,7 @@ int lcm(int a, int b)
 - [LC 906. Super Palindromes](https://leetcode.com/problems/super-palindromes/)
 
 
-## 044 前缀树原理和代码详解
+## 044 前缀树原理和代码详解 Trie
 
 - [Trie](../../notes/dsa/Trie.cpp)
 - [LC 421. Maximum XOR of Two Numbers in an Array](https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/)
@@ -1123,7 +1123,7 @@ int lcm(int a, int b)
 
 
 
-## 046 构建前缀信息的技巧-解决子数组相关问题
+## 046 构建前缀信息的技巧-解决子数组相关问题 Prefix Sum / Cumulative Sum
 
 - [LC 303. Range Sum Query - Immutable](https://leetcode.com/problems/range-sum-query-immutable/)
 - [LC 560. Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/)
@@ -1137,23 +1137,72 @@ int lcm(int a, int b)
   - Array of -1 and 1, ask for the longest subarray with a positive sum. 
   - `HashMap<PrefixSum, LowestIndex>`
   - When sum go non-positive, the sum must have decreased by 1. 
+- [LC 1590. Make Sum Divisible by P](https://leetcode.com/problems/make-sum-divisible-by-p/)
+  - Prefix Sum modulo p, HashMap. 
+- [LC 1371. Find the Longest Substring Containing Vowels in Even Counts](https://leetcode.com/problems/find-the-longest-substring-containing-vowels-in-even-counts/)
+  - Prefix sum (no-carry, xor) of state compression binary mask, HashMap (or bucket). 
+
+
+
+## 047 一维差分与等差数列差分
+
+- 一维差分
+  - 和一维前缀和互为逆运算
+    - 前缀和：区间查询，但不支持更新。
+  - 解决的问题
+    - 区间更新，但要求所有更新都完成后才能离线查询（须O(n)预处理时间）；
+    - 单点更新但在线查询：树状数组 Binary Indexed Tree (BIT)；
+    - 区间更新但在线查询：线段树 Segment Tree。
+- [LC 1109. Corporate Flight Bookings](https://leetcode.com/problems/corporate-flight-bookings/)
+- 等差数列差分
+  - 区间更新，`[l, r, s, e]`，对`arr[l...r]`加上一个首项`s`末项`e`的等差数列
+  - 设公差为`d`，则原数组等于一阶差分的前缀和，而一阶差分等于二阶差分的前缀和。
+  - 二阶差分操作：
+```c++
+// 2nd-order difference array. 
+std::vector<long long> diff(n + 1, 0);
+
+void set(int l, int r, int s, int e, int d)
+{
+    diff[l] += s;
+    diff[l + 1] += d - s;
+    diff[r + 1] -= d + e;
+    diff[r + 2] += e;
+}
+
+void build()
+{
+    // Turn into 1st-order difference array. 
+    for (int i = 1; i <= n; ++i) diff[i] += diff[i - 1];
+
+    // Turn into vanilla modification array.
+    for (int i = 1; i <= n; ++i) diff[i] += diff[i - 1];
+}
+```
+```
+E.g., l = 1, r = 7, s = 4, e = 16, then:
+
+0  1   2  3   4   5   6   7    8   9    INDEX
+
+0  4   6  8  10  12  14  16    0   0    MODIFICATION
+
+0  4  -2  0   0   0   0   0  -18  16    DIFF2
+
+0  4   2  2   2   2   2   2  -16   0    DIFF1
+
+0  4   6  8  10  12  14  16    0   0    RESTORED MODIFICATION
+```
+
+
+
+## 048 二维前缀和、二维差分、离散化技巧
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-## 059 Graph
+## 059 建图、链式前向星、拓扑排序
 
 - Graph with n nodes and m edges. 
 - 邻接矩阵 Adjacency Matrix
@@ -1163,7 +1212,7 @@ int lcm(int a, int b)
   - O(nm) space (if requires static mem prealloc)
   - `std::vector<std::vector<std::pair>> al;`
   - `al[source]` stores all edges originating from vertex `source`, in pair `{target, weight}`.  
-- 链式前向星 (Static Adjacency List) (1-indexed!)
+- 链式前向星 (Static Adjacency List, "Forward-Star List") (1-indexed!)
   - O(n + m) space (even for static mem prealloc)
   - E.g., Edges added in order `#1 (1 -> 2)`, `#2 (1 -> 3)`
     - `head == {0, 2, 0, 0}`

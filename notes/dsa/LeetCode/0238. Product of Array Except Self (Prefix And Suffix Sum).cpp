@@ -1,22 +1,20 @@
 class Solution
 {
 public:
-    vector<int> productExceptSelf(vector<int> & nums) 
+    std::vector<int> productExceptSelf(std::vector<int> & nums) 
     {
-        int n = nums.size();
+        auto n = static_cast<const int>(nums.size());
         std::vector<int> ans(n, 1);
 
-        for (int i = 1; i < n; ++i)
+        // Note the order is init, binOp, which is opposite to std::inclusive_scan...
+        std::exclusive_scan(nums.cbegin(), nums.cend(), ans.begin(), 1, std::multiplies<>());
+        
+        for (int i = n - 2, prod = 1; 0 <= i; --i)
         {
-            ans[i] = ans[i - 1] * nums[i - 1];
+            prod *= nums[i + 1];
+            ans[i] *= prod;
         }
-
-        for (int i = n - 1, r = 1; 0 <= i; --i)
-        {
-            ans[i] *= r;
-            r *= nums[i];
-        }
-
+        
         return ans;
     }
 };
