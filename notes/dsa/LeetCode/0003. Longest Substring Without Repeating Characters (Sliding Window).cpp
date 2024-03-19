@@ -1,35 +1,33 @@
-int init = []
-{
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-    std::cout.tie(nullptr);
-    return 0;
-}();
-
-class Solution 
+class Solution
 {
 public:
-    int lengthOfLongestSubstring(std::string s) 
+    int lengthOfLongestSubstring(std::string s)
     {
-        int n = s.size();
-        if (n == 0) return 0;
+        auto n = static_cast<const int>(s.size());
 
-        // For the current longest substr ending at s[j], and considering s[j + 1], 
-        // If s[j + 1] occurs more than once, 
-        // drop the leftmost characters until there are no duplicate characters.
+        std::array<int, 256> leftmost;
+        std::fill(leftmost.begin(), leftmost.end(), -1);
 
-        // rmi[c] denotes the index of the rightmost char c so far. 
-        std::vector<int> rmi(10 + std::numeric_limits<char>::max(), -1);
-        rmi[s[0]] = 0;
-
-        int ans = 1;
+        int ans = 0;
 
         for (int ll = 0, rr = 0; rr < n; ++rr)
         {
-            char c = s[rr];
-            if (ll <= rmi[c]) ll = std::min(rr, rmi[c] + 1);
-            ans = std::max(ans, rr - ll + 1);
-            rmi[c] = rr;
+            if (leftmost[s[rr]] == -1)
+            {
+                ans = std::max(ans, rr - ll + 1);
+            }
+            else
+            {
+                while (ll <= leftmost[s[rr]])
+                {
+                    leftmost[s[ll]] = -1;
+                    ++ll;
+                }
+            }
+
+            leftmost[s[rr]] = rr;
+
+            // std::cout << s.substr(ll, rr - ll + 1) << '\n';
         }
 
         return ans;

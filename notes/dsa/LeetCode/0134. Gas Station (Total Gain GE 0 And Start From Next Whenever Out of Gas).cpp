@@ -3,13 +3,16 @@ class Solution
 public:
     int canCompleteCircuit(std::vector<int> & gas, std::vector<int> & cost) 
     {
-        int curGain = 0, totGain = 0, ans = 0;
+        auto n = static_cast<const int>(gas.size());
+        
+        int curGain = 0;
+        int totGain = 0;
+        int ans = 0;
 
-        for (int i = 0, n = gas.size(); i != n; ++i)
+        for (int i = 0; i < n; ++i)
         {
-            int gain = gas[i] - cost[i];
-            curGain += gain;
-            totGain += gain;
+            curGain += gas[i] - cost[i];
+            totGain += gas[i] - cost[i];
 
             if (curGain < 0)
             {

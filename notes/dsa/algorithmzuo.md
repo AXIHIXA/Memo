@@ -1125,6 +1125,36 @@ int lcm(int a, int b)
 
 ## 046 构建前缀信息的技巧-解决子数组相关问题 Prefix Sum / Cumulative Sum
 
+- 1D Prefix Sum Implementation Considerations: 
+  - 0-indexed;
+  - **Zero padding on the left side**;
+  - `ps` array indices offset the original by +1. 
+```c++
+std::vector<int> arr = ...;
+auto n = static_cast<const int>(arr.size());
+std::vector<int> ps(n + 1, 0);
+
+for (int i = 0; i < n; ++i) ps[i + 1] = ps[i] + arr[i];   // Option 1.
+
+std::inclusive_scan(
+        arr.cbegin(), arr.cend(), 
+        ps.begin() + 1);                                  // Option 2.
+
+std::inclusive_scan(
+        arr.cbegin(), arr.cend(), 
+        ps.begin() + 1, 
+        std::plus<>(), 0LL);                              // Option LL1. 
+
+std::transform_inclusive_scan(
+        arr.cbegin(), arr.cend(), 
+        ps.begin() + 1, 
+        std::plus<>(), 
+        [](int x) { return static_cast<long long>(x); },
+        0LL);                                             // Option LL2.
+```
+- [STL Considerations for Prefix Sum](./implementation_notes_stl.md)
+  - `std::inclusive_scan` seems to be the best (requires `c++17`);
+  - Leave a zero padding on index 0. `ps[i + 1] = ps[i] + arr[i];`
 - [LC 303. Range Sum Query - Immutable](https://leetcode.com/problems/range-sum-query-immutable/)
 - [LC 560. Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/)
   - Note that the at most k sliding window won't work for this problem as element may be negative. 
@@ -1153,6 +1183,24 @@ int lcm(int a, int b)
     - 区间更新，但要求所有更新都完成后才能离线查询（须O(n)预处理时间）；
     - 单点更新但在线查询：树状数组 Binary Indexed Tree (BIT)；
     - 区间更新但在线查询：线段树 Segment Tree。
+  - Implementation considerations:
+    - **0-indexed**;
+    - **Zero padding on the ight side**:
+```c++
+std::vector<int> arr = ...;
+auto n = static_cast<const int>(arr.size());
+std::vector<int> diff(n + 1, 0);
+
+// 0-indexed interval [a, b]. 
+auto add = [&diff](int a, int b, int k) mutable
+{
+    diff[a] += k;
+    diff[b + 1] -= k;
+};
+
+// Prefix-sum diff back into the original. 
+for (int i = 1; i <= n; ++i) diff[i] += diff[i - 1];
+```
 - [LC 1109. Corporate Flight Bookings](https://leetcode.com/problems/corporate-flight-bookings/)
 - 等差数列差分
   - 区间更新，`[l, r, s, e]`，对`arr[l...r]`加上一个首项`s`末项`e`的等差数列
@@ -1162,7 +1210,7 @@ int lcm(int a, int b)
 // 2nd-order difference array. 
 std::vector<long long> diff(n + 1, 0);
 
-void set(int l, int r, int s, int e, int d)
+auto set = [&diff](int l, int r, int s, int e, int d) mutable
 {
     diff[l] += s;
     diff[l + 1] += d - s;
@@ -1170,14 +1218,9 @@ void set(int l, int r, int s, int e, int d)
     diff[r + 2] += e;
 }
 
-void build()
-{
-    // Turn into 1st-order difference array. 
-    for (int i = 1; i <= n; ++i) diff[i] += diff[i - 1];
-
-    // Turn into vanilla modification array.
-    for (int i = 1; i <= n; ++i) diff[i] += diff[i - 1];
-}
+// Turn into 1st-order difference, then to vanilla.
+for (int i = 1; i <= n; ++i) diff[i] += diff[i - 1];
+for (int i = 1; i <= n; ++i) diff[i] += diff[i - 1];
 ```
 ```
 E.g., l = 1, r = 7, s = 4, e = 16, then:
@@ -1191,11 +1234,103 @@ E.g., l = 1, r = 7, s = 4, e = 16, then:
 0  4   2  2   2   2   2   2  -16   0    DIFF1
 
 0  4   6  8  10  12  14  16    0   0    RESTORED MODIFICATION
+
+  l l+2                    r r+1    r+2 r+3
+0 s s+d s+2d s+3d ... s+kd e 0      0   0
+0 s d   d    d    ... d    d -e     0   0
+0 s d-s 0    0    ... 0    0 -(e+d) e   0
 ```
+- [洛谷 P4231 三步必杀](https://www.luogu.com.cn/problem/P4231)
 
 
 
 ## 048 二维前缀和、二维差分、离散化技巧
+
+- 2D Prefix Sum:
+  - **0-indexed**;
+  - **Zero padding on the left and the top boundaries**;
+  - **`ps`'s (i, j) indices offset the original by (+1, +1)**. 
+```c++
+const std::vector<std::vector<int>> & arr = ...;
+auto m = static_cast<const int>(arr.size());
+auto n = static_cast<const int>(arr.front().size());
+std::vector ps(m + 1, std::vector<int>(n + 1, 0));
+
+for (int i = 0; i < m; ++i)
+{
+    for (int j = 0; j < n; ++j)
+    {
+        ps[i + 1][j + 1] = arr[i][j] + ps[i + 1][j] + ps[i][j + 1] - ps[i][j];
+    }
+}
+```
+- 2D Difference: 
+  - **1-indexed**;
+    - Note this differs from 1D difference (which is 0-indexed); 
+  - **Zero padding on all four boundaries**:
+    - Note this differs from 1D difference; 
+  - Necessity:
+    - For 1D, the left element needs no operation at all;
+    - For 2D, the top and left boundary elements *needs* prefix sum operations too;
+    - Thus left and top paddings, and 1-indexing, are needed. 
+```c++
+const std::vector<std::vector<int>> & arr = ...;
+auto m = static_cast<const int>(arr.size());
+auto n = static_cast<const int>(arr.front().size());
+std::vector diff(m + 2, std::vector<int>(n + 2, 0));
+
+// Add 1-indexed rectangle top-left (a, b) -> bottom-right (c, d) by k. 
+auto add = [&diff](int a, int b, int c, int d, int k = 1) mutable
+{
+    diff[a][b] += k;
+    diff[c + 1][b] -= k;
+    diff[a][d + 1] -= k;
+    diff[c + 1][d + 1] += k;
+};
+
+// Prefix-sum diff array back into the original. 
+for (int i = 1; i <= m; ++i)
+{
+    for (int j = 1; j <= n; ++j)
+    {
+        diff[i][j] += diff[i - 1][j] + diff[i][j - 1] - diff[i - 1][j - 1];
+    }
+}
+```
+- [LC 304. Range Sum Query 2D - Immutable](https://leetcode.com/problems/range-sum-query-2d-immutable/)
+- [LC 1139. Largest 1-Bordered Square](https://leetcode.com/problems/largest-1-bordered-square/)
+- [洛谷 P3397 地毯](https://www.luogu.com.cn/problem/P3397)
+- [LC 2132. Stamping the Grid](https://leetcode.com/problems/stamping-the-grid/)
+  - 2D Prefix sum for quick testing whether a location is stampable; 
+  - Conv all stampable locations, 2D Difference.  
+- [LCP 74. 最强祝福力场](https://leetcode.cn/problems/xepqZ5/)
+  - Discretize (sort x, y coordinates and take their ranks);
+  - 2D Difference. 
+
+
+
+## 049 滑动窗口技巧与相关题目
+
+- 滑动窗口
+  - 维持左、右边界都不回退的一段范围，来求解很多子数组（串）的相关问题
+  - 滑动窗口的关键：找到 范围 和 答案指标 之间的 单调性关系（类似贪心）
+  - 滑动过程：滑动窗口可以用 简单变量 或者 结构 来 维护信息
+  - 求解大流程：求子数组在 每个位置 开头 或 结尾 情况下的答案（开头还是结尾在于个人习惯）
+  - 滑动窗口维持最大值 或者 最小值的更新结构，在【必备】课程【单调队列】视频里讲述
+- [LC 209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
+- [LC 3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/)
+- [LC 76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/)
+  - Bucket count all target chars `needs`;
+  - Maintain `needed = t.size()`:
+    - `0 < needs[rr]--`, then `rr` is needed, `--needed`;
+    - While `ll <= rr && needed == 0` move `ll`, `needs[s[ll++]]++ == 0` then `++needed`.
+- [LC 1234. Replace the Substring for Balanced String](https://leetcode.com/problems/replace-the-substring-for-balanced-string/)
+  - Turn into LC 76. Min Window Substr. 
+
+
+
+
+
 
 
 

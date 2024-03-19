@@ -57,7 +57,7 @@
 
 - Consider when asking:
   - Farthest prefixes not exceeding, greater than, ..., curr. 
-- ?
+- 1
 
 
 ## BFS
@@ -71,9 +71,3 @@
   - State compression BFS, enqueue done/processed states.  
   - Prune with recorded min step vector for each (row, col, state). 
   - **Handle updates in direction loop** s.t. sub-optimal steps won't be added to queue. 
-
-
-
-
-
-

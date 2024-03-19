@@ -1,28 +1,38 @@
-class NumMatrix 
+class NumMatrix
 {
 public:
-    NumMatrix(vector<vector<int>> & matrix) 
+    NumMatrix(std::vector<std::vector<int>> & matrix)
     {
-        int nRow = matrix.size(), nCol = matrix[0].size();
-        
-        sum.assign(nRow + 1, std::vector<int>(nCol + 1, 0));
+        auto m = static_cast<const int>(matrix.size());
+        auto n = static_cast<const int>(matrix.front().size());
+        ps.resize(m + 1, std::vector<int>(n + 1, 0));
 
-        for (int i = 0; i != nRow; ++i)
+        for (int i = 0; i < m; ++i)
         {
-            for (int j = 0; j != nCol; ++j)
+            ps[i + 1][0] = ps[i][0] + matrix[i][0];
+        }
+
+        for (int j = 0; j < n; ++j)
+        {
+            ps[0][j + 1] = ps[0][j] + matrix[0][j];
+        }
+
+        for (int i = 0; i < m; ++i)
+        {
+            for (int j = 0; j < n; ++j)
             {
-                sum[i + 1][j + 1] = sum[i + 1][j] + sum[i][j + 1] + matrix[i][j] - sum[i][j];
+                ps[i + 1][j + 1] = matrix[i][j] + ps[i + 1][j] + ps[i][j + 1] - ps[i][j];
             }
         }
     }
     
-    int sumRegion(int row1, int col1, int row2, int col2) 
+    int sumRegion(int r1, int c1, int r2, int c2)
     {
-        return sum[row2 + 1][col2 + 1] + sum[row1][col1] - sum[row1][col2 + 1] - sum[row2 + 1][col1];
+        return ps[r2 + 1][c2 + 1] - ps[r2 + 1][c1] - ps[r1][c2 + 1] + ps[r1][c1];
     }
 
 private:
-    vector<vector<int>> sum;
+    std::vector<std::vector<int>> ps;
 };
 
 /**
