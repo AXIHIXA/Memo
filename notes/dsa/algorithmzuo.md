@@ -1049,7 +1049,7 @@ private:
 
 
 
-## 041最大公约数、同余原理
+## 041 最大公约数、同余原理
 
 - Modulo: Result modulo `p`. Replace every operation with: 
   - Plus: `a + b -> (a + b) % p`
@@ -1315,6 +1315,8 @@ for (int i = 1; i <= m; ++i)
   - 维持左、右边界都不回退的一段范围，来求解很多子数组（串）的相关问题
   - 滑动窗口的关键：找到 范围 和 答案指标 之间的 单调性关系（类似贪心）
   - 滑动过程：滑动窗口可以用 简单变量 或者 结构 来 维护信息
+    - `if (counter[arr[rr]]++ == 0) ++info;`
+    - `while (ll <= rr && info is valid) { if (--counter[arr[ll++]] == 0) invalidate info; }`
   - 求解大流程：求子数组在 每个位置 开头 或 结尾 情况下的答案（开头还是结尾在于个人习惯）
   - 滑动窗口维持最大值 或者 最小值的更新结构，在【必备】课程【单调队列】视频里讲述
 - [LC 209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
@@ -1326,6 +1328,35 @@ for (int i = 1; i <= m; ++i)
     - While `ll <= rr && needed == 0` move `ll`, `needs[s[ll++]]++ == 0` then `++needed`.
 - [LC 1234. Replace the Substring for Balanced String](https://leetcode.com/problems/replace-the-substring-for-balanced-string/)
   - Turn into LC 76. Min Window Substr. 
+- [LC 1759. Count Number of Homogenous Substrings](https://leetcode.com/problems/count-number-of-homogenous-substrings/)
+  - Math Linspace Sum: `aaa...a` of length `k` has `sum([1...k])` homogeneous substrings. 
+- [LC 992. Subarrays with K Different Integers](https://leetcode.com/problems/subarrays-with-k-different-integers/description/)
+  - Counter constituted by non-negative elements, could set minus. 
+  - Sliding Window At Most k Distincts MINUS At Most k - 1 Distincts. 
+- [LC 560. Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/)
+  - Note that this could be done only with prefix sum + HashMap method. 
+  - Prefix sum could be computed with rolling number manner in O(1) space. 
+  - Note that (b) for 930 does **not** work for this problem!!!
+
+
+
+## 050 双指针技巧与相关题目
+
+- [LC 287. Find the Duplicate Number](https://leetcode.com/problems/find-the-duplicate-number/)
+  - Floyd's algorithm (2 pointers cycle detection)
+  - Array as hash (aka cyclic sort)
+    - Let `nums[i]` store `i`;
+    - `while (nums[0] != nums[nums[0]]) std::swap(nums[0], nums[nums[0]]);`
+  - Negative marking (given that all elements are positive)
+  - Bit count
+    - Count total number of 1-bits for range `[1...n]`, 
+    - compare with that for nums, 
+    - the duplicate is bits where `bc1n < bcNums`.
+- [LC 42. Trapping Rain Water](https://leetcode.cn/problems/trapping-rain-water/)
+- [LC 881. Boats to Save People](https://leetcode.com/problems/boats-to-save-people/)
+- [LC 11. Container With Most Water](https://leetcode.com/problems/container-with-most-water/)
+
+
 
 
 
@@ -1339,42 +1370,47 @@ for (int i = 1; i <= m; ++i)
 
 ## 059 建图、链式前向星、拓扑排序
 
-- Graph with n nodes and m edges. 
+- Graph:
+  - `n` vertices; 
+  - `m` edges. 
 - 邻接矩阵 Adjacency Matrix
-  - O(n**2) space
+  - `O(n**2)` space
   - `std::vector<std::vector<int>> am;`
 - 邻接表 Adjacency List
-  - O(nm) space (if requires static mem prealloc)
+  - `O(nm)` space (if requires static memory preallocation)
   - `std::vector<std::vector<std::pair>> al;`
   - `al[source]` stores all edges originating from vertex `source`, in pair `{target, weight}`.  
-- 链式前向星 (Static Adjacency List, "Forward-Star List") (1-indexed!)
-  - O(n + m) space (even for static mem prealloc)
+- 链式前向星 (Static Adjacency List, "Forward-Star List")
+  - `O(n + m)` space (even when static mememory preallocation)
+  - **1-indexed!**
   - E.g., Edges added in order `#1 (1 -> 2)`, `#2 (1 -> 3)`
     - `head == {0, 2, 0, 0}`
     - `next == {0, 0, 1}`
     - `to == {0, 2, 3}`
-    - `cnt == 3`
+    - `cnt == 3` (`cnt == 1` when graph is empty.)
 ```c++
-constexpr int kMaxM = 21;  // 边的最大数量
-constexpr int kMaxN = 11;  // 点的最大数量
+constexpr int kMaxEdges = 21;  // 边的最大数量
+constexpr int kMaxVerts = 11;  // 点的最大数量
 
-// Index: Vertex ID. 
-// Value: ID of the most-recently-added edge originating from this vertex. 
-int head[kMaxN] {0}; 
-
-// Index: Edge ID. 
-// Value: ID of the previously-added edge originating from the same source vertex. 
-int next[kMaxM] {0};
-
-// Index: Edge ID. 
-// Value: ID of target vertex of this edge. 
-int to[kMaxM] {0};
-
+// Vertices and edges are all 1-indexed!
 // Index for the next edge to add. 
-int cnt {1};
+int cnt = 1;
 
-// 如果边有权重，那么需要这个数组
-int weight[kMaxM] {0};
+// Vertex Property. 
+// Edge ID of the most-recently-added edge originating from this vertex. 
+std::array<int, kMaxVerts> head = {0}; 
+
+// Edge Property. 
+// Edge ID of the previously-added edge originating from the same source vertex. 
+std::array<int, kMaxEdges> next = {0};
+
+// Edge Property. 
+// Vertex ID of target vertex of this edge. 
+std::array<int, kMaxEdges> to = {0};
+
+// Edge Property. 
+// Weight of this edge if this graph is weighted. 
+std::array<int, kMaxEdges> weight = {0};
 
 // Totally n vertices, indexed from 1 to n. 
 void build(int n)
@@ -1411,8 +1447,8 @@ void traverse(int n)
 ```
 - Topological Sort (with Minimal Dict Order)
 ```c++
-int n = numVertices;
-int m = numEdges;
+const int n = numVertices;
+const int m = numEdges;
 
 // Vertices and edges are all 1-indexed!
 std::vector<int> head(n + 1, 0);
@@ -1441,6 +1477,8 @@ for (int s = 1; s <= n; ++s)
     }
 }
 
+// Use min heap to output topological sort and vert ids ascending. 
+// Could use regular queue if not requiring vert ids ascending. 
 std::priority_queue<int, std::vector<int>, std::greater<int>> heap;
 
 for (int i = 1; i <= n; ++i)

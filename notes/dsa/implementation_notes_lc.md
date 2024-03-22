@@ -48,6 +48,8 @@
   - Note that this could be done only with prefix sum + HashMap method. 
   - Prefix sum could be computed with rolling number manner in O(1) space. 
   - Note that (b) for 930 does **not** work for this problem!!!
+- [992. Subarrays with K Different Integers](https://leetcode.com/problems/subarrays-with-k-different-integers/)
+  - Still non-negative counter constitutions, sliding window at most k MINUS at most k - 1. 
 - [2602. Minimum Operations to Make All Array Elements Equal](https://leetcode.com/problems/minimum-operations-to-make-all-array-elements-equal/)
   - Sort and Prefix Sum. 
 

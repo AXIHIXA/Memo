@@ -1,25 +1,25 @@
-int init = []
-{
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-    std::cout.tie(nullptr);
-    return 0;
-}();
-
-class Solution 
+class Solution
 {
 public:
-    int maxArea(vector<int> & height) 
+    int maxArea(std::vector<int> & h)
     {
+        auto n = static_cast<const int>(h.size());
         int ans = 0;
 
-        for (int ll = 0, rr = height.size() - 1; ll < rr; )
+        for (int ll = 0, rr = n - 1; ll < rr; )
         {
-            int area = std::min(height[ll], height[rr]) * (rr - ll);
-            ans = std::max(ans, area);
-            height[ll] <= height[rr] ? ++ll : --rr;
+            if (h[ll] < h[rr])
+            {
+                ans = std::max(ans, h[ll] * (rr - ll));
+                ++ll;
+            }
+            else
+            {
+                ans = std::max(ans, h[rr] * (rr - ll));
+                --rr;
+            }
         }
 
-        return ans;
+        return ans; 
     }
 };

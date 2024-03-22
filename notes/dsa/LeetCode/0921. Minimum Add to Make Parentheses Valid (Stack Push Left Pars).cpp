@@ -1,23 +1,30 @@
-class Solution 
+class Solution
 {
 public:
-    int minAddToMakeValid(string s) 
+    int minAddToMakeValid(std::string s)
     {
-        stack<char> st;
-        int cnt = 0;
+        int ans = 0;
+        int leftParentheses = 0;
 
         for (char c : s)
         {
             if (c == '(')
             {
-                st.push(c);
+                ++leftParentheses;
             }
-            else if (c == ')')
+            else
             {
-                st.empty() ? static_cast<void>(++cnt) : st.pop();
+                if (!leftParentheses)
+                {
+                    ++ans;
+                }
+                else
+                {
+                    --leftParentheses;
+                }
             }
         }
 
-        return st.size() + cnt;
+        return ans + leftParentheses;
     }
 };
