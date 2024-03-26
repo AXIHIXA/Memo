@@ -1355,10 +1355,15 @@ for (int i = 1; i <= m; ++i)
 - [LC 42. Trapping Rain Water](https://leetcode.cn/problems/trapping-rain-water/)
 - [LC 881. Boats to Save People](https://leetcode.com/problems/boats-to-save-people/)
 - [LC 11. Container With Most Water](https://leetcode.com/problems/container-with-most-water/)
-
-
-
-
+- [LC 475. Heaters](https://leetcode.com/problems/heaters/)
+  - Two pointers, `houses` and `heaters` each has one pointer. 
+  - `heaters` pointer `j` points to 1st heater on the right of `houses[i]` (inclusive). 
+- [LC 41. First Missing Positive](https://leetcode.com/problems/first-missing-positive/)
+  - Implementation 1
+    - Input array sign bit as hash. 
+    - Special care for `[0...n-1]` (lacks `n`) and `[1...n]` (lacks `n + 1`).
+  - Implementation 2
+    - Two pointers.
 
 
 
