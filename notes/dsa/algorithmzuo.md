@@ -1363,13 +1363,21 @@ for (int i = 1; i <= m; ++i)
     - Input array sign bit as hash. 
     - Special care for `[0...n-1]` (lacks `n`) and `[1...n]` (lacks `n + 1`).
   - Implementation 2
-    - Two pointers.
+    - Two pointers. Assume `[ll, rr]` contains all numbers in `[ll + 1, rr + 1]`. 
+    - `[ll, rr]` current interval, `[0, ll - 1] == i + 1`, `(rr...n - 1]` storestrash.  
 
 
 
+## 051 二分答案法与相关题目
 
-
-
+- [875. Koko Eating Bananas](https://leetcode.com/problems/koko-eating-bananas/)
+  - Bin search on `k` (how many bananas to eat per hour) `O(log m)`, `max(piles) == m <= 1e9`. 
+  - For each `k` decide to go left/right in `O(n)` time, `piles.size() == n <= 1e4`. 
+  - `O(n log m)` in total, valid. 
+- [410. Split Array Largest Sum](https://leetcode.com/problems/split-array-largest-sum/)
+  - Bin Search on the Result Largest Sum.
+  - Given this largest sum, calculate how many segments we need to split original array into. 
+- []()
 
 
 

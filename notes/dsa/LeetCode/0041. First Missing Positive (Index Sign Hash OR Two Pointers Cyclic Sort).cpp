@@ -6,7 +6,7 @@ public:
         static const int _ = init();
     }
 
-    // Two Pointers. 
+    // Two Pointers + cyclic sort. 
     int firstMissingPositive(std::vector<int> & nums) 
     {
         int ll = 0;
@@ -28,7 +28,9 @@ public:
 			} 
             else 
             {
-				std::swap(nums[ll], nums[nums[ll] - 1]);
+				// Cyclic sort. 
+                // Will restore all elments in this cyclic knot. 
+                std::swap(nums[ll], nums[nums[ll] - 1]);
 			}
 		}
 
