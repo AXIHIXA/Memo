@@ -1319,24 +1319,30 @@ for (int i = 1; i <= m; ++i)
     - `while (ll <= rr && info is valid) { if (--counter[arr[ll++]] == 0) invalidate info; }`
   - 求解大流程：求子数组在 每个位置 开头 或 结尾 情况下的答案（开头还是结尾在于个人习惯）
   - 滑动窗口维持最大值 或者 最小值的更新结构，在【必备】课程【单调队列】视频里讲述
-- [LC 209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
-- [LC 3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/)
-- [LC 76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/)
+- [209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
+- [3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/)
+- [76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/)
   - Bucket count all target chars `needs`;
   - Maintain `needed = t.size()`:
     - `0 < needs[rr]--`, then `rr` is needed, `--needed`;
     - While `ll <= rr && needed == 0` move `ll`, `needs[s[ll++]]++ == 0` then `++needed`.
-- [LC 1234. Replace the Substring for Balanced String](https://leetcode.com/problems/replace-the-substring-for-balanced-string/)
+- [1234. Replace the Substring for Balanced String](https://leetcode.com/problems/replace-the-substring-for-balanced-string/)
   - Turn into LC 76. Min Window Substr. 
-- [LC 1759. Count Number of Homogenous Substrings](https://leetcode.com/problems/count-number-of-homogenous-substrings/)
+- [1759. Count Number of Homogenous Substrings](https://leetcode.com/problems/count-number-of-homogenous-substrings/)
   - Math Linspace Sum: `aaa...a` of length `k` has `sum([1...k])` homogeneous substrings. 
-- [LC 992. Subarrays with K Different Integers](https://leetcode.com/problems/subarrays-with-k-different-integers/description/)
-  - Counter constituted by non-negative elements, could set minus. 
-  - Sliding Window At Most k Distincts MINUS At Most k - 1 Distincts. 
-- [LC 560. Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/)
+
+- [2958. Length of Longest Subarray With at Most K Frequency](https://leetcode.com/problems/length-of-longest-subarray-with-at-most-k-frequency/)
+- [560. Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/)
   - Note that this could be done only with prefix sum + HashMap method. 
   - Prefix sum could be computed with rolling number manner in O(1) space. 
   - Note that (b) for 930 does **not** work for this problem!!!
+- "At most k" method
+  - Number of subarrays with at most k something. `ans += rr - ll + 1` adds number of subarrs ending at `rr`. 
+  - [930. Binary Subarrays With Sum](https://leetcode.com/problems/binary-subarrays-with-sum/)
+  - [713. Subarray Product Less Than K](https://leetcode.com/problems/subarray-product-less-than-k/)
+  - [992. Subarrays with K Different Integers](https://leetcode.com/problems/subarrays-with-k-different-integers/description/)
+    - Counter constituted by non-negative elements, could set minus. 
+    - Sliding Window At Most k Distincts MINUS At Most k - 1 Distincts. 
 
 
 
@@ -1402,46 +1408,48 @@ for (int i = 1; i <= m; ++i)
     - `to == {0, 2, 3}`
     - `cnt == 3` (`cnt == 1` when graph is empty.)
 ```c++
-constexpr int kMaxEdges = 21;  // 边的最大数量
-constexpr int kMaxVerts = 11;  // 点的最大数量
+constexpr int kMaxVerts = 110;  // 点的最大数量
+constexpr int kMaxEdges = 210;  // 边的最大数量
 
 // Vertices and edges are all 1-indexed!
-// Index for the next edge to add. 
-int cnt = 1;
+using VertIdx = int;
+using EdgeIdx = int;
+using Weight = int;
+
+// Size (num of edges) of the current graph. 
+EdgeIdx cnt = 0;
 
 // Vertex Property. 
 // Edge ID of the most-recently-added edge originating from this vertex. 
-std::array<int, kMaxVerts> head = {0}; 
+std::array<EdgeIdx, kMaxVerts> head = {0}; 
 
 // Edge Property. 
 // Edge ID of the previously-added edge originating from the same source vertex. 
-std::array<int, kMaxEdges> next = {0};
+std::array<EdgeIdx, kMaxEdges> next = {0};
 
 // Edge Property. 
 // Vertex ID of target vertex of this edge. 
-std::array<int, kMaxEdges> to = {0};
+std::array<VertIdx, kMaxEdges> to = {0};
 
 // Edge Property. 
 // Weight of this edge if this graph is weighted. 
-std::array<int, kMaxEdges> weight = {0};
+std::array<Weight, kMaxEdges> weight = {0};
 
 // Totally n vertices, indexed from 1 to n. 
 void build(int n)
 {
-    cnt = 1;
+    cnt = 0;
     std::fill(head + 1, head + n + 1, 0);
 }
 
 // Edge (s -> t), weight w. 
-void addEdge(int s, int t, int w)
+void addEdge(VertIdx s, VertIdx t, Weight w)
 {
-    next[cnt] = head[s];
+    next[++cnt] = head[s];
+    head[s] = cnt;
     to[cnt] = t;
     weight[cnt] = w;
-    head[s] = cnt++;
 }
-
-// Add two directed edges for undirected graphs. 
 
 void traverse(int n)
 {
@@ -1449,9 +1457,9 @@ void traverse(int n)
     {
         std::cout << i << " (neighbor, weight): ";
 
-        for (int ei = head[i]; 0 < ei; ei = next[ei])
+        for (EdgeIdx e = head[i]; 0 < e; e = next[ei])
         {
-            std::cout << "( " << to[ei] << ", " << weight[ei] << " ) ";
+            std::cout << "( " << to[e] << ", " << weight[e] << " ) ";
         }
     }
 
@@ -1464,27 +1472,29 @@ const int n = numVertices;
 const int m = numEdges;
 
 // Vertices and edges are all 1-indexed!
-std::vector<int> head(n + 1, 0);
-std::vector<int> next(m + 1, 0);
-std::vector<int> to(m + 1, 0);
-int cnt = 1;
+using VertIdx = int;
+using EdgeIdx = int;
+std::vector<EdgeIdx> head(n + 1, 0);
+std::vector<EdgeIdx> next(m + 1, 0);
+std::vector<VertIdx> to(m + 1, 0);
+EdgeIdx cnt = 0;
 
 // Build graph, vertices are 1-indexed. 
 for (auto [s, t] : edges)
 {
-    next[cnt] = head[s];
+    next[++cnt] = head[s];
+    head[s] = cnt;
     to[cnt] = t;
-    head[s] = cnt++;
 }
 
-std::vector<int> ans;
+std::vector<VertIdx> ans;
 ans.reserve(n);
 
-std::vector<int> inDegree(n + 1, 0);
+std::vector<VertIdx> inDegree(n + 1, 0);
 
-for (int s = 1; s <= n; ++s)
+for (VertIdx s = 1; s <= n; ++s)
 {
-    for (int e = head[s]; 0 < e; e = next[e])
+    for (EdgeIdx e = head[s]; 0 < e; e = next[e])
     {
         ++inDegree[to[e]];
     }
@@ -1492,27 +1502,27 @@ for (int s = 1; s <= n; ++s)
 
 // Use min heap to output topological sort and vert ids ascending. 
 // Could use regular queue if not requiring vert ids ascending. 
-std::priority_queue<int, std::vector<int>, std::greater<int>> heap;
+std::priority_queue<VertIdx, std::vector<VertIdx>, std::greater<VertIdx>> heap;
 
-for (int i = 1; i <= n; ++i)
+for (VertIdx i = 1; i <= n; ++i)
 {
     if (!inDegree[i])
     {
-        heap.push(i);
+        heap.emplace(i);
     }
 }
 
 while (!heap.empty())
 {
-    int curr = heap.top();
+    VertIdx curr = heap.top();
     heap.pop();
     ans.emplace_back(curr);  // 1-indexed!
 
-    for (int e = head[curr]; 0 < e; e = next[e])
+    for (EdgeIdx e = head[curr]; 0 < e; e = next[e])
     {
         if (!--inDegree[to[e]])
         {
-            heap.push(to[e]);
+            heap.emplace(to[e]);
         }
     }
 }

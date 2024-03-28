@@ -37,10 +37,11 @@
 
 ## Subarray
 
+- **Subarray**: Contiguous chunk
+  - **Prefix Sum?**
+  - **Sliding Window?**
+    - "Max K" variant?
 - [930. Binary Subarrays With Sum](https://leetcode.com/problems/binary-subarrays-with-sum/)
-  - **Subarray**: Contiguous chunk
-    - **Prefix Sum?**
-    - **Sliding Window?**
   - (a) Prefix sum and HashMap. 
   - (b) Sliding window of number of subarrays summing up to at most goal, prefix sum manner minus. 
     - Note that, (b) holds iff. all elements are non-negative!!!
@@ -62,6 +63,19 @@
 - 1
 
 
+
+## Random Element Removal for A Heap-like Interface
+
+- Heap and HashSet: Lazy Removal / Delayed Removal
+  - HashSet records deleted elements in heap;
+  - Each time getting elements from heap, pop until top is not marked deleted. 
+- Or just use a RBTree...
+- [218. The Skyline Problem](https://leetcode.com/problems/the-skyline-problem/)
+  - Vertical Scanline with lazy removal optimization. 
+- [716. Max Stack](https://leetcode.com/problems/max-stack/)
+
+
+
 ## BFS
 
 - So the BFS queue could contain
@@ -73,3 +87,8 @@
   - State compression BFS, enqueue done/processed states.  
   - Prune with recorded min step vector for each (row, col, state). 
   - **Handle updates in direction loop** s.t. sub-optimal steps won't be added to queue. 
+- Bidirectional BFS
+  - Two queues and each queue has a hash map recording visited nodes on this side. 
+  - For each step, expand the queue with smaller size. 
+  - Terminates when expansion meets a node in opponent's visited hash map.
+

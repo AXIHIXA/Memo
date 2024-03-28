@@ -76,6 +76,7 @@
       - [OpenGLDemo3D](./code/CMakeLists/OpenGLDemo3D/CMakeLists.txt)
     - [OpenMesh + TBB](./code/CMakeLists/OpenMesh+TBB/CMakeLists.txt)
     - [Qt5](./code/CMakeLists/Qt5/CMakeLists.txt)
+    - [Sanitizer](./code/CMakeLists/Sanitizer/CMakeLists.txt)
     - [Vulkan](./code/CMakeLists/VulkanDemo/CMakeLists.txt)
 - `C/C++` Code
     - [debug.h](./code/debug.h)
