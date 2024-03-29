@@ -69,7 +69,11 @@
 - Heap and HashSet: Lazy Removal / Delayed Removal
   - HashSet records deleted elements in heap;
   - Each time getting elements from heap, pop until top is not marked deleted. 
-- Or just use a RBTree...
+- Or use a **MULTISET** RBTree...
+  - Note it MUST be `std::multiset`, which allows duplicates!
+  - Also note that `std::multiset::erase(key)` removes **ALL** elements with key `key`!
+    - `find` returns an iterator to a random element with key `key`, `erase(find(key))` should work. 
+    - `std::multiset` also provides `lower_bound`, `upper_bound`, `equal_range`. 
 - [218. The Skyline Problem](https://leetcode.com/problems/the-skyline-problem/)
   - Vertical Scanline with lazy removal optimization. 
 - [716. Max Stack](https://leetcode.com/problems/max-stack/)

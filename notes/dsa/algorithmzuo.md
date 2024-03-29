@@ -1321,28 +1321,35 @@ for (int i = 1; i <= m; ++i)
   - 滑动窗口维持最大值 或者 最小值的更新结构，在【必备】课程【单调队列】视频里讲述
 - [209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
 - [3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/)
-- [76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/)
-  - Bucket count all target chars `needs`;
-  - Maintain `needed = t.size()`:
-    - `0 < needs[rr]--`, then `rr` is needed, `--needed`;
-    - While `ll <= rr && needed == 0` move `ll`, `needs[s[ll++]]++ == 0` then `++needed`.
 - [1234. Replace the Substring for Balanced String](https://leetcode.com/problems/replace-the-substring-for-balanced-string/)
   - Turn into LC 76. Min Window Substr. 
 - [1759. Count Number of Homogenous Substrings](https://leetcode.com/problems/count-number-of-homogenous-substrings/)
   - Math Linspace Sum: `aaa...a` of length `k` has `sum([1...k])` homogeneous substrings. 
-
 - [2958. Length of Longest Subarray With at Most K Frequency](https://leetcode.com/problems/length-of-longest-subarray-with-at-most-k-frequency/)
 - [560. Subarray Sum Equals K](https://leetcode.com/problems/subarray-sum-equals-k/)
   - Note that this could be done only with prefix sum + HashMap method. 
   - Prefix sum could be computed with rolling number manner in O(1) space. 
   - Note that (b) for 930 does **not** work for this problem!!!
-- "At most k" method
-  - Number of subarrays with at most k something. `ans += rr - ll + 1` adds number of subarrs ending at `rr`. 
+- **"At most k"/"At least k"**
+  - Number of subarrays with at most/least k something. 
+    - "At most": 
+      - A valid subarray could start from `[ll...rr]` and end at `rr`. 
+      - `ans += rr - ll + 1`. 
+    - "At least": 
+      - A valid subarray could start from `[0...ll)` and end at `rr`. 
+      - `and += ll`. 
   - [930. Binary Subarrays With Sum](https://leetcode.com/problems/binary-subarrays-with-sum/)
   - [713. Subarray Product Less Than K](https://leetcode.com/problems/subarray-product-less-than-k/)
   - [992. Subarrays with K Different Integers](https://leetcode.com/problems/subarrays-with-k-different-integers/description/)
     - Counter constituted by non-negative elements, could set minus. 
     - Sliding Window At Most k Distincts MINUS At Most k - 1 Distincts. 
+  - [2962. Count Subarrays Where Max Element Appears at Least K Times](https://leetcode.com/problems/count-subarrays-where-max-element-appears-at-least-k-times/)
+- **"Needs k somewhat"**
+  - [76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/)
+  - Bucket count all target chars `needs`;
+  - Maintain `needed = t.size()`:
+    - `0 < needs[rr]--`, then `rr` is needed, `--needed`;
+    - While `ll <= rr && needed == 0` move `ll`, `needs[s[ll++]]++ == 0` then `++needed`.
 
 
 
@@ -1383,8 +1390,9 @@ for (int i = 1; i <= m; ++i)
 - [410. Split Array Largest Sum](https://leetcode.com/problems/split-array-largest-sum/)
   - Bin Search on the Result Largest Sum.
   - Given this largest sum, calculate how many segments we need to split original array into. 
+- [719. Find K-th Smallest Pair Distance](https://leetcode.com/problems/find-k-th-smallest-pair-distance/)
+  - Bin Search AND Sliding Window At Most K
 - []()
-
 
 
 ## 059 建图、链式前向星、拓扑排序

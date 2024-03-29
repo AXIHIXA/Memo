@@ -47,6 +47,17 @@ std::shuffle(v.begin(), v.end(), e);
 ```
 
 
+## Bin Search
+
+- **Partitioned**:
+  - Former half evaluates to `false`, latter half evaluates to `true` w.r.t. `comp(target, e)` or `t < e`. 
+- For a sorted range `a` (non-decreasing, sorted with `<`):
+  - `std::upper_bound(a.crbegin(), a.crend(), t)`: Leftmost element s.t. `t < e`; 
+  - `std::lower_bound(a.crbegin(), a.crend(), t)`: Leftmost element s.t. `t <= e`; 
+  - `std::upper_bound(a.crbegin(), a.crend(), t, std::greater<>())`: Rightmost element s.t. `e < t`;
+  - `std::lower_bound(a.crbegin(), a.crend(), t, std::greater<>())`: Rightmost element s.t. `e <= t`;
+
+
 
 ## Prefix Sum
 
