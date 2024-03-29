@@ -1315,8 +1315,12 @@ for (int i = 1; i <= m; ++i)
   - 维持左、右边界都不回退的一段范围，来求解很多子数组（串）的相关问题
   - 滑动窗口的关键：找到 范围 和 答案指标 之间的 单调性关系（类似贪心）
   - 滑动过程：滑动窗口可以用 简单变量 或者 结构 来 维护信息
-    - `if (counter[arr[rr]]++ == 0) ++info;`
-    - `while (ll <= rr && info is valid) { if (--counter[arr[ll++]] == 0) invalidate info; }`
+    - Outermost increment `rr`, inner fix `rr` and slide `ll`:
+      - `if (counter[arr[rr]]++ == 0) ++info;`
+      - `while (ll <= rr && info is valid) { if (--counter[arr[ll++]] == 0) invalidate info; }`
+    - Outermost increment `ll`, inner fix `ll` and slide `rr`:
+      - [719. Find K-th Smallest Pair Distance](https://leetcode.com/problems/find-k-th-smallest-pair-distance/)
+        - Bin Search AND Sliding Window At Most K
   - 求解大流程：求子数组在 每个位置 开头 或 结尾 情况下的答案（开头还是结尾在于个人习惯）
   - 滑动窗口维持最大值 或者 最小值的更新结构，在【必备】课程【单调队列】视频里讲述
 - [209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
@@ -1331,7 +1335,7 @@ for (int i = 1; i <= m; ++i)
   - Prefix sum could be computed with rolling number manner in O(1) space. 
   - Note that (b) for 930 does **not** work for this problem!!!
 - **"At most k"/"At least k"**
-  - Number of subarrays with at most/least k something. 
+  - Number of subarrays with at most/least k something, count num ending at `rr` for valid window. 
     - "At most": 
       - A valid subarray could start from `[ll...rr]` and end at `rr`. 
       - `ans += rr - ll + 1`. 
@@ -1393,6 +1397,10 @@ for (int i = 1; i <= m; ++i)
 - [719. Find K-th Smallest Pair Distance](https://leetcode.com/problems/find-k-th-smallest-pair-distance/)
   - Bin Search AND Sliding Window At Most K
 - []()
+
+
+
+
 
 
 ## 059 建图、链式前向星、拓扑排序
