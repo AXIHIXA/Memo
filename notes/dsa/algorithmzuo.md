@@ -1318,9 +1318,7 @@ for (int i = 1; i <= m; ++i)
     - Outermost increment `rr`, inner fix `rr` and slide `ll`:
       - `if (counter[arr[rr]]++ == 0) ++info;`
       - `while (ll <= rr && info is valid) { if (--counter[arr[ll++]] == 0) invalidate info; }`
-    - Outermost increment `ll`, inner fix `ll` and slide `rr`:
-      - [719. Find K-th Smallest Pair Distance](https://leetcode.com/problems/find-k-th-smallest-pair-distance/)
-        - Bin Search AND Sliding Window At Most K
+    - (Maybe Outermost increment `ll`, inner fix `ll` and slide `rr`).
   - 求解大流程：求子数组在 每个位置 开头 或 结尾 情况下的答案（开头还是结尾在于个人习惯）
   - 滑动窗口维持最大值 或者 最小值的更新结构，在【必备】课程【单调队列】视频里讲述
 - [209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
@@ -1396,8 +1394,8 @@ for (int i = 1; i <= m; ++i)
   - Given this largest sum, calculate how many segments we need to split original array into. 
 - [719. Find K-th Smallest Pair Distance](https://leetcode.com/problems/find-k-th-smallest-pair-distance/)
   - Bin Search AND Sliding Window At Most K
+- [2141. Maximum Running Time of N Computers](https://leetcode.com/problems/maximum-running-time-of-n-computers/)
 - []()
-
 
 
 

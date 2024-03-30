@@ -10,11 +10,11 @@ public:
         {
             int ans = 0;
 
-            for (int ll = 0, rr = 0; ll < n; ++ll)
+            for (int ll = 0, rr = 0; rr < n; ++rr)
             {
-                while (rr + 1 < n && nums[rr + 1] - nums[ll] <= x)
+                while (ll <= rr && x < nums[rr] - nums[ll])
                 {
-                    ++rr;
+                    ++ll;
                 }
 
                 ans += rr - ll;
