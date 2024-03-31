@@ -1438,18 +1438,53 @@ for (int i = 1; i <= m; ++i)
 ## 052 单调栈-上
 
 - 经典用法
-  - 给定数组每个位置都求当前位置 **左/右侧 比当前位置 小/大，且 距离最近** 的位置
-  - 数组 有/无 重复元素
+  - 给定数组每个位置，都求当前位置 **左/右侧 比当前位置 小/大，且 距离最近** 的位置
+  - 数组中 有/无 重复元素 均可
   - 所有调整的总代价为 `O(n)`，单次操作均摊代价为 `O(1)`
 - 流程
   - 栈里存下标
-  - 栈底到栈顶对应原数组的元素**严格单调递增**
-  - 从左到右遍历原数组，新元素来了，空栈或大于栈顶就入栈，否则不停弹出直到空栈或大于栈顶
-    - `while (!stk.empty() && arr[i] <= arr[stk.back()]) { stk.pop_back(); } stk.emplace_back(i);`
-  - 如果当前位置发生了弹出，则进行结算：
-    - 左侧最近的**大于**当前位置的位置：第一次弹出的位置
-    - 左侧最近的**小于**当前位置的位置：弹出结束后的栈顶
-  - 性能考虑：用 `std::vector` 代替 `std::stack` ，注意要 `reserve`（`std::stack` 没有 `reserve` 方法）
+  - 栈底到栈顶对应原数组的元素**严格单调递增**，即**大压小**
+  - 从左到右遍历原数组，**新元素来了，不违反“大压小”就进**，进不了就弹出元素并 *结算*，遍历完后依次弹出栈里剩余元素并结算
+    - 空栈或大于栈顶就入栈，否则不停弹出直到空栈或大于栈顶
+  - 如果栈顶被**弹出**，则对栈顶进行 *结算*：
+    - 左侧最近的**小于**栈顶的：当初压着的位置（没有则不存在）
+    - 右侧最近的**小于**栈顶的：谁让我出来的谁就是（没有则不存在）
+    - 如有**重复元素**，则出栈时先记下那个相同元素，全栈结算空之后再更新右侧数据
+      - 左侧天然是对的
+  - 性能考虑：鉴于 `std::stack` 没有 `reserve` 方法，使用 `std::vector` 代替 `std::stack`，注意要 `reserve`
+```cpp
+std::vector<int> stk;
+stk.reserve(n);
+
+for (int i = 0; i < n; ++i)
+{
+    while (!stk.empty() && arr[i] <= arr[stk.back()])
+    {
+        int top = stk.back();
+        stk.pop_back();
+        leftNearestLess[top] = stk.empty() ? -1 : stk.back();
+        rightNearestLess[top] = i;
+    }
+
+    stk.emplace_back(i);
+}
+
+while (!stk.empty())
+{
+    int top = stk.back();
+    stk.pop_back();
+    leftNearestLess[top] = stk.empty() ? -1 : stk.back();
+    rightNearestLess[top] = -1;
+}
+
+for (int i = n - 2; 0 <= i; --i)
+{
+    if (rightNearestLess[i] != -1 && arr[rightNearestLess[i]] == arr[i])
+    {
+        rightNearestLess[i] = rightNearestLess[rightMearestLess[i]];
+    }
+}
+```
 - [739. Daily Temperatures](https://leetcode.com/problems/daily-temperatures/)
 
 
