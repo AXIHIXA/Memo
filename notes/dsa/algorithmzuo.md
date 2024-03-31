@@ -1312,14 +1312,13 @@ for (int i = 1; i <= m; ++i)
 ## 049 滑动窗口技巧与相关题目
 
 - 滑动窗口
-  - 维持左、右边界都不回退的一段范围，来求解很多子数组（串）的相关问题
-  - 滑动窗口的关键：找到 范围 和 答案指标 之间的 单调性关系（类似贪心）
+  - 维持左、右边界都不回退的一段范围，来求解很多**子数组（串）的相关问题**
+  - 求解大流程：**求子数组在** **每个位置** 开头 或 **结尾** **情况下的答案**（开头还是结尾在于个人习惯）
   - 滑动过程：滑动窗口可以用 简单变量 或者 结构 来 维护信息
-    - Outermost increment `rr`, inner fix `rr` and slide `ll`:
+    - 最外层递增`rr`, 内层固定`rr`，滑动或者计算`ll`:
       - `if (counter[arr[rr]]++ == 0) ++info;`
       - `while (ll <= rr && info is valid) { if (--counter[arr[ll++]] == 0) invalidate info; }`
-    - (Maybe Outermost increment `ll`, inner fix `ll` and slide `rr`).
-  - 求解大流程：求子数组在 每个位置 开头 或 结尾 情况下的答案（开头还是结尾在于个人习惯）
+  - 滑动窗口的关键：找到 范围 和 答案指标 之间的 单调性关系（类似贪心）
   - 滑动窗口维持最大值 或者 最小值的更新结构，在【必备】课程【单调队列】视频里讲述
 - [209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
 - [3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/)
@@ -1332,20 +1331,22 @@ for (int i = 1; i <= m; ++i)
   - Note that this could be done only with prefix sum + HashMap method. 
   - Prefix sum could be computed with rolling number manner in O(1) space. 
   - Note that (b) for 930 does **not** work for this problem!!!
+- [2444. Count Subarrays With Fixed Bounds](https://leetcode.com/problems/count-subarrays-with-fixed-bounds/)
 - **"At most k"/"At least k"**
   - Number of subarrays with at most/least k something, count num ending at `rr` for valid window. 
     - "At most": 
       - A valid subarray could start from `[ll...rr]` and end at `rr`. 
       - `ans += rr - ll + 1`. 
-    - "At least": 
+    - "At least" (Essentially equivalant to "at most"): 
       - A valid subarray could start from `[0...ll)` and end at `rr`. 
-      - `and += ll`. 
+      - `ans += ll` (`all (rr - 0 + 1) - at most (rr - ll + 1)`). 
   - [930. Binary Subarrays With Sum](https://leetcode.com/problems/binary-subarrays-with-sum/)
   - [713. Subarray Product Less Than K](https://leetcode.com/problems/subarray-product-less-than-k/)
   - [992. Subarrays with K Different Integers](https://leetcode.com/problems/subarrays-with-k-different-integers/description/)
     - Counter constituted by non-negative elements, could set minus. 
     - Sliding Window At Most k Distincts MINUS At Most k - 1 Distincts. 
   - [2962. Count Subarrays Where Max Element Appears at Least K Times](https://leetcode.com/problems/count-subarrays-where-max-element-appears-at-least-k-times/)
+    - Sliding Window AND Monotonic Queue. 
 - **"Needs k somewhat"**
   - [76. Minimum Window Substring](https://leetcode.com/problems/minimum-window-substring/)
   - Bucket count all target chars `needs`;
@@ -1357,6 +1358,13 @@ for (int i = 1; i <= m; ++i)
 
 ## 050 双指针技巧与相关题目
 
+- 双指针
+  - 同数组内：
+    - 快慢指针：Floyd's Cycle Detection Algorithm，One-pass get last-k node in forward list
+    - 相向指针：2-Sum，Trapping Rain Water，Container with Most Water，First Missing Positive
+    - 同向指针：这个叫滑动窗口……
+  - 两个数组内：
+    - 同向指针：[LC 475. Heaters](https://leetcode.com/problems/heaters/)
 - [LC 287. Find the Duplicate Number](https://leetcode.com/problems/find-the-duplicate-number/)
   - Floyd's algorithm (2 pointers cycle detection)
   - Array as hash (aka cyclic sort)
@@ -1385,6 +1393,10 @@ for (int i = 1; i <= m; ++i)
 
 ## 051 二分答案法与相关题目
 
+- 二分的是【答案】
+  - 求的答案是一个数；
+  - 这个数能估计出上界和下界；
+  - 给定一个候选答案，能 `O(n)` 判断出它是大了还是小了。
 - [875. Koko Eating Bananas](https://leetcode.com/problems/koko-eating-bananas/)
   - Bin search on `k` (how many bananas to eat per hour) `O(log m)`, `max(piles) == m <= 1e9`. 
   - For each `k` decide to go left/right in `O(n)` time, `piles.size() == n <= 1e4`. 
@@ -1395,7 +1407,52 @@ for (int i = 1; i <= m; ++i)
 - [719. Find K-th Smallest Pair Distance](https://leetcode.com/problems/find-k-th-smallest-pair-distance/)
   - Bin Search AND Sliding Window At Most K
 - [2141. Maximum Running Time of N Computers](https://leetcode.com/problems/maximum-running-time-of-n-computers/)
-- []()
+- 服务员问题
+  - 描述：
+    - 有 `n` 个服务员，第 `i` 个服务员服务完一个客人所需时间为 `waiter[i]`；
+    - 现有 `m` 个客人在等位，你排在这 `m` 人后面，你最少要等多久？
+  - 限制：
+    - `1 <= n <= 1e3`
+    - `1 <= m <= 1e9`
+  - 解法：
+    - 二分等待时间，下界 `0`，上界 `m * min(waiter)`；
+    - 对每一个等位时间，能 `O(n)` 算出这段时间里最多能服务多少客人。
+- 打怪兽问题
+  - 描述：
+    - 有一个怪兽，有 `hp` 单位的血量；
+    - 每一回合 `i`，你可以平A一刀，造成 `f[i]` 单位伤害；或者下毒，这一回合不造成伤害，从下一回合开始，每回合造成 `g[i]` 单位伤害；
+    - 不同回合多次下毒造成的伤害可以叠加；
+    - 你最多可以行动 `n` 个回合，如果 `n` 回合结束后怪兽还没死，你也不能继续行动；但如果怪兽此前中毒了，毒属性伤害仍继续生效；
+    - 问最快几回合能把怪兽打死？
+  - 限制：
+    - `1 <= hp <= 1e9`
+    - `1 <= n <= 1e5`
+    - `1 <= f[i], g[i] <= 1e9`
+  - 解法：
+    - 二分所需回合数，下界 `1`，上界 `hp + 1`；
+    - 对每一个回合数，可以 `O(n)` 算出最多造成多少伤害；
+    - 总回合数固定情况下，每一回合平A的收益（ `f[i]` ）和下毒的收益（ `(limit - i) * g[i]` ）都已知，每回合选收益大的即可。
+
+
+
+## 052 单调栈-上
+
+- 经典用法
+  - 给定数组每个位置都求当前位置 **左/右侧 比当前位置 小/大，且 距离最近** 的位置
+  - 数组 有/无 重复元素
+  - 所有调整的总代价为 `O(n)`，单次操作均摊代价为 `O(1)`
+- 流程
+  - 栈里存下标
+  - 栈底到栈顶对应原数组的元素**严格单调递增**
+  - 从左到右遍历原数组，新元素来了，空栈或大于栈顶就入栈，否则不停弹出直到空栈或大于栈顶
+    - `while (!stk.empty() && arr[i] <= arr[stk.back()]) { stk.pop_back(); } stk.emplace_back(i);`
+  - 如果当前位置发生了弹出，则进行结算：
+    - 左侧最近的**大于**当前位置的位置：第一次弹出的位置
+    - 左侧最近的**小于**当前位置的位置：弹出结束后的栈顶
+  - 性能考虑：用 `std::vector` 代替 `std::stack` ，注意要 `reserve`（`std::stack` 没有 `reserve` 方法）
+- [739. Daily Temperatures](https://leetcode.com/problems/daily-temperatures/)
+
+
 
 
 
