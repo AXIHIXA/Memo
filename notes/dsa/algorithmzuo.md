@@ -1314,12 +1314,14 @@ for (int i = 1; i <= m; ++i)
 - 滑动窗口
   - 维持左、右边界都不回退的一段范围，来求解很多**子数组（串）的相关问题**
   - 求解大流程：**求子数组在** **每个位置** 开头 或 **结尾** **情况下的答案**（开头还是结尾在于个人习惯）
+    - 问 **最长** 窗口：外围右移 `ll`，**内部固定 `ll`** 右移 `rr`，反过来不行
+    - 问 **最短** 窗口：外围右移 `rr`，**内部固定 `rr`** 右移 `ll`
   - 滑动过程：滑动窗口可以用 简单变量 或者 结构 来 维护信息
     - 最外层递增`rr`, 内层固定`rr`，滑动或者计算`ll`:
       - `if (counter[arr[rr]]++ == 0) ++info;`
       - `while (ll <= rr && info is valid) { if (--counter[arr[ll++]] == 0) invalidate info; }`
   - 滑动窗口的关键：找到 范围 和 答案指标 之间的 单调性关系（类似贪心）
-  - 滑动窗口维持最大值 或者 最小值的更新结构，在【必备】课程【单调队列】视频里讲述
+  - 滑动窗口维持 **最大值** 或者 **最小值** 的更新结构：**单调队列**
 - [209. Minimum Size Subarray Sum](https://leetcode.com/problems/minimum-size-subarray-sum/)
 - [3. Longest Substring Without Repeating Characters](https://leetcode.com/problems/longest-substring-without-repeating-characters/)
 - [1234. Replace the Substring for Balanced String](https://leetcode.com/problems/replace-the-substring-for-balanced-string/)
@@ -1443,7 +1445,7 @@ for (int i = 1; i <= m; ++i)
     - 找大的则严格单调递减
   - 数组中 有/无 重复元素 均可
   - 所有调整的总代价为 `O(n)`，单次操作均摊代价为 `O(1)`
-- 流程
+- 流程（举例求解最近小邻居）
   - 栈里存下标
   - 栈底到栈顶对应原数组的元素**严格单调递增**，即**大压小**
   - 从左到右遍历原数组，**新元素来了，不违反“大压小”就进**，进不了就弹出元素并 *结算*，遍历完后依次弹出栈里剩余元素并 *结算*
@@ -1451,7 +1453,7 @@ for (int i = 1; i <= m; ++i)
   - 如果栈顶被**弹出**，则对栈顶进行 *结算*：
     - 左侧最近的**小于**栈顶的：当初压着的位置（没有则不存在）
     - 右侧最近的**小于**栈顶的：谁让我出来的谁就是（没有则不存在）
-    - 如有**重复元素**，则出栈时先记下那个相同元素，全栈结算空之后再更新右侧数据
+    - 如有**重复元素**，则出栈时先记下那个相同元素，栈清空之后再反向遍历答案数组，更新右侧数据
       - 左侧天然是对的
   - 性能考虑：鉴于 `std::stack` 没有 `reserve` 方法，使用 `std::vector` 代替 `std::stack`，注意要 `reserve`
 ```c++
@@ -1465,7 +1467,7 @@ for (int i = 0; i < n; ++i)
     {
         int cur = stk.back();
         stk.pop_back();
-        leftNearestLess[top] = stk.empty() ? -1 : stk.back();
+        leftNearestLess[cur] = stk.empty() ? -1 : stk.back();
         rightNearestLess[cur] = i;
     }
 
@@ -1507,14 +1509,56 @@ for (int i = n - 2; 0 <= i; --i)
   - 单调栈里的所有对象按照 规定好的单调性来组织
   - 当某个对象进入单调栈时，会从 栈顶开始 依次淘汰单调栈里 **对后续求解没有帮助** 的对象
   - 每个对象从栈顶弹出时 **结算当前对象参与的答案**，随后这个对象 不再参与后续求解答案的过程
-  - 发现题目求解内容的 **单调性**，然后用单调栈来实现
+  - 发现题目求解内容的 **单调性**（遍历过程中 **单调后继可以排除前驱作为答案的可能**），然后用单调栈来实现
   - **入栈和出栈不一定要在一次遍历中同时发生**，可以遍历两次，第一次只进，第二次只出
 - [962. Maximum Width Ramp](https://leetcode.com/problems/maximum-width-ramp/)
   - 单调性：若 `a[i] <= a[j]`，`i < j`，则 `a[j]` 能形成的坡 `a[i]` 也都能形成，而且长度更优
-  - 严格单调减栈，第一遍从左到右，只入栈（左端点），第二遍从右到左，枚举右端点，找最优左端点
+  - 严格单调递减栈，第一遍从左到右，只入栈（左端点），第二遍从右到左，枚举右端点，找最优左端点
 - [316. Remove Duplicate Letters](https://leetcode.com/problems/remove-duplicate-letters/)
-- []()
-- []()
+  - 单调性：若 `s[i] > s[j]`，`i < j`，且后面还有 `s[i]`，则当前位置删除 `s[i]` 保留 `s[j]` 一定合法且字典序更小
+- [2289. Steps to Make Array Non-decreasing](https://leetcode.com/problems/steps-to-make-array-non-decreasing/)
+  - 单调性：从右往左遍历，如果后继能吃前驱，则后继（或者吃了这个后继的更大的鱼接班后）需要`max(turn(succ), 1 + turn(pred))`回合吃完所有右边的鱼
+- [1504. Count Submatrices With All Ones](https://leetcode.com/problems/count-submatrices-with-all-ones/)
+  - LC第85题“Maximal Rectangle”（上一章最后一题）的变种
+
+
+
+## 054 单调队列-上
+
+- 经典用法
+  - 滑动窗口在滑动时，想随时得到 **当前滑动窗口** 的 **最大值** 和 **最小值**
+  - 窗口滑动的过程中，单调队列所有调整的总代价为 `O(n)`，单次操作的均摊代价为 `O(1)`
+  - 单调队列只负责维护最值，窗口本身依旧靠原数组内的双指针 `ll` 和 `rr` 表示
+- 流程（举例维护最大值）
+  - 双端队列，存下标，从头到尾 **大压小**（严格单调递减），最大值下标为 `deq.front()`
+  - 窗口右扩：从尾部入队，如有违反大压小的元素依次从尾部弹出
+  - 窗口左缩：看队头下标是否过期，如有过期则从头部弹出
+- [239. Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/)
+- [1438. Longest Continuous Subarray With Absolute Diff Less Than or Equal to Limit](https://leetcode.com/problems/longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit/)
+  - 问最长窗口：外围右移 `ll`，内部固定 `ll` 右移 `rr`，反过来不行
+  - 问最小窗口：外围右移 `rr`，内部固定 `rr` 右移 `ll`
+- [P2698 [USACO12MAR] Flowerpot S](https://www.luogu.com.cn/problem/P2698)
+  - 求最值之差大于等于 `d` 的最小窗口，外围右移 `rr`，内部固定 `rr` 右移 `ll`
+
+
+
+## 055 单调队列-下
+
+- 单调队列可以 **维持求解答案的可能性**
+  - 单调队列里的所有对象按照 规定好的单调性来组织
+  - 当某个对象进入单调队列时，会从 对队头开始 依次淘汰单调队列里 **对后续求解没有帮助** 的对象
+  - 每个对象从队头弹出时 **结算当前对象参与的答案**，随后这个对象 不再参与后续求解答案的过程
+  - 发现题目求解内容的 **单调性**（遍历过程中 **单调后继可以排除前驱作为答案的可能**），然后用单调队列来实现
+  - **入队和出队不一定要在一次遍历中同时发生**，可以遍历两次，第一次只进，第二次只出
+- [862. Shortest Subarray with Sum at Least K](https://leetcode.com/problems/shortest-subarray-with-sum-at-least-k/)
+  - 前缀和，以 `arr[rr]` 结尾的子数组，最短要以 `ll` 开始，`k <= ps[rr + 1] - ps[ll]`。
+  - **对每一元素找最近的小于等于 `?` 的前缀**，但**不要求每个元素都求出真实值**，只要找出最短即可。
+    - 单调队列，小到大，队尾入队前缀和
+      - 当前前缀和大于 `k` 之后，队头不断出队，直到只有队头 `<= ?`
+        - 之前出队的位置，既使和 `rr` 之后的位置构成答案，也不会比当前 `[?...rr]` 这个子数组更短，可以淘汰！
+      - 当不满足小压大，队尾不断出队，直到当前前缀和从队尾入队不违反小压大
+        - 要找最近的小于啥啥的元素，队尾若满足一定必前面出队的更优，队尾若不合格，前面那些更大的更不会合格
+
 
 
 
