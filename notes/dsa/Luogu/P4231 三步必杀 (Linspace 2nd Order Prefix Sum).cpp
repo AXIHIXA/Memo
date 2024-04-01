@@ -71,11 +71,6 @@ std::array<long long, Solution::kSize> Solution::ps = {0};
 
 int main(int argc, char * argv[])
 {
-    #ifdef LOCAL_TEST
-    std::freopen("var/1.txt", "r", stdin);
-    std::freopen("var/2.txt", "w", stdout);
-    #endif  // #ifdef LOCAL_TEST
-
     Solution s;
 
     return EXIT_SUCCESS;

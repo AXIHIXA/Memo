@@ -4,16 +4,15 @@ public:
     std::string removeDuplicateLetters(std::string s)
     {
         std::array<int, 26> freq = {0};
-        std::array<bool, 26> contains = {false};
 
         for (char c : s)
         {
             ++freq[c - 'a'];
         }
 
-        auto n = static_cast<const int>(s.size());
+        std::array<bool, 26> contains = {false};
         std::string stk;
-        stk.reserve(n);
+        stk.reserve(s.size());
 
         for (char c : s)
         {
@@ -24,9 +23,9 @@ public:
                     contains[stk.back() - 'a'] = false;
                     stk.pop_back();
                 }
-
-                stk += c;
+                
                 contains[c - 'a'] = true;
+                stk += c;
             }
 
             --freq[c - 'a'];
