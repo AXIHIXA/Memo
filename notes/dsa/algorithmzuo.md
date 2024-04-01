@@ -1439,12 +1439,14 @@ for (int i = 1; i <= m; ++i)
 
 - 经典用法
   - 给定数组每个位置，都求当前位置 **左/右侧 比当前位置 小/大，且 距离最近** 的位置
+    - 找小的则严格单调递增
+    - 找大的则严格单调递减
   - 数组中 有/无 重复元素 均可
   - 所有调整的总代价为 `O(n)`，单次操作均摊代价为 `O(1)`
 - 流程
   - 栈里存下标
   - 栈底到栈顶对应原数组的元素**严格单调递增**，即**大压小**
-  - 从左到右遍历原数组，**新元素来了，不违反“大压小”就进**，进不了就弹出元素并 *结算*，遍历完后依次弹出栈里剩余元素并结算
+  - 从左到右遍历原数组，**新元素来了，不违反“大压小”就进**，进不了就弹出元素并 *结算*，遍历完后依次弹出栈里剩余元素并 *结算*
     - 空栈或大于栈顶就入栈，否则不停弹出直到空栈或大于栈顶
   - 如果栈顶被**弹出**，则对栈顶进行 *结算*：
     - 左侧最近的**小于**栈顶的：当初压着的位置（没有则不存在）
@@ -1452,31 +1454,36 @@ for (int i = 1; i <= m; ++i)
     - 如有**重复元素**，则出栈时先记下那个相同元素，全栈结算空之后再更新右侧数据
       - 左侧天然是对的
   - 性能考虑：鉴于 `std::stack` 没有 `reserve` 方法，使用 `std::vector` 代替 `std::stack`，注意要 `reserve`
-```cpp
+```c++
 std::vector<int> stk;
 stk.reserve(n);
 
+// 遍历阶段
 for (int i = 0; i < n; ++i)
 {
     while (!stk.empty() && arr[i] <= arr[stk.back()])
     {
-        int top = stk.back();
+        int cur = stk.back();
         stk.pop_back();
         leftNearestLess[top] = stk.empty() ? -1 : stk.back();
-        rightNearestLess[top] = i;
+        rightNearestLess[cur] = i;
     }
 
     stk.emplace_back(i);
 }
 
+// 清算阶段
 while (!stk.empty())
 {
-    int top = stk.back();
+    int cur = stk.back();
     stk.pop_back();
-    leftNearestLess[top] = stk.empty() ? -1 : stk.back();
-    rightNearestLess[top] = -1;
+    leftNearestLess[cur] = stk.empty() ? -1 : stk.back();
+    rightNearestLess[cur] = -1;
 }
 
+// 修正阶段
+// 左侧的答案不需要修正一定是正确的，只有右侧答案需要修正
+// 从右往左修正，n-1位置的右侧答案一定是-1，不需要修正
 for (int i = n - 2; 0 <= i; --i)
 {
     if (rightNearestLess[i] != -1 && arr[rightNearestLess[i]] == arr[i])
@@ -1486,7 +1493,28 @@ for (int i = n - 2; 0 <= i; --i)
 }
 ```
 - [739. Daily Temperatures](https://leetcode.com/problems/daily-temperatures/)
+- [907. Sum of Subarray Minimums](https://leetcode.com/problems/sum-of-subarray-minimums/)
+  - Number of subarrays of array `[ll...rr]` containing element `ll <= cur <= rr`: `(cur - ll) * (rr - cur)`. 
+- [84. Largest Rectangle in Histogram](https://leetcode.com/problems/largest-rectangle-in-histogram/)
+- [85. Maximal Rectangle](https://leetcode.com/problems/maximal-rectangle/)
+  - 枚举行，每一行都是一道84题，行与行之间 `h` 的更新直接滚动数组 `O(cols)` 实现之。
 
+
+
+## 053 单调栈-下
+
+- 单调栈除经典用法之外，还可以 **维持求解答案的可能性**
+  - 单调栈里的所有对象按照 规定好的单调性来组织
+  - 当某个对象进入单调栈时，会从 栈顶开始 依次淘汰单调栈里 **对后续求解没有帮助** 的对象
+  - 每个对象从栈顶弹出时 **结算当前对象参与的答案**，随后这个对象 不再参与后续求解答案的过程
+  - 发现题目求解内容的 **单调性**，然后用单调栈来实现
+  - **入栈和出栈不一定要在一次遍历中同时发生**，可以遍历两次，第一次只进，第二次只出
+- [962. Maximum Width Ramp](https://leetcode.com/problems/maximum-width-ramp/)
+  - 单调性：若 `a[i] <= a[j]`，`i < j`，则 `a[j]` 能形成的坡 `a[i]` 也都能形成，而且长度更优
+  - 严格单调减栈，第一遍从左到右，只入栈（左端点），第二遍从右到左，枚举右端点，找最优左端点
+- [316. Remove Duplicate Letters](https://leetcode.com/problems/remove-duplicate-letters/)
+- []()
+- []()
 
 
 
