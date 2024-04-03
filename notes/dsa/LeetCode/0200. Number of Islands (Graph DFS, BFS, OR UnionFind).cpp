@@ -1,12 +1,73 @@
-int init = []
+class UnionFind
 {
-    std::ios_base::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-    std::cout.tie(nullptr);
-    return 0;
-}();
+public:
+    int numIslands(std::vector<std::vector<char>> & grid)
+    {
+        auto m = static_cast<const int>(grid.size());
+        auto n = static_cast<const int>(grid.front().size());
+        root.resize(m * n);
 
-class Solution 
+        auto idx = [n](int i, int j) -> int
+        {
+            return i * n + j;
+        };
+
+        for (int i = 0, k = 0; i < m; ++i)
+        {
+            for (int j = 0; j < n; ++j, ++k)
+            {
+                if (grid[i][j] == '1')
+                {
+                    root[k] = k;
+                    ++sets;
+                }
+            }
+        }
+
+        for (int i = 0, k = 0; i < m; ++i)
+        {
+            for (int j = 0; j < n; ++j, ++k)
+            {
+                if (grid[i][j] == '1')
+                {
+                    if (0 < i && grid[i - 1][j] == '1')
+                    {
+                        unite(idx(i - 1, j), k);
+                    }
+
+                    if (0 < j && grid[i][j - 1] == '1')
+                    {
+                        unite(idx(i, j - 1), k);
+                    }
+                }
+            }
+        }
+
+        return sets;
+    }
+
+private:
+    int find(int x)
+    {
+        if (x == root[x]) return x;
+        return root[x] = find(root[x]);
+    }
+
+    void unite(int x, int y)
+    {
+        int rx = find(x), ry = find(y);
+        if (rx == ry) return;
+
+        --sets;
+        root[rx] = ry;
+    }
+
+private:
+    int sets = 0;
+    std::vector<int> root;
+};
+
+class Search
 {
 public:
     int numIslands(std::vector<std::vector<char>> & grid) 
@@ -24,7 +85,6 @@ public:
                 if (grid[i][j] == '1' && !visited[i][j])
                 {
                     bfs(grid, m, n, i, j, visited);
-                    // dfs(grid, m, n, i, j, visited);
                     ++ans;
                 }
             }
@@ -85,3 +145,6 @@ private:
         }
     }
 };
+
+// using Solution = Search;
+using Solution = UnionFind;
