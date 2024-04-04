@@ -1667,6 +1667,20 @@ private:
 - [2421. Number of Good Paths](https://leetcode.com/problems/number-of-good-paths/)
   - UnionFind AND max(val(edge)) sorting
 - [928. Minimize Malware Spread II](https://leetcode.com/problems/minimize-malware-spread-ii/description/)
+  - Connected Component excluding virus nodes savable iff only one virus infects it
+
+
+
+## 058 洪水填充
+
+- [200. Number of Islands](https://leetcode.com/problems/number-of-islands/)
+  - Aka DFS. 
+- [130. Surrounded Regions](https://leetcode.com/problems/surrounded-regions/)
+  - Flood fill all boundary `'O'`s into `'F'`s, then loop all elements and modify.  
+- [827. Making A Large Island](https://leetcode.com/problems/making-a-large-island/)
+  - DFS Mark Island Group and Brute Force
+- [803. Bricks Falling When Hit](https://leetcode.com/problems/bricks-falling-when-hit/)
+  - 时光倒流
 
 
 

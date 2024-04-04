@@ -73,25 +73,11 @@ private:
     void unite(int x, int y)
     {
         int rx = find(x), ry = find(y);
+        if (rx == ry) return;
 
-        if (rx == ry)
-        {
-            return;
-        }
-
-        if (rank[rx] < rank[ry])
-        {
-            root[rx] = ry;
-        }
-        else if (rank[ry] < rank[rx])
-        {
-            root[ry] = rx;
-        }
-        else
-        {
-            root[ry] = rx;
-            ++rank[rx];
-        }
+        if (rank[rx] < rank[ry]) root[rx] = ry;
+        else if (rank[ry] < rank[rx]) root[ry] = rx;
+        else root[ry] = rx, ++rank[rx];
     }
 
 private:

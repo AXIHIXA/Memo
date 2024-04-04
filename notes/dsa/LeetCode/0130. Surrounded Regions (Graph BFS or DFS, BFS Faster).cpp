@@ -3,107 +3,72 @@ class Solution
 public:
     void solve(std::vector<std::vector<char>> & board)
     {
-        int m = board.size();
-        int n = board.front().size();
+        auto m = static_cast<const int>(board.size());
+        auto n = static_cast<const int>(board.front().size());
 
-        std::vector<std::vector<bool>> knownAlive(m, std::vector<bool>(n, false));
-
-        for (int i = 0; i < m; ++i)
+        std::function<void (int, int, char, char)> floodFill = 
+        [m, n, &board, &floodFill](int i, int j, char source, char target)
         {
-            if (board[i][0] == 'O') search(board, m, n, i, 0, knownAlive);
-            if (board[i][n - 1] == 'O') search(board, m, n, i, n - 1, knownAlive);
+            board[i][j] = target;
+            
+            for (int d = 0; d < 4; ++d)
+            {
+                int x = i + dx[d];
+                int y = j + dy[d];
+
+                if (x < 0 || m <= x || y < 0 || n <= y || board[x][y] != source)
+                {
+                    continue;
+                }
+                
+                floodFill(x, y, source, target);
+            }
+        };
+
+        for (int x = 0; x < m; ++x)
+        {
+            if (board[x][0] == 'O')
+            {
+                floodFill(x, 0, 'O', ' ');
+            }
+
+            if (board[x][n - 1] == 'O')
+            {
+                floodFill(x, n - 1, 'O', ' ');
+            }
         }
 
-        for (int j = 0; j < n; ++j)
+        for (int y = 0; y < n; ++y)
         {
-            if (board[0][j] == 'O') search(board, m, n, 0, j, knownAlive);
-            if (board[m - 1][j] == 'O') search(board, m, n, m - 1, j, knownAlive);
+            if (board[0][y] == 'O')
+            {
+                floodFill(0, y, 'O', ' ');
+            }
+
+            if (board[m - 1][y] == 'O')
+            {
+                floodFill(m - 1, y, 'O', ' ');
+            }
         }
 
         for (int i = 0; i < m; ++i)
         {
             for (int j = 0; j < n; ++j)
             {
-                if (board[i][j] == 'O' && !knownAlive[i][j])
+                if (board[i][j] == 'O')
                 {
                     board[i][j] = 'X';
+                }
+
+                if (board[i][j] == ' ')
+                {
+                    board[i][j] = 'O';
                 }
             }
         }
     }
 
 private:
-    static void bfs(
-            const std::vector<std::vector<char>> & board, 
-            int m, 
-            int n, 
-            int i, 
-            int j, 
-            std::vector<std::vector<bool>> & knownAlive 
-    )
-    {
-        std::queue<std::pair<int, int>> qu;
-        qu.emplace(i, j);
-        
-        while (!qu.empty())
-        {
-            auto [x, y] = qu.front();
-            qu.pop();
-
-            if (x < 0 || m <= x || y < 0 || n <= y || board[x][y] == 'X' || knownAlive[x][y])
-            {
-                continue;
-            }
-
-            knownAlive[x][y] = true;
-
-            qu.emplace(x - 1, y);
-            qu.emplace(x + 1, y);
-            qu.emplace(x, y - 1);
-            qu.emplace(x, y + 1);
-        }
-    }
-
-    static void dfs(
-            const std::vector<std::vector<char>> & board, 
-            int m, 
-            int n, 
-            int i, 
-            int j, 
-            std::vector<std::vector<bool>> & knownAlive 
-    )
-    {
-        std::stack<std::pair<int, int>> st;
-        st.emplace(i, j);
-
-        while (!st.empty())
-        {
-            auto [x, y] = st.top();
-            st.pop();
-
-            if (x < 0 || m <= x || y < 0 || n <= y || board[x][y] == 'X' || knownAlive[x][y])
-            {
-                continue;
-            }
-
-            knownAlive[x][y] = true;
-
-            st.emplace(x, y + 1);
-            st.emplace(x, y - 1);
-            st.emplace(x + 1, y);
-            st.emplace(x - 1, y);
-        }
-    }
-
-    static inline void search(
-            const std::vector<std::vector<char>> & board, 
-            int m, 
-            int n, 
-            int i, 
-            int j, 
-            std::vector<std::vector<bool>> & knownAlive 
-    )
-    {
-        return bfs(board, m, n, i, j, knownAlive);
-    }
+    static constexpr std::array<int, 4> dx = {1, 0, -1, 0};
+    static constexpr std::array<int, 4> dy = {0, 1, 0, -1};
 };
