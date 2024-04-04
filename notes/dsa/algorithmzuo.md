@@ -1455,7 +1455,7 @@ for (int i = 1; i <= m; ++i)
     - 右侧最近的**小于**栈顶的：谁让我出来的谁就是（没有则不存在）
     - 如有**重复元素**，则出栈时先记下那个相同元素，栈清空之后再反向遍历答案数组，更新右侧数据
       - 左侧天然是对的
-  - 性能考虑：鉴于 `std::stack` 没有 `reserve` 方法，使用 `std::vector` 代替 `std::stack`，注意要 `reserve`
+- 性能考虑：用 `std::vector` 代替 `std::stack`，注意要 `reserve`（`std::stack` 没有 `reserve` 方法）
 ```c++
 std::vector<int> stk;
 stk.reserve(n);
@@ -1506,11 +1506,11 @@ for (int i = n - 2; 0 <= i; --i)
 ## 053 单调栈-下
 
 - 单调栈除经典用法之外，还可以 **维持求解答案的可能性**
-  - 单调栈里的所有对象按照 规定好的单调性来组织
-  - 当某个对象进入单调栈时，会从 栈顶开始 依次淘汰单调栈里 **对后续求解没有帮助** 的对象
-  - 每个对象从栈顶弹出时 **结算当前对象参与的答案**，随后这个对象 不再参与后续求解答案的过程
   - 发现题目求解内容的 **单调性**（遍历过程中 **单调后继可以排除前驱作为答案的可能**），然后用单调栈来实现
-  - **入栈和出栈不一定要在一次遍历中同时发生**，可以遍历两次，第一次只进，第二次只出
+   - 单调栈里的所有对象按照 规定好的单调性来组织
+   - 当某个对象进入单调栈时，会从 栈顶开始 依次淘汰单调栈里 **对后续求解没有帮助** 的对象
+   - 每个对象从栈顶弹出时 **结算当前对象参与的答案**，随后这个对象 不再参与后续求解答案的过程
+   - **入栈和出栈不一定要在一次遍历中同时发生**，可以遍历两次，第一次只进，第二次只出
 - [962. Maximum Width Ramp](https://leetcode.com/problems/maximum-width-ramp/)
   - 单调性：若 `a[i] <= a[j]`，`i < j`，则 `a[j]` 能形成的坡 `a[i]` 也都能形成，而且长度更优
   - 严格单调递减栈，第一遍从左到右，只入栈（左端点），第二遍从右到左，枚举右端点，找最优左端点
@@ -1533,6 +1533,46 @@ for (int i = n - 2; 0 <= i; --i)
   - 双端队列，存下标，从头到尾 **大压小**（严格单调递减），最大值下标为 `deq.front()`
   - 窗口右扩：从尾部入队，如有违反大压小的元素依次从尾部弹出
   - 窗口左缩：看队头下标是否过期，如有过期则从头部弹出
+- 性能考虑：用静态数组和左闭右开下标表示双端队列，`std::deque` 常数还是太大
+```c++
+std::vector<int> arr;
+auto n = static_cast<const int>(arr.size());
+
+std::vector<int> minDeq(n), maxDeq(n);
+int minDeqL = 0, minDeqR = 0, maxDeqL = 0, maxDeqR = 0;
+
+// 滑动窗口扩张，新加入 `arr[rr]`
+auto push = [&arr, &minDeq, &minDeqL, &minDeqR, &maxDeq, &maxDeqL, &maxDeqR](int rr)
+{
+    while (minDeqL < minDeqR && arr[rr] <= arr[minDeq[minDeqR - 1]])
+    {
+        --minDeqR;
+    }
+
+    minDeq[minDeqR++] = rr;
+
+    while (maxDeqL < maxDeqR && arr[maxDeq[maxDeqR]] <= arr[rr])
+    {
+        --maxDeqR;
+    }
+
+    maxDeq[maxDeqR++] = rr;
+};
+
+// 滑动窗口缩小，移除 `arr[ll]`
+auto pop = [&arr, &minDeq, &minDeqL, &minDeqR, &maxDeq, &maxDeqL, &maxDeqR](int ll)
+{
+    while (minDeqL < minDeqR && minDeq[minDeqL] <= ll)
+    {
+        ++minDeqL;
+    }
+
+    while (maxDeqL < maxDeqR && maxDeq[maxDeqL] <= ll)
+    {
+        ++maxDeqL;
+    }
+};
+```
 - [239. Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/)
 - [1438. Longest Continuous Subarray With Absolute Diff Less Than or Equal to Limit](https://leetcode.com/problems/longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit/)
   - 问最长窗口：外围右移 `ll`，内部固定 `ll` 右移 `rr`，反过来不行
@@ -1545,23 +1585,88 @@ for (int i = n - 2; 0 <= i; --i)
 ## 055 单调队列-下
 
 - 单调队列可以 **维持求解答案的可能性**
-  - 单调队列里的所有对象按照 规定好的单调性来组织
-  - 当某个对象进入单调队列时，会从 对队头开始 依次淘汰单调队列里 **对后续求解没有帮助** 的对象
-  - 每个对象从队头弹出时 **结算当前对象参与的答案**，随后这个对象 不再参与后续求解答案的过程
   - 发现题目求解内容的 **单调性**（遍历过程中 **单调后继可以排除前驱作为答案的可能**），然后用单调队列来实现
-  - **入队和出队不一定要在一次遍历中同时发生**，可以遍历两次，第一次只进，第二次只出
+    - 单调队列里的所有对象按照 规定好的单调性来组织
+    - 当某个对象进入单调队列时，会从 对队头开始 依次淘汰单调队列里 **对后续求解没有帮助** 的对象
+    - 每个对象从队头弹出时 **结算当前对象参与的答案**，随后这个对象 不再参与后续求解答案的过程
+    - **入队和出队不一定要在一次遍历中同时发生**，可以遍历两次，第一次只进，第二次只出
 - [862. Shortest Subarray with Sum at Least K](https://leetcode.com/problems/shortest-subarray-with-sum-at-least-k/)
-  - 前缀和，以 `arr[rr]` 结尾的子数组，最短要以 `ll` 开始，`k <= ps[rr + 1] - ps[ll]`。
+  - 子数组，求和 => 前缀和 + 滑动窗口
+  - 记前缀和为 `ps`，以 `arr[rr]` 结尾的子数组，最短要以 `ll` 开始，`k <= ps[rr + 1] - ps[ll]`。
   - **对每一元素找最近的小于等于 `?` 的前缀**，但**不要求每个元素都求出真实值**，只要找出最短即可。
-    - 单调队列，小到大，队尾入队前缀和
-      - 当前前缀和大于 `k` 之后，队头不断出队，直到只有队头 `<= ?`
-        - 之前出队的位置，既使和 `rr` 之后的位置构成答案，也不会比当前 `[?...rr]` 这个子数组更短，可以淘汰！
+    - 单调队列，小压大，队尾入队前缀和
       - 当不满足小压大，队尾不断出队，直到当前前缀和从队尾入队不违反小压大
-        - 要找最近的小于啥啥的元素，队尾若满足一定必前面出队的更优，队尾若不合格，前面那些更大的更不会合格
+        - 要找最近的小于啥啥的元素，队尾一定比大于自己的前驱更优
+      - 队头不断出队，直到只有队头 `> ?`
+        - `while` 内部更新 `ans`
+        - 之前出队的位置，既使和 `rr` 之后的位置构成答案，也不会比当前 `[?...rr]` 这个子数组更短，可以淘汰！
+- [1499. Max Value of Equation](https://leetcode.com/problems/max-value-of-equation/)
+  - Ask for ax `y1 - x1 + y2 + x2` s.t. `0 < x2 - x1 <= k`. 
+  - Find max `y1 - x1` in prefix window `[..)` of `(x2, y2)` of size `k`. 
+  - Two ways to do this:
+    - (1) Monotonic deque, maintain max of `y - x` in predix window `[..)` of size `k`. 
+    - (2) Max heap with lazy removal. 
+- [2071. Maximum Number of Tasks You Can Assign](https://leetcode.com/problems/maximum-number-of-tasks-you-can-assign/)
+  - Bin Search Ans AND Monotonic Deque
+  - Assign top-x skillful workers with one out of top-x eaisest tasks
+    - Take easiest task without taking a pill; or
+    - If must take a pill, take hardest task doable with the pill. 
+    - Maintained by (non-strict) monotonic (ascending) queue (does not need a deque). 
+  - Could finish x tasks iff. number of pilled needed `<=` pills we have. 
 
 
 
+## 056 并查集-上
 
+```c++
+class UnionFind
+{
+public:
+    explicit UnionFind(int size) : root(size), rank(size, 0)
+    {
+        std::iota(root.begin(), root.end(), 0);
+    }
+
+    int find(int x)
+    {
+        if (root[x] == x) return x;
+        return root[x] = find(root[x]);
+    }
+
+    void unite(int x, int y)
+    {
+        int rx = find(x);
+        int ry = find(y); 
+        if (rx == ry) return;
+
+        if (rank[rx] < rank[ry]) root[rx] = ry;
+        else if (rank[ry] < rank[rx]) root[ry] = rx;
+        else root[ry] = rx, ++rank[rx];
+    }
+
+private:
+    int size = 0;
+    std::vector<int> root;
+    std::vector<int> rank;
+};
+```
+- [P3367 【模板】并查集](https://www.luogu.com.cn/problem/P3367)
+- [0839. Similar String Groups](https://leetcode.com/problems/similar-string-groups/)
+  - Brute Force Pair AND UnionFind
+
+
+
+## 057 并查集-下
+
+- [947. Most Stones Removed with Same Row or Column](https://leetcode.com/problems/most-stones-removed-with-same-row-or-column/)
+  - 同行，同列都算作一个组
+  - 同组内石头一定能消到只剩一个
+- [2092. Find All People With Secret](https://leetcode.com/problems/find-all-people-with-secret/)
+  - **一次合并发生后，涉及节点只要没有作为中继合并其它组，这次合并就可以直接重设这次合并涉及的结点的根来撤销**
+    - 这不算可撤销并查集
+- [2421. Number of Good Paths](https://leetcode.com/problems/number-of-good-paths/)
+  - UnionFind AND max(val(edge)) sorting
+- [928. Minimize Malware Spread II](https://leetcode.com/problems/minimize-malware-spread-ii/description/)
 
 
 
