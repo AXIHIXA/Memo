@@ -3,66 +3,70 @@ class Solution
 public:
     std::vector<int> movesToStamp(std::string stamp, std::string target)
     {
-        int m = stamp.size();
-        int n = target.size();
+        auto stampSize = static_cast<const int>(stamp.size());
+        auto m = static_cast<const int>(target.size());
+        const int n = m - stampSize + 1;
+        
+        // Adjacency List of bipartie graph {target indices} -> {stampable indices}. 
+        // g[i] = {a, b, c, ...} indicates that
+        // Target[i] could be invalidated by stamping at positions a, b, c, ...
+        std::vector g(m, std::vector<int>());
+        std::vector inDegree(n, stampSize);
+        std::queue<int> que;
 
-        // Build a bi-partie graph. 
-        // Left vertices: Locations in target;
-        // Right vertices: Stampable locations in target.
-        // An edge (l -> r) added iff. stamping at r incurrs wrong char at location l. 
-        std::vector<int> inDegree(n - m + 1, m);
-        std::vector<std::vector<int>> al(n, std::vector<int>());
-        
-        std::queue<int> qu;
-        
-        for (int i = 0; i <= n - m; i++) 
+        for (int i = 0; i < n; ++i)
         {
-			for (int j = 0; j < m; j++) 
+            for (int j = 0; j < stampSize; ++j)
             {
-				if (target[i + j] == stamp[j])
+                if (stamp[j] != target[i + j])
                 {
+                    // Target[i + j] is invalidated by stamping at position i. 
+                    g[i + j].emplace_back(i);
+                }
+                else
+                {
+                    // The last stamp should invalidate nowhere. 
                     if (--inDegree[i] == 0)
                     {
-                        qu.emplace(i);
+                        que.emplace(i);
                     }
-				} 
-                else 
-                {
-					// Stamping at i incurrs wrong char at location i + j. 
-                    al[i + j].emplace_back(i);
-				}
-			}
-		}
-
-        std::vector<int> ans;
+                }
+            }
+        }
         
-        // 同一个位置取消错误不要重复统计
-        std::vector<bool> visited(n, false);
+        std::vector<int> ans;
+        ans.reserve(n);
 
-        while (!qu.empty())
+        std::vector<unsigned char> corrected(m, false);
+
+        while (!que.empty())
         {
-            int curr = qu.front();
-            qu.pop();
-            ans.emplace_back(curr);
-            
-            for (int i = 0; i < m; ++i)
-            {
-                if (!visited[curr + i])
-                {
-                    visited[curr + i] = true;
+            int i = que.front();
+            que.pop();
+            ans.emplace_back(i);
 
-                    for (int next : al[curr + i])
+            for (int j = 0; j < stampSize; ++j)
+            {
+                if (!corrected[i + j])
+                {
+                    corrected[i + j] = true;
+
+                    for (int t : g[i + j])
                     {
-                        if (--inDegree[next] == 0)
+                        if (--inDegree[t] == 0)
                         {
-                            qu.emplace(next);
+                            que.emplace(t);
                         }
                     }
                 }
             }
         }
 
-        if (ans.size() != n - m + 1) return {};
+        if (ans.size() != n)
+        {
+            ans.clear();
+        }
+
         std::reverse(ans.begin(), ans.end());
         return ans;
     }

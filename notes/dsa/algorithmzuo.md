@@ -1824,6 +1824,20 @@ while (!heap.empty())
     }
 }
 ```
-- [LC 269 Alien Dictionary](https://leetcode.com/problems/alien-dictionary/)
+- [210. Course Schedule II](https://leetcode.com/problems/course-schedule-ii/)
+  - Topological sort examplar. 
+- [269. Alien Dictionary](https://leetcode.com/problems/alien-dictionary/)
   - Build graph with consecutive word pairs, topological sort. 
-- 1
+- [936. Stamping The Sequence](https://leetcode.com/problems/stamping-the-sequence/)
+  - Topological sort manner
+  - Bipartie graph `{target indices} -> {stampable indices}`. 
+    - `g[i] = {a, b, c, ...}` indicates that 
+    - `target[i]` could be invalidated by stamping at positions `a, b, c, ...`
+
+
+
+## 060 拓扑排序的扩展技巧
+
+
+
+
