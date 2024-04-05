@@ -1690,7 +1690,7 @@ private:
   - `n` vertices; 
   - `m` edges. 
 - 邻接矩阵 Adjacency Matrix
-  - `O(n**2)` space
+  - `O(n**2)` space, at most 2000 vertices. 
   - `std::vector<std::vector<int>> am;`
 - 邻接表 Adjacency List
   - `O(nm)` space (if requires static memory preallocation)
@@ -1837,6 +1837,14 @@ while (!heap.empty())
 
 
 ## 060 拓扑排序的扩展技巧
+
+- 
+
+
+
+
+
+
 
 
 
