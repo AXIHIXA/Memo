@@ -1690,7 +1690,7 @@ private:
   - `n` vertices; 
   - `m` edges. 
 - 邻接矩阵 Adjacency Matrix
-  - `O(n**2)` space
+  - `O(n**2)` space, at most 2000 vertices. 
   - `std::vector<std::vector<int>> am;`
 - 邻接表 Adjacency List
   - `O(nm)` space (if requires static memory preallocation)
@@ -1837,6 +1837,54 @@ while (!heap.empty())
 
 
 ## 060 拓扑排序的扩展技巧
+
+- 利用拓扑排序的过程，**上游节点逐渐推送消息给下游节点**
+  - 本质上属于树形DP了
+- [P4017 最大食物链计数](https://www.luogu.com.cn/problem/P4017)
+  - 推送消息：
+- [851. Loud and Rich](https://leetcode.com/problems/loud-and-rich/)
+- [2050. Parallel Courses III](https://leetcode.com/problems/parallel-courses-iii/)
+  - 推送消息：自己所在链，从头一直上到、上完自己所需时间
+- [2127. Maximum Employees to Be Invited to a Meeting](https://leetcode.com/problems/maximum-employees-to-be-invited-to-a-meeting/)
+  - **拓扑排序之后，只有成环的结点才会有非零入度**
+  - 推送消息：不包括自己的最长链长度
+    - 答案有两种可能
+      - 每一个小环（两个节点组成的小环 `(s, t)`），都可以坐下 `2 + deep[s] + deep[t]` 个人
+      - 多个节点组成的大环，只要最大的，坐下大环大小个人
+
+
+
+## 061 最小生成树
+
+- 最小生成树：
+  - 在 无向带权连通图 中选择一些边，保证连通性的情况下，边的总权值最小
+  - 最小生成树 不一定唯一
+  - 最小生成树一定是最小瓶颈树
+- 算法（清一水的贪心算法）
+  - Kruskal 算法（最常用）
+    - 所有边从小到大排序，依次考虑每条边，若加入不成环则加入
+    - 成环判定：并查集，如果源和汇已经属于同一连通域，则加入这条边会成环
+    - 复杂度：`O(m log m)`，若 `m < n**2` 则可写作 `O(m log n)`
+    - 证明
+      - 尊重当前边集的切割的最轻量级边，加入当前边集后，当前边集依旧是某棵最小生成树边集的子集。
+      - 这条最轻量级边记为 `(u, v)`，和当前边集背后的最小生成树中 
+  - Prim 算法
+    - 从零号结点开始，加入此结点最便宜的边，之后加入下一节点最便宜的边，重复 `n - 1` 次
+    - 小根堆
+- []()
+- []()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
