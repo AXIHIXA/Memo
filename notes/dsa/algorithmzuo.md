@@ -1859,7 +1859,7 @@ while (!heap.empty())
 - 最小生成树：
   - 在 无向带权连通图 中选择一些边，保证连通性的情况下，边的总权值最小
   - 最小生成树 不一定唯一
-  - 最小生成树 一定是 最小瓶颈树
+  - 最小生成树 一定是 **最小瓶颈树**
 - Kruskal 算法（**最常用**，适用于稀疏图）
   - 流程：
     - 所有边从小到大排序，依次考虑每条边，若加入不成环则加入，找够 `n - 1` 条边为止。
@@ -1880,14 +1880,31 @@ while (!heap.empty())
   - 从零号结点开始，不断加入最便宜的边（同时把新节点的边也都进小根堆），找够 `n - 1` 条边为止。
   - 跟 Dijkstra 有点像
 - [P3366 【模板】最小生成树](https://www.luogu.com.cn/problem/P3366)
-- []()
+- [1168. Optimize Water Distribution in a Village](https://leetcode.com/problems/optimize-water-distribution-in-a-village/)
+  - Dummy node to all houses, edges with weights `wells[i - 1]`
+- [1697. Checking Existence of Edge Length Limited Paths](https://leetcode.com/problems/checking-existence-of-edge-length-limited-paths/)
+  - UnionFind unite edges less equal to limit of query (sorted w.r.t. limit).
+- [P2330 [SCOI2005] 繁忙的都市](https://www.luogu.com.cn/problem/P2330)
+  - 最小生成树 一定是 **最小瓶颈树**
 
 
 
+## 062 宽度优先遍历及其扩展
 
-
-
-- 
+- BFS
+  - 逐层扩散，从源头点到目标点扩散了几层，最短路就是多少；
+  - 使用条件：**任意两节点之间距离相同（无向图）**；
+  - BFS 开始时，可以是 **单个源头** 或 **多个源头**；
+  - BFS 队列可以 **单个弹出** 或 **整层弹出**；
+    - 配合整层弹出，到达新一层时队列大小就是这一层的节点数目；
+  - 结点 **入队时** 须 **标记状态**，防止同一节点重复入队；
+    - 单个起点单次弹出时无所谓，多个起点逐层遍历时，如果不在入队时标记而是访问（出队）时标记，会导致 **同一节点重复入队**
+  - 可能包含 *剪枝*
+    - Dijkstra
+    - A*
+    - ...
+- [1162. As Far from Land as Possible](https://leetcode.com/problems/as-far-from-land-as-possible/)
+  - Multiple starting points, Levelwise BFS, Mark when enqueuing. 
 
 
 
