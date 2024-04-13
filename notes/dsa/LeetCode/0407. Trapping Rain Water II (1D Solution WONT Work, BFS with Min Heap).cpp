@@ -3,7 +3,10 @@ class Solution
 public:
     struct Pos
     {
-        friend bool operator >(const Pos & a, const Pos & b) { return a.h > b.h; }
+        friend bool operator >(const Pos & a, const Pos & b)
+        { 
+            return a.h > b.h;
+        }
 
         Pos() = default;
         Pos(int x, int y, int h) : x(x), y(y), h(h) {}
@@ -33,42 +36,46 @@ public:
         auto n = static_cast<const int>(heightMap.front().size());
 
         std::vector visited(m, std::vector<unsigned char>(n, false));
-        std::priority_queue<Pos, std::vector<Pos>, std::greater<Pos>> heap;
+        std::priority_queue<Pos, std::vector<Pos>, std::greater<Pos>> minHeap;
 
         for (int i = 0; i < m; ++i)
         {
             visited[i][0] = true;
-            heap.emplace(i, 0, heightMap[i][0]);
+            minHeap.emplace(i, 0, heightMap[i][0]);
 
             visited[i][n - 1] = true;
-            heap.emplace(i, n - 1, heightMap[i][n - 1]);
+            minHeap.emplace(i, n - 1, heightMap[i][n - 1]);
         }
 
         for (int j = 1; j < n - 1; ++j)
         {
             visited[0][j] = true;
-            heap.emplace(0, j, heightMap[0][j]);
+            minHeap.emplace(0, j, heightMap[0][j]);
 
             visited[m - 1][j] = true;
-            heap.emplace(m - 1, j, heightMap[m - 1][j]);
+            minHeap.emplace(m - 1, j, heightMap[m - 1][j]);
         }
 
         int ans = 0;
 
-        while (!heap.empty())
+        while (!minHeap.empty())
         {
-            auto [x, y, h] = heap.top();
-            heap.pop();
+            auto [x0, y0, h0] = minHeap.top();
+            minHeap.pop();
 
-            for (int d = 0, x1, y1; d < 4; ++d)
+            for (int d = 0; d < 4; ++d)
             {
-                x1 = x + dx[d];
-                y1 = y + dy[d];
-                if (x1 < 0 || m <= x1 || y1 < 0 || n <= y1 || visited[x1][y1]) continue;
+                int x1 = x0 + dx[d];
+                int y1 = y0 + dy[d];
 
+                if (x1 < 0 || m <= x1 || y1 < 0 || n <= y1 || visited[x1][y1])
+                {
+                    continue;
+                }
+
+                ans += std::max(0, h0 - heightMap[x1][y1]);
                 visited[x1][y1] = true;
-                if (heightMap[x1][y1] < h) ans += h - heightMap[x1][y1];
-                heap.emplace(x1, y1, std::max(h, heightMap[x1][y1]));
+                minHeap.emplace(x1, y1, std::max(h0, heightMap[x1][y1]));
             }
         }
 

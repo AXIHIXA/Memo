@@ -1898,17 +1898,99 @@ while (!heap.empty())
   - BFS 队列可以 **单个弹出** 或 **整层弹出**；
     - 配合整层弹出，到达新一层时队列大小就是这一层的节点数目；
   - 结点 **入队时** 须 **标记状态**，防止同一节点重复入队；
-    - 单个起点单次弹出时无所谓，多个起点逐层遍历时，如果不在入队时标记而是访问（出队）时标记，会导致 **同一节点重复入队**
+    - 如果不在入队时标记而是访问（出队）时标记，会导致 **同一节点重复入队**
   - 可能包含 *剪枝*
     - Dijkstra
     - A*
     - ...
+  - 骚：
+    - 逐层 BFS
+    - 多起点 BFS
+    - 0-1 BFS（双端队列）
+    - 优先队列 BFS
+- 0-1 BFS
+  - 图 `G = {V, E}` 中所有边的权重**只有 0 和 1 两种值**，求源点到目标点的最短距离;
+    - 如果指定目标点，则只更新到目标点的距离；
+    - 如果不指定目标点，则更新整张图。
+  - 时间复杂度：`O(|V| + |E|)`。
+  - 流程：
+    - `dist[i]` 表示源点到 `i` 点的最短距离，初始化为正无穷；
+    - 源点 进入 双端队列，`dist[source] = 0;`；
+    - 双端队列 头部弹出 `x`：
+      - 如果 `x` 是目标点，返回 `dist[x]`；
+      - 考察从 `x` 出发的每一条边 `(x, y)`，权重为 `w`：
+        - 当 `dist[xr] + w < dist[y]` 时处理此边，否则忽略之；
+        - 更新 `dist[y] = dist[x] + w;`；
+        - 如果 `w == 0`，从 **头部** 入队；
+        - 反之，`w == 0`，从 **尾部** 入队。
+  - FAQ
+    - 为什么不能普通BFS？
+      - 因为边权重不同；
+    - 为什么不需要 `visited` 标记节点？
+      - 有重复节点就有了，`dist` 严格单调递减，自动修正；
+    - 正确性？
+      - 队列里所有节点到源点到距离差不超过 `1`；
+      - 两个方向入队，实现近的一定比远的先访问。
+        - 注意队列里面可能有重复节点的（一个节点最多入队两次，也最多弹出两次）；
+        - 记录的距离比真实值大的节点有被 重新修正 的机会。
+        - 最多被修正几次？一次，因为这是 0/1 图，队内节点距离最多差 1。
+```c++
+std::deque<VertIdx> deq;
+deq.emplace_front(s);
+
+std::vector<Weight> dist(n, std::numeric_limits<int>::max());
+dist[s] = 0;
+
+while (!deq.empty())
+{
+    VertIdx x = deq.front();
+    deq.pop_front();
+
+    if (x == target)
+    {
+        return dist[x];
+    }
+
+    for (EdgeIdx e = head[s]; e != 0; e = next[e])
+    {
+        VertIdx y = to[e];
+
+        if (dist[y] <= dist[x] + weight[e])
+        {
+            continue;
+        }
+
+        dist[y] = dist[x] + weight[e];
+
+        if (weight[e] == 0)
+        {
+            deq.emplace_front(y);
+        }
+        else  // weight[e] == 1
+        {
+            deq.emplace_back(y);
+        }
+    }
+}
+```
 - [1162. As Far from Land as Possible](https://leetcode.com/problems/as-far-from-land-as-possible/)
-  - Multiple starting points, Levelwise BFS, Mark when enqueuing. 
-
-
-
-
+  - Multiple starting points, Levelwise BFS, Mark visited when enqueuing. 
+- [691. Stickers to Spell Word](https://leetcode.com/problems/stickers-to-spell-word/)
+  - Status bin mask DP (indices settled in target), or
+  - BFS (full bin mask to zero)
+- [2290. Minimum Obstacle Removal to Reach Corner](https://leetcode.com/problems/minimum-obstacle-removal-to-reach-corner/)
+  - Model the grid as a graph where cells are nodes and edges are between adjacent cells. 
+    - Edges to cells with obstacles have a cost of 1 and all other edges have a cost of 0.
+  - 0-1 BFS, or
+  - Dijkstra (sub-optimal)
+- [1368. Minimum Cost to Make at Least One Valid Path in a Grid](https://leetcode.com/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid/)
+  - 0-1 BFS
+- [407. Trapping Rain Water II](https://leetcode.com/problems/trapping-rain-water-ii/)
+  - BFS with min heap
+- [126. Word Ladder II](https://leetcode.com/problems/word-ladder-ii/)
+  - BFS, record inverse graph, then DFS for plan;
+  - TLE if not using inverse graph, too many initial choices;
+  - Use two hash sets instead of a queue (and visited hash set).
 
 
 
