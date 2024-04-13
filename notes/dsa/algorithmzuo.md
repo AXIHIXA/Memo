@@ -1911,6 +1911,7 @@ while (!heap.empty())
     - 配合整层弹出，到达新一层时队列大小就是这一层的节点数目；
   - 结点 **入队时** 须 **标记状态**，防止同一节点重复入队；
     - 如果不在入队时标记而是访问（出队）时标记，会导致 **同一节点重复入队**
+    - 可以采用一个队列加一个哈希表，或者干脆两个哈希表（详见下面逐层标记已访问节点的内容）
   - 可能包含 *剪枝*
     - Dijkstra
     - A*
@@ -1919,8 +1920,10 @@ while (!heap.empty())
     - **逐层 BFS**
       - 例：[1162. As Far from Land as Possible](https://leetcode.com/problems/as-far-from-land-as-possible/)
       - 骚上加骚：**逐层标记已访问节点**
-        - 一个节点可以被访问多次，因此不能入队即标记；
-        - 但不能搞成死循环，所以搞两个哈希表表示当前层内容和下一层内容，**每进入新一层时，统一标记本层节点为已访问**
+        - 一个节点可以被访问多次，因此不能入队即标记，但又不能搞成死循环
+          - 所以搞 **两个哈希表表示当前层内容和下一层内容** 
+          - **每进入新一层时，统一标记本层节点为已访问**
+          - 每层结束时，`currLevel = std::move(nextLevel);`
         - 例：[126. Word Ladder II](https://leetcode.com/problems/word-ladder-ii/)
     - **多起点 BFS**
       - 例：[126. Word Ladder II](https://leetcode.com/problems/word-ladder-ii/)
@@ -2012,6 +2015,37 @@ while (!deq.empty())
   - TLE if not using inverse graph, too many initial choices;
   - Use two hash sets instead of a queue (and visited hash set).
     - Levelwise markings of visited nodes. 
+
+
+
+## 063 双向广搜 Bidirectional BFS
+
+- 用途1：
+  - 剪枝优化，哪侧数量少就从哪侧展开；
+- **用途2（重要，本体）**：
+  - 全量样本 不允许递归完全展开，但是 半量样本 可以完全展开。
+- []()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
