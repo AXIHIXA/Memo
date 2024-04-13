@@ -1916,10 +1916,18 @@ while (!heap.empty())
     - A*
     - ...
   - 骚：
-    - 逐层 BFS
-    - 多起点 BFS
-    - 0-1 BFS（双端队列）
-    - 优先队列 BFS
+    - **逐层 BFS**
+      - 例：[1162. As Far from Land as Possible](https://leetcode.com/problems/as-far-from-land-as-possible/)
+      - 骚上加骚：**逐层标记已访问节点**
+        - 一个节点可以被访问多次，因此不能入队即标记；
+        - 但不能搞成死循环，所以搞两个哈希表表示当前层内容和下一层内容，**每进入新一层时，统一标记本层节点为已访问**
+        - 例：[126. Word Ladder II](https://leetcode.com/problems/word-ladder-ii/)
+    - **多起点 BFS**
+      - 例：[126. Word Ladder II](https://leetcode.com/problems/word-ladder-ii/)
+    - **0-1 BFS（双端队列）**
+      - 例：[2290. Minimum Obstacle Removal to Reach Corner](https://leetcode.com/problems/minimum-obstacle-removal-to-reach-corner/)
+    - **优先队列 BFS**
+      - 例：[407. Trapping Rain Water II](https://leetcode.com/problems/trapping-rain-water-ii/)
 - 0-1 BFS
   - 图 `G = {V, E}` 中所有边的权重**只有 0 和 1 两种值**，求源点到目标点的最短距离;
     - 如果指定目标点，则只更新到目标点的距离；
@@ -2003,7 +2011,7 @@ while (!deq.empty())
   - BFS, record inverse graph, then DFS for plan;
   - TLE if not using inverse graph, too many initial choices;
   - Use two hash sets instead of a queue (and visited hash set).
-
+    - Levelwise markings of visited nodes. 
 
 
 
