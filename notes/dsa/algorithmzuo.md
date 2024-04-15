@@ -2023,12 +2023,45 @@ while (!deq.empty())
 - 用途1：
   - 剪枝优化，哪侧数量少就从哪侧展开；
 - **用途2（重要，本体）**：
-  - 全量样本 不允许递归完全展开，但是 半量样本 可以完全展开。
-- []()
+  - 全量样本 不允许递归完全展开，但是 半量样本 可以完全展开。举例：
+  - 长度 `40` 的数组，暴力枚举每个元素要或者不要，复杂度为 `2**40 ~ 10**12`；
+  - 分别枚举前一半和后一半，最后线性整合答案，复杂度为 `2 * (2 ** 20) + (2 ** 20) ~ 10**6`。
+```c++
+std::array<int> arr;
+auto n = static_cast<const int>(arr.size());
+
+int lsSize = 0;
+int rsSize = 0;
+
+std::array<int, 1 << 20> ls;
+std::array<int, 1 << 20> rs;
+
+void f(int b, int e, int cur, int * res, int * offset)
+{
+    if (b == e)
+    {
+        res[(*offset)++] = cur;
+    }
+    else
+    {
+        f(b + 1, e, cur, res, offset);           // Drop arr[b].
+        f(b + 1, e, cur + arr[b], res, offset);  // Take arr[b].
+    }
+}
+
+f(0, n >> 1, 0, ls.data(), &lsSize);
+f(n >> 1, n, 0, rs.data(), &rsSize);
+
+std::sort(ls.begin(), ls.begin() + lsSize);
+std::sort(rs.begin(), rs.begin() + rsSize);
+```
+- [P4799 [CEOI2015 Day2] 世界冰球锦标赛](https://www.luogu.com.cn/problem/P4799)
+- [1755. Closest Subsequence Sum](https://leetcode.com/problems/closest-subsequence-sum/)
+  - BiDir BFS AND 2Sum Closest
 
 
 
-
+## 064 Dijkstra 算法、分层图最短路
 
 
 
