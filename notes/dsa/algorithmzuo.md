@@ -492,6 +492,7 @@ int quickSelect(int * a, int lo, int hi, int k)
 
 ```c++
 // a[0..i) denotes a heap, push a[i] into heap. 
+// 注意这里【不能】用 (i - 1) >> 1，移位的话 i == 0 时会溢出！
 void pushHeap(int * a, int i)
 {
     while (a[(i - 1) / 2] < a[i]) 
@@ -511,8 +512,8 @@ void heapify(int * a, int i, int size)
     while (l < size)
     {
         // 有左孩子，l
-		// 右孩子，l+1
-		// 评选，最强的孩子，是哪个下标的孩子
+		    // 右孩子，l + 1
+		    // 评选，最强的孩子，是哪个下标的孩子
         int best = l + 1 < size && a[l] < a[l + 1] ? l + 1 : l;
         
         // 上面已经评选了最强的孩子，接下来，当前的数和最强的孩子之前，最强下标是谁
@@ -1893,6 +1894,7 @@ while (!heap.empty())
       - 一个索引存结点（三种可能：已访问过；未访问过但已在堆里；未访问过且从未进过堆）；
     - 加入一条边时，如果汇已经在堆内，则**更新堆内的已有项**，而不是再塞一个新项；
     - 操作堆时同步更新索引。
+    - 看 064 节 Dijkstra 算法处的详细内容。
 - [P3366 【模板】最小生成树](https://www.luogu.com.cn/problem/P3366)
 - [1168. Optimize Water Distribution in a Village](https://leetcode.com/problems/optimize-water-distribution-in-a-village/)
   - Dummy node to all houses, edges with weights `wells[i - 1]`
@@ -1934,7 +1936,7 @@ while (!heap.empty())
     - **优先队列 BFS**
       - 例：[407. Trapping Rain Water II](https://leetcode.com/problems/trapping-rain-water-ii/)
 - 0-1 BFS
-  - 图 `G = {V, E}` 中所有边的权重**只有 0 和 1 两种值**，求源点到目标点的最短距离;
+  - 图 `G = {V, E}` 中所有边的权重 **只有 0 和 1 两种值**，求源点到目标点的最短距离;
     - 如果指定目标点，则只更新到目标点的距离；
     - 如果不指定目标点，则更新整张图。
   - 时间复杂度：`O(|V| + |E|)`。
@@ -2066,18 +2068,114 @@ std::sort(rs.begin(), rs.begin() + rsSize);
 ## 064 Dijkstra 算法、分层图最短路
 
 - Dijkstra 算法
-  - 单源最短路算法：给定一个源点，求源点到每个点的最短路径长度
-  - 适用范围：
-    - **有向图**
-    - **边的权值没有负数**
-  - `distance` 数组，`visited` 数组，小根堆
-  - 普通版：
-    - 节点弹出过就忽略
-    - 节点没弹出过，让其他没弹出节点距离变小的记录加入堆
-  - 进阶版：
-    - 反向索引堆
+  - 单源最短路算法——给定一个源点，求源点到每个点的最短路径长度；
+  - 要求**有向图**，且**边的权值没有负数**。
+  - 流程：
+    - `dist` 数组记录当前各节点的距离，初始化为正无穷；
+    - `visited` 数组记录每个节点是否已被扩展过（每个节点只会被扩展一次）；
+    - 小根堆记录节点编号**以及距离**；
+      - 一定要记录距离，依靠堆内记录的距离排序，**不能**只记录节点编号！
+      - `dist` 是会变的，**如果比较器实时依赖 `dist`，堆会不合法**！
+      - 想玩骚的，折腾下面那个反向索引堆去。
+    - 每次扩展堆内距离最小的节点，对于每个汇节点：
+      - 普通版：
+        - 这个汇节点扩展过：就忽略；
+        - 没扩展过，且让其他没弹出节点距离变小，则这个汇节点加入堆。
+      - 进阶版：
+        - 反向索引堆，不直接入堆，而是依靠索引更新已有项（`heapUpdate`）。
+- **反向索引堆**
+  - 手写堆，`heapInsert`，`popHeap` 以及 `heapify`；
+  - 一个 `where` 数组查询一个 `Key` 是从未进过堆（`-1`），在堆里（`>=0`），还是已经被弹出了（`-2`）；
+  - 手写一个 `swap` 函数来交换两个两个下标（交换堆数组，同时更新 `where` 数组）。
+```c++
+// 反向索引表 where，堆 heap
+constexpr int kMaxSize = ...;
 
+int heapSize = 0;
+std::array<int, kMaxSize> heap = {};
+std::array<int, kMaxSize> where = {};
 
+// 比较索引 dist[heap[i]]
+std::array<int, kMaxSize> dist = {};
+
+std::fill(where.begin(), where.end(), -1);
+std::fill(dist.begin(), dist.end(), std::numeric_limits<int>::max());
+
+// 以下三个为 helper function：
+
+// 交换 heap 中下标 i 和 j
+// 注意【不能】直接 swap where 数组！
+void swap(int i, int j)
+{
+    // Snapshot: heap[i] == h1, heap[j] == h2. 
+    std::swap(heap[i], heap[j]);
+
+    // Now heap[i] == h2, heap[j] == h1. 
+    // Updates index as where[h2] = i, where[h1] = j. 
+    // 注意这里 swap 对 where 并不是真正的交换，而是更新实际位置；
+    // 也就是说如果 swap 之前 where 是 -1 或者 -2 的话，
+    // swap 之后会被覆盖成真实下标（ >= 0 ）
+    where[heap[i]] = i;
+    where[heap[j]] = j;
+}
+
+// 注意这里【不能】用 (i - 1) >> 1，移位的话 i == 0 时会溢出！
+void pushHeap(int i)
+{
+    while (dist[heap[i]] < dist[heap[(i - 1) / 2]])
+    {
+        swap(i, (i - 1) / 2);
+        i = (i - 1) / 2;
+    }
+}
+
+void heapify(int i)
+{
+    for (int l = (i << 1) + 1; l < heapSize; )
+    {
+        int best = l + 1 < heapSize && dist[heap[l + 1]] < dist[heap[l]] ? l + 1 : l;
+        best = dist[heap[best]] < dist[heap[i]] ? best : i;
+        if (best == i) return;
+        swap(best, i);
+        i = best;
+        l = (i << 1) + 1；
+    }
+}
+
+// 以下为公开接口：
+void popHeap()
+{
+    swap(0, --heapSize);
+    heapify(0);
+
+    // 注意【索引必须在 swap 之后更新】。
+    // 因为 swap 对 where 并不是真正的交换，而是更新实际位置；
+    // 也就是说如果 swap 之前 where 是 -1 或者 -2 的话，
+    // swap 之后会被覆盖成真实下标（ >= 0 ）
+    where[heap[heapSize]] = -2;
+}
+
+void heapUpdate(int v, int c)
+{
+    if (where[v] == -1) 
+    {
+        // Insert. 
+        heap[heapSize] = v;
+        dist[v] = c;
+        where[v] = heapSize++;
+        pushHeap(where[v]);
+    } 
+    else if (0 <= where[v])
+    {
+        // Update. 
+        dist[v] = std::min(dist[v], c);
+        pushHeap(where[v]);
+    }
+
+    // Ignore where[x] == -2 (x is popped.)
+}
+```
+- [](https://www.luogu.com.cn/problem/P4779)
 
 
 
