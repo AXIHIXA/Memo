@@ -2072,59 +2072,90 @@ std::sort(rs.begin(), rs.begin() + rsSize);
   - 要求**有向图**，且**边的权值没有负数**。
   - 流程：
     - `dist` 数组记录当前各节点的距离，初始化为正无穷；
-    - `visited` 数组记录每个节点是否已被扩展过（每个节点只会被扩展一次）；
+    - `visited` 数组记录每个节点是否已被扩展过（扩展这个节点出发的边，每个节点只会被扩展一次）；
     - 小根堆记录节点编号**以及距离**；
       - 一定要记录距离，依靠堆内记录的距离排序，**不能**只记录节点编号！
       - `dist` 是会变的，**如果比较器实时依赖 `dist`，堆会不合法**！
       - 想玩骚的，折腾下面那个反向索引堆去。
-    - 每次扩展堆内距离最小的节点，对于每个汇节点：
+    - 每次扩展堆内距离最小的节点，对于这个节点有向连接至的汇节点：
       - 普通版：
-        - 这个汇节点扩展过：就忽略；
-        - 没扩展过，且让其他没弹出节点距离变小，则这个汇节点加入堆。
+        - 这个汇节点之前扩展过，或者不能让其他没弹出节点距离变小，就忽略；
+        - 这个汇节点加入堆，更新变小的距离。
       - 进阶版：
-        - 反向索引堆，不直接入堆，而是依靠索引更新已有项（`heapUpdate`）。
+        - 反向索引堆；
+        - 每次扩展距离最小的节点，但不直接入堆，而是依靠索引更新堆和距离（`heapUpdate`）。
+      - 进阶版和普通版的区别：
+        - 每次从堆里拿出一个最小的节点进行拓展时，这个节点：
+          - 是全新的：一样；
+          - 已经在堆里了但还没拓展过：普通版会塞一个重复的节点（但新塞的小的节点会先被拓展到），进阶版更新堆内那个已有节点；
+          - 已经被拓展过了：普通版拓展边之前会因为 `visited` 而直接跳过，进阶版压根不会有这种节点（因为堆内没有重复节点）。
+    - 常数优化：**如果堆里拿出的节点就是目标点，则直接终止算法**
 - **反向索引堆**
   - 手写堆，`heapInsert`，`popHeap` 以及 `heapify`；
   - 一个 `where` 数组查询一个 `Key` 是从未进过堆（`-1`），在堆里（`>=0`），还是已经被弹出了（`-2`）；
-  - 手写一个 `swap` 函数来交换两个两个下标（交换堆数组，同时更新 `where` 数组）。
+  - 手写一个 `swapHeap` 函数来交换两个两个下标（交换堆数组，同时更新 `where` 数组）。
+  - 公开接口： `updateHeap` 和 `popHeap`
 ```c++
-// 反向索引表 where，堆 heap
+// 反向索引表 where，堆 heap，比较索引 dist[heap[i]]
 constexpr int kMaxSize = ...;
 
 int heapSize = 0;
 std::array<int, kMaxSize> heap = {};
+std::array<int, kMaxSize> dist = {};
 std::array<int, kMaxSize> where = {};
 
-// 比较索引 dist[heap[i]]
-std::array<int, kMaxSize> dist = {};
-
-std::fill(where.begin(), where.end(), -1);
+heapSize = 0;
 std::fill(dist.begin(), dist.end(), std::numeric_limits<int>::max());
+std::fill(where.begin(), where.end(), -1);
 
-// 以下三个为 helper function：
-
-// 交换 heap 中下标 i 和 j
-// 注意【不能】直接 swap where 数组！
-void swap(int i, int j)
+void updateHeap(int v, int c)
 {
-    // Snapshot: heap[i] == h1, heap[j] == h2. 
-    std::swap(heap[i], heap[j]);
+    if (where[v] == -1)
+    {
+        // Insert. 
+        heap[heapSize] = v;
+        where[v] = heapSize++;
+        dist[v] = c;
+        pushHeap(where[v]);
+    }
+    else if (0 <= where[v])
+    {
+        // Update. 
+        dist[v] = std::min(dist[v], c);
+        pushHeap(where[v]);
+    }
+    // else Ignore. 
+}
 
-    // Now heap[i] == h2, heap[j] == h1. 
-    // Updates index as where[h2] = i, where[h1] = j. 
-    // 注意这里 swap 对 where 并不是真正的交换，而是更新实际位置；
+void popHeap()
+{
+    swapHeap(0, --heapSize);
+    heapify(0);
+
+    // 注意【索引必须在 swap 之后更新】。
+    // 因为 swap 对 where 并不是真正的交换，而是更新实际位置；
     // 也就是说如果 swap 之前 where 是 -1 或者 -2 的话，
     // swap 之后会被覆盖成真实下标（ >= 0 ）
+    where[heap[heapSize]] = -2;
+}
+
+void swapHeap(int i, int j)
+{
+    // 快照: heap[i] == h1, heap[j] == h2
+    std::swap(heap[i], heap[j]);
+
+    // 现在有 heap[i] == h2, heap[j] == h1
+    // 更新索引为 where[h2] = i, where[h1] = j
     where[heap[i]] = i;
     where[heap[j]] = j;
 }
 
-// 注意这里【不能】用 (i - 1) >> 1，移位的话 i == 0 时会溢出！
 void pushHeap(int i)
 {
+    // 注意这里【不能】用 (i - 1) >> 1，移位的话 i == 0 时会溢出！
     while (dist[heap[i]] < dist[heap[(i - 1) / 2]])
     {
-        swap(i, (i - 1) / 2);
+        swapHeap(i, (i - 1) / 2);
         i = (i - 1) / 2;
     }
 }
@@ -2135,50 +2166,24 @@ void heapify(int i)
     {
         int best = l + 1 < heapSize && dist[heap[l + 1]] < dist[heap[l]] ? l + 1 : l;
         best = dist[heap[best]] < dist[heap[i]] ? best : i;
-        if (best == i) return;
-        swap(best, i);
+        if (best == i) break;
+        swapHeap(best, i);
         i = best;
-        l = (i << 1) + 1；
+        l = (i << 1) + 1;
     }
-}
-
-// 以下为公开接口：
-void popHeap()
-{
-    swap(0, --heapSize);
-    heapify(0);
-
-    // 注意【索引必须在 swap 之后更新】。
-    // 因为 swap 对 where 并不是真正的交换，而是更新实际位置；
-    // 也就是说如果 swap 之前 where 是 -1 或者 -2 的话，
-    // swap 之后会被覆盖成真实下标（ >= 0 ）
-    where[heap[heapSize]] = -2;
-}
-
-void heapUpdate(int v, int c)
-{
-    if (where[v] == -1) 
-    {
-        // Insert. 
-        heap[heapSize] = v;
-        dist[v] = c;
-        where[v] = heapSize++;
-        pushHeap(where[v]);
-    } 
-    else if (0 <= where[v])
-    {
-        // Update. 
-        dist[v] = std::min(dist[v], c);
-        pushHeap(where[v]);
-    }
-
-    // Ignore where[x] == -2 (x is popped.)
 }
 ```
-- [](https://www.luogu.com.cn/problem/P4779)
-
-
-
+- [743. Network Delay Time](https://leetcode.com/problems/network-delay-time/)
+- [P4779 【模板】单源最短路径（标准版）](https://www.luogu.com.cn/problem/P4779)
+- [1631. Path With Minimum Effort](https://leetcode.com/problems/path-with-minimum-effort/)
+  - Dijkstra Mk1 max-so-far as dist. 
+  - **最短路也可以定义为路径上所有边权的最大值，Dijkstra 算法同样适用**
+- [778. Swim in Rising Water](https://leetcode.com/problems/swim-in-rising-water/)
+  - Dijkstra Mk1 max-so-far as dist, analog of 1631 (above). 
+- [864. Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/)
+  - State-compression key holding status. 
+  - dist BFS with state: `dist[x][y][state]`
+- []()
 
 
 

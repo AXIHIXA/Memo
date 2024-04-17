@@ -49,16 +49,19 @@ private:
     {
         if (where[v] == -1)
         {
+            // Insert
             heap[heapSize] = v;
-            dist[v] = c;
             where[v] = heapSize++;
+            dist[v] = c;
             pushHeap(where[v]);
         }
         else if (0 <= where[v])
         {
+            // Update
             dist[v] = std::min(dist[v], c);
             pushHeap(where[v]);
         }
+        // else Ignore. 
     }
 
     static void popHeap()

@@ -35,21 +35,21 @@ private:
 
     void solve()
     {
-        int e1 = f(0, n >> 1, 0, m, ls.data(), 0);
-        int e2 = f(n >> 1, n, 0, m, rs.data(), 0);
+        f(0, n >> 1, 0, ls.data(), &lsSize);
+        f(n >> 1, n, 0, rs.data(), &rsSize);
 
-        std::sort(ls.begin(), ls.begin() + e1);
-        std::sort(rs.begin(), rs.begin() + e2);
+        std::sort(ls.begin(), ls.begin() + lsSize);
+        std::sort(rs.begin(), rs.begin() + rsSize);
 
-        for (int i = e1 - 1, j = 0; 0 <= i; --i)
+        for (int i = 0, j = rsSize - 1; 0 <= j; --j)
         {
-			while (j < e2 && ls[i] + rs[j] <= m)
+            while (i < lsSize && ls[i] + rs[j] <= m)
             {
-				++j;
-			}
+                ++i;
+            }
 
-			ans += j;
-		}
+            ans += i;
+        }
     }
 
     void output() const
@@ -57,28 +57,22 @@ private:
         std::printf("%lld\n", ans);
     }
 
-    int f(int b, int e, long long s, long long w, long long * res, int j)
+    void f(int b, int e, long long cur, long long * res, int * size)
     {
-        if (w < s)
+        if (m < cur)
         {
-			return j;
-		}
+            return;
+        }
 
-		// s <= w
-		if (b == e)
+        if (b == e)
         {
-			res[j++] = s;
-		}
+            res[(*size)++] = cur;
+        }
         else
         {
-			// 不要arr[i]位置的数
-			j = f(b + 1, e, s, w, res, j);
-
-			// 要arr[i]位置的数
-			j = f(b + 1, e, s + arr[b], w, res, j);
-		}
-
-		return j;
+            f(b + 1, e, cur, res, size);
+            f(b + 1, e, cur + arr[b], res, size);
+        }
     }
 
 private:
@@ -86,6 +80,9 @@ private:
     static constexpr int kMaxM = 1 << 20;
 
     static std::array<long long, kMaxN> arr;
+
+    static int lsSize;
+    static int rsSize;
     static std::array<long long, kMaxM> ls;
     static std::array<long long, kMaxM> rs;
 
@@ -97,12 +94,16 @@ private:
 
 
 std::array<long long, Solution::kMaxN> Solution::arr = {};
+
+int Solution::lsSize = 0;
+int Solution::rsSize = 0;
 std::array<long long, Solution::kMaxM> Solution::ls = {};
 std::array<long long, Solution::kMaxM> Solution::rs = {};
 
 
 int main(int argc, char * argv[])
 {
+    std::freopen("var/1.txt", "r", stdin);
     Solution s;
 
     return EXIT_SUCCESS;
