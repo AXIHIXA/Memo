@@ -2077,7 +2077,7 @@ std::sort(rs.begin(), rs.begin() + rsSize);
       - 一定要记录距离，依靠堆内记录的距离排序，**不能**只记录节点编号！
       - `dist` 是会变的，**如果比较器实时依赖 `dist`，堆会不合法**！
       - 想玩骚的，折腾下面那个反向索引堆去。
-    - 每次扩展堆内距离最小的节点，对于这个节点有向连接至的汇节点：
+    - 每次扩展堆内距离最小的且之前没扩展过的节点，对于这个节点有向连接至的汇节点：
       - 普通版：
         - 这个汇节点之前扩展过，或者不能让其他没弹出节点距离变小，就忽略；
         - 这个汇节点加入堆，更新变小的距离。
@@ -2173,6 +2173,15 @@ void heapify(int i)
     }
 }
 ```
+- **骚**操作（详见下面例题）：
+  - **最大边权最短路**
+    - 最短路也可以定义为路径上所有边权的最大值，Dijkstra 算法同样适用
+    - 每次 tDist 更新为 `max(sDist, w)` 而不是 `sDist + w`
+  - **分层图最短路**
+    - 节点带状态
+    - 相当于把平面图上下堆叠几层，相邻层的同号节点之间有边连接
+      - 例如，本地充一格电，或者用一张免费机票，等等
+    - [图例](https://www.luogu.com.cn/article/ul9rz6oi)
 - [743. Network Delay Time](https://leetcode.com/problems/network-delay-time/)
 - [P4779 【模板】单源最短路径（标准版）](https://www.luogu.com.cn/problem/P4779)
 - [1631. Path With Minimum Effort](https://leetcode.com/problems/path-with-minimum-effort/)
@@ -2182,18 +2191,41 @@ void heapify(int i)
   - Dijkstra Mk1 max-so-far as dist, analog of 1631 (above). 
 - [864. Shortest Path to Get All Keys](https://leetcode.com/problems/shortest-path-to-get-all-keys/)
   - State-compression key holding status. 
-  - dist BFS with state: `dist[x][y][state]`
-- []()
+  - Dist BFS **with state**: `dist[x][y][state]`
+- [LCP 35. 电动车游城市](https://leetcode.cn/problems/DFPeFJ/)
+  - **分层图**：节点带状态的 Dijkstra，节点重新定义为 `(节点, 剩余电量)`
+  - 每次扩展为：不充电直接去隔壁，或者当前节点充一格电
+    - 不充更多是因为 Dijkstra 只拓展当前最小节点
+    - 充多于一格电，相当于再次扩展了一个新节点
+  - **USE CONTINUE ONLY IMMEDIATELY INSIDE LOOPS!!!**
+- [P4568 [JLOI2011] 飞行路线](https://www.luogu.com.cn/problem/P4568)
+  - 还是分层图
 
 
 
+## 065 A*, Floyd, Bellman-Ford, And SPFA
 
-
-
-
-
-
-
+- A*
+  - 也是单源最短路算法
+  - 和 Dijkstra 有一处不同
+    - 堆内排序不只用当前距离，而是当前距离 + 剩余距离估值
+    - 估值要 <= 真实值
+      - 估值 <= 真实值的情况下，越接近真实值，越快
+      - 其余情况，则有负面影响
+  - 需要额外信息
+    - 例如，均匀正方形网格上的曼哈顿距离，欧几里得距离，对角线距离 `max(dx, dy)`，等等
+    - 对于平凡图不适用
+- Floyd 算法
+  - 任意两点间最短距离
+  - 适用于任何图（可以有负边权，只要没有负环）
+  - 时间复杂度 `O(n**3)`，空间复杂度 `O(n**2)`
+  - `for k for i for j dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j]);`
+    - 相当于三维 DP，正确性要求**中继 `k` 要在最外层**
+    - 只要有一个中继 `k` 的 `dist` 是正确的，就能正确更新
+    - 因为 `k` 在最外层，总会有一个已经被正确更新好的
+- [P2910 [USACO08OPEN] Clear And Present Danger S](https://www.luogu.com.cn/problem/P2910)
+- [787. Cheapest Flights Within K Stops](https://leetcode.cn/problems/cheapest-flights-within-k-stops/)
+- [P3385 【模板】负环](https://www.luogu.com.cn/problem/P3385)
 
 
 

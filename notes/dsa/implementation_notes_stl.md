@@ -14,6 +14,24 @@ static const int init = []
     std::setvbuf(stdout, nullptr, _IOFBF, 1 << 20);
     return 0;
 }();
+
+int getInt()
+{
+    int x = 0, c = std::getchar();
+
+    while (!isdigit(c))
+    {
+        c = std::getchar();
+    }
+
+    while (isdigit(c))
+    {
+        x = x * 10 + (c ^ 48);
+        c = std::getchar();
+    }
+
+    return x;
+}
 ```
 
 
