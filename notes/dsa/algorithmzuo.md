@@ -2260,4 +2260,32 @@ void heapify(int i)
 
 
 
+## 066 从递归入手一维动态规划
+
+- [509. Fibonacci Number](https://leetcode.cn/problems/fibonacci-number/)
+- [983. Minimum Cost For Tickets](https://leetcode.com/problems/minimum-cost-for-tickets/)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
