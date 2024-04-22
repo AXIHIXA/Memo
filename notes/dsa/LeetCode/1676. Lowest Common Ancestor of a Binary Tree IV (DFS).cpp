@@ -14,19 +14,19 @@ class Solution
 public:
     TreeNode * lowestCommonAncestor(TreeNode * root, std::vector<TreeNode *> & nodes)
     {
-        return dfs(root, nodes);
-    }
+        if (!root || std::find(nodes.cbegin(), nodes.cend(), root) != nodes.cend())
+        {
+            return root;
+        }
 
-private:
-    TreeNode * dfs(TreeNode * root, const std::vector<TreeNode *> & nodes)
-    {
-        if (!root) return nullptr;
-        if (std::find(nodes.cbegin(), nodes.cend(), root) != nodes.cend()) return root;
+        TreeNode * ll = lowestCommonAncestor(root->left, nodes);
+        TreeNode * rr = lowestCommonAncestor(root->right, nodes);
 
-        TreeNode * left = dfs(root->left, nodes);
-        TreeNode * right = dfs(root->right, nodes);
-        if (left && right) return root;
+        if (ll && rr)
+        {
+            return root;
+        }
 
-        return left ? left : right;
+        return ll ? ll : rr;
     }
 };
