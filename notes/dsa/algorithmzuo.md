@@ -1409,7 +1409,10 @@ for (int i = 1; i <= m; ++i)
   - Given this largest sum, calculate how many segments we need to split original array into. 
 - [719. Find K-th Smallest Pair Distance](https://leetcode.com/problems/find-k-th-smallest-pair-distance/)
   - Bin Search AND Sliding Window At Most K
+- [1760. Minimum Limit of Balls in a Bag](https://leetcode.com/problems/minimum-limit-of-balls-in-a-bag/)
+- [2064. Minimized Maximum of Products Distributed to Any Store](https://leetcode.com/problems/minimized-maximum-of-products-distributed-to-any-store/)
 - [2141. Maximum Running Time of N Computers](https://leetcode.com/problems/maximum-running-time-of-n-computers/)
+- [2226. Maximum Candies Allocated to K Children](https://leetcode.com/problems/maximum-candies-allocated-to-k-children/)
 - 服务员问题
   - 描述：
     - 有 `n` 个服务员，第 `i` 个服务员服务完一个客人所需时间为 `waiter[i]`；
