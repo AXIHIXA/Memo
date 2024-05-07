@@ -1,6 +1,71 @@
 class Solution
 {
 public:
+    int trapRainWater(std::vector<std::vector<int>> & heightMap)
+    {
+        auto m = static_cast<const int>(heightMap.size());
+        auto n = static_cast<const int>(heightMap.front().size());
+
+        std::vector visited(m, std::vector<std::uint8_t>(n, false));
+
+        std::priority_queue<
+                std::tuple<int, int, int>, 
+                std::vector<std::tuple<int, int, int>>,
+                std::greater<>
+        > minHeap;
+
+        for (int i = 0; i < m; ++i)
+        {
+            minHeap.emplace(heightMap[i][0], i, 0);
+            minHeap.emplace(heightMap[i][n - 1], i, n - 1);
+
+            visited[i][0] = true;
+            visited[i][n - 1] = true;
+        }
+
+        for (int j = 1; j < n - 1; ++j)
+        {
+            minHeap.emplace(heightMap[0][j], 0, j);
+            minHeap.emplace(heightMap[m - 1][j], m - 1, j);
+
+            visited[0][j] = true;
+            visited[m - 1][j] = true;
+        }
+
+        int ans = 0;
+
+        while (!minHeap.empty())
+        {
+            auto [h, x0, y0] = minHeap.top();
+            minHeap.pop();
+
+            for (int d = 0; d < 4; ++d)
+            {
+                int x1 = x0 + dx[d];
+                int y1 = y0 + dy[d];
+
+                if (x1 < 0 || m <= x1 || y1 < 0 || n <= y1 || visited[x1][y1])
+                {
+                    continue;
+                }
+
+                ans += std::max(0, h - heightMap[x1][y1]);
+                minHeap.emplace(std::max(heightMap[x1][y1], h), x1, y1);
+                visited[x1][y1] = true;
+            }
+        }
+
+        return ans;
+    }
+
+private:
+    static constexpr std::array<int, 4> dx = {1, 0, -1, 0};
+    static constexpr std::array<int, 4> dy = {0, 1, 0, -1};
+};
+
+class Solution
+{
+public:
     struct Pos
     {
         friend bool operator >(const Pos & a, const Pos & b)
