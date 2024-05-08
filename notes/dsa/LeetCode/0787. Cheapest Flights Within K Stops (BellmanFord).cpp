@@ -62,22 +62,24 @@ class BellmanFord
 public:
     int findCheapestPrice(int n, std::vector<std::vector<int>> & flights, int src, int dst, int k)
     {
-        std::vector<int> dist(n + 1, std::numeric_limits<int>::max());
+        std::vector<int> dist(n, std::numeric_limits<int>::max());
         dist[src] = 0;
 
-        for (int turn = 0; turn < k + 1; ++turn)
+        for (int i = 0; i <= k; ++i)
         {
-            std::vector<int> next = dist;
-
-            for (const auto & f : flights)
+            std::vector<int> tmp = dist;
+            
+            for (const auto & e : flights)
             {
-                if (dist[f[0]] != std::numeric_limits<int>::max())
+                int s = e[0], t = e[1], w = e[2];
+
+                if (static_cast<long long>(dist[s]) + w < tmp[t])
                 {
-                    next[f[1]] = std::min(next[f[1]], dist[f[0]] + f[2]);
+                    tmp[t] = dist[s] + w;
                 }
             }
-            
-            dist = std::move(next);
+
+            dist = std::move(tmp);
         }
 
         return dist[dst] == std::numeric_limits<int>::max() ? -1 : dist[dst];
