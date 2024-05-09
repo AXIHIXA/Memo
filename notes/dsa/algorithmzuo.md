@@ -2093,56 +2093,72 @@ std::sort(rs.begin(), rs.begin() + rsSize);
           - 已经在堆里了但还没拓展过：普通版会塞一个重复的节点（但新塞的小的节点会先被拓展到），进阶版更新堆内那个已有节点；
           - 已经被拓展过了：普通版拓展边之前会因为 `visited` 而直接跳过，进阶版压根不会有这种节点（因为堆内没有重复节点）。
     - 常数优化：**如果堆里拿出的节点就是目标点，则直接终止算法**
-- **反向索引堆**
-  - 手写堆，`heapInsert`，`popHeap` 以及 `heapify`；
+```c++
+void dijkstra(int source)
+{
+    std::vector<int> dist(n + 1, std::numeric_limits<int>::max());
+    dist[source] = 0;
+
+    std::vector<std::uint_8> visited(n + 1, false);
+
+    std::priority_queue<
+            std::pair<int, int>, 
+            std::vector<std::pair<int, int>>, 
+            std::greater<>
+    > minHeap;
+
+    minHeap.emplace(0, source);
+
+    while (!minHeap.empty())
+    {
+        auto [d, s] = minHeap.top();
+        minHeap.pop();
+
+        if (visited[s])
+        {
+            continue;
+        }
+
+        visited[s] = true;
+
+        for (auto [t, w] : adjacencyList[s])
+        {
+            if (d + w < dist[t])
+            {
+                dist[t] = d + w;
+                minHeap.emplace(dist[t], t);
+            }
+        }
+    }
+}
+```
+- **反向索引堆** (Inverse Indexed Heap)
   - 一个 `where` 数组查询一个 `Key` 是从未进过堆（`-1`），在堆里（`>=0`），还是已经被弹出了（`-2`）；
-  - 手写一个 `swapHeap` 函数来交换两个两个下标（交换堆数组，同时更新 `where` 数组）。
-  - 公开接口： `updateHeap` 和 `popHeap`
+  - 手写一个 `heapSwap` 函数来交换两个两个下标（交换堆数组，同时更新 `where` 数组）；
+  - 手写堆，`heapPush` 和 `heapify`；
+  - 公开接口： `heapPop` 和 `heapUpdate`。
+  - 使用反向索引堆的 `Dijkstra` **不**再需要 `visited` 记录是否已经拓展过某个节点：
+    - 每次拿到新节点都扩展一遍 `heapUpdate` 即可。
+      - 反向索引堆内部一定不会有重复节点，
+      - 弹出过的节点也一定不会再次进堆，
+      - 因此根本不会出现重复扩展的情况。
 ```c++
 // 反向索引表 where，堆 heap，比较索引 dist[heap[i]]
-constexpr int kMaxSize = ...;
+constexpr int kMaxHeapSize = ...;
 
 int heapSize = 0;
-std::array<int, kMaxSize> heap = {};
-std::array<int, kMaxSize> dist = {};
-std::array<int, kMaxSize> where = {};
+std::array<int, kMaxHeapSize> heap = {};
+std::array<int, kMaxHeapSize> dist = {};
+std::array<int, kMaxHeapSize> where = {};
 
-heapSize = 0;
-std::fill(dist.begin(), dist.end(), std::numeric_limits<int>::max());
-std::fill(where.begin(), where.end(), -1);
-
-void updateHeap(int v, int c)
+void clear()
 {
-    if (where[v] == -1)
-    {
-        // Insert. 
-        heap[heapSize] = v;
-        where[v] = heapSize++;
-        dist[v] = c;
-        pushHeap(where[v]);
-    }
-    else if (0 <= where[v])
-    {
-        // Update. 
-        dist[v] = std::min(dist[v], c);
-        pushHeap(where[v]);
-    }
-    // else Ignore. 
+    heapSize = 0;
+    std::fill(dist.begin(), dist.end(), std::numeric_limits<int>::max());
+    std::fill(where.begin(), where.end(), -1);
 }
 
-void popHeap()
-{
-    swapHeap(0, --heapSize);
-    heapify(0);
-
-    // 注意【索引必须在 swap 之后更新】。
-    // 因为 swap 对 where 并不是真正的交换，而是更新实际位置；
-    // 也就是说如果 swap 之前 where 是 -1 或者 -2 的话，
-    // swap 之后会被覆盖成真实下标（ >= 0 ）
-    where[heap[heapSize]] = -2;
-}
-
-void swapHeap(int i, int j)
+void heapSwap(int i, int j)
 {
     // 快照: heap[i] == h1, heap[j] == h2
     std::swap(heap[i], heap[j]);
@@ -2153,12 +2169,12 @@ void swapHeap(int i, int j)
     where[heap[j]] = j;
 }
 
-void pushHeap(int i)
+void heapPush(int i)
 {
     // 注意这里【不能】用 (i - 1) >> 1，移位的话 i == 0 时会溢出！
     while (dist[heap[i]] < dist[heap[(i - 1) / 2]])
     {
-        swapHeap(i, (i - 1) / 2);
+        heapSwap(i, (i - 1) / 2);
         i = (i - 1) / 2;
     }
 }
@@ -2167,12 +2183,66 @@ void heapify(int i)
 {
     for (int l = (i << 1) + 1; l < heapSize; )
     {
-        int best = l + 1 < heapSize && dist[heap[l + 1]] < dist[heap[l]] ? l + 1 : l;
-        best = dist[heap[best]] < dist[heap[i]] ? best : i;
-        if (best == i) break;
-        swapHeap(best, i);
+        int best = (l + 1 < heapSize && dist[heap[l + 1]] < dist[heap[l]]) ? l + 1 : l;
+        best = dist[heap[i]] < dist[heap[best]] ? i : best;
+
+        if (best == i)
+        {
+            break;
+        }
+
+        heapSwap(i, best);
         i = best;
         l = (i << 1) + 1;
+    }
+}
+
+void heapPop()
+{
+    heapSwap(0, --heapSize);
+
+    // 注意【索引必须在 swap 之后更新】。
+    // 因为 swap 对 where 并不是真正的交换，而是更新实际位置；
+    // 也就是说如果 swap 之前 where 是 -1 或者 -2 的话，
+    // swap 之后会被覆盖成真实下标（ >= 0 ）
+    where[heap[heapSize]] = -2;
+    heapify(0);
+}
+
+void heapUpdate(int v, int d)
+{
+    if (where[v] == -1)
+    {
+        // Insert
+        dist[v] = d;
+        heap[heapSize] = v;
+        where[v] = heapSize++;
+        heapPush(where[v]);
+    }
+    else if (0 <= where[v])
+    {
+        // Update
+        dist[v] = std::min(dist[v], d);
+        heapPush(where[v]);
+    }
+    // else Ignore
+}
+
+void dijkstra(int source)
+{
+    heapUpdate(source, 0);
+
+    while (0 < heapSize)
+    {
+        int s = heap[0];
+        heapPop();
+
+        for (int e = head[s]; e != 0; e = next[e])
+        {
+            int t = to[e];
+            int w = weight[e];
+            heapUpdate(t, dist[s] + w);
+        }
     }
 }
 ```
