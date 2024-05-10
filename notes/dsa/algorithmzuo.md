@@ -2323,7 +2323,7 @@ void dijkstra(int source)
     - 复杂度依旧很高，只适用于小图！
     - 没有负边权时要用 Dijkstra
   - 只有上一次被某条边松弛过的节点所连接的边，才有可能引起下一次松弛操作
-    - 用队列维护“这一轮哪些节点的 `dist` 变小了”
+    - 用队列维护 “这一轮哪些节点的 `dist` 变小了”
     - 下一轮只需要对这些点的所有边考察有无松弛操作即可。
 - [P2910 [USACO08OPEN] Clear And Present Danger S](https://www.luogu.com.cn/problem/P2910)
 - [787. Cheapest Flights Within K Stops](https://leetcode.cn/problems/cheapest-flights-within-k-stops/)
@@ -2338,11 +2338,42 @@ void dijkstra(int source)
 
 ## 066 从递归入手一维动态规划
 
+- DP
+  - 知道怎么算 vs **知道怎么试**： DP 解决知道怎么试 的类型；
+  - 递归过程中 *反复调用同一个子问题的解* 的递归才有改动态规划的必要。
+- 见识过的一维 DP 方案：
+  - 下标 DP ：
+    - 前缀；
+    - 后缀（字符串常用）；
+  - 数值 DP ：
+    - [322 Coin Change](https://leetcode.com/problems/coin-change/)；
+    - [467 Unique Substrings](https://leetcode.com/problems/unique-substrings-in-wraparound-string/)）。
+      - 枚举起始字符达到去重效果
+    - [940. Distinct Subsequences II](https://leetcode.com/problems/distinct-subsequences-ii/)
+      - 枚举结尾字符
 - [509. Fibonacci Number](https://leetcode.cn/problems/fibonacci-number/)
 - [983. Minimum Cost For Tickets](https://leetcode.com/problems/minimum-cost-for-tickets/)
 - [91. Decode Ways](https://leetcode.com/problems/decode-ways/)
 - [639. Decode Ways II](https://leetcode.com/problems/decode-ways-ii/description/)
 - [264. Ugly Number II](https://leetcode.com/problems/ugly-number-ii/)
+  - 给定质因数组成，如何从小到大枚举？
+  - 每一个丑数一定都是某个前驱丑数乘2，3或5乘出来的；
+  - 假设当前一步生成的新丑数是某个前驱乘2，则下次再乘2的一定是这个前驱的下一位；
+  - 特殊注意：当前一步生成的新丑数可能有多个来源，一旦被采用，所有来源都要前进一步。
+- [32. Longest Valid Parentheses](https://leetcode.com/problems/longest-valid-parentheses/)
+  - 可以前缀DP做
+  - 看见括号匹配了，也可以用栈做
+  - 还有更骚的，纯骚
+- [467. Unique Substrings in Wraparound String](https://leetcode.com/problems/unique-substrings-in-wraparound-string/)
+  - 字符数值DP，而不是下标DP。
+  - 合法子串之间一定不重合：枚举起始位置，每次看下一位是否能填进来，更新目前连续合法串长度。
+  - 以给定字符为结尾的最长子串一定包含所有更短的以这个字符结尾的子串。
+- [940. Distinct Subsequences II](https://leetcode.com/problems/distinct-subsequences-ii/)
+  - 枚举结尾字符
+
+
+
+## 067 从递归入手二维动态规划
 
 
 
@@ -2350,6 +2381,7 @@ void dijkstra(int source)
 
 
 
+## 068 见识更多二维动态规划题目
 
 
 
@@ -2357,8 +2389,7 @@ void dijkstra(int source)
 
 
 
-
-
+## 069 从递归入手三维动态规划
 
 
 
