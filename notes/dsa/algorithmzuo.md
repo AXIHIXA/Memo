@@ -2346,9 +2346,9 @@ void dijkstra(int source)
     - 前缀；
     - 后缀（字符串常用）；
   - 数值 DP ：
-    - [322 Coin Change](https://leetcode.com/problems/coin-change/)；
+    - [322. Coin Change](https://leetcode.com/problems/coin-change/)；
     - 下面这一大票都是去重的：
-      - [467 Unique Substrings](https://leetcode.com/problems/unique-substrings-in-wraparound-string/)）。
+      - [467. Unique Substrings](https://leetcode.com/problems/unique-substrings-in-wraparound-string/)）。
         - 枚举起始字符达到去重效果
       - [940. Distinct Subsequences II](https://leetcode.com/problems/distinct-subsequences-ii/)
         - 枚举结尾字符
