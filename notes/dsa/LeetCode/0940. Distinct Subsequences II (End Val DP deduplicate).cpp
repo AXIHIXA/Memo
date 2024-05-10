@@ -13,6 +13,8 @@ public:
         {
             // Number of unique subseqs ending at this char c, 
             // without duplicating previously-discovered subseqs ending with char c. 
+            // Appending c to previously-discovered subseqs duplicates
+            // all previously-known subseqs ending with c. 
             int newAdd = (ans - dp[c - 'a'] + p) % p;
 
             // Number of unique subseqs ending with char c. 

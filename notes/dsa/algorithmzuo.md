@@ -2351,6 +2351,8 @@ void dijkstra(int source)
       - 枚举起始字符达到去重效果
     - [940. Distinct Subsequences II](https://leetcode.com/problems/distinct-subsequences-ii/)
       - 枚举结尾字符
+    - [1987. Number of Unique Good Subsequences](https://leetcode.com/problems/number-of-unique-good-subsequences/)
+      - 枚举首尾字符
 - [509. Fibonacci Number](https://leetcode.cn/problems/fibonacci-number/)
 - [983. Minimum Cost For Tickets](https://leetcode.com/problems/minimum-cost-for-tickets/)
 - [91. Decode Ways](https://leetcode.com/problems/decode-ways/)
@@ -2370,7 +2372,8 @@ void dijkstra(int source)
   - 以给定字符为结尾的最长子串一定包含所有更短的以这个字符结尾的子串。
 - [940. Distinct Subsequences II](https://leetcode.com/problems/distinct-subsequences-ii/)
   - 枚举结尾字符
-
+- [1987. Number of Unique Good Subsequences](https://leetcode.com/problems/number-of-unique-good-subsequences/)
+  - 枚举首尾字符
 
 
 ## 067 从递归入手二维动态规划
