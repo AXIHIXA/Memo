@@ -2347,12 +2347,13 @@ void dijkstra(int source)
     - 后缀（字符串常用）；
   - 数值 DP ：
     - [322 Coin Change](https://leetcode.com/problems/coin-change/)；
-    - [467 Unique Substrings](https://leetcode.com/problems/unique-substrings-in-wraparound-string/)）。
-      - 枚举起始字符达到去重效果
-    - [940. Distinct Subsequences II](https://leetcode.com/problems/distinct-subsequences-ii/)
-      - 枚举结尾字符
-    - [1987. Number of Unique Good Subsequences](https://leetcode.com/problems/number-of-unique-good-subsequences/)
-      - 枚举首尾字符
+    - 下面这一大票都是去重的：
+      - [467 Unique Substrings](https://leetcode.com/problems/unique-substrings-in-wraparound-string/)）。
+        - 枚举起始字符达到去重效果
+      - [940. Distinct Subsequences II](https://leetcode.com/problems/distinct-subsequences-ii/)
+        - 枚举结尾字符
+      - [1987. Number of Unique Good Subsequences](https://leetcode.com/problems/number-of-unique-good-subsequences/)
+        - 枚举首尾字符
 - [509. Fibonacci Number](https://leetcode.cn/problems/fibonacci-number/)
 - [983. Minimum Cost For Tickets](https://leetcode.com/problems/minimum-cost-for-tickets/)
 - [91. Decode Ways](https://leetcode.com/problems/decode-ways/)
