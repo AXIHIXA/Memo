@@ -2379,9 +2379,11 @@ void dijkstra(int source)
 
 ## 067 从递归入手二维动态规划
 
-
-
-
+- [64. Minimum Path Sum](https://leetcode.com/problems/minimum-path-sum/)
+  - 2D Prefix DP. 
+- [79. Word Searchs](https://leetcode.com/problems/word-search/)
+  - Board itself as visited. 
+  - 带路径的递归无法改成动态规划或者说没必要
 
 
 
