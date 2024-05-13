@@ -2383,8 +2383,12 @@ void dijkstra(int source)
   - 2D Prefix DP. 
 - [79. Word Searchs](https://leetcode.com/problems/word-search/)
   - Board itself as visited. 
+    - For DFS/BFS-likes, "visited" == "going to expand this node":
+      - `visited = true; expand; visited = false; return;`
+    - `auto` does **NOT** come with reference semantic! Add `auto &` explicitly!
   - 带路径的递归无法改成动态规划或者说没必要
-
+- [212. Word Search II](https://leetcode.com/problems/word-search-ii/)
+  - DFS with Trie (on word bank, not on board). 
 
 
 ## 068 见识更多二维动态规划题目

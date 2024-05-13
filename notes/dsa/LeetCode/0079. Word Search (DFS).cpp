@@ -7,13 +7,11 @@ public:
         auto n = static_cast<const int>(board.front().size());
         auto wl = static_cast<const int>(word.size());
 
-        bool res = false;
-
         for (int x = 0; x < m; ++x)
         {
             for (int y = 0; y < n; ++y)
             {
-                if (dfs(board, m, n, x, y, word, wl, 0))
+                if (board[x][y] == word[0] && dfs(board, m, n, x, y, word, wl, 0))
                 {
                     return true;
                 }
@@ -34,14 +32,9 @@ private:
             int wl, 
             int k)
     {
-        if (k == wl)
+        if (k == wl - 1)
         {
             return true;
-        }
-        
-        if (x < 0 || m <= x || y < 0 || n <= y || board[x][y] != word[k])
-        {
-            return false;
         }
 
         bool ret = false;
@@ -53,6 +46,12 @@ private:
         {
             int x1 = x + dx[d];
             int y1 = y + dy[d];
+
+            if (x1 < 0 || m <= x1 || y1 < 0 || n <= y1 || board[x1][y1] != word[k + 1])
+            {
+                continue;
+            }
+
             ret |= dfs(board, m, n, x1, y1, word, wl, k + 1);
         }
 
