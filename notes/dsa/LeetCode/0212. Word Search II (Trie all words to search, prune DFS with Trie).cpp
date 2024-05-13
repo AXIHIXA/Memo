@@ -3,89 +3,100 @@ class Trie
 public:
     friend class Solution;
 
-public:
     Trie() = default;
-
-    int next(int cur, char c)
-    {
-        return tree[cur][c - 'a'];
-    }
 
     void clear()
     {
         cnt = 1;
-
+        
         for (auto & node : tree)
         {
             std::fill(node.begin(), node.end(), 0);
         }
-
+        
         std::fill(endd.begin(), endd.end(), 0);
     }
 
-    void insert(const std::string & s)
+    void insert(const std::string & word)
     {
-        int curr = 1;
+        int cur = 1;
 
-        for (int i = 0, path; i < s.size(); ++i)
+        for (int i = 0, path; i < static_cast<int>(word.size()); ++i)
         {
-            path = s[i] - 'a';
-            if (tree[curr][path] == 0) tree[curr][path] = ++cnt;
-            curr = tree[curr][path];
+            path = word[i] - 'a';
+
+            if (tree[cur][path] == 0)
+            {
+                tree[cur][path] = ++cnt;
+            }
+
+            cur = tree[cur][path];
         }
 
-        ++endd[curr];
+        ++endd[cur];
+    }
+
+    int next(char c, int cur = 1)
+    {
+        return tree[cur][c - 'a'];
+    }
+
+    int count(const std::string & word)
+    {
+        int cur = 1;
+
+        for (int i = 0, path; i < static_cast<int>(word.size()); ++i)
+        {
+            path = word[i] - 'a';
+            cur = tree[cur][path];
+
+            if (cur == 0)
+            {
+                return 0;
+            }
+        }
+
+        return endd[cur];
     }
 
 private:
     static constexpr int kMaxSize = 50'003;
 
     static int cnt;
-    static std::vector<std::array<int, 26>> tree;
-    static std::vector<int> endd;
+    static std::array<std::array<int, 27>, kMaxSize> tree;
+    static std::array<int, kMaxSize> endd;
 };
 
-int Trie::cnt = 1;
-std::vector<std::array<int, 26>> Trie::tree(kMaxSize, {0});
-std::vector<int> Trie::endd(kMaxSize, 0);
+int Trie::cnt = 0;
+std::array<std::array<int, 27>, Trie::kMaxSize> Trie::tree = {};
+std::array<int, Trie::kMaxSize> Trie::endd = {};
 
 class Solution
 {
 public:
     std::vector<std::string> findWords(
-            std::vector<std::vector<char>> & board,
+            std::vector<std::vector<char>> & board, 
             std::vector<std::string> & words)
     {
+        trie.clear();
+        
+        for (const auto & word : words)
+        {
+            trie.insert(word);
+        }
+
         auto m = static_cast<const int>(board.size());
         auto n = static_cast<const int>(board.front().size());
 
-        trie.clear();
-
-        for (const std::string & s : words)
-        {
-            trie.insert(s);
-        }
-
         std::unordered_set<std::string> ans;
-
-        std::string word;
-        word.reserve(11);  // 1 <= words[i].length() <= 10
+        std::string tmp;
+        tmp.reserve(10);
 
         for (int x = 0; x < m; ++x)
         {
             for (int y = 0; y < n; ++y)
             {
-                int succ = trie.next(1, board[x][y]);
-                if (succ == 0) continue;
-
-                word += board[x][y];
-                char old = board[x][y];
-                board[x][y] = '\0';
-                
-                dfs(board, m, n, ans, x, y, word, succ);
-
-                board[x][y] = old;
-                word.pop_back();
+                dfs(board, m, n, x, y, 1, tmp, ans);
             }
         }
 
@@ -93,53 +104,47 @@ public:
     }
 
 private:
-    void dfs(
+    static void dfs(
             std::vector<std::vector<char>> & board,
-            int m,
-            int n,
-            std::unordered_set<std::string> & ans,
-            int x,
-            int y,
-            std::string & word,
-            int curr)
+            int m, 
+            int n, 
+            int x, 
+            int y, 
+            int cur, 
+            std::string & tmp, 
+            std::unordered_set<std::string> & ans)
     {
-        if (trie.endd[curr])
+        if (x < 0 || m <= x || y < 0 || n <= y)
         {
-            ans.insert(word);
+            return;
         }
 
-        for (int d = 0; d < 4; ++d)
+        cur = trie.next(board[x][y], cur);
+
+        if (cur == 0)
         {
-            int x1 = x + dx[d];
-            int y1 = y + dy[d];
-
-            if (!(0 <= x1 && x1 < m && 0 <= y1 && y1 < n && board[x1][y1] != '\0'))
-            {
-                continue;
-            }
-
-            int succ = trie.next(curr, board[x1][y1]);
-
-            if (succ == 0)
-            {
-                continue;
-            }
-
-            word += board[x1][y1];
-            char old = board[x1][y1];
-            board[x1][y1] = '\0';
-
-            dfs(board, m, n, ans, x1, y1, word, succ);
-
-            board[x1][y1] = old;
-            word.pop_back();
+            return;
         }
+
+        tmp += board[x][y];
+        char vanilla = board[x][y];
+        board[x][y] = 'z' + 1;
+
+        if (trie.endd[cur])
+        {
+            ans.insert(tmp);
+        }
+
+        dfs(board, m, n, x + 1, y, cur, tmp, ans);
+        dfs(board, m, n, x - 1, y, cur, tmp, ans);
+        dfs(board, m, n, x, y + 1, cur, tmp, ans);
+        dfs(board, m, n, x, y - 1, cur, tmp, ans);
+
+        tmp.pop_back();
+        board[x][y] = vanilla;
     }
 
 private:
-    static constexpr std::array<int, 4> dx = {1, 0, -1, 0};
-    static constexpr std::array<int, 4> dy = {0, 1, 0, -1};
-
     static Trie trie;
 };
 

@@ -2389,6 +2389,17 @@ void dijkstra(int source)
   - 带路径的递归无法改成动态规划或者说没必要
 - [212. Word Search II](https://leetcode.com/problems/word-search-ii/)
   - DFS with Trie (on word bank, not on board). 
+  - DFS: Do edge case handling (return) in line 1 in DFS function;
+  - No need to do that outside of DFS function (might be slightly faster but messes up logic...)
+- [1143. Longest Common Subsequence](https://leetcode.com/problems/longest-common-subsequence/)
+  - 2D Prefix DP. 
+- [516. Longest Palindromic Subsequence](https://leetcode.com/problems/longest-palindromic-subsequence/)
+  - 2D Interval Len DP. 
+- [329. Longest Increasing Path in a Matrix](https://leetcode.com/problems/longest-increasing-path-in-a-matrix/)
+  - **WARNING**: 
+    - `std::vector::resize` does **not** overwrite existing memory! 
+    - Use `assign` instead if overwriting is needed!
+
 
 
 ## 068 见识更多二维动态规划题目
