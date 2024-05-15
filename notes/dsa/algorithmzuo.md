@@ -2340,14 +2340,14 @@ void dijkstra(int source)
 
 - DP
   - 知道怎么算 vs **知道怎么试**： DP 解决知道怎么试 的类型；
-  - 递归过程中 *反复调用同一个子问题的解* 的递归才有改动态规划的必要。
+  - 递归过程中 *反复调用同一个子问题的解* 的递归才有改 DP 的必要。
 - 见识过的一维 DP 方案：
   - 下标 DP ：
     - 前缀；
     - 后缀（字符串常用）；
   - 数值 DP ：
     - [322. Coin Change](https://leetcode.com/problems/coin-change/)；
-    - 下面这一大票都是去重的：
+    - 下面这一大票都是 *构造子序列同时去重* 的：
       - [467. Unique Substrings](https://leetcode.com/problems/unique-substrings-in-wraparound-string/)）。
         - 枚举起始字符达到去重效果
       - [940. Distinct Subsequences II](https://leetcode.com/problems/distinct-subsequences-ii/)
@@ -2366,7 +2366,7 @@ void dijkstra(int source)
 - [32. Longest Valid Parentheses](https://leetcode.com/problems/longest-valid-parentheses/)
   - 可以前缀DP做
   - 看见括号匹配了，也可以用栈做
-  - 还有更骚的，纯骚
+  - 还有更骚的（双指针），纯骚
 - [467. Unique Substrings in Wraparound String](https://leetcode.com/problems/unique-substrings-in-wraparound-string/)
   - 字符数值DP，而不是下标DP。
   - 合法子串之间一定不重合：枚举起始位置，每次看下一位是否能填进来，更新目前连续合法串长度。
@@ -2386,7 +2386,7 @@ void dijkstra(int source)
     - For DFS/BFS-likes, "visited" == "going to expand this node":
       - `visited = true; expand; visited = false; return;`
     - `auto` does **NOT** come with reference semantic! Add `auto &` explicitly!
-  - 带路径的递归无法改成动态规划或者说没必要
+  - **带路径的递归不适合改成 DP ，或者说没必要**
 - [212. Word Search II](https://leetcode.com/problems/word-search-ii/)
   - DFS with Trie (on word bank, not on board). 
   - DFS: Do edge case handling (return) in line 1 in DFS function;
@@ -2410,26 +2410,25 @@ void dijkstra(int source)
   - 2D Prefix DP
 - [72. Edit Distance](https://leetcode.com/problems/edit-distance/)
   - 2D Prefix DP. 
-  - `s[0..i)` and `t[0..j)`, after editing: 
-  - Consider whether `s[i - 1]`, `t[j - 1]` is removed: Four possibilities, 00, 01, 10, 11;
-    - "01": `dp[i][j] = 1 + dp[i][j - 1]`;
-    - "10": `dp[i][j] = 1 + dp[i - 1][j]`;
-    - "11": `dp[i][j] = 1 + dp[i - 1][j - 1]`;
-    - "00": Each char is either untouched or modified to another char. 
-      - Both untouched: `dp[i][j] = dp[i - 1][j - 1]`, iff. `s[i - 1] == t[j - 1]`;
-      - One modified to another: Has same #ops as "11" (removing both);
-      - One untouched and another modified to anything: Same as "01" or "10". 
+  - Edit `s[0..i)` into `t[0..j)` (note that `t` is **immutable**). Four possibilities: 
+    - Nothing inserted after `s[i - 1]`:
+      - Untouched (still the last char in `s`): `dp[i][j] = dp[i - 1][j - 1]`, iff. `s[i - 1] == t[j - 1]`;
+      - Modified into `t[j - 1]`: `dp[i][j] = 1 + dp[i - 1][j - 1]`;
+      - Removed: `dp[i][j] = 1 + dp[i - 1][j]`;
+    - `t[j - 1]` inserted after `s[i - 1]`:
+      - `dp[i][j] = 1 + dp[i][j - 1]`. 
 - [97. Interleaving String](https://leetcode.com/problems/interleaving-string/)
   - 2D Prefix DP
-- []()
 
 
 
 ## 069 从递归入手三维动态规划
 
-
-
-
+- [474. Ones and Zeroes](https://leetcode.com/problems/ones-and-zeroes/)
+  - 2D Value DP 
+- [879. Profitable Schemes](https://leetcode.com/problems/profitable-schemes/)
+  - 2D Value DP
+- []()
 
 
 
