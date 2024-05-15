@@ -2409,8 +2409,16 @@ void dijkstra(int source)
 - [115. Distinct Subsequences](https://leetcode.com/problems/distinct-subsequences/)
   - 2D Prefix DP
 - [72. Edit Distance](https://leetcode.com/problems/edit-distance/)
-  - 2D Prefix DP
-  - `s[0..i)` and `t[0..j)`, after editing, `s[i - 1]` and `t[j - 1]` exist or not: 00, 01, 10, 11. 
+  - 2D Prefix DP. 
+  - `s[0..i)` and `t[0..j)`, after editing: 
+  - Consider whether `s[i - 1]`, `t[j - 1]` is removed: Four possibilities, 00, 01, 10, 11;
+    - "01": `dp[i][j] = 1 + dp[i][j - 1]`;
+    - "10": `dp[i][j] = 1 + dp[i - 1][j]`;
+    - "11": `dp[i][j] = 1 + dp[i - 1][j - 1]`;
+    - "00": Each char is either untouched or modified to another char. 
+      - Both untouched: `dp[i][j] = dp[i - 1][j - 1]`, iff. `s[i - 1] == t[j - 1]`;
+      - One modified to another: Has same #ops as "11" (removing both);
+      - One untouched and another modified to anything: Same as "01" or "10". 
 - [97. Interleaving String](https://leetcode.com/problems/interleaving-string/)
   - 2D Prefix DP
 - []()
