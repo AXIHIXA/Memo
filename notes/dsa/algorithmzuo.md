@@ -2425,9 +2425,13 @@ void dijkstra(int source)
 ## 069 从递归入手三维动态规划
 
 - [474. Ones and Zeroes](https://leetcode.com/problems/ones-and-zeroes/)
+  - 多维费用背包
   - 2D Value DP 
 - [879. Profitable Schemes](https://leetcode.com/problems/profitable-schemes/)
   - 2D Value DP
+  - 空间压缩：
+    - 三维 DP ， `dp[k][i][j]` 依赖 `dp[k - 1][i - ?][j - ?]`
+    - 可以压缩掉 `k` ，然后 `i` 和 `j` **从大到小** 更新
 - []()
 
 

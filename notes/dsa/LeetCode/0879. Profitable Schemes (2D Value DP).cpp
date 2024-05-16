@@ -10,20 +10,21 @@ public:
         auto groupLength = static_cast<const int>(group.size());
         std::vector dp(n + 10, std::vector<int>(minProfit + 10, 0));
 
-        for (int r = 0; r <= n; ++r)
+        // dp[maxGroup][members][profit]. 
+        // dp[k][i][j] = dp[k - 1][i][j] + dp[k - 1][i - group[k]][j - profit[k]]. 
+
+        for (int i = 0; i <= n; ++i)
         {
-            dp[r][0] = 1;
+            dp[i][0] = 1;
         }
 
-        for (int i = 0; i < groupLength; ++i)
+        for (int k = 0; k < groupLength; ++k)
         {
-            for (int r = n; group[i] <= r; --r)
+            for (int i = n; group[k] <= i; --i)
             {
-                for (int s = minProfit; 0 <= s; --s)
+                for (int j = minProfit; 0 <= j; --j)
                 {
-                    int p1 = dp[r][s];
-					int p2 = group[i] <= r ? dp[r - group[i]][std::max(0, s - profit[i])] : 0;
-					dp[r][s] = (p1 + p2) % p;
+                    dp[i][j] = (dp[i][j] + dp[i - group[k]][std::max(0, j - profit[k])]) % p;
                 }
             }
         }
