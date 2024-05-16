@@ -2432,7 +2432,8 @@ void dijkstra(int source)
   - 空间压缩：
     - 三维 DP ， `dp[k][i][j]` 依赖 `dp[k - 1][i - ?][j - ?]`
     - 可以压缩掉 `k` ，然后 `i` 和 `j` **从大到小** 更新
+- [688. Knight Probability in Chessboard](https://leetcode.com/problems/knight-probability-in-chessboard/)
+  - 3D Top-down DP
 - []()
-
 
 
