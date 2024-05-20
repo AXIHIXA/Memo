@@ -14,7 +14,7 @@ REMEMBER TO TURN OFF FAST STARTUP FOR WINDOWS in `Control Panel/All COntrol Pane
 
 # Ubuntu Installation
 
-Taken from https://www.cnblogs.com/deepllz/p/8892628.html as personal note. 
+Taken from [https://www.cnblogs.com/deepllz/p/8892628.html](https://www.cnblogs.com/deepllz/p/8892628.html) as personal note. 
 
 - 首先进入BIOS（dell笔记本开机按F2，其他型号电脑请百度）关闭win10的secure boot，然后在电源选项中禁用快速启动（win10的快速启动在电源选项中，具体路径为：电源选项→选择电源按钮的功能→更改当前不可用设置→去掉启用快速启动前面的√，保存即可）
 - 然后再进入boot options（DELL笔记本开机按F12），选择从U盘启动
@@ -29,15 +29,12 @@ swap         swap           8G
 /boot        ext4           1G
 /            ext4           remaining
 ```
-
 - 分区之后要将boot所对应的分区设置为启动引导器，否则启动时操作系统可能找不到引导项导致无法进入ubuntu
-　　 
 - The grub page is default hidden if only ubuntu is detected. To see this page and edit grub after installation, boot with efi floppy inserted. 
-　　 
 - Update NVIDIA drivers: 
-    - This package manager method is recommended by NVIDIA itself. 
-    - Use GUI: Show Applications -> Software & Updates -> Additional Drivers -> NVIDIA Cooperation
-        
+  - This package manager method is recommended by NVIDIA itself. 
+  - Use GUI: Show Applications -> Software & Updates -> Additional Drivers -> NVIDIA Cooperation
+- [https://ubuntu.com/server/docs/nvidia-drivers-installation](https://ubuntu.com/server/docs/nvidia-drivers-installation)        
 ```
 $ ubuntu-drivers devices
 == /sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0 ==
@@ -51,13 +48,11 @@ driver   : xserver-xorg-video-nouveau - distro free builtin
 
 == cpu-microcode.py ==
 driver   : intel-microcode - distro free
-　　 
-# Use this for auto-install the recommended version (NOT recommended. Install latest version manually in GUI):
-$ sudo ubuntu-drivers autoinstall
-```
 
+$ sudo ubuntu-drivers install
+```
 - Configure CUDA: 
-    - [Prepare Ubuntu](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#prepare-ubuntu)
-    - [Local Repo Installation for Ubuntu](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
-    - [Post-installation Actions](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions)
-    - [Removing CUDA Toolkit and Driver](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver)
+  - [Prepare Ubuntu](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#prepare-ubuntu)
+  - [Local Repo Installation for Ubuntu](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
+  - [Post-installation Actions](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions)
+  - [Removing CUDA Toolkit and Driver](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver)
