@@ -45,7 +45,8 @@ sudoedit /etc/profile.d/my-env-vars.sh
 # The following are the contents to be appended to /etc/profiles.d/my-env-vars.sh: 
 
 # cuda
-export PATH="/usr/local/cuda/bin:${PATH}"
+export PATH="/usr/local/cuda/bin${PATH:+:${PATH}}"
+export LD_LIBRARY_PATH="/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
 # editor
 export EDITOR="/usr/bin/vim"
