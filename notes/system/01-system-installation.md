@@ -52,7 +52,9 @@ $ sudo ubuntu-drivers install nvidia:535
 - For compatibility issues, install cuda toolkit whose driver version is identical to nvidia driver, e.g.:
   - CUDA 12.2, default nvidia driver version is 535. 
   - If these versions mismatch, the original driver is installed, a new bundled driver is installed, nouveau is prohibited again and thus corresponding initrms linux module is recompiled.
-  - So this process might yield errors, just bypass by installing CUDA with identical driver version. 
+  - So this process might yield errors, just bypass by installing CUDA with identical driver version.
+- **Post-installation Actions** is needed (environment variables)!
+  - See [Here](./[03-environment-configuration.md](https://github.com/AXIHIXA/Memo/blob/master/notes/system/03-environment-configuration.md#current-etcprofiledmy-env-varssh))
 - [CUDA Toolkit 12.2](https://developer.nvidia.com/cuda-12-2-0-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
 - [Prepare Ubuntu](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#prepare-ubuntu)
 - [Local Repo Installation for Ubuntu](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
