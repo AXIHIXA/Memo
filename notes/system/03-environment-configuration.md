@@ -412,47 +412,6 @@ sudo apt autoremove
 sudo reboot
 ```
 
-### NVIDIA CUDA Toolkit
-
-- Uninstall all previous CUDA toolkits and drivers: [Here](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver). 
-- Install CUDA Toolkit: 
-  - Download deb package [here](https://developer.nvidia.com/cuda-11-8-0-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local) and follow the instructions; 
-  - As reference: [NVIDIA Installation Documentation](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local). 
-```bash
-# DO NOT USE THIS OBSELETE VERSION!
-sudo apt install nvidia-cuda-toolkit
-```
-- Install Nvidia driver: 
-  - Recommended by [NVIDIA CUDA Installation Guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#driver-installation): `$sudo apt-get install cuda-drivers`;
-  - Old option: Refer to [01-system-installation.md](./01-system-installation.md).
-- Reboot: The drivers won't work before a reboot! 
-- Post-installation steps: 
-  - Remove local deb file: `$ sudo apt-get remove --purge "cuda-repo-ubuntu2004-11-8-local*"`
-  - Set environment variables: 
-```bash
-sudoedit /etc/profile.d/my-env-vars.sh
-
-# cuda
-export PATH="/usr/local/cuda/bin:${PATH}"
-```
-- `apt` update failure (`cuda` `cuda-driver` kept back):
-```bash
-# Note: It's "install", NOT "update"!
-sudo apt install cuda cuda-driver
-```
-- Install `CUDNN`: Follow instructions on 
-[NVIDIA CUDNN DOCUMENTAZTION](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#installlinux-deb)
-(I am using Debian Installation. Do NOT use Package Manager Installation. )
-- CudaDemo: [CudaDemo](../../code/CudaDemo)
-- To uninstall, follow the [offical guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver), which ensures that the uninstalltion will be clean. 
-- CLion clangd bug, YouTrack Issue [CPP-25855](https://youtrack.jetbrains.com/issue/CPP-25855).
-  - Incorrect Clangd error for partial template specialization with default parameters (happens within Thrust headers).
-    - Ambiguous partial specializations of `pointer_element<pointer<void>>`. 
-  - A workaround by @Petr Kudriavtsev:
-    - Go to the `Settings | Languages & Frameworks | C/C++ | Clangd`,
-    - There will be a field for additional flags which are added to the every compilation command in the project.
-    - Add there `-fno-relaxed-template-template-args`.
-
 ### [NVIDIA AMGX](https://github.com/NVIDIA/AMGX)
 
 ```bash
@@ -478,10 +437,10 @@ set(AMGX_LIBRARIES "$ENV{HOME}/lib/amgx/build/libamgx.a")
 find_package(Matplot++ REQUIRED HINTS "$ENV{HOME}/lib/matplotplusplus/lib/cmake/Matplot++/")
 target_link_libraries(${TARGET} Matplot++::matplot)
 ```
-
-### [MatPlot++ (Don't Use This One!)](https://alandefreitas.github.io/matplotplusplus/integration/cmake/install-as-a-package-via-cmake/)
-
+- Do **NOT** Use [This One](https://alandefreitas.github.io/matplotplusplus/integration/cmake/install-as-a-package-via-cmake/)!
 ```bash
+# DO NOT DO THIS!
+
 sudo apt install gnuplot
 
 git clone https://github.com/alandefreitas/matplotplusplus.git
@@ -495,12 +454,13 @@ cmake -B build/local \
     -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
 
 cmake --build build/local; cmake --install build/local
+
+# Note: 
+# - `cmake --build build/local` automatically installs `libmatplot`. 
+# - The actual install path is: 
+#   - `${CMAKE_INSTALL_PREFIX}/include`;
+#   - `${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}` where `CMAKE_INSTALL_LIBDIR=lib`. 
 ```
-Note: 
-- `cmake --build build/local` automatically installs `libmatplot`. 
-- The actual install path is: 
-  - `${CMAKE_INSTALL_PREFIX}/include`;
-  - `${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}` where `CMAKE_INSTALL_LIBDIR=lib`. 
 
 ### `OpenMesh`
 
