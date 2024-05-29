@@ -34,10 +34,11 @@ set(ALL_COMPILE_DEFS
 )
 
 set(ALL_COMPILE_OPTS
+        $<$<CONFIG:Debug>:-fsanitize=address>
+        # $<$<CONFIG:Debug>:-g>  # Already included in CMAKE_CXX_FLAGS_DEBUG. 
+        $<$<CONFIG:Debug>:-O1>
         -Wpessimizing-move
         -Wredundant-move
-        $<$<CONFIG:Debug>:-fsanitize=address>
-        $<$<CONFIG:Debug>:-O1>
 )
 
 set(EXECUTABLE demo)
