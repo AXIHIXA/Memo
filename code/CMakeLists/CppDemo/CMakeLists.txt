@@ -33,16 +33,11 @@ set(ALL_COMPILE_DEFS
         
 )
 
-set(SANITIZER_FLAGS
-        -fsanitize=address
-        # -g is included in CMAKE_CXX_FLAGS_DEBUG by default.
-        -O1
-)
-
 set(ALL_COMPILE_OPTS
         -Wpessimizing-move
         -Wredundant-move
-        $<$<CONFIG:Debug>:${SANITIZER_FLAGS}>
+        $<$<CONFIG:Debug>:-fsanitize=address>
+        $<$<CONFIG:Debug>:-O1>
 )
 
 set(EXECUTABLE demo)
