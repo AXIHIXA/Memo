@@ -1,4 +1,4 @@
-class Solution
+class Dp2d
 {
 public:
     int minPathSum(std::vector<std::vector<int>> & grid)
@@ -30,3 +30,31 @@ public:
         return dp[m - 1][n - 1];
     }
 };
+
+class DpSpaceCompression
+{
+public:
+    int minPathSum(std::vector<std::vector<int>> & grid)
+    {
+        auto m = static_cast<const int>(grid.size());
+        auto n = static_cast<const int>(grid.front().size());
+
+        std::vector<int> dp(n, std::numeric_limits<int>::max());
+        dp[0] = 0;
+
+        for (int i = 0; i < m; ++i)
+        {
+            dp[0] += grid[i][0];
+            
+            for (int j = 1; j < n; ++j)
+            {
+                dp[j] = grid[i][j] + std::min(dp[j - 1], dp[j]);
+            }
+        }
+
+        return dp[n - 1];
+    }
+};
+
+// using Solution = Dp2d;
+using Solution = DpSpaceCompression;

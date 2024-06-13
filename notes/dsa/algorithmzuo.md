@@ -2426,7 +2426,10 @@ void dijkstra(int source)
 
 - [474. Ones and Zeroes](https://leetcode.com/problems/ones-and-zeroes/)
   - 多维费用背包
-  - 2D Value DP 
+  - 2D Value DP ，前缀 DP 加状态（当前 0 和 1 个数）
+  - 空间压缩：
+    - 三维 DP ， `dp[k][i][j]` 依赖 `dp[k - 1][i - ?][j - ?]`
+    - 可以压缩掉 `k` ，然后 `i` 和 `j` **从大到小** 更新
 - [879. Profitable Schemes](https://leetcode.com/problems/profitable-schemes/)
   - 2D Value DP
   - 空间压缩：
@@ -2434,6 +2437,28 @@ void dijkstra(int source)
     - 可以压缩掉 `k` ，然后 `i` 和 `j` **从大到小** 更新
 - [688. Knight Probability in Chessboard](https://leetcode.com/problems/knight-probability-in-chessboard/)
   - 3D Top-down DP
-- []()
+  - `f(k, x, y)`: Prob starting from `(x, y)` for `k` steps. 
+- [2435. Paths in Matrix Whose Sum Is Divisible by K](https://leetcode.com/problems/paths-in-matrix-whose-sum-is-divisible-by-k/)
+  - 3D DP ，两个字符串下标配统一长度
+  - 枚举中点转移：两截字符串，中间裂开，匹配当且仅当：1左等于2左、1右等于2右，或者：1左等于2右、1右等于2左
+
+
+
+## 070 子数组最大累加和问题与扩展-上
+
+- [64. Minimum Path Sum](https://leetcode.com/problems/minimum-path-sum/)
+  - 2D Prefix DP
+  - Space Compression Optimization
+- 
+
+
+
+
+
+
+
+
+
+
 
 
