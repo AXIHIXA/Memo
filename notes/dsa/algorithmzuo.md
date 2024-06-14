@@ -2466,6 +2466,22 @@ void dijkstra(int source)
 
 ## 071 子数组最大累加和问题与扩展-下
 
+- [152. Maximum Product Subarray](https://leetcode.com/problems/maximum-product-subarray/)
+  - Max Subarr Prefix DP x2 Min and Max
+- MaxSumDividedBy7
+  - 给定非负数组，求能被 7 整除的最大子数组累加和
+  - 2D DP ，前缀配余数状态位， `dp[0..n-1][0..6]`
+    - 初始化为 -1 代表结尾在这儿且模 7 得这个余数的子数组 不存在
+    - `dp[i][r] = dp[i - 1][(r - num[i] + 7) % 7] + num[i] s.t. dp[i - 1][(r - num[i] + 7) % 7] != -1`
+- 魔法卷轴
+  - 题面
+    - 给定一个数组nums，其中可能有正、负、0
+    - 每个魔法卷轴可以把nums中连续的一段全变成0
+    - 你希望数组整体的累加和尽可能大
+    - 卷轴使不使用、使用多少随意，但一共只有2个魔法卷轴
+    - 请返回数组尽可能大的累加和
+  - 
+
 
 
 
