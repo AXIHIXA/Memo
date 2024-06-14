@@ -2446,18 +2446,25 @@ void dijkstra(int source)
 
 ## 070 子数组最大累加和问题与扩展-上
 
-- [64. Minimum Path Sum](https://leetcode.com/problems/minimum-path-sum/)
-  - 2D Prefix DP
-  - Space Compression Optimization
-- 
+- [53. Maximum Subarray](https://leetcode.com/problems/maximum-subarray/)
+  - 1D Prefix Sum
+- [198. House Robber](https://leetcode.com/problems/house-robber/)
+  - 1D Prefix Sum
+- [918. Maximum Sum Circular Subarray](https://leetcode.com/problems/maximum-sum-circular-subarray/)
+  - 1D Prefix Sum for intermediate result;
+  - Max Sum Circular Subarr EQUALS Max Regular Subarr OR Sum All Minus Min Regular Subarr. 
+  - **环形** 转换为 **反向补集**
+- [213. House Robber II](https://leetcode.com/problems/house-robber-ii/)
+  - 环形打家劫舍，就是普通打家劫舍多一个限制：不能同时劫到最前和最后这两家
+  - 分别刨除最前和最后一家，跑两个普通打家劫舍，取最大值即可
+- [2560. House Robber IV](https://leetcode.com/problems/house-robber-iv/)
+  - Bin Search Ans, Good predicate via DP or Greedy. 
+- [面试题 17.24. 最大子矩阵](https://leetcode.cn/problems/max-submatrix-lcci/)
+  - Enumerate r1 and r2 (O(n**2)), turn into O(n) max subarr 1D Prefix DP. 
 
 
 
-
-
-
-
-
+## 071 子数组最大累加和问题与扩展-下
 
 
 

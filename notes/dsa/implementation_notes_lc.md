@@ -2,6 +2,25 @@
 
 
 
+## 折腾中间结果：补集思想，拼接思想
+
+- 环形 转换为 反向补集
+  - [918. Maximum Sum Circular Subarray](https://leetcode.com/problems/maximum-sum-circular-subarray/)
+    - 1D Prefix Sum for intermediate result;
+    - Max Sum Circular Subarr EQUALS Max Regular Subarr OR Sum All Minus Min Regular Subarr. 
+- 至少 k 的有多少 转换为 反向补集
+  - [930. Binary Subarrays With Sum](https://leetcode.com/problems/binary-subarrays-with-sum/)
+    - (a) 前缀和 加 哈希表
+    - (b) 滑动窗口统计 和最大为 k 以及 k + 1 的子数组 的数量，答案是这俩相减
+    - Note that, (b) holds iff. all elements are non-negative!!!
+- 找两个 转换为 找所有单个然后拼
+  - 发电厂问题：
+    - 网格里有被占用的地方，发电厂为正方形
+    - 建两个一样大小的发电厂，则这两个发电厂最大能有多大？
+    - 2D 前缀 DP 计算每个格子做右下角时建一个发电厂最大能多大，之后暴力拼成两个
+
+
+
 ## DP
 
 - Single-input Interval DP: `dp[i][j]` denotes answer for `input[i..j]`. 
@@ -56,14 +75,6 @@
 
 
 
-## Monotonic Stack
-
-- Consider when asking:
-  - Farthest prefixes not exceeding, greater than, ..., curr. 
-- 1
-
-
-
 ## Random Element Removal for A Heap-like Interface
 
 - Heap and HashSet: Lazy Removal / Delayed Removal
@@ -91,8 +102,4 @@
   - State compression BFS, enqueue done/processed states.  
   - Prune with recorded min step vector for each (row, col, state). 
   - **Handle updates in direction loop** s.t. sub-optimal steps won't be added to queue. 
-- Bidirectional BFS
-  - Two queues and each queue has a hash map recording visited nodes on this side. 
-  - For each step, expand the queue with smaller size. 
-  - Terminates when expansion meets a node in opponent's visited hash map.
 
