@@ -39,20 +39,6 @@
     4. [System Management](./notes/system/04-system-management.md)
     5. [System Programming](./notes/system/05-system-programming.md)
     6. [WSL 2](./notes/system/06-wsl-2.md)
-- [DSA](./notes/dsa)
-  - [algorithmzuo](./notes/dsa/algorithmzuo.md)
-    - [algorithmzuo/algorithm-journey](https://github.com/algorithmzuo/algorithm-journey)
-  - Implementation Notes
-    - [Implementation Notes - STL](./notes/dsa/implementation_notes_stl.md)
-    - [Implementation Notes - Code/Algorithm](./notes/dsa/implementation_notes_lc.md)
-  - [KMP](./notes/dsa/kmp.cpp)
-    - buildNext: NOTE j in `[0, m - 1)`!!! MUST - 1!!!
-  - [Morris Traversal](./notes/dsa/morris_traversal.cpp)
-  - [Rolling Hash](./notes/dsa/rolling_hash.cpp)
-  - [SSA](./notes/dsa/ssa.cpp)
-    - UnionFind: NOTE merge `root[rx] = ry`!!! NOT `root[x]`!!!
-  - [Trie](./notes/dsa/Trie.cpp)
-  - [Unroll Copy](./notes/dsa/unroll_copy.cpp)
 
 
 
