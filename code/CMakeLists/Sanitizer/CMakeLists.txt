@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.27)
 project(CppDemo)
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(Boost REQUIRED)
 find_package(fmt REQUIRED HINTS "$ENV{HOME}/lib/fmt/build/")
 
 set(UTIL
@@ -19,7 +18,6 @@ set(ALL_SOURCE_FILES
 )
 
 set(ALL_INCLUDE_DIRS
-        ${Boost_INCLUDE_DIRS}
         include
 )
 

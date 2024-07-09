@@ -14,7 +14,6 @@ set(ALL_SOURCE_FILES
 )
 
 set(ALL_INCLUDE_DIRS
-        ${Boost_INCLUDE_DIRS}
         include
 )
 
