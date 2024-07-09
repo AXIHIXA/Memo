@@ -363,7 +363,7 @@ sudo reboot
 ```bash
 mkdir build
 cd build
-cmake -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE ...
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE ...
 make -j32
 ```
 
