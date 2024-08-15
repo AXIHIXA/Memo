@@ -12,7 +12,8 @@
 
 ## Blending options
 
-- Right-click selected layer in "Layers" tab on bottom-right. 
+- Add: Right-click selected layer tab (in "Layers" tab on bottom-right);
+- Modify: Double-click selected layer tab. 
 
 
 
