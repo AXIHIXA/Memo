@@ -4,11 +4,12 @@
 
 ## Miscs
 
+- All shortcuts must be executed with English keyboard (NO IMEs allowed, even they're in English mode!)
 - Command, with mouse cursor on canvas: Highlight selected layer on canvas;
 - Command + Delete: Fill selection with background color ON CURRENT LAYER;
 - Shift + Delete: Content-aware fill selection ON CURRENT LAYER;
-- Command + J, with a layer selected: Duplicate current layer. 
-
+- Command + J, with a layer selected: Duplicate current layer;
+- T, with multiple text layers (might include groups) selected: Bulk-edit text sizes.
 
 
 ## Blending options
