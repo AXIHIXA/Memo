@@ -5,7 +5,8 @@
 ## Miscs
 
 - Command, with mouse cursor on canvas: Highlight selected layer on canvas;
-- Command + Delete: Fill selection with background color;
+- Command + Delete: Fill selection with background color ON CURRENT LAYER;
+- Shift + Delete: Content-aware fill selection ON CURRENT LAYER;
 - Command + J, with a layer selected: Duplicate current layer. 
 
 
