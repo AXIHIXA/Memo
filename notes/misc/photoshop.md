@@ -4,7 +4,7 @@
 
 ## Miscs
 
-- Command + D, with mouse cursor on canvas: Highlight selected layer on canvas;
+- Command, with mouse cursor on canvas: Highlight selected layer on canvas;
 - Command + Delete: Fill selection with background color;
 - Command + J, with a layer selected: Duplicate current layer. 
 

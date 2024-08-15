@@ -41,7 +41,7 @@
   5. [System Programming](./notes/system/05-system-programming.md)
   6. [WSL 2](./notes/system/06-wsl-2.md)
 - Miscs
-  - [Adobe PhotoShop Miscs](./notes/ps/photoshop.md)
+  - [Adobe PhotoShop Miscs](./notes/misc/photoshop.md)
 
 
 
