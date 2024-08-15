@@ -1,12 +1,20 @@
 # Adobe PhotoShop Miscs
 
-## Highlight selected layer on canvas
 
-- Command + D, with mouse cursor on canvas
 
-## Fill selection with background color
+## Miscs
 
-- Command + Delete
+- Command + D, with mouse cursor on canvas: Highlight selected layer on canvas;
+- Command + Delete: Fill selection with background color;
+- Command + J, with a layer selected: Duplicate current layer. 
+
+
+
+## Blending options
+
+- Right-click selected layer in "Layers" tab on bottom-right. 
+
+
 
 ## Action recording
 
