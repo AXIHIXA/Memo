@@ -84,8 +84,14 @@ Software messages in American, but time in British (weeks starting with Mondays)
 
 
 
-## 🌱 VMWare Shared Folder
+## 🌱 VMWare 
 
+- VM Tools: Install `open-vm-tools` if "install VMWare Tools" grays out:
+```bash
+sudo apt update
+sudo apt install open-vm-tools
+```
+- Shared Folder
 ```
 sudo gedit /etc/fstab
 
