@@ -117,38 +117,31 @@ bash ./Anaconda...
 ```
 - Choose `yes`:
 ```
-Do you wish the installer to initialize Anaconda3
-by running conda init? [yes|no]
-[no] >>> yes
-no change     /home/ax/opt/anaconda3/condabin/conda
-no change     /home/ax/opt/anaconda3/bin/conda
-no change     /home/ax/opt/anaconda3/bin/conda-env
-no change     /home/ax/opt/anaconda3/bin/activate
-no change     /home/ax/opt/anaconda3/bin/deactivate
-no change     /home/ax/opt/anaconda3/etc/profile.d/conda.sh
-no change     /home/ax/opt/anaconda3/etc/fish/conf.d/conda.fish
-no change     /home/ax/opt/anaconda3/shell/condabin/Conda.psm1
-no change     /home/ax/opt/anaconda3/shell/condabin/conda-hook.ps1
-no change     /home/ax/opt/anaconda3/lib/python3.7/site-packages/xontrib/conda.xsh
-no change     /home/ax/opt/anaconda3/etc/profile.d/conda.csh
-modified      /home/ax/.bashrc
-
-==> For changes to take effect, close and re-open your current shell. <==
-
-If you'd prefer that conda's base environment not be activated on startup, 
-   set the auto_activate_base parameter to false: 
+Do you wish to update your shell profile to automatically initialize conda?
+This will activate conda on startup and change the command prompt when activated.
+If you'd prefer that conda's base environment not be activated on startup,
+   run the following command when conda is activated:
 
 conda config --set auto_activate_base false
 
+You can undo this by running `conda init --reverse $SHELL`? [yes|no]
+[yes] >>> yes
+no change     /Users/ax/opt/anaconda3/condabin/conda
+no change     /Users/ax/opt/anaconda3/bin/conda
+no change     /Users/ax/opt/anaconda3/bin/conda-env
+no change     /Users/ax/opt/anaconda3/bin/activate
+no change     /Users/ax/opt/anaconda3/bin/deactivate
+no change     /Users/ax/opt/anaconda3/etc/profile.d/conda.sh
+no change     /Users/ax/opt/anaconda3/etc/fish/conf.d/conda.fish
+no change     /Users/ax/opt/anaconda3/shell/condabin/Conda.psm1
+modified      /Users/ax/opt/anaconda3/shell/condabin/conda-hook.ps1
+no change     /Users/ax/opt/anaconda3/lib/python3.12/site-packages/xontrib/conda.xsh
+no change     /Users/ax/opt/anaconda3/etc/profile.d/conda.csh
+modified      /Users/ax/.zshrc
+
+==> For changes to take effect, close and re-open your current shell. <==
+
 Thank you for installing Anaconda3!
-
-===========================================================================
-
-Anaconda and JetBrains are working together to bring you Anaconda-powered
-environments tightly integrated in the PyCharm IDE.
-
-PyCharm for Anaconda is available at:
-https://www.anaconda.com/pycharm
 ```
 - New virtual environment (do NOT use `opencv` package from `conda-forge`; go to PyPI):
 ```
