@@ -4161,35 +4161,40 @@ protected:
     Blob<std::string> a3(w.begin(), w.end());
     ```
 - 控制实例化
-    - [*显式实例化*](https://en.cppreference.com/w/cpp/language/class_template)（explicit instantiation）
+    - [*显式实例化*](https://en.cppreference.com/w/cpp/language/class_template)（Explicit Instantiation, Explicit Template Instantiation）
         - 模板被实例化的相同实例可能出现在多个对象文件中，会造成严重的额外开销
-        - *显式实例化* 用于避免这种额外开销
-            - 编译器遇到 *显式模板声明* 时，不会再本文件中生成实例化代码
-            - 将一个实例化声明为`extern`就意味着承诺在程序的其他位置会有一个非`extern`声明（定义）
-            - 对于一个给定的实例化版本，可能会有多个`extern`声明，但必须 *有且仅有一个实例化定义* 
-        - An explicit instantiation definition forces instantiation of the class, struct, or union they refer to. 
-          - It may appear in the program anywhere after the template definition.  
-          - For a given argument-list, is only allowed to appear once in the entire program.
-        - An explicit instantiation declaration (an extern template) skips implicit instantiation step: 
-          - The code that would otherwise cause an implicit instantiation instead uses 
-            the explicit instantiation definition provided elsewhere 
-            (resulting in link errors if no such instantiation exists). 
-          - This can be used to reduce compilation times by explicitly declaring a template instantiation 
-            in all but one of the source files using it, and explicitly defining it in the remaining file.
-        ```
-        extern template class SomeClass<Arguments...>;          // instantiation declaration
-        template class SomeClass<Arguments...>;                 // instantiation definition
-        ```
-        - `declaration`是类或函数声明，其中模板参数全部替换为模板实参
-        ```
-        // instantion declaration and definition
-        extern template class Blob<std::string>;                // declaration
-        template class Blob<std::string>;                       // definition
+        - *显式实例化* 用于避免这种额外开销，包括:
+          - 显式实例化声明 和 配套的 显式实例化定义 
+            - template 关键字之后 **没有** 尖括号（不然就变模板特化啦！）
+            - 模板形参必须全特化
+            - 显式实例化声明和定义的区别：extern 的有无
+        ```cpp
+        template <typename T> class Blob {};            // class template definition
+
+        extern template class Blob<std::string>;        // explicit instantiation declaration
+        template class Blob<std::string>;               // explicit instantiation definition
+
+        template <typename T> T foo(T a) { return a; }  // function template definition
         
-        extern template int compare(const int &, const int &);  // definition
-        template int compare(const int &, const int &);         // definition
+        extern template int foo(int);                   // explicit instantiation declaration
+        template int foo(int);                          // explicit instantiation definition
         ```
-        - 由于编译器在使用一个模板时自动对其初始化，因此`extern`声明必须出现在任何使用此实例化版本的代码 *之前* 
+        - **显式实例化定义** 会当场实例化对应的类或函数模板
+          - 显式实例化定义 可以出现在 显式实例化声明 之后的任何位置
+          - 但同一 模板形参列表 的显式实例化定义 在整个程序中 只能有一个（不然就是重定义啦）
+        - **显式实例化声明** 会 阻止 隐式实例化
+          - 会导致 隐式实例化 的代码，在有显式实例化声明时，会转而使用 在别处显式实例化的模板实例
+          - 如果程序中 没有 显式实例化 这个实例，则会导致 链接错误
+        - 显式实例化的推荐用法是（限制特定形参列表的隐式实例化）：
+          - 假设有 N 个源文件要使用某一模板实例
+          - 在头文件中提供 完整的 模板定义
+          - 在 1 个源文件中提供 显式实例化定义
+          - 在其余 N - 1 个文件中，在使用这一实例之前（在包含头文件后立即）提供 显式实例化声明
+        - 显式实例化的**不推荐**用法是（直接干掉所有隐式实例化，全部实例都人工实例化）：
+          - 在头文件中只声明模板，不提供定义
+          - 在源文件中完整定义模板，并提供显式实例化定义
+          - 这样的坏处是，完全禁止了任何隐式实例化的可能，每一种形参列表，一旦用到就需要人工定义！
+        - 注意：由于编译器在使用一个模板时自动对其初始化，因此`extern`声明必须出现在任何使用此实例化版本的代码 *之前* 
         ```
         // Application.cpp
         
