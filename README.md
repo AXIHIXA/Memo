@@ -47,7 +47,9 @@
 
 ## 🌱 Sample Code
 
-- `CMakeLists`
+- LaTex Bibliography Sample
+  - [bibliography.bib](./code/bibliography.bib)
+- CMakeLists
   - [Boost](./code/CMakeLists/Boost/CMakeLists.txt)
   - [CGAL](./code/CMakeLists/SurfM/CMakeLists.txt)
   - [CppDemo](./code/CMakeLists/CppDemo/CMakeLists.txt)

@@ -3367,7 +3367,7 @@ __global__ void stencil_1d(float * in, float * out, int N)
   ```
   - Qualify pointers to global memory with `const T * __restrict__`
   ```c++
-  void kernel(float* output, const float* __restrict__ input)
+  void kernel(float * output, const float * __restrict__ input)
   {
       // ...
       output[idx] += input[idx];
