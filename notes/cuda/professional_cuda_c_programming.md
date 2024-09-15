@@ -141,6 +141,8 @@ __host__ ​__device__ ​const char * cudaGetErrorString(cudaError_t error);
   - A grid is made up of multiple thread blocks. 
 - Thread block
   - 1D, 2D, or 3D, `blockDim.xyz`, `threadIdx.xyz`
+    - `x` is the **innermost dimension**, i.e., [thread ID of a thread of index (x, y) is (x + y Dx)](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#thread-hierarchy). 
+    - For row-major 2D thread block, x correspond to column, y corresponds to row!
   - One thread block ~ One Streaming Multiprocessor (SM)
   - A group of threads that can cooperate with each other using
     - Block-local synchronization
