@@ -10,6 +10,7 @@ set(CMAKE_CUDA_ARCHITECTURES 75)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 
+# Set to root directory of your virtual environment. 
 set(Python_ROOT_DIR "$ENV{HOME}/opt/anaconda3/envs/py3")
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
@@ -17,7 +18,7 @@ find_package(Python REQUIRED COMPONENTS Interpreter Development)
 # libTorch conda build conflicts with OpenCV, so download compiled library directly from pytorch.org.
 # libtorch REQUIRES CMAKE_CUDA_STANDARD <= 17 and CMAKE_CXX_STANDARD <= 17.
 set(CAFFE2_USE_CUDNN ON)
-set(Torch_ROOT_DIR "${Python_ROOT_DIR}/lib/python3.10/site-packages/torch")
+set(Torch_ROOT_DIR "${Python_ROOT_DIR}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/torch")
 find_package(Torch REQUIRED CONFIG HINTS "${Torch_ROOT_DIR}/share/cmake")
 
 
@@ -28,7 +29,12 @@ set(TORCH_EXTENSION pte)
 add_library(${TORCH_EXTENSION} SHARED
         src/main.cu
 )
-set_target_properties(${TORCH_EXTENSION} PROPERTIES PREFIX "" OUTPUT_NAME ${TORCH_EXTENSION} SUFFIX ".so")
+set_target_properties(${TORCH_EXTENSION} PROPERTIES 
+        PREFIX "" 
+        OUTPUT_NAME ${TORCH_EXTENSION} 
+        SUFFIX ".so"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/${TORCH_EXTENSION}"
+)
 target_include_directories(${TORCH_EXTENSION} PUBLIC
         ${CMAKE_SOURCE_DIR}/include
         ${Torch_ROOT_DIR}/include
@@ -41,19 +47,26 @@ target_include_directories(${TORCH_EXTENSION} PUBLIC
 target_compile_definitions(${TORCH_EXTENSION} PUBLIC
         -D__CUDA_NO_HALF_OPERATORS__
         -D__CUDA_NO_HALF_CONVERSIONS__
-        -D__CUDA_NO_BFLOAT16_CONVERSIONS__
         -D__CUDA_NO_HALF2_OPERATORS__
-)
-target_compile_options(${TORCH_EXTENSION} PUBLIC
-        --use_fast_math
-        --expt-relaxed-constexpr
-        --compiler-options -fPIC
+        -D__CUDA_NO_HALF2_CONVERSIONS__
+        -D__CUDA_NO_BFLOAT16_OPERATORS__
+        -D__CUDA_NO_BFLOAT16_CONVERSIONS__
+        -D__CUDA_NO_BFLOAT162_OPERATORS__
+        -D__CUDA_NO_BFLOAT162_CONVERSIONS__
         -DTORCH_API_INCLUDE_EXTENSION_H
         -DPYBIND11_COMPILER_TYPE="_gcc"
         -DPYBIND11_STDLIB="_libstdcpp"
         -DPYBIND11_BUILD_ABI="_cxxabi1011"
         -D_GLIBCXX_USE_CXX11_ABI=0
         -DTORCH_EXTENSION_NAME=${TORCH_EXTENSION}
+)
+target_compile_options(${TORCH_EXTENSION} PUBLIC
+        --compiler-options -fPIC        
+        --expt-extended-lambda
+        --expt-relaxed-constexpr
+        --use_fast_math
+        -Xptxas -v
+        -lineinfo
 )
 target_link_directories(${TORCH_EXTENSION} PUBLIC
         ${Python_LIBRARY_DIRS}

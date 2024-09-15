@@ -1,6 +1,6 @@
 import torch
 
-import build.pte as pte
+import pte
 
 
 def main() -> None:
@@ -8,13 +8,14 @@ def main() -> None:
     # g: torch.Generator = torch.Generator(device=device)
     # a: torch.Tensor = torch.rand((3, 2), generator=g, dtype=torch.float32, device=device)
     a: torch.Tensor = torch.tensor([[1, 2], [3, 4], [5, 6]], dtype=torch.float32, device=device)
-    print(a)
-    b = pte.add_one(a)
-    print(b)
-    c = pte.cross2d(a, b)
-    print(c)
+    print(f'a: torch.Tensor = \n{a}\n')
+    b: torch.Tensor = pte.add_one(a)
+    print(f'b: torch.Tensor = pte.add_one(a) = \n{b}\n')
+    c: torch.Tensor = pte.cross2d(a, b)
+    print(f'c: torch.Tensor = pte.cross2d(a, b) = \n{c}\n')
 
-    d = torch.arange(0, 32 * 4).float().to(device)
+    print('Testing print() and pte.print(torch.Tensor):')
+    d: torch.Tensor = torch.arange(0, 2 * 4).float().to(device)
     print(d)
     pte.print(d)
 
