@@ -503,7 +503,7 @@ __global__ void willCertainlyDiverge(float * c)
 
 #### 📌 Synchronization
 
-- Two levels of Barrier synchronoizations in CUDA
+- Three levels of Barrier [synchronoizations](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions) in CUDA
   - **System-level**
     - Wait for all work on both the host and the device to complete 
       - Many CUDA API calls and all kernel launches are asynchronous w.r.t. the host
@@ -524,6 +524,7 @@ __global__ void willCertainlyDiverge(float * c)
     - **No** thread synchronization among different blocks
       - The only safe way to synchronize across blocks is 
         to use the global synchronization point at the end of every kernel execution
+  - **Warp-level**: `__syncwarp();`
 
 ### 🎯 3.3. EXPOSING PARALLELISM
 
@@ -2654,7 +2655,7 @@ cudaFree(C);
       - If instructions are independent of each other
     - Barriers and fences are necessary to explicitly enforce ordering
   - [Synchronization Functions (Explicit Barriers)](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions)
-    - Only possible to perform a barrier among threads in the same thread block
+    - Possible to perform a barrier among threads in the same thread block or in the same warp
     ```c++
     /// Waits until 
     /// (1) all threads in the thread block have reached this point
@@ -2662,6 +2663,17 @@ cudaFree(C);
     /// (2) all global and shared memory accesses made by these threads prior to __syncthreads() 
     ///     are visible to all threads in the block. 
     void __syncthreads();
+
+    /// Causes the executing thread to wait until all warp lanes named in mask 
+    /// have executed a __syncwarp() (with the same mask) before resuming execution. 
+    /// Each calling thread must have its own bit set in the mask 
+    /// and all non-exited threads named in mask must execute a corresponding __syncwarp() with the same mask, 
+    /// or the result is undefined.
+    /// 
+    /// Executing __syncwarp() guarantees memory ordering among threads participating in the barrier. 
+    /// Thus, threads within a warp that wish to communicate via memory can store to memory, 
+    /// execute __syncwarp(), and then safely read values stored by other threads in the warp.
+    void __syncwarp(unsigned mask=0xffffffff);
     ```
     - Thread blocks can be executed in any order
       - In parallel or in series
