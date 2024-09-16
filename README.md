@@ -63,9 +63,8 @@
     - [PyTorch CUDA Extension](./code/CMakeLists/PTE/CMakeLists.txt)
     - [Matplot++](./code/CMakeLists/Matplot++/CMakeLists.txt)
   - [OpenCV](./code/CMakeLists/OpenCV/CMakeLists.txt)
-  - OpenGL
-    - [OpenGLDemo](./code/CMakeLists/OpenGLDemo/CMakeLists.txt)
-    - [OpenGLDemo3D](./code/CMakeLists/OpenGLDemo3D/CMakeLists.txt)
+  - [OpenGLDemo](https://github.com/AXIHIXA/OpenGLDemo/)
+  - [OpenGLDemo3D](https://github.com/AXIHIXA/OpenGLDemo3D/)
   - [OpenMesh + TBB](./code/CMakeLists/OpenMesh+TBB/CMakeLists.txt)
   - [Qt5](./code/CMakeLists/Qt5/CMakeLists.txt)
   - [Sanitizer](./code/CMakeLists/Sanitizer/CMakeLists.txt)
