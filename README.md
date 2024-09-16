@@ -52,10 +52,11 @@
 - CMakeLists
   - [Boost](./code/CMakeLists/Boost/CMakeLists.txt)
   - [CGAL](./code/CMakeLists/SurfM/CMakeLists.txt)
-  - [CppDemo](./code/CMakeLists/CppDemo/CMakeLists.txt)
+  - [CppDemo](https://github.com/AXIHIXA/CppDemo/blob/main/CMakeLists.txt)
   - [Criterion](./code/CMakeLists/Criterion/CMakeLists.txt)
+  - [CUDA](https://github.com/AXIHIXA/CudaDemo/blob/main/CMakeLists.txt)
+  - [Pytorch CUDA Extension](https://github.com/AXIHIXA/PTE/blob/main/CMakeLists.txt)
   - CUDA/PyTorch
-    - [CUDA](./code/CMakeLists/CudaDemo/CMakeLists.txt)
     - [CPCG](./code/CMakeLists/CPCG/CMakeLists.txt)
     - [CPMG](./code/CMakeLists/CPMG/CMakeLists.txt)
     - [Torch](./code/CMakeLists/Torch/CMakeLists.txt)
