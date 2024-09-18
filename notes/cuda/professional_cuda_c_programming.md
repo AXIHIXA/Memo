@@ -2775,15 +2775,9 @@ cudaFree(C);
       }
       ```
   - [Volatile Qualifier](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#volatile-qualifier)
-    - For variables in global or shared memory;
-    - Enforce cache-free direct stores/loads to memory upon these variables;
-      - GPU assume these variables can be changed/used at any time by any other thread. 
-    - Tells the compiler that it must store `vmem[tid]` back to global memory with every assignment. 
-    - If `volatile` is omitted the compiler or cache may optimize out some reads or writes to global or shared memory. 
-    - If a variable located in global or shared memory is declared `volatile` 
-      - the compiler assumes that its value can be changed or used at any time by other threads. 
-      - Any reference to `volatile` variables forces a read or write directly to memory 
-        - and **not** simply to cache or a register
+    - Enforces cache-free direct stores/loads to memory upon global or shared memory;
+    - The compiler is free to optimize reads and writes to global or shared memory (for example, by caching global reads into registers or L1 cache) as long as it respects the memory ordering semantics of memory fence functions and memory visibility semantics of synchronization functions.
+    - These optimizations can be disabled using the `volatile` keyword:  If a variable located in global or shared memory is declared as `volatile`, the compiler assumes that its value can be changed or used at any time by another thread and therefore any reference to this variable compiles to an actual memory read or write instruction.
 - **SHARED MEMORY VERSUS GLOBAL MEMORY**
   - SMEM
     - On-chip (cache)
