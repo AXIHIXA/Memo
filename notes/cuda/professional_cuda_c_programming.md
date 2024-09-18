@@ -276,6 +276,7 @@ $ ncu -k regex:cudaKernelFunc --set full ./cmake-build-release/executable [args.
     - Warp partition: 
       - Each warp contains threads of consecutive, increasing thread IDs; 
       - The first warp contains thread 0. 
+  - [Threads within a **warp** are referred to as **lanes**, and may have an index between 0 and `warpSize-1` (inclusive)](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-description).
 - SIMT vs SIMD
   - Both broadcast the same instruction to multiple execution units
   - Difference
