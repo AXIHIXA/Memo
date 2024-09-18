@@ -267,19 +267,15 @@ $ ncu -k regex:cudaKernelFunc --set full ./cmake-build-release/executable [args.
   - Load/Store Units
   - Special Function Units
   - Warp Scheduler
-- CUDA employs a SIMT architecture 
-  - Execute threads in groups of 32 called *warps*
-  - All threads in a warp *execute* the same instruction at the same time
-    - In one clock cycle, one thread
-      - either execute the same instruction, 
-      - or halt (be idle) for this cycle. 
-    - Each thread has its own instruction address counter and register state
-    - Each thread carries out the current instruction on its own data
+- CUDA employs a [SIMT architecture](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#simt-architecture)
+  - Execute threads in groups of 32 called *warps*:
+    - Each thread has its own program counter (PC) and register state;
+    - Each thread carries out the current instruction on its own data.
+  - Starting with the NVIDIA Volta architecture, [Independent Thread Scheduling](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#independent-thread-scheduling) allows full concurrency between threads, **regardless of warp**. GPU maintains execution state per thread, including a program counter and call stack, and can yield execution at a per-thread granularity. Threads can now diverge and reconverge at sub-warp granularity.
   - Each SM partitions its assigned thread block into warps of 32 threads
     - Warp partition: 
       - Each warp contains threads of consecutive, increasing thread IDs; 
       - The first warp contains thread 0. 
-      - Reference: [4.1 SIMT Architecture](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#simt-architecture)
 - SIMT vs SIMD
   - Both broadcast the same instruction to multiple execution units
   - Difference
