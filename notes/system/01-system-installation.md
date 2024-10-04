@@ -32,31 +32,37 @@ swap         swap           8G
 - 分区之后要将boot所对应的分区设置为启动引导器，否则启动时操作系统可能找不到引导项导致无法进入ubuntu
 - The grub page is default hidden if only ubuntu is detected. To see this page and edit grub after installation, boot with efi floppy inserted. 
 
-# Update NVIDIA drivers: 
- 
-- This package manager method is recommended by NVIDIA itself. 
-- Use GUI: Show Applications -> Software & Updates -> Additional Drivers -> NVIDIA Cooperation
-- [https://ubuntu.com/server/docs/nvidia-drivers-installation](https://ubuntu.com/server/docs/nvidia-drivers-installation)        
-```
-# 1. Install gcc (required)
-# 2. Add ppa (for more nvidia driver versions)
-$ sudo apt install vim gcc g++ make cmake build-essential
-$ sudo add-apt-repository ppa:graphics-drivers/ppa
-$ sudo apt update
-$ sudo ubuntu-drivers list
-$ sudo ubuntu-drivers install nvidia:535
-```
-
 # CUDA Toolkit 
 
-- For compatibility issues, install cuda toolkit whose driver version is identical to nvidia driver, e.g.:
-  - CUDA 12.2, default nvidia driver version is 535. 
-  - If these versions mismatch, the original driver is installed, a new bundled driver is installed, nouveau is prohibited again and thus corresponding initrms linux module is recompiled.
-  - So this process might yield errors, just bypass by installing CUDA with identical driver version.
-- **Post-installation Actions** is needed (environment variables)!
-  - See [Here](./03-environment-configuration.md)
-- [CUDA Toolkit 12.2](https://developer.nvidia.com/cuda-12-2-0-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
-- [Prepare Ubuntu](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#prepare-ubuntu)
-- [Local Repo Installation for Ubuntu](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
-- [Post-installation Actions](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions)
-- [Removing CUDA Toolkit and Driver](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver)
+- NEW:
+  - Just download and install CUDA Toolkit DIRECTLY. No other steps needed! 
+    - Do **not** install drivers manually! May cause version mismatch errors, see OLD Archive below.
+  - First: [Removing CUDA Toolkit and Driver](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver);
+  - Then: [CUDA Toolkit 12.4 Update 1 Downloads](https://developer.nvidia.com/cuda-12-4-1-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
+  - Reboot, all done!
+- OLD Archive:
+  - Update NVIDIA drivers (**NO LONGER NEEDED IF GONNA INSTALL CUDA TOOLKIT**)
+    - CUDA Toolkit has bundled NVIDIA Drivers and will [automatically install the driver](https://forums.developer.nvidia.com/t/does-cuda-toolkit-install-drivers/78164). 
+      - See [CUDA Release Note](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html) for specific version for versions for libraries and drivers. 
+    - This package manager method is recommended by NVIDIA itself. 
+    - Use GUI: Show Applications -> Software & Updates -> Additional Drivers -> NVIDIA Cooperation
+    - [https://ubuntu.com/server/docs/nvidia-drivers-installation](https://ubuntu.com/server/docs/nvidia-drivers-installation)        
+    ```
+    # 1. Install gcc (required)
+    # 2. Add ppa (for more nvidia driver versions)
+    $ sudo apt install vim gcc g++ make cmake build-essential
+    $ sudo add-apt-repository ppa:graphics-drivers/ppa
+    $ sudo apt update
+    $ sudo ubuntu-drivers list
+    $ sudo ubuntu-drivers install nvidia:535
+    ```
+  - For compatibility issues, install cuda toolkit whose driver version is identical to nvidia driver, e.g.:
+    - CUDA 12.2, default nvidia driver version is 535. 
+    - If these versions mismatch, the original driver is installed, a new bundled driver is installed, nouveau is prohibited again and thus corresponding initrms linux module is recompiled.
+    - So this process might yield errors, just bypass by installing CUDA with identical driver version.
+  - **Post-installation Actions** is needed (environment variables)!
+    - See [Here](./03-environment-configuration.md)
+  - [Prepare Ubuntu](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#prepare-ubuntu)
+  - [Local Repo Installation for Ubuntu](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
+  - [Post-installation Actions](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions)
+  - [Removing CUDA Toolkit and Driver](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver)
