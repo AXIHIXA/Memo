@@ -38,7 +38,10 @@ swap         swap           8G
   - Just download and install CUDA Toolkit DIRECTLY. No other steps needed! 
     - Do **not** install drivers manually! May cause version mismatch errors, see OLD Archive below.
   - First: [Removing CUDA Toolkit and Driver](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-toolkit-and-driver);
-  - Then: [CUDA Toolkit 12.4 Update 1 Downloads](https://developer.nvidia.com/cuda-12-4-1-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
+  - Then: Follow all but the last step of: [CUDA Toolkit 12.4 Update 1 Downloads](https://developer.nvidia.com/cuda-12-4-1-download-archive?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
+    - The default `sudo apt-get -y install cuda-toolkit-12-4` package does not contain driver (although bundled!)
+    - See [Table 5 Meta Packages Available for CUDA 12.6](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/#id14)
+    - The last step (to also install the driver): `sudo apt-get -y install cuda`
   - Reboot, all done!
 - OLD Archive:
   - Update NVIDIA drivers (**NO LONGER NEEDED IF GONNA INSTALL CUDA TOOLKIT**)
