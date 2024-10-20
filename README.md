@@ -23,7 +23,8 @@
     3. *[Effective STL](./notes/cpp/effective_cpp_notes_03_effective_stl.md)*
     4. *[Effective Modern C++](./notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
   - *[CPP Concurrency In Action](./notes/cpp/cpp_concurrency_in_action_notes.md)*
-  - [Debugging](./notes/cpp/debugging.md)
+  - [(OLD) Debugging](./notes/cpp/debugging.md)
+  - [GDB and CUDA-GDB](./notes/cuda/cuda-gdb.md)
 - CUDA
   - [CUDA C++ Programming Guide](./notes/cuda/cuda_cpp_programming_guide.md)
   - [Professional CUDA C Programming](./notes/cuda/professional_cuda_c_programming.md)
