@@ -324,11 +324,31 @@
       - The default set of paths searched (without being specified with \-L) depends on which emulation mode ld is using, and in some cases also on how it was configured.
       - The paths can also be specified in a link script with the "SEARCH_DIR" command. 
       - Directories specified this way are searched at the point in which the linker script appears in the command line.
+- **Shared Object Dependencies ldd** [man ldd(1)](https://man7.org/linux/man-pages/man1/ldd.1.html)
+  - **Overview**
+    - Prints the shared objects (shared libraries) required by each **program** or **shared object** specified on the command line.  
+    - In the usual case, ldd invokes the standard dynamic linker (see [man ld.so(8)](https://man7.org/linux/man-pages/man8/ld.so.8.html)) with the LD_TRACE_LOADED_OBJECTS environment variable set to 1.  
+      - This causes the dynamic linker to inspect the program's dynamic dependencies, and find (according to the rules described in [man ld.so(8)](https://man7.org/linux/man-pages/man8/ld.so.8.html)) and load the objects that satisfy those dependencies. 
+      - For each dependency, ldd displays the location of the matching object and the (hexadecimal) address at which it is loaded. 
+    - **Security**: 
+      - ldd may execute of whatever code is defined in the program's ELF interpreter, and perhaps to execution of the program itself. 
+      - Never employ ldd on an untrusted executable. 
+      - A safer alternative when dealing with untrusted executables is `$ objdump -p /path/to/program | grep NEEDED`
+        - Note, however, that this alternative shows only the direct dependencies of the executable; 
+        - While ldd shows the entire dependency tree of the executable.
+  - **Options**
+    - \-v, \-\-verbose
+      - Print all information, including, for example, symbol versioning information.
+    - \-u, \-\-unused
+      - Print unused direct dependencies.
 
 
 
 ## Load Time
 
-
-
+- **Dynamic Linker/Loader ld.so** [man ld.so(8)](https://man7.org/linux/man-pages/man8/ld.so.8.html)
+  - **Overview**
+    - 1
+  - 1
+  - 2
 
