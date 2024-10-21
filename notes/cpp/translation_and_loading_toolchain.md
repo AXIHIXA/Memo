@@ -30,7 +30,7 @@
 
 ## Compile Time
 
-- **g++**: [man(1) g++](https://www.man7.org/linux/man-pages/man1/g++.1.html)
+- **GNU C And C++ Compiler g++**: [man g++(1)](https://www.man7.org/linux/man-pages/man1/g++.1.html)
   - **Overview**
     - GCC normally does preprocessing, compliation, assembly and linking;
     - "Overall Options" (below) could stop this process at intermediate stages:
@@ -217,7 +217,9 @@
       - On systems that support dynamic linking, this overrides \-pie and prevents linking with the shared libraries.
       - On other systems, this option has no effect.
     - \-shared
-      - Produce a shared object which can then be linked with other objects to form an executable. 
+      - **Produce a shared object** `.so` which can then be linked with other objects to form an executable. 
+        - Note that, to create **static archieves** `.a`, we need another tool called `ar`
+          - The GNU ar program creates, modifies, and extracts from archives
       - Not all systems support this option. 
       - For predictable results, you must also specify the same set of options used for compilation (\-fpic, \-fPIC, or model suboptions) when you specify this linker option.
     - \-Xlinker *option*
@@ -225,7 +227,7 @@
       - Use this to supply system-specific linker options that GCC does not recognize.
       - If you want to pass an option that takes a separate argument: 
         - You must use \-Xlinker twice, once for the option and once for the argument. 
-        - E.g.,, to pass `-assert` definitions, you must write `-Xlinker -assert -Xlinker` definitions. 
+        - E.g., to pass `-assert` definitions, you must write `-Xlinker -assert -Xlinker` definitions. 
         - It does not work to write `-Xlinker -"assert definitions"`, because this passes the entire string as a single argument, which is not what the linker expects.
       - When using the GNU linker, pass arguments to linker options using the `option=value` syntax than as separate arguments. 
         - E.g., specify `-Xlinker -Map=output.map` rather than `-Xlinker -Map -Xlinker output.map`. 
@@ -272,6 +274,56 @@
 
 ## Link Time
 
+- **GNU Static Linker ld** [man ld(1)](https://man7.org/linux/man-pages/man1/ld.1.html)
+  - Overview
+    - Combines a number of object and archive files, relocates their data and ties up symbol references. 
+      - Usually the last step in compiling a program is to run `ld`.
+    - E.g., To link a file `hello.o`: `ld -o <output> /lib/crt0.o hello.o -lc`
+      - Tells ld to produce a file called `output` as the result of linking the file `/lib/crt0.o` with `hello.o` and the library
+       `libc.a`, which will come from the standard search directories.
+    - Some of the command-line options to ld may be specified at any point in the command line. 
+      - However, **file options**, such as \-l, cause the file to be read at the point at which the option appears in the command line, relative to the object files and other file options.
+      - Repeating **non-file options** with a different argument will either have no further effect, or override prior occurrences (those further to the left on the command line) of that option. 
+    - **Non-option arguments** are object files or archives which are to be linked together. 
+      - They may follow, precede, or be mixed in with command-line options, except that an object file argument may not be placed between an option and its argument.
+    - For options whose names are a single letter, option arguments must either follow the option letter without intervening
+     whitespace, or be given as separate arguments immediately following the option that requires them.
+    - For options whose names are multiple letters, either one dash or two can precede the option name; for example, \-trace-symbol and \--trace-symbol are equivalent. 
+      - Note: There is one exception to this rule. 
+      - Multiple letter options that start with a lower case `o` can only be preceded by two dashes. 
+      - This is to reduce confusion with the `-o` option. 
+      - So for example `-omagic` sets the output file name to magic whereas `--omagic` sets the NMAGIC flag on the output.
+    - Arguments to multiple-letter options must either be separated from the option name by an equals sign, or be given as separate arguments immediately following the option that requires them.
+      - For example, `--trace-symbol foo` and `--trace-symbol=foo` are equivalent. 
+      - Unique abbreviations of the names of multiple-letter options are accepted.
+      - Note: If the linker is being invoked indirectly, via a compiler driver (e.g. `gcc`) then all the linker command-line options should be prefixed by `-Wl`, (or whatever is appropriate for the particular compiler driver) like `gcc -Wl,--start-group foo.o bar.o -Wl,--end-group`
+      - This is important, because otherwise the compiler driver program may silently drop the linker options, resulting in a bad link.
+      - Confusion may also arise when passing options that require values through a driver, as the use of a space between option and argument acts as a separator, and causes the driver to pass only the option to the linker and the argument to the compiler. 
+        - In this case, it is simplest to use the joined forms of both single-and multiple-letter options, such as `gcc foo.o bar.o -Wl,-eENTRY -Wl,-Map=a.map`. 
+    - \-l *namespec*, \-\-library=*namespec*
+      - Add the archive or object file specified by *namespec* to the list of files to link.
+      - This option may be used any number of times.  
+      - If *namespec* is of the form *:filename*, ld will search the library path for a file called *filename*, otherwise it will search the library path for a file called *libnamespec.a*.
+      - Shared libraries: 
+        - On systems which support shared libraries, ld may also search for files other than *libnamespec.a*. 
+        - Specifically, on ELF and SunOS systems, ld will search a directory for a library called *libnamespec.so* before searching for one called *libnamespec.a*. 
+          - By convention, a ".so" extension indicates a shared library.
+          - Note that this behavior does not apply to *:filename*, which always specifies a file called *filename*.
+      - The linker will search an archive only once, at the location where it is specified on the command line. 
+        - If the archive defines a symbol which was undefined in some object which appeared before the archive on the command line, the linker will include the appropriate file(s) from the archive.
+        - However, an undefined symbol in an object appearing later on the command line will not cause the linker to search the archive again.
+          - See the `-(` option for a way to force the linker to search archives multiple times.
+        - You may list the same archive multiple times on the command line.
+    - \-L *searchdir*, \-\-library-path=*searchdir*
+      - Add path *searchdir* to the list of paths that ld will search for archive libraries and ld control scripts. 
+      - You may use this option any number of times. 
+      - The directories are searched in the order in which they are specified on the command line. 
+      - Directories specified on the command line are searched before the default directories.  
+      - All \-L options apply to all \-l options, regardless of the order in which the options appear.  
+      - If searchdir begins with "=" or $SYSROOT, then this prefix will be replaced by the sysroot prefix, controlled by the \-\-sysroot option, or specified when the linker is configured.
+      - The default set of paths searched (without being specified with \-L) depends on which emulation mode ld is using, and in some cases also on how it was configured.
+      - The paths can also be specified in a link script with the "SEARCH_DIR" command. 
+      - Directories specified this way are searched at the point in which the linker script appears in the command line.
 
 
 
