@@ -346,9 +346,37 @@
 
 ## Load Time
 
-- **Dynamic Linker/Loader ld.so** [man ld.so(8)](https://man7.org/linux/man-pages/man8/ld.so.8.html)
+- **Dynamic Linker/Loader ld-linux.so** [man ld.so(8)](https://man7.org/linux/man-pages/man8/ld.so.8.html)
   - **Overview**
-    - 1
-  - 1
-  - 2
+    - The dynamic linker can be run
+      - Either indirectly by running some dynamically linked program or shared object 
+        - in which case no command-line options to the dynamic linker can be passed and, 
+        - in the ELF case, the dynamic linker which is stored in the .interp section of the program is executed
+      - Or directly by running
+        - `/lib/ld-linux.so.*  [OPTIONS] [PROGRAM [ARGUMENTS]]`
+    - The programs ld-linux.so* find and load the shared objects (shared libraries) needed by a program, prepare the program to run, and then run it.
+    - Linux binaries require dynamic linking (linking at run time) unless the \-static option was given to ld during compilation.
+    - When resolving shared object dependencies, 
+      - The dynamic linker first inspects each dependency string to see if it contains a slash (this can occur if a shared object pathname containing slashes was specified at link time). 
+      - If a slash is found, then the dependency string is interpreted as a (relative or absolute) pathname, and the shared object is loaded using that pathname.
+      - If a shared object dependency does not contain a slash, then it is searched for in the following order:
+        1. Using the directories specified in the DT_RPATH dynamic section attribute of the binary if present and DT_RUNPATH attribute does not exist.
+        2. Using the environment variable LD_LIBRARY_PATH, unless the executable is being run in secure-execution mode (see below), in which case this variable is ignored.
+        3. Using the directories specified in the DT_RUNPATH dynamic section attribute of the binary if present. 
+           - Such directories are searched only to find those objects required by DT_NEEDED (direct dependencies) entries and do not apply to those objects' children, which must themselves have their own DT_RUNPATH entries. 
+           - This is unlike DT_RPATH, which is applied to searches for all children in the dependency tree.
+        4. From the cache file /etc/ld.so.cache, which contains a compiled list of candidate shared objects previously found in the augmented library path. 
+           - If, however, the binary was linked with the \-z nodefaultlib linker option, shared objects in the default paths are skipped.  
+           - Shared objects installed in hardware capability directories (see below) are preferred to other shared objects.
+        5. In the default path /lib, and then /usr/lib. 
+           - On some 64-bit architectures, the default paths for 64-bit shared objects are /lib64, and then /usr/lib64. 
+           - If the binary was linked with the \-z nodefaultlib linker option, this step is skipped.
+    - LD_LIBRARY_PATH
+      - A list of directories in which to search for ELF libraries at execution time. 
+      - The items in the list are separated by either colons or semicolons, and there is no support for escaping either separator. 
+      - A zero-length directory name indicates the current working directory.
+      - This variable is ignored in secure-execution mode.
+      - Within the pathnames specified in LD_LIBRARY_PATH, the dynamic linker expands the tokens $ORIGIN, $LIB, and $PLATFORM (or the versions using curly braces around the names) as described above in Dynamic string tokens. 
+      - Thus, for example, the following would cause a library to be searched for in either the lib or lib64 subdirectory below the directory containing the program to be executed: `$ LD_LIBRARY_PATH='$ORIGIN/$LIB' prog` (Note the use of single quotes, which prevent expansion of $ORIGIN and $LIB as shell variables!)
+      - [Note](https://help.ubuntu.com/community/EnvironmentVariables#List_of_common_environment_variables): List of directories where the system searches for runtime libraries in addition to those hard-defined by ld and in `/etc/ld.so.conf.d/*.conf` files. You can only set this environment variable inside an interactive shell. Since Ubuntu 9.04 Jaunty Jackalope, LD_LIBRARY_PATH **cannot** be set in `$HOME/.profile`, `/etc/profile`, nor `/etc/environment` files. You must use `/etc/ld.so.conf.d/*.conf` configuration files. 
 
