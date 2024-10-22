@@ -16,7 +16,7 @@
 - Linking (Link Time)
   - Sometimes considered part of compile time (when talking about comtile time / runtime)
   - Done by `ld` (GNU static linker)
-  - Simply invoked by `g++`, `g++` fowards its own -Wl,-xxx,-xxx,... commandline arguments to it
+  - Simply invoked by `g++`, `g++` fowards its own -Wl,*comma-separated-options* command-line arguments to it
 - Loading (Load Time)
   - Happens right after an executable is launched, and before it really starts running
   - Done by `ld.so`, the runtime linker (also called loader, or dynamic linker)
@@ -38,7 +38,7 @@
     - Other options are passed on to one or more states of processing
     - Invoke g++ instead of gcc when compiling C++ program
       - g++ has some minor different default behaviours compared to gcc. 
-  - **Commandline Basics**
+  - **Command-line Basics**
     - Multiple single-letter options must **not** be grouped!
       - E,g., \-dv is very different from \-d \-v. 
     - You can mix options and other arguments;
@@ -227,7 +227,7 @@
       - Use this to supply system-specific linker options that GCC does not recognize.
       - If you want to pass an option that takes a separate argument: 
         - You must use \-Xlinker twice, once for the option and once for the argument. 
-        - E.g., to pass `-assert` definitions, you must write `-Xlinker -assert -Xlinker` definitions. 
+        - E.g., to pass `-assert definitions`, you must write `-Xlinker -assert -Xlinker definitions`. 
         - It does not work to write `-Xlinker -"assert definitions"`, because this passes the entire string as a single argument, which is not what the linker expects.
       - When using the GNU linker, pass arguments to linker options using the `option=value` syntax than as separate arguments. 
         - E.g., specify `-Xlinker -Map=output.map` rather than `-Xlinker -Map -Xlinker output.map`. 
