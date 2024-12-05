@@ -40,7 +40,7 @@
 
 #### 📌 2.1.1 启动线程
 
-- 线程在[std::thread](https://en.cppreference.com/w/cpp/thread/thread)对象创建时启动
+- 线程在 [std::thread](https://en.cppreference.com/w/cpp/thread/thread) 对象创建时启动
 ```c++
 void do_some_task() {}
 std::thread t1(do_some_task);
@@ -56,7 +56,7 @@ std::thread t5([]
     do_something_else();
 });
 ```
-- 线程对象析构前必须先[join](https://en.cppreference.com/w/cpp/thread/thread/join)或者[detach](https://en.cppreference.com/w/cpp/thread/thread/detach)，否则析构函数会调用[terminate](https://en.cppreference.com/w/cpp/error/terminate)**终止整个程序**
+- 线程对象析构前必须先 [join](https://en.cppreference.com/w/cpp/thread/thread/join) 或者 [detach](https://en.cppreference.com/w/cpp/thread/thread/detach)，否则析构函数会调用 [terminate](https://en.cppreference.com/w/cpp/error/terminate) **终止整个程序**
 - join：汇入
   - 调用者阻塞住，直到这个线程执行完毕
   - 确保线程在主函数完成前结束
@@ -166,9 +166,19 @@ private:
     - 这些参数会被拷贝至新线程的内存空间中，同临时变量一样
     - 即使函数中的参数是引用的形式，拷贝操作也会执行
     - 被**拷贝的参数会以右值的方式传递**，以兼容只支持移动语义的参数类型
-    - 实现：
-      - `template <class Func, class ... Args> thread(Func && func, Args && ... args);`
-      - `INVOKE(decay_copy(forward<Func>(func)), decay_copy(forward<Args>(args)...));`
+- [含参数版构造函数](https://en.cppreference.com/w/cpp/thread/thread/thread)的实现：
+```c++
+template <class Func, class ... Args> 
+thread(Func && func, Args && ... args)
+{
+    do_something();
+
+    // decay_copy(value) returns 
+    // std::forward<T>(value) (implicitly converted to the decayed type),
+    // a decayed prvalue copy of value.
+    INVOKE(decay_copy(forward<Func>(func)), decay_copy(forward<Args>(args)...));
+}
+```
 - 注意：线程函数的**参数如果是指针或引用**，则必须注意**生命周期问题**！
 ```c++
 void f(int i, std::string const & s);
@@ -197,8 +207,50 @@ void oops_again(widget_id w)
 
 #### 📌 2.3 转移所有权
 
+- `std::thread` 对象**可以移动，但不能拷贝**
+  - 移动包括移动语义和 swap 成员函数
+  - 移动的目标 `std::thread` 对象**不能**已经关联了实际的线程，不然程序直接会 `terminate`
+- `std::thread` 对象的传参和返回
+  - 传参和返回的操作参考 `std::unique_ptr` 即可
+  - 只能移动的类型的局部实例可以作为函数返回值，不需要额外的 `move`
+  - 注意函数返回值类型一定不能是右值引用
+```c++
+std::thread f()
+{
+    void some_function();
 
+    // 返回 std::thread 临时量，OK
+    // 这是在直接构造一个 std::thread，不是拷贝，OK
+    return std::thread(some_function);
+}
 
+std::thread g()
+{
+    void some_other_function(int);
+    std::thread t(some_other_function, 42);
+
+    // 返回 std::thread 局部实例，OK
+    // 这是 RVO 了？
+    return t;
+}
+```
+```c++
+void f(std::thread t);
+
+void g()
+{
+    void some_function();
+
+    // 传参 std::thread 临时量，OK
+    // 这是在直接构造一个 std::thread，不是拷贝，OK
+    f(std::thread(some_function));
+
+    // 传参 std::thread 局部对象，则必须 move
+    // 没有这个 move 就要触发拷贝啦
+    std::thread t(some_function);
+    f(std::move(t));
+}
+```
 
 
 
