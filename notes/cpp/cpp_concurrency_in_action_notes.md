@@ -308,7 +308,7 @@ class joining_thread
 public:
     joining_thread() noexcept = default;
 
-    template<typename Callable, typename ... Args>
+    template <typename Callable, typename ... Args>
     explicit joining_thread(Callable && func, Args && ... args)
             : t(std::forward<Callable>(func), std::forward<Args>(args)...)
     {}
