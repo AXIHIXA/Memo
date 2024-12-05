@@ -227,10 +227,17 @@ std::thread f()
 std::thread g()
 {
     void some_other_function(int);
+
+    // "guaranteed copy elision": 
+    // Since C++17, a prvalue is not materialized until needed, 
+    // and then it is constructed directly into the storage of its final destination.
+    // https://en.cppreference.com/w/cpp/language/copy_elision
+    // 这一行并不会当场在栈上构造实例 t，它最后会直接构造在接收返回值的地方
     std::thread t(some_other_function, 42);
 
     // 返回 std::thread 局部实例，OK
-    // 这是 RVO 了？
+    // 如果没有 Copy elision，那么这句 return statement 是要触发拷贝初始化的
+    // https://en.cppreference.com/w/cpp/language/copy_initialization
     return t;
 }
 ```
