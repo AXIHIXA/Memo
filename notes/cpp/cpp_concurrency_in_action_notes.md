@@ -36,11 +36,6 @@
 
 ## 第二章 线程管理
 
-- 主要内容
-  - 启动新线程
-  - join 和 detach
-  - 唯一标识符 handle
-
 ### 🌱 2.1 线程的基本操作
 
 #### 📌 2.1.1 启动线程
@@ -61,7 +56,146 @@ std::thread t5([]
     do_something_else();
 });
 ```
-- 线程对象析构前必须先[join](https://en.cppreference.com/w/cpp/thread/thread/join)或者[detach](https://en.cppreference.com/w/cpp/thread/thread/detach)，否则析构函数会调用[terminate](https://en.cppreference.com/w/cpp/error/terminate)终止整个程序
+- 线程对象析构前必须先[join](https://en.cppreference.com/w/cpp/thread/thread/join)或者[detach](https://en.cppreference.com/w/cpp/thread/thread/detach)，否则析构函数会调用[terminate](https://en.cppreference.com/w/cpp/error/terminate)**终止整个程序**
+- join：汇入
+  - 调用者阻塞住，直到这个线程执行完毕
+  - 确保线程在主函数完成前结束
+- detach：分离
+  - 调用者不阻塞，调用者所在线程和这个线程完全脱钩
+  - **注意线程数据的生命周期**
+    - 线程对象引用父线程的局部数据时要额外注意
+    - 父线程的局部数据 go out of scope 后被销毁
+    - 而这个线程此时可能还没执行完，就会访问到悬垂引用
+```c++
+void oops()
+{
+    int local_state = 0;
+
+    std::thread t([
+        local_state_ref = &local_state]  // 1 潜在访问隐患：空引用
+    {  
+        for (int i = 0; i < 1000000; ++i)
+        {
+            do_something(local_state_ref);
+        }
+    });
+
+    t.detach();                          // 2 不等待线程结束
+}                                        // 3 新线程可能还在运行
+```
+
+#### 📌 2.1.2 join
+
+- 使用 join 等待线程
+  - 使用 join 的场景
+    - 原始线程有自己的工作要做
+    - 原始线程启动多个子线程来做并行做一些有用的工作
+    - 原始线程需要等待这些线程结束（例如获取运算结果）
+- 想对等待中的线程有更灵活的控制，则需其他机制辅助，比如condition_variable和future
+  - 比如：看一下某个线程是否结束，或者只等待一段时间，超过时间就判定为超时
+- 调用 join，还可以清理线程相关的内存，这样 `std::thread` 对象将不再与已经完成的线程有任何关联
+  - 只能对一个线程使用一次 join，一旦使用过 join，`std::thread` 对象就不能再次汇入了
+  - 当对其使用 joinable 时，将返回 false
+
+#### 📌 2.1.3 线程函数抛出异常导致 join 被跳过
+
+- `std::thread` 对象创建后必须 join 或 detach
+  - detach：可以在线程启动后，直接使用 detach 进行分离
+  - join：需要细心挑选使用 join 的位置
+    - 线程运行后若产生异常，则会在 join 调用之前 throw，这样就会**跳过join**！
+- **避免线程函数异常导致线程没有join**
+  - 在无异常的情况下使用join时，需要**在异常处理过程中调用join**，从而避免生命周期的问题
+```c++
+struct func;
+
+void f()
+{
+    int some_local_state = 0;
+
+    func my_func(some_local_state);
+    std::thread t(my_func);
+
+    try
+    {
+        do_something_in_current_thread();
+    }
+    catch (...)
+    {
+        t.join();  // 1：一旦进入这个 catch block，下面的 join 就会被跳过！
+        throw;
+    }
+    
+    t.join();  // 2
+}
+```
+- RAII Thread Guard：线程对象析构时，如果还没 join，则自动 join
+```c++
+class thread_guard
+{
+public:
+    explicit thread_guard(std::thread & t_) : t(t_) {}
+
+    ~thread_guard()
+    {
+        if (t.joinable())
+        {
+            t.join();
+        }
+    }
+
+    thread_guard(thread_guard const &) = delete;
+    thread_guard & operator=(thread_guard const &) = delete;
+
+private:
+    std::thread & t;
+};
+```
+
+#### 📌 2.1.4 后台运行线程
+
+- 使用 detach 会让线程在后台运行，这就意味着与主线程不能直接交互
+  - 被 detach 的线程永远无法再被 `std::thread` 对象引用到
+  - C++运行库保证，当线程退出时，相关资源的能够正确回收
+- detach 掉的线程通常称为*守护线程*（daemon threads）
+
+### 🌱 2.2 传递参数
+
+- 传递参数：
+  - 将参数作为 `std::thread` 构造函数的附加参数即可
+  - `std::thread`的 **[构造函数](https://en.cppreference.com/w/cpp/thread/thread/thread)无视函数参数类型，盲目地拷贝已提供的变量**
+    - 这些参数会被拷贝至新线程的内存空间中，同临时变量一样
+    - 即使函数中的参数是引用的形式，拷贝操作也会执行
+    - 被**拷贝的参数会以右值的方式传递**，以兼容只支持移动语义的参数类型
+    - 实现：
+      - `template <class Func, class ... Args> thread(Func && func, Args && ... args);`
+      - `INVOKE(decay_copy(forward<Func>(func)), decay_copy(forward<Args>(args)...));`
+- 注意：线程函数的**参数如果是指针或引用**，则必须注意**生命周期问题**！
+```c++
+void f(int i, std::string const & s);
+
+void oops(int some_param)
+{
+    char buffer[1024];
+    sprintf(buffer, "%i", some_param);
+    std::thread t(f, 3, buffer);  // oops 可能会在 buffer 转换成 std::string 前结束，导致悬垂指针
+    t.detach();
+}
+```
+- 注意：
+```c++
+void update_data_for_widget(widget_id w, widget_data & data);
+
+void oops_again(widget_id w)
+{
+    widget_data data;
+    std::thread t(update_data_for_widget, w, data);  // 编译错误：左值引用不能绑定到右值上
+    display_status();
+    t.join();
+    process_widget_data(data);
+}
+```
+
+#### 📌 2.3 转移所有权
 
 
 
@@ -73,30 +207,16 @@ std::thread t5([]
 
 
 
+## 
+
+### 🌱 
+
+#### 📌 
 
 
+## 
 
-
-
-
-
-
-
-
-
-
-
-
-## Chapter 1 -- Hello, World of Concurrency in C++!
-
-### 🌱 [Usage Guide](https://matplotlib.org/tutorials/introductory/usage.html#sphx-glr-tutorials-introductory-usage-py)
-
-#### 📌 A Simple Example
-
-
-## Chapter 1 -- Hello, World of Concurrency in C++!
-
-### 🌱 [Usage Guide](https://matplotlib.org/tutorials/introductory/usage.html#sphx-glr-tutorials-introductory-usage-py)
+### 🌱 
 
 #### 📌 A Simple Example
 
