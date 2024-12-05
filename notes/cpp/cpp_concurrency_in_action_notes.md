@@ -60,6 +60,7 @@ std::thread t5([]
     do_something();
     do_something_else();
 });
+```
 - 线程对象析构前必须先[join](https://en.cppreference.com/w/cpp/thread/thread/join)或者[detach](https://en.cppreference.com/w/cpp/thread/thread/detach)，否则析构函数会调用[terminate](https://en.cppreference.com/w/cpp/error/terminate)终止整个程序
 
 
