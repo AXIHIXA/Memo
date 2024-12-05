@@ -211,7 +211,7 @@ void oops_again(widget_id w)
   - 移动包括移动语义和 swap 成员函数
   - 移动的目标 `std::thread` 对象**不能**已经关联了实际的线程，不然程序直接会 `terminate`
 - `std::thread` 对象的传参和返回
-  - 传参和返回的操作参考 `std::unique_ptr` 即可
+  - 传参和返回的操作参考 [std::unique_ptr](https://en.cppreference.com/w/cpp/memory/unique_ptr) 即可
   - 只能移动的类型的局部实例可以作为函数返回值，不需要额外的 `move`
   - 注意函数返回值类型一定不能是右值引用
 ```c++
