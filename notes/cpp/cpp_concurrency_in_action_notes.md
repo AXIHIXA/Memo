@@ -275,7 +275,7 @@ public:
     {
         if (!t.joinable())  // 2
         {
-            throw std::logic_error(“No thread”);
+            throw std::logic_error("No thread");
         }
     }
 
@@ -390,7 +390,26 @@ private:
     std::thread t;
 };
 ```
+- 使用容器量产并管理线程
+```c++
+void do_work(unsigned id);
 
+void f()
+{
+    std::vector<std::thread> threads;
+
+    for (unsigned i = 0; i < 20; ++i)
+    {
+        threads.emplace_back(do_work, i);  // 产生线程
+    } 
+
+    for (auto & entry : threads)  // 对每个线程调用 join()
+    {
+        entry.join(); 
+    }
+          
+}
+```
 
 
 
