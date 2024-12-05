@@ -128,11 +128,12 @@ void f()
     t.join();  // 2
 }
 ```
-- RAII Thread Guard：线程对象析构时，如果还没 join，则自动 join
+- RAII Thread Guard：引用线程对象，线程对象析构时，如果还没 join，则自动 join
 ```c++
 class thread_guard
 {
 public:
+    // 这里是引用，不会拷贝线程对象
     explicit thread_guard(std::thread & t_) : t(t_) {}
 
     ~thread_guard()
@@ -146,7 +147,12 @@ public:
     thread_guard(thread_guard const &) = delete;
     thread_guard & operator=(thread_guard const &) = delete;
 
+    // A user-defined destructor 
+    // implicitly surpasses generation of 
+    // move constructor and move assignment operator. 
+
 private:
+    // 这里是引用，不会拷贝线程对象
     std::thread & t;
 };
 ```
@@ -179,7 +185,7 @@ thread(Func && func, Args && ... args)
     INVOKE(decay_copy(forward<Func>(func)), decay_copy(forward<Args>(args)...));
 }
 ```
-- 注意：线程函数的**参数如果是指针或引用**，则必须注意**生命周期问题**！
+- 线程函数的**参数如果是指针或常量引用**，则必须注意**生命周期问题**！
 ```c++
 void f(int i, std::string const & s);
 
@@ -191,7 +197,8 @@ void oops(int some_param)
     t.detach();
 }
 ```
-- 注意：
+- 线程函数的参数如果是左值引用，则不成给线程对象参数传临时量，会报 CE
+  - 也就是说，想接收引用但最后复制了一份对象的情况不会发生
 ```c++
 void update_data_for_widget(widget_id w, widget_data & data);
 
@@ -258,7 +265,42 @@ void g()
     f(std::move(t));
 }
 ```
+- Scoped Thread：RAII Joining Thread：移动传入的线程，而不是创建一个新的
+```c++
+class scoped_thread
+{
+public:
+    // 必须移动初始化，没有这个 move 就成拷贝初始化啦
+    explicit scoped_thread(std::thread t_) : t(std::move(t_))  // 1
+    {
+        if (!t.joinable())  // 2
+        {
+            throw std::logic_error(“No thread”);
+        }
+    }
 
+    ~scoped_thread()
+    {
+        t.join();  // 3
+    }
+
+    scoped_thread(scoped_thread const &) = delete;
+    scoped_thread & operator=(scoped_thread const &) = delete;
+
+private:
+    // 注意，这里不是引用啦
+    std::thread t;
+};
+
+struct func;
+
+void f()
+{
+    int some_local_state;
+    scoped_thread t(std::thread(func(some_local_state)));  // 4
+    do_something_in_current_thread();
+} // 5
+```
 
 
 
