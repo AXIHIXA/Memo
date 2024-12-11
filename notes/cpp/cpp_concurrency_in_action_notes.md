@@ -177,10 +177,12 @@ private:
 template <class Func, class ... Args> 
 thread(Func && func, Args && ... args)
 {
-    do_something();
+    // Creates a new std::thread object and associates it with a thread of execution. 
+    // The new thread of execution starts executing (asynchronously):
+    // INVOKE(decay_copy(forward<Func>(func)), decay_copy(forward<Args>(args)...));
+    // where decay_copy(value) returns a decayed prvalue copy of value.
 
-    // decay_copy(value) returns a decayed prvalue copy of value.
-    INVOKE(decay_copy(forward<Func>(func)), decay_copy(forward<Args>(args)...));
+    // Note that when the constructor returns, this INVOKE might NOT have happened yet. 
 }
 ```
 - 注：[decay-copy](https://en.cppreference.com/w/cpp/standard_library/decay-copy)
@@ -206,7 +208,11 @@ void oops(int some_param)
     char buffer[1024];
     sprintf(buffer, "%i", some_param);
 
-    // oops 可能会在 buffer 转换成 std::string 前结束，导致悬垂指针
+    // oops 可能会在 buffer 转换成 std::string 前结束，导致悬垂指针。
+    // t 的构造函数只会复制一份 buffer 指针，然后就返回了。
+    // char * 到 std::string 的转换要等到 f 开始执行时
+    // （即 t 的构造函数生成的线程真正开始执行、并调用了 f 时）才会发生，
+    // 至于这时候 oops 返回了没有，那就只有神仙知道啦。
     std::thread t(f, 3, buffer);
     t.detach();
 }
