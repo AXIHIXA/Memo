@@ -255,7 +255,7 @@ void oops_again(widget_id w)
 }
 ```
 
-#### 📌 2.3 转移所有权
+### 🌱 2.3 转移所有权
 
 - `std::thread` 对象**可以移动，但不能拷贝**
   - 移动包括移动语义和 swap 成员函数
@@ -462,9 +462,489 @@ void f()
 }
 ```
 
+### 🌱 2.4 确定线程数量
+
+- [std::thread::hardware_concurrency](https://en.cppreference.com/w/cpp/thread/thread/hardware_concurrency)
+  - 返回并发线程的数量
+  - 多核系统中，返回值可以是 CPU 核心的数量
+  - 无法获取时，函数返回0
+- 例子：并行版 accumulate
+```c++
+template <typename Iterator, typename T>
+struct accumulate_block
+{
+    void operator()(Iterator first, Iterator last, T & result)
+    {
+        result = std::accumulate(first, last, result);
+    }
+};
+
+template <typename Iterator, typename T>
+T parallel_accumulate(Iterator first, Iterator last, T init)
+{
+    unsigned long const length = std::distance(first, last);
+
+    if (0 == length)  // 1
+    {
+        return init;
+    }
+    
+    unsigned long const min_per_thread = 25;
+    unsigned long const max_threads = 
+        (length + min_per_thread - 1) / min_per_thread;  // 2
+
+    unsigned long const hardware_threads =
+        std::thread::hardware_concurrency();
+
+    unsigned long const num_threads =  // 3
+        std::min((hardware_threads != 0 ? hardware_threads : 2), max_threads);
+
+    unsigned long const block_size = length / num_threads;  // 4
+
+    std::vector<T> results(num_threads);
+
+    // 因为在启动之前已经有了一个线程（主线程），所以启动的线程数比 num_threads 少 1
+    std::vector<std::thread> threads(num_threads - 1);  // 5
+
+    Iterator block_start = first;
+
+    for (unsigned long i = 0; i < num_threads - 1; ++i)
+    {
+        Iterator block_end = block_start;
+        std::advance(block_end, block_size);  // 6
+
+        threads[i] = std::thread(  // 7
+            accumulate_block<Iterator, T>(),
+            block_start, block_end, std::ref(results[i])
+        );
+
+        block_start = block_end;  // 8
+    }
+
+    accumulate_block<Iterator,T>()(
+        block_start, last, results[num_threads - 1]
+    );  // 9
+        
+    for (auto & t : threads)
+    {
+        t.join();  // 10
+    }
+    
+    return std::accumulate(results.begin(), results.end(), init); // 11
+}
+```
+
+### 🌱 2.5 线程标识
+
+- 线程标识为 [std::thread::id](https://en.cppreference.com/w/cpp/thread/thread/id) 类型，可以通过两种方式进行检索。
+  - 第一种，可以通过调用 [std::thread::get_id](https://en.cppreference.com/w/cpp/thread/thread/get_id) 来直接获取。
+    - 如果 `std::thread` 对象没有与任何执行线程相关联，`get_id` 将返回默认构造的 `std::thread` 的 `id` ，这个值表示“无线程”。
+  - 第二种，当前线程中调用静态成员函数 [std::this_thread::get_id](https://en.cppreference.com/w/cpp/thread/get_id) 也可以获得线程标识。
+- `std::thread::id` 对象支持拷贝、比大小、哈希、输出
+  - 如果两个对象的 `std::thread::id` 相等，那就是同一个线程，或者都“无线程”。
+  - 如果不等，那么就代表了两个不同线程，或者一个有线程，另一没有线程。
+  - `std::thread::id` 可用作 associative container 的 key（有序无序均可）
+- `std::thread::id` 常用作检测线程是否需要进行一些操作。
+  - 比如,当用线程来分割一项工作，主线程可能要做一些与其他线程不同的工作
+  - 启动其他线程前，可以通过 `std::this_thread::get_id()` 得到自己的线程 ID
+  - 每个线程都要检查一下，其拥有的线程ID是否与初始线程的 ID 相同
+  - 这是真 TM 像 fork 的返回值啊
+```c++
+std::thread::id master_thread;
+
+void some_core_part_of_algorithm()
+{
+    if (std::this_thread::get_id() == master_thread)
+    {
+        do_master_thread_work();
+    }
+
+    do_common_work();
+}
+```
+
+## 第三章 共享数据
+
+- 数据竞争 Data Race
+- 使用互斥锁（Mutex）保护数据
+- 互斥锁的替代方案
+
+### 🌱 3.1 数据竞争 Data Race
+
+- 涉及到共享数据时，问题就是因为共享数据的**修改**所导致
+  - 如果共享数据只读，那么不会影响到数据，更不会对数据进行修改，所有线程都会获得同样的数据
+  - 但当一个或多个线程要修改共享数据时，就会产生很多麻烦
+- 最简单的办法就是对数据结构采用某种保护机制，确保只有修改线程才能看到**非原子操作的中间状态**
+  - 从其他访问线程的角度来看，修改不是已经完成了，就是还没开始
+  - C++ 标准库提供很多类似的机制，下面会逐一介绍
+
+### 🌱 3.2 互斥锁 Mutex
+
+- 编排代码来保护数据的正确性（见3.2.2节）
+- 避免接口间的条件竞争（见3.2.3节）
+- 互斥量也会造成死锁（见3.2.4节）
+- 或对数据保护的太多（或太少）（见3.2.8节）
+
+#### 📌 3.2.1 互斥锁 Mutex
+
+- [std::mutex](https://en.cppreference.com/w/cpp/thread/mutex)
+  - [std::mutex::lock](https://en.cppreference.com/w/cpp/thread/mutex/lock) 为上锁
+  - [std::mutex::unlock](https://en.cppreference.com/w/cpp/thread/mutex/unlock) 为解锁
+- RAII 模板类 [std::lock_guard](https://en.cppreference.com/w/cpp/thread/lock_guard)
+  - 在构造时就能提供已锁的互斥量
+  - 在析构时进行解锁
+  - 保证了互斥量能被正确解锁
+- 带有互斥锁的封装接口**不能**完全保护数据
+  - 如果接口在持有锁期间返回了引用或指针，则这一引用或指针可以绕过锁
+  - **谨慎设计接口**，要确保互斥量能锁住数据访问，并且**不留后门**
+```c++
+class Data
+{
+public:
+    void push_back(int new_value)
+    {
+        std::lock_guard<std::mutex> guard(some_mutex);    // 3
+        some_list.push_back(new_value);
+    }
+
+    bool contains(int value_to_find)
+    {
+        // 模板类参数推导 (since C++17) 
+        // std::lock_guard 的模板参数列表可以省略
+        std::lock_guard guard(some_mutex);    // 4
+        return std::find(some_list.begin(), some_list.end(), value_to_find) != some_list.end();
+    }
+
+    std::list<int> & oops()
+    {
+        // 返回值可以绕过互斥锁修改 some_list！
+        std::lock_guard g(some_mutex);  // 5
+        return list;
+    }
+
+private:
+    std::list<int> some_list;    // 1
+    std::mutex some_mutex;    // 2
+};
+```
+
+#### 📌 3.2.2 保护共享数据
+
+- **切勿将受保护数据的指针或引用传递到互斥锁作用域之外**
+```c++
+class data_wrapper
+{
+
+public:
+    template <typename Function>
+    void process_data(Function func)
+    {
+        std::lock_guard<std::mutex> l(m);
+        func(data);    // 1 传递“保护”数据给用户函数
+    }
+
+private:
+    some_data data;
+    std::mutex m;
+};
+
+data_wrapper x;
+
+some_data * unprotected;
+
+void malicious_function(some_data & protected_data)
+{
+    unprotected = &protected_data;
+}
+
+void oops()
+{
+    x.process_data(malicious_function);    // 2 恶意函数绕过锁留下了后门
+    unprotected->do_something();    // 3 在无保护的情况下访问保护数据
+}
+```
+
+#### 📌 3.2.3 接口间的条件竞争
+
+- 考虑一个栈，即使每个接口都加了锁，不同线程间的接口访问依旧存在竞争
+  - 如下，两个线程同时操作一个栈，当接口访问顺序如注释时，4 处将产生未定义行为
+```c++
+std::stack<int> stk;
+stk.emplace(1);
+
+void thread_one()
+{
+    if (!stk.empty())  // 1 此时栈里有一个数
+    {
+        std::cout << stk.top() << '\n';  // 4 此时栈空了，未定义行为
+    }
+}
+
+void thread_two()
+{
+    if (!stk.empty())  // 2 此时栈里有一个数
+    {
+        stk.pop();  // 3 弹出，栈空了
+    }
+}
+```
+- 案例分析：为什么 C++ 的 `pop` 不返回被弹出的元素？（为了异常安全）
+  - 假设有一个 `std::stack<std::vector<int>>`
+  - `std::vector` 的拷贝构造函数可能会抛出一个 `std::bad_alloc` 异常
+  - 当 `pop` 函数将栈顶弹出并返回“弹出值”时，会有一个潜在的问题
+    - `pop` 函数会先创建临时量，然后弹出元素，然后临时量拷贝到返回值
+    - 如果拷贝构造函数**抛出异常**，要**弹出的数据将会丢失**
+    - 它的确从栈上移出了，但是拷贝失败了！
+  - `std::stack` 的设计人员将这个操作分为两部分：`top` 和 `pop`
+    - 这样，在不能安全的将元素拷贝出去的情况下，栈中的这个数据还依旧存在，没有丢失
+- 如何解决 `top` `pop` 拆分带来的线程安全问题？
+```c++
+struct empty_stack : public std::exception
+{
+    const char * what() const noexcept
+    {
+        return "empty stack";
+    }
+};
+
+template <typename T>
+class threadsafe_stack
+{
+public:
+    threadsafe_stack() = default;
+
+    threadsafe_stack(const threadsafe_stack & other)
+    {
+        std::lock_guard lock(other.m);
+        data = other.data; // 在构造函数体中的执行拷贝
+    }
+
+    threadsafe_stack & operator=(const threadsafe_stack &) = delete; // 赋值操作被删除
+
+    void push(T new_value)
+    {
+        std::lock_guard lock(m);
+        data.push(new_value);
+    }
+  
+    std::shared_ptr<T> pop()
+    {
+        std::lock_guard lock(m);
+
+        if (data.empty())
+        {
+            throw empty_stack(); // 在调用pop前，检查栈是否为空
+        }
+        
+        std::shared_ptr<T> const res = std::make_shared<T>(data.top()); // 在修改堆栈前，分配出返回值
+        data.pop();
+
+        return res;
+    }
+
+    void pop(T & value)
+    {
+        std::lock_guard lock(m);
+
+        if (data.empty())
+        {
+            throw empty_stack();
+        }
+        
+        value = data.top();
+        data.pop();
+    }
+
+    bool empty() const
+    {
+        std::lock_guard lock(m);
+        return data.empty();
+    }
+
+private:
+    std::stack<T> data;
+    mutable std::mutex m;
+};
+```
+
+#### 📌 3.2.4 死锁：问题描述及解决方案
+
+- [std::lock](https://en.cppreference.com/w/cpp/thread/lock) 可以一次性锁住多个（两个以上）的互斥量，并且没有死锁风险（**不建议裸着用**）
+```c++
+template <class Lockable1, class Lockable2, class ... LockableN>
+void lock(Lockable1 & lock1, Lockable2 & lock2, LockableN & ... lockn);
+```
+- 用例
+```c++
+class some_big_object;
+
+void swap(some_big_object & lhs, some_big_object & rhs)
+{
+    if (&lhs == &rhs)
+    {
+        return;
+    }
+      
+    std::lock(lhs.m, rhs.m); // 1
+    std::lock_guard<std::mutex> lock_a(lhs.m, std::adopt_lock); // 2 adopt_lock：假设构造时已经预先占用了锁
+    std::lock_guard<std::mutex> lock_b(rhs.m, std::adopt_lock); // 3
+    swap(lhs.some_detail, rhs.some_detail);
+}
+```
+- [std::scoped_lock](https://en.cppreference.com/w/cpp/thread/scoped_lock) 提供 RAII 封装，标准建议用这个
+```c++
+explicit scoped_lock(MutexTypes & ... m);
+scoped_lock(std::adopt_lock_t, MutexTypes & ... m);
+scoped_lock(const scoped_lock &) = delete;
+```
+- 上面用例改为：
+```c++
+void swap(some_big_object & lhs, some_big_object & rhs)
+{
+    if (&lhs == &rhs)
+    {
+        return;
+    }
+
+    std::scoped_lock guard(lhs.m, rhs.m); // 1
+    swap(lhs.some_detail, rhs.some_detail);
+}
+```
+
+#### 📌 3.2.5 避免死锁的进阶指导
+
+- 避免嵌套锁
+  - 最简单的：线程获得一个锁时，就别再去获取第二个。
+  - 每个线程只持有一个锁，就不会产生死锁。
+  - 当需要获取多个锁，使用 `std::lock` 上锁，避免产生死锁。
+- 避免在持有锁时调用外部代码
+  - 因为代码是外部提供的，所以没有办法确定外部要做什么。
+  - 外部程序可能做任何事情，包括获取锁。
+  - 在持有锁的情况下，如果用外部代码要获取一个锁，就会违反第一个指导意见，并造成死锁。
+- 使用固定顺序获取锁
+  - 当硬性要求获取两个或两个以上的锁，并且不能使用 `std::lock` 单独上锁时，最好在每个线程上，用固定的顺序获取锁
+- **使用层次锁结构**
+  - 如将一个 `hierarchical_mutex` 实例进行上锁，那么只能获取更低层级实例上的锁，这就会对代码进行一些限制。
+  - 层级互斥量不可能死锁，因为互斥量本身会严格遵循约定进行上锁。
+```c++
+hierarchical_mutex high_level_mutex(10000); // 1
+hierarchical_mutex low_level_mutex(5000);  // 2
+hierarchical_mutex other_mutex(6000); // 3
+
+void low_level_func()
+{
+    std::lock_guard<hierarchical_mutex> lk(low_level_mutex); // 4
+    do_low_level_stuff();
+}
+
+void high_level_func()
+{
+    std::lock_guard<hierarchical_mutex> lk(high_level_mutex); // 6
+    low_level_func();
+    do_high_level_stuff(); // 5
+}
+
+void thread_a()  // 7 遵守规则
+{
+    high_level_func();
+}
+
+void thread_b() // 8 无视规则，因此在运行时会失败
+{
+    // 9 锁了 6000 级的 other_mutex，禁止获取更高级的锁
+    std::lock_guard<hierarchical_mutex> lk(other_mutex); 
+
+    // 10 试图锁 10000 级的 high_level_mutex，抛出异常
+    high_level_func();  
+
+    do_other_stuff();
+}
+```
+- 层级锁的实现
+```c++
+class hierarchical_mutex
+{
+public:
+    explicit hierarchical_mutex(unsigned long value)
+            : hierarchy_value(value)
+            , previous_hierarchy_value(0)
+    {
+        
+    }
+
+    void lock()
+    {
+        check_for_hierarchy_violation();
+        internal_mutex.lock();  // 4
+        update_hierarchy_value();  // 5
+    }
+
+    void unlock()
+    {
+        if (this_thread_hierarchy_value != hierarchy_value)
+        {
+            throw std::logic_error("mutex hierarchy violated");  // 9
+        }
+            
+        this_thread_hierarchy_value = previous_hierarchy_value;  // 6
+        internal_mutex.unlock();
+    }
+
+    bool try_lock()
+    {
+        check_for_hierarchy_violation();
+
+        if (!internal_mutex.try_lock())  // 7
+        {
+            return false;
+        }
+            
+        update_hierarchy_value();
+
+        return true;
+    }
+
+private:
+    std::mutex internal_mutex;
+  
+    unsigned const long hierarchy_value;
+    unsigned long previous_hierarchy_value;
+
+    static thread_local unsigned long this_thread_hierarchy_value;  // 1
+
+    void check_for_hierarchy_violation()
+    {
+        if (this_thread_hierarchy_value <= hierarchy_value)  // 2
+        {
+            throw std::logic_error("mutex hierarchy violated");
+        }
+    }
+
+    void update_hierarchy_value()
+    {
+        previous_hierarchy_value = this_thread_hierarchy_value;  // 3
+        this_thread_hierarchy_value = hierarchy_value;
+    }
+};
+
+// 使用了 thread_local 的值来代表当前线程的层级值。
+// 初始化为最大值，所以最初所有线程都能被锁住。
+// 因为声明中有 thread_local，所以每个线程都有其副本，这样线程中变量状态完全独立，
+// 当从另一个线程进行读取时，变量的状态也完全独立。
+thread_local unsigned long hierarchical_mutex::this_thread_hierarchy_value(ULONG_MAX);  // 8
+```
+
+#### 📌 3.2.6 std::unique_lock——灵活的锁
 
 
 
+
+
+
+
+- [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock)
+- [std::shared_mutex](https://en.cppreference.com/w/cpp/thread/shared_mutex)
+  - [std::shared_lock](https://en.cppreference.com/w/cpp/thread/shared_lock)
 
 
 ## 
