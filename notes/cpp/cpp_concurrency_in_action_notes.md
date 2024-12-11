@@ -179,26 +179,63 @@ thread(Func && func, Args && ... args)
 {
     do_something();
 
-    // decay_copy(value) returns 
-    // std::forward<T>(value) (implicitly converted to the decayed type),
-    // a decayed prvalue copy of value.
+    // decay_copy(value) returns a decayed prvalue copy of value.
     INVOKE(decay_copy(forward<Func>(func)), decay_copy(forward<Args>(args)...));
 }
 ```
-- 线程函数的**参数如果是指针或常量引用**，则必须注意**生命周期问题**！
+- 注：[decay-copy](https://en.cppreference.com/w/cpp/standard_library/decay-copy)
 ```c++
+/// Returns a decayed prvalue copy of value. 
+/// Ensures that arguments are decayed when passing-by-value. 
+/// decay-copy always materializes value and produces a copy. 
+template <class T>
+typename std::decay<T>::type decay-copy(T && value)
+{
+    // Implicitly converted to the decayed type. 
+    return std::forward<T>(value);
+}
+```
+- **线程函数的参数必须注意生命周期问题，严禁传入局部对象自动存储期的对象！**
+```c++
+// 这两种 f 都有问题：
 void f(int i, std::string const & s);
+void f(int i, std::string s);
 
 void oops(int some_param)
 {
     char buffer[1024];
     sprintf(buffer, "%i", some_param);
-    std::thread t(f, 3, buffer);  // oops 可能会在 buffer 转换成 std::string 前结束，导致悬垂指针
+
+    // oops 可能会在 buffer 转换成 std::string 前结束，导致悬垂指针
+    std::thread t(f, 3, buffer);
     t.detach();
 }
+
+// 解决办法：
+void correct(int some_param)
+{
+    // 直接构造临时 string 对象，不依赖临时对象。
+    // C++ 标准规定，std::to_string(some_param) 的求值一定先于 t1 的构造，
+    // 因此一定先于 correct 返回，是合法的。
+    std::thread t1(f, 3, std::to_string(some_param));
+    t1.detach();
+
+    // 等价于上面一条
+    std::string str = std::to_string(some_param);
+    std::thread t2(f, 3, str);
+    t2.detach();
+    
+    // 显式地将 buffer 的内容分配到堆上
+    auto buffer = std::make_shared<std::string>(std::to_string(some_param));
+    std::thread t3(f, 3, *buffer);
+    t3.detach();
+
+    // 使用 std::async 的延迟启动机制，自动管理线程对象的生命周期
+    std::async(std::launch::async, f, 3, std::to_string(some_param));
+}
 ```
-- 线程函数的参数如果是左值引用，则不成给线程对象参数传临时量，会报 CE
-  - 也就是说，想接收引用但最后复制了一份对象的情况不会发生
+- 线程函数的参数如果是左值引用，则不能给线程对象参数传临时量，会报编译错误：
+  - 也就是说，想接收引用但最后复制了一份对象的情况**不会**发生。
 ```c++
 void update_data_for_widget(widget_id w, widget_data & data);
 
@@ -235,16 +272,19 @@ std::thread g()
 {
     void some_other_function(int);
 
-    // "guaranteed copy elision": 
-    // Since C++17, a prvalue is not materialized until needed, 
-    // and then it is constructed directly into the storage of its final destination.
+    // Guaranteed Copy Elision (since C++17): 
     // https://en.cppreference.com/w/cpp/language/copy_elision
-    // 这一行并不会当场在栈上构造实例 t，它最后会直接构造在接收返回值的地方
+    // 在某些情况下，编译器必须省略拷贝或移动，即使拷贝构造函数或移动构造函数是非平凡的：
+    // - 返回值优化（RVO）
+    //   当函数返回一个局部变量，编译器直接构造返回值在调用者的存储位置，无需拷贝或移动；
+    // - 纯右值（prvalue）的推迟实例化
+    //   纯右值直到被显式使用为止都不会被实例化，当被显式使用时，编译器直接在调用点构造对象，无需拷贝或移动。
     std::thread t(some_other_function, 42);
 
     // 返回 std::thread 局部实例，OK
-    // 如果没有 Copy elision，那么这句 return statement 是要触发拷贝初始化的
+    // 按拷贝初始化的定义，这句 return statement 要触发拷贝初始化的：
     // https://en.cppreference.com/w/cpp/language/copy_initialization
+    // 但前面提到的 RVO 使得 t 没有被构造在上一行，而是直接构造在了函数外面接收返回值的地方。
     return t;
 }
 ```
@@ -334,7 +374,7 @@ public:
 
     joining_thread & operator=(std::thread other) noexcept
     {
-        if(joinable())
+        if (joinable())
         {
             join();
         }
@@ -351,7 +391,7 @@ public:
         }
     }
 
-    void swap(joining_thread& other) noexcept
+    void swap(joining_thread & other) noexcept
     {
         t.swap(other.t);
     }
