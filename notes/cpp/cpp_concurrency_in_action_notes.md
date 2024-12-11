@@ -936,15 +936,65 @@ thread_local unsigned long hierarchical_mutex::this_thread_hierarchy_value(ULONG
 
 #### 📌 3.2.6 [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock) 灵活的锁
 
-- 相比 [std::lock_guard](https://en.cppreference.com/w/cpp/thread/lock_guard)，[std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock) 支持 `std::lock_t`
-
-
-
-
-
 - [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock)
-- [std::shared_mutex](https://en.cppreference.com/w/cpp/thread/shared_mutex)
-  - [std::shared_lock](https://en.cppreference.com/w/cpp/thread/shared_lock)
+  - [std::lock_guard](https://en.cppreference.com/w/cpp/thread/lock_guard) 只是 RAII 管理器，没有任何其他功能
+    - `std::lock_guard` 只有构造函数和析构函数，不支持其他操作
+  - `std::unique_lock` 更灵活，支持更多的构造时拿锁策略
+    - 可将 `std::adopt_lock` 作为第二个参数传入构造函数，对互斥量进行管理
+    - 可将 `std::defer_lock` 作为第二个参数传入构造函数，表明互斥量应保持解锁状态
+  - `std::unique_lock` 完全适配普通互斥锁对象所有的操作，比如传给 `std::lock`
+  - `std::unique_lock` 会占用比较多的空间，并且比 `std::lock_guard` 稍慢一些
+```c++
+void swap(X & lhs, X & rhs)
+{
+    if (&lhs == &rhs)
+    {
+        return;
+    }
+        
+    std::unique_lock<std::mutex> lock_a(lhs.m, std::defer_lock); // 1 
+    std::unique_lock<std::mutex> lock_b(rhs.m, std::defer_lock); // 1 std::defer_lock 留下未上锁的互斥量
+    std::lock(lock_a, lock_b); // 2 互斥量在这里上锁
+    swap(lhs.some_detail, rhs.some_detail);
+}
+```
+
+#### 📌 3.2.7 `std::unique_lock` 的传递
+
+- 和 `std::unique_ptr` 类似，被传递的对象如果是右值（或不会被拷贝），则不需要显式地 `std::move`，否则需要
+- 一个例子，一个函数获取锁，并将所有权转移给调用者
+```c++
+std::unique_lock<std::mutex> get_lock()
+{
+    extern std::mutex some_mutex;
+    std::unique_lock<std::mutex> lk(some_mutex);
+    preprocess();
+
+    // 1：NRVO，无需 move
+    return lk;
+}
+
+void process_data()
+{
+    // 2：get_lock 里的 lock 实际上直接构造在了这一行
+    std::unique_lock<std::mutex> lk(get_lock());
+    do_something();
+}
+```
+
+#### 📌 读写锁 [std::shared_mutex](https://en.cppreference.com/w/cpp/thread/shared_mutex)
+
+- [std::shared_mutex](https://en.cppreference.com/w/cpp/thread/shared_mutex)：读写锁
+- [std::shared_lock](https://en.cppreference.com/w/cpp/thread/shared_lock)：读锁
+- [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock)：写锁
+
+### 🌱 3.3 多线程下保护共享数据的其他方式
+
+#### 📌 3.3.1 保护共享数据的初始化过程
+
+- [std::once_flag](https://en.cppreference.com/w/cpp/thread/once_flag) 和 [std::call_once](https://en.cppreference.com/w/cpp/thread/call_once)
+
+
 
 
 ## 
