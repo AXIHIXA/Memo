@@ -992,7 +992,15 @@ void process_data()
 
 #### 📌 3.3.1 保护共享数据的初始化过程
 
-- [std::once_flag](https://en.cppreference.com/w/cpp/thread/once_flag) 和 [std::call_once](https://en.cppreference.com/w/cpp/thread/call_once)
+- [std::once_flag](https://en.cppreference.com/w/cpp/thread/once_flag)
+  - `std::call_once` 的辅助结构，用于传参
+  - 只有一个默认构造函数，默认初始化为尚未调用
+  - 不可拷贝、不可移动
+- [std::call_once](https://en.cppreference.com/w/cpp/thread/call_once)
+
+
+
+
 
 
 
