@@ -997,6 +997,51 @@ void process_data()
   - 只有一个默认构造函数，默认初始化为尚未调用
   - 不可拷贝、不可移动
 - [std::call_once](https://en.cppreference.com/w/cpp/thread/call_once)
+  - 使用 `std::call_once` 比显式使用互斥量消耗的资源更少，特别是当初始化完成后
+- 例子：Lazy Initialization
+```c++
+std::shared_ptr<some_resource> resource_ptr;
+std::once_flag resource_flag;  // 1
+
+void init_resource()
+{
+    resource_ptr.reset(new some_resource);
+}
+
+void foo()
+{
+    std::call_once(resource_flag, init_resource);  // 可以线程安全地进行且仅进行一次初始化
+    resource_ptr->do_something();
+}
+```
+- 例子：Meyer's Singleton：线程安全 since C++11
+  - C++11 开始，局部静态对象的初始化及定义完全在一个线程中发生，并且没有其他线程可在初始化完成前对其进行处理
+  - 在只需要一个全局实例情况下，这是 `std::call_once` 的一个替代方案
+```c++
+class my_class;
+
+// 多线程可以安全的调用，不用为数据竞争而担心
+my_class & get_my_class_instance()
+{
+    static my_class instance;  // 线程安全的初始化过程
+    return instance;
+}
+```
+
+#### 📌 3.3.2 保护不常更新的数据结构
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
