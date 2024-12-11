@@ -272,12 +272,18 @@ std::thread g()
 {
     void some_other_function(int);
 
-    // Guaranteed Copy Elision (since C++17): 
+    // Copy/Move Elision: 
     // https://en.cppreference.com/w/cpp/language/copy_elision
-    // 在某些情况下，编译器必须省略拷贝或移动，即使拷贝构造函数或移动构造函数是非平凡的：
-    // - 返回值优化（RVO）
-    //   当函数返回一个局部变量，编译器直接构造返回值在调用者的存储位置，无需拷贝或移动；
-    // - 纯右值（prvalue）的推迟实例化
+    // 在某些情况下，编译器可以或必须省略拷贝或移动，即使拷贝构造函数或移动构造函数是非平凡的：
+    // 
+    // - 返回值优化（Named Return Value Optimization NRVO）【可以】
+    //   当函数返回一个局部变量（*），编译器直接构造返回值在调用者的存储位置，无需拷贝或移动；
+    //   （*）：
+    //   有名字（没名字的直接适用下一条）、非 volatile 的自动存储期对象，
+    //   且不是函数参数、不是 handler（catch 语句括号里的东西），
+    //   且类型和返回值类型相同（不考虑 cv 限定）。
+    //
+    // - 纯右值（prvalue）的推迟实例化（since C++17）【必须】
     //   纯右值直到被显式使用为止都不会被实例化，当被显式使用时，编译器直接在调用点构造对象，无需拷贝或移动。
     std::thread t(some_other_function, 42);
 
