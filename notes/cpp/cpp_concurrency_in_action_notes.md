@@ -934,9 +934,9 @@ private:
 thread_local unsigned long hierarchical_mutex::this_thread_hierarchy_value(ULONG_MAX);  // 8
 ```
 
-#### 📌 3.2.6 std::unique_lock——灵活的锁
+#### 📌 3.2.6 [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock) 灵活的锁
 
-
+- 相比 [std::lock_guard](https://en.cppreference.com/w/cpp/thread/lock_guard)，[std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock) 支持 `std::lock_t`
 
 
 
