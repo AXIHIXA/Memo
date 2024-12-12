@@ -1370,10 +1370,11 @@ void test_future()
 }
 ```
 
-#### 📌 4.2.1 后台任务的返回值 [std::async](https://en.cppreference.com/w/cpp/thread/async)
+#### 📌 4.2.1 [std::async](https://en.cppreference.com/w/cpp/thread/async)
 
-- [std::async](https://en.cppreference.com/w/cpp/thread/async) 启动一个异步任务，会返回一个 `std::future<V>` 对象
-  - `V = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args> ...>;`
+- [std::async](https://en.cppreference.com/w/cpp/thread/async) 
+  - 启动一个异步任务，会返回一个 `std::future<V>` 对象
+    - `V = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args> ...>;`
   - `policy` 是一个 bitmask，`enum launch { async, deferred };`
     - `std::launch::async`：开一个新线程执行任务。
     - `dstd::launch::eferred`：Lazy evaluation，直到 `future` 被 [wait](https://en.cppreference.com/w/cpp/thread/future/wait) 或 [get](https://en.cppreference.com/w/cpp/thread/future/get) 时，才在同一线程内求值。
@@ -1403,26 +1404,41 @@ void foo()
 }
 ```
 
-#### 📌 4.2.2 [std::packaged_task](https://en.cppreference.com/w/cpp/thread/packaged_task)：将 [std::future](https://en.cppreference.com/w/cpp/thread/future) 与任务关联
+#### 📌 4.2.2 [std::packaged_task](https://en.cppreference.com/w/cpp/thread/packaged_task)
 
-- [std::packaged_task](https://en.cppreference.com/w/cpp/thread/packaged_task) 会将 `future` 与函数或可调用对象进行绑定
+- [std::packaged_task](https://en.cppreference.com/w/cpp/thread/packaged_task)
+  - 封装可调用对象以供异步调用
+    - [(constructor)](https://en.cppreference.com/w/cpp/thread/packaged_task/packaged_task)
+    - 传入的可调用对象会被**复制**
+    - 其返回值以及抛出的异常会存储于一个 shared state 中，并可以通过 `future` 对象来访问
   - 当调用 `std::packaged_task` 对象时，就会调用相关函数或可调用对象
     - [std::packaged_task::operator()](https://en.cppreference.com/w/cpp/thread/packaged_task/operator()) **没有返回值**
     - 单独提供 [get_future](https://en.cppreference.com/w/cpp/thread/packaged_task/get_future) 方法来获取 `future`
+      - `get_future` 只能调用一次，调用第二次时会抛出 `std::future_error`，因为一个任务只能绑定到一个 `future` 对象
+      - 推荐在**创建 `std::packaged_task` 后立即获取 `std::future` 并存储，返回该存储的变量**，这样最安全、易于理解且符合标准约定
+      - 一定要延迟获取并返回也可以，但这样必须保证中间的代码不会调用 `get_future`，这会增加代码维护难度
   - 可以默认构造、可以用可调用对象构造 [(constructor)](https://en.cppreference.com/w/cpp/thread/packaged_task/packaged_task)
-    - `explicit` 的构造函数**不支持** `packaged_task f = func;`
-    - 只能用括号初始化语义： `packaged_task f(func);`
-    - 或者类型强转一波：`packaged_task f = packaged_task(func);`
+    - `explicit` 的构造函数**不支持赋值形式的构造**：
+      - 不能这么玩儿：`packaged_task f = func;`
+      - 等号右边不是 `packaged_task` 类型，要传参给构造函数，需要一步隐式类型转换，而这个被 `explicit` 禁止了
+    - 只能用括号初始化语义： `packaged_task f(func);` 或者 `packaged_task f {func};`
+    - 或者类型强转一波：`packaged_task f = packaged_task(func);`（这不是纯属智障么，不考虑）
   - 可移动，**不可拷贝**
-    - [operator=](https://en.cppreference.com/w/cpp/thread/packaged_task/operator%3D) 只支持移动另一个 `std::packaged_task`，不能用可调用对象移动赋值
-  - 可用于构建**线程池**（参见第九章）或其他任务的管理中
+    - [std::packaged_task::operator=](https://en.cppreference.com/w/cpp/thread/packaged_task/operator%3D) 只支持移动另一个 `std::packaged_task`
+    - **不能**用另一个可调用对象玩移动赋值
+  - 析构时
+    - [(destructor)](https://en.cppreference.com/w/cpp/thread/packaged_task/~packaged_task)
+    - 减少 shared state 的引用计数，如果跌至零，则会被销毁 
+    - 销毁存储的 task object
+    - 如果 shared state 在 ready 之前就被销毁，会抛出 `std::future_error`（错误代码`std::future_errc::broken_promise`）
 ```c++
 template <class> 
 class packaged_task;  // undefined
 
 template <class R, class ... ArgTypes>
 class packaged_task<R (ArgTypes ...)>;
-
+```
+```c++
 packaged_task() noexcept;
 
 template <class F>
@@ -1461,19 +1477,48 @@ std::future<void> async_fut = std::async(f, 2, 3);
 async_fut.wait();
 std::cout << result.get() << '\n';
 ```
-- 代码4.8 `std::packaged_task` 的偏特化
+- 代码 4.9 使用 `std::packaged_task` 执行一个图形界面线程
 ```c++
-template <>
-class packaged_task<std::string (std::vector<char> *,int)>
+std::mutex m;
+std::deque<std::packaged_task<void ()>> tasks;
+
+bool gui_should_close();
+void gui_fetch_event();
+
+void gui_thread()  // 1
 {
-public:
-    template <typename Callable>
-    explicit packaged_task(Callable && f);
+    while (!gui_should_close())  // 2
+    {
+        gui_fetch_event();  // 3
+        std::packaged_task<void ()> task;
 
-    std::future<std::string> get_future();
+        {
+            std::lock_guard<std::mutex> lk(m);
 
-    void operator()(std::vector<char> *, int);
-};
+            if (tasks.empty())  // 4
+            {
+                continue;
+            }
+            
+            task = std::move(tasks.front());  // 5
+            tasks.pop_front();
+        }
+
+        task();  // 6
+    }
+}
+
+std::thread gui_bg_thread(gui_thread);
+
+template <typename Func>
+std::future<void> post_task_for_gui_thread(Func f)
+{
+    std::packaged_task<void ()> task(f);  // 7
+    std::future<void> res = task.get_future();  // 8
+    std::lock_guard<std::mutex> lk(m);
+    tasks.push_back(std::move(task));  // 9
+    return res; // 10
+}
 ```
 
 
