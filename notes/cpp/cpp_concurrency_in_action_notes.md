@@ -708,15 +708,14 @@ if (!s.empty())  // 1
     do_something(value);
 }
 ```
-- 表3.1 一种可能执行顺序
-  - **同一个栈顶被处理了两次**！
+- 表3.1 一种可能执行顺序：**同一个栈顶被处理了两次**！
 
 | Thread A                   | Thread B                   |
 | -------------------------- | -------------------------- |
-| if (!s.empty);             |                            |
-|                            | if(!s.empty);              |
-| int const value = s.top(); |                            |
-|                            | int const value = s.top(); |
+| if (!s.empty());           |                            |
+|                            | if (!s.empty());           |
+| const int value = s.top(); |                            |
+|                            | const int value = s.top(); |
 | s.pop();                   |                            |
 | do_something(value);       | s.pop();                   |
 |                            | do_something(value);       |
@@ -730,9 +729,15 @@ if (!s.empty())  // 1
     - 要**弹出的数据将会丢失**
   - `std::stack` 的设计人员将这个操作分为两部分：`top` 和 `pop`
     - 这样，在不能安全的将元素拷贝出去的情况下，栈中的这个数据还依旧存在，没有丢失
-- 如何解决 `top` `pop` 拆分带来的条件竞争问题？
-  - 两个接口之间的条件竞争：将 `top` `pop` 合并为一个函数，不要拆分，只有一个接口，自然就没有条件竞争了
-  - 针对拷贝操作的异常安全问题：提供返回指针或者修改入参两种方式，直接避免拷贝
+  - 但这个设计在并发环境中**引入了条件竞争**！
+- `top` `pop` 拆分带来的**条件竞争如何解决**？有多种解决方案，但都有代价：
+  - 接口之间的**条件竞争**问题：
+    - 将 `top` `pop` 合并为一个函数，不要拆分，只有一个接口，自然就没有条件竞争了
+  - 拷贝操作的**异常安全**问题：
+    - 避免拷贝，而是返回指针或者修改入参
+      - 返回 `shared_ptr`：代价是动态内存分配的额外开销
+      - 修改入参：代价是栈内元素的类型需要支持默认构造，且默认构造的开销也可以很大
+    - 使用 `noexcept` 的拷贝或移动构造函数（不是所有数据结构都支持这个）
 ```c++
 struct empty_stack : public std::exception
 {
@@ -1222,10 +1227,20 @@ template <typename T>
 class threadsafe_queue
 {
 public:
-    threadsafe_queue();
-    threadsafe_queue(const threadsafe_queue &);
+    threadsafe_queue() = default;
 
-    threadsafe_queue & operator=(const threadsafe_queue &) = delete;
+    threadsafe_queue(const threadsafe_queue & other)
+    {
+        std::lock_guard<std::mutex> lk(other.mut);
+        data_queue = other.data_queue;
+    }
+
+    bool empty() const
+    {
+        // 因为其他线程可能有非 const 引用对象，并调用变种成员函数，所以这里有必要对互斥量上锁。
+        std::lock_guard<std::mutex> lk(mut);
+        return data_queue.empty();
+    }
 
     void push(T new_value)
     {
@@ -1242,7 +1257,42 @@ public:
         data_queue.pop();
     }
 
-    bool empty() const;
+    std::shared_ptr<T> wait_and_pop()
+    {
+        std::unique_lock<std::mutex> lk(mut);
+        data_cond.wait(lk, [this] { return !data_queue.empty(); });
+        std::shared_ptr<T> res = std::make_shared<T>(data_queue.front());
+        data_queue.pop();
+        return res;
+    }
+
+    bool try_pop(T & value)
+    {
+        std::lock_guard<std::mutex> lk(mut);
+
+        if (data_queue.empty())
+        {
+            return false;
+        }
+        
+        value = data_queue.front();
+        data_queue.pop();
+        return true;
+    }
+
+    std::shared_ptr<T> try_pop()
+    {
+        std::lock_guard<std::mutex> lk(mut);
+
+        if (data_queue.empty())
+        {
+            return nullptr;
+        }
+        
+        std::shared_ptr<T> res = std::make_shared<T>(data_queue.front());
+        data_queue.pop();
+        return res;
+    }
 
 private:
     std::mutex mut;
@@ -1254,7 +1304,7 @@ threadsafe_queue<data_chunk> data_queue;  // 1
 
 void data_preparation_thread()
 {
-    while(more_data_to_prepare())
+    while (more_data_to_prepare())
     {
         const data_chunk data = prepare_data();
         data_queue.push(data);  // 2
@@ -1276,6 +1326,66 @@ void data_processing_thread()
     }
 }
 ```
+
+### 🌱 4.2 使用 [std::future](https://en.cppreference.com/w/cpp/thread/future)
+
+- 线程需要等待特定事件的结果（例如异步任务的返回值）
+  - 之后，线程会周期性地等待或检查事件是否触发，检查期间也会执行其他任务。
+  - 另外，等待任务期间也可以先执行另外的任务，直到对应的任务触发，而后等待 `future` 的状态会变为就绪状态。
+  - `future` 一旦就绪，这个 `future` 就不能重置了。
+- `std::thread` 执行的任务不能有返回值
+  - [std::async](https://en.cppreference.com/w/cpp/thread/async) 启动一个异步任务，会返回一个 `std::future<V>` 对象
+  - `V = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args> ...>;`
+  - `policy` 是一个 bitmask，`enum launch { async, deferred };`
+    - `std::launch::async`：开一个新线程执行任务。
+    - `dstd::launch::eferred`：Lazy evaluation，直到 future 被 wait 或 get 时，才在同一线程内求值。
+    - 不带 `policy` 的版本，默认 `async | deferred`，即哪个都行，C++ 标准建议实现在有空余算力时采用 `async`。
+```c++
+template <class F, class ... Args>
+std::future<V> async(F && f, Args && ... args );
+
+template <class F, class ... Args>
+std::future<V> async(std::launch policy, F && f, Args && ... args);
+```
+- [std::future](https://en.cppreference.com/w/cpp/thread/future)
+  - 只能与指定事件相关联，类似于 `unique_ptr`
+  - 与数据无关的 `future`，可以使用 `std::future<void>`
+- [std::shared_future](https://en.cppreference.com/w/cpp/thread/shared_future)
+  - 能关联多个事件，类似于 `shared_ptr`
+  - 与数据无关的，用 `std::shared_future<void>`
+- 代码4.6 `std::future` 从异步任务中获取返回值
+```c++
+int find_the_answer(int, int &, std::unique_ptr<int>);
+void do_other_stuff();
+
+void foo()
+{
+    int a = 1, b = 2, c = 3;
+    std::future<int> the_answer = std::async(
+            std::launch::async,
+            find_the_answer, 
+            a, std::ref(b), std::make_unique<int>(c)
+    );
+    do_other_stuff();
+    std::cout << "The answer is " << the_answer.get() << std::endl;
+}
+```
+
+#### 📌 4.2.2 [std::packaged_task]() ：[std::future](https://en.cppreference.com/w/cpp/thread/future) 与任务关联
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
