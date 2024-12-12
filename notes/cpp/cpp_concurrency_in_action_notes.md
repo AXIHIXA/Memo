@@ -1333,24 +1333,18 @@ void data_processing_thread()
   - 之后，线程会周期性地等待或检查事件是否触发，检查期间也会执行其他任务。
   - 另外，等待任务期间也可以先执行另外的任务，直到对应的任务触发，而后等待 `future` 的状态会变为就绪状态。
   - `future` 一旦就绪，这个 `future` 就不能重置了。
-- `std::thread` 执行的任务不能有返回值
-  - [std::async](https://en.cppreference.com/w/cpp/thread/async) 启动一个异步任务，会返回一个 `std::future<V>` 对象
-  - `V = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args> ...>;`
-  - `policy` 是一个 bitmask，`enum launch { async, deferred };`
-    - `std::launch::async`：开一个新线程执行任务。
-    - `dstd::launch::eferred`：Lazy evaluation，直到 `future` 被 [wait](https://en.cppreference.com/w/cpp/thread/future/wait) 或 [get](https://en.cppreference.com/w/cpp/thread/future/get) 时，才在同一线程内求值。
-    - 不带 `policy` 的版本，默认 `async | deferred`，即哪个都行，C++ 标准建议实现在有空余算力时采用 `async`。
-```c++
-template <class F, class ... Args>
-std::future<V> async(F && f, Args && ... args );
-
-template <class F, class ... Args>
-std::future<V> async(std::launch policy, F && f, Args && ... args);
-```
 - [std::future](https://en.cppreference.com/w/cpp/thread/future)
   - 只能与指定事件相关联，类似于 `unique_ptr`
   - 与数据无关的 `future`，可以使用 `std::future<void>`
+- [std::shared_future](https://en.cppreference.com/w/cpp/thread/shared_future)
+  - 能关联多个事件，类似于 `shared_ptr`
+  - 与数据无关的，用 `std::shared_future<void>`
+- `future` 有三种方法创建：
+    - [std::async](https://en.cppreference.com/w/cpp/thread/async)（下一小节，4.2.1）
+    - [std::packaged_task](https://en.cppreference.com/w/cpp/thread/packaged_task)（再下一小节，4.2.2）
+    - [std::promise](https://en.cppreference.com/w/cpp/thread/promise)（再下一小节，4.2.3）
 ```c++
+// 快速预览，具体下面三个小节详聊
 void test_future()
 {
     // future from a packaged_task
@@ -1375,9 +1369,22 @@ void test_future()
     t.join();
 }
 ```
-- [std::shared_future](https://en.cppreference.com/w/cpp/thread/shared_future)
-  - 能关联多个事件，类似于 `shared_ptr`
-  - 与数据无关的，用 `std::shared_future<void>`
+
+#### 📌 4.2.1 后台任务的返回值 [std::async](https://en.cppreference.com/w/cpp/thread/async)
+
+- [std::async](https://en.cppreference.com/w/cpp/thread/async) 启动一个异步任务，会返回一个 `std::future<V>` 对象
+  - `V = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args> ...>;`
+  - `policy` 是一个 bitmask，`enum launch { async, deferred };`
+    - `std::launch::async`：开一个新线程执行任务。
+    - `dstd::launch::eferred`：Lazy evaluation，直到 `future` 被 [wait](https://en.cppreference.com/w/cpp/thread/future/wait) 或 [get](https://en.cppreference.com/w/cpp/thread/future/get) 时，才在同一线程内求值。
+    - 不带 `policy` 的版本，默认 `async | deferred`，即哪个都行，C++ 标准建议实现在有空余算力时采用 `async`。
+```c++
+template <class F, class ... Args>
+std::future<V> async(F && f, Args && ... args );
+
+template <class F, class ... Args>
+std::future<V> async(std::launch policy, F && f, Args && ... args);
+```
 - 代码4.6 `std::future` 从异步任务中获取返回值
 ```c++
 int find_the_answer(int, int &, std::unique_ptr<int>);
@@ -1400,7 +1407,7 @@ void foo()
 
 - [std::packaged_task](https://en.cppreference.com/w/cpp/thread/packaged_task) 会将 `future` 与函数或可调用对象进行绑定
   - 当调用 `std::packaged_task` 对象时，就会调用相关函数或可调用对象
-    - 调用本身**不会**返回 `future`
+    - [std::packaged_task::operator()](https://en.cppreference.com/w/cpp/thread/packaged_task/operator()) **没有返回值**
     - 单独提供 [get_future](https://en.cppreference.com/w/cpp/thread/packaged_task/get_future) 方法来获取 `future`
   - 可以默认构造、可以用可调用对象构造 [(constructor)](https://en.cppreference.com/w/cpp/thread/packaged_task/packaged_task)
     - `explicit` 的构造函数**不支持** `packaged_task f = func;`
