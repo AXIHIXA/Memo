@@ -1338,7 +1338,7 @@ void data_processing_thread()
   - `V = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args> ...>;`
   - `policy` 是一个 bitmask，`enum launch { async, deferred };`
     - `std::launch::async`：开一个新线程执行任务。
-    - `dstd::launch::eferred`：Lazy evaluation，直到 future 被 wait 或 get 时，才在同一线程内求值。
+    - `dstd::launch::eferred`：Lazy evaluation，直到 `future` 被 [wait](https://en.cppreference.com/w/cpp/thread/future/wait) 或 [get](https://en.cppreference.com/w/cpp/thread/future/get) 时，才在同一线程内求值。
     - 不带 `policy` 的版本，默认 `async | deferred`，即哪个都行，C++ 标准建议实现在有空余算力时采用 `async`。
 ```c++
 template <class F, class ... Args>
@@ -1350,6 +1350,31 @@ std::future<V> async(std::launch policy, F && f, Args && ... args);
 - [std::future](https://en.cppreference.com/w/cpp/thread/future)
   - 只能与指定事件相关联，类似于 `unique_ptr`
   - 与数据无关的 `future`，可以使用 `std::future<void>`
+```c++
+void test_future()
+{
+    // future from a packaged_task
+    std::packaged_task<int ()> task([] { return 7; }); // wrap the function
+    std::future<int> f1 = task.get_future(); // get a future
+    std::thread t(std::move(task)); // launch on a thread
+
+    // future from an async call
+    std::future<int> f2 = std::async(std::launch::async, [] { return 8; });
+
+    // future from a promise
+    std::promise<int> p;
+    std::future<int> f3 = p.get_future();
+    std::thread([&p] { p.set_value_at_thread_exit(9); }).detach();
+
+    std::cout << "Waiting..." << std::flush;
+    f1.wait();
+    f2.wait();
+    f3.wait();
+    std::cout << "Done!\nResults are: "
+            << f1.get() << ' ' << f2.get() << ' ' << f3.get() << '\n';
+    t.join();
+}
+```
 - [std::shared_future](https://en.cppreference.com/w/cpp/thread/shared_future)
   - 能关联多个事件，类似于 `shared_ptr`
   - 与数据无关的，用 `std::shared_future<void>`
@@ -1371,12 +1396,78 @@ void foo()
 }
 ```
 
-#### 📌 4.2.2 [std::packaged_task]() ：[std::future](https://en.cppreference.com/w/cpp/thread/future) 与任务关联
+#### 📌 4.2.2 [std::packaged_task](https://en.cppreference.com/w/cpp/thread/packaged_task)：将 [std::future](https://en.cppreference.com/w/cpp/thread/future) 与任务关联
 
+- [std::packaged_task](https://en.cppreference.com/w/cpp/thread/packaged_task) 会将 `future` 与函数或可调用对象进行绑定
+  - 当调用 `std::packaged_task` 对象时，就会调用相关函数或可调用对象
+    - 调用本身**不会**返回 `future`
+    - 单独提供 [get_future](https://en.cppreference.com/w/cpp/thread/packaged_task/get_future) 方法来获取 `future`
+  - 可以默认构造、可以用可调用对象构造 [(constructor)](https://en.cppreference.com/w/cpp/thread/packaged_task/packaged_task)
+    - `explicit` 的构造函数**不支持** `packaged_task f = func;`
+    - 只能用括号初始化语义： `packaged_task f(func);`
+    - 或者类型强转一波：`packaged_task f = packaged_task(func);`
+  - 可移动，**不可拷贝**
+    - [operator=](https://en.cppreference.com/w/cpp/thread/packaged_task/operator%3D) 只支持移动另一个 `std::packaged_task`，不能用可调用对象移动赋值
+  - 可用于构建**线程池**（参见第九章）或其他任务的管理中
+```c++
+template <class> 
+class packaged_task;  // undefined
 
+template <class R, class ... ArgTypes>
+class packaged_task<R (ArgTypes ...)>;
 
+packaged_task() noexcept;
 
+template <class F>
+explicit packaged_task(F && f);
+```
+- **【gcc 11 BUG】**：`packaged_task` 要么异步调用，要么塞到线程里，要么调用后睡 `1ns`，否则会撞到 `gcc 11` 的 BUG！
+```c++
+std::packaged_task f([](int a, int b) { return a + b; });
+std::future<int> fut = f.get_future();
+f(2, 3);
+// 这里不睡的话，上面的调用会直接原地爆炸：
+// terminate called after throwing an instance of 'std::system_error'
+//  what():  Unknown error -1
+std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+std::cout << result.get() << '\n';
+```
+```c++
+// 或者直接塞到新线程里：
+std::packaged_task f([](int a, int b) { return a + b; });
+std::future<int> fut = f.get_future();
 
+std::thread t(std::move(f), 2, 3);
+std::cout << result.get() << '\n';
+t.join();
+```
+```c++
+// 或者直接塞到 std::async 里：
+std::packaged_task f([](int a, int b) { return a + b; });
+std::future<int> fut = f.get_future();
+
+// 注意 async 本身会返回一个 future，
+// 这个 future 的类型不是我们的 lambda 返回的 int，
+// 而是 packaged_task 自己的 operator() 的返回类型，是 void!
+// 因此我们必须等两个 future！
+std::future<void> async_fut = std::async(f, 2, 3);
+async_fut.wait();
+std::cout << result.get() << '\n';
+```
+- 代码4.8 `std::packaged_task` 的偏特化
+```c++
+template <>
+class packaged_task<std::string (std::vector<char> *,int)>
+{
+public:
+    template <typename Callable>
+    explicit packaged_task(Callable && f);
+
+    std::future<std::string> get_future();
+
+    void operator()(std::vector<char> *, int);
+};
+```
 
 
 
