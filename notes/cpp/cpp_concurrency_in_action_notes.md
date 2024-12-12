@@ -710,6 +710,7 @@ if (!s.empty())  // 1
 ```
 - 表3.1 一种可能执行顺序
   - **同一个栈顶被处理了两次**！
+
 | Thread A                   | Thread B                   |
 | -------------------------- | -------------------------- |
 | if (!s.empty);             |                            |
@@ -719,6 +720,7 @@ if (!s.empty())  // 1
 | s.pop();                   |                            |
 | do_something(value);       | s.pop();                   |
 |                            | do_something(value);       |
+
 - 注释：为什么 C++ STL `std::stack::pop` 不返回被弹出的元素？（为了异常安全）
   - 假设有一个 `std::stack<std::vector<int>>`
   - `std::vector` 的拷贝构造函数可能会抛出一个 `std::bad_alloc` 异常
