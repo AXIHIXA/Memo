@@ -666,8 +666,17 @@ void oops()
 
 #### 📌 3.2.3 接口间的条件竞争
 
-- 考虑一个栈，即使每个接口都加了锁，不同线程间的接口访问依旧存在竞争
-  - 如下，两个线程同时操作一个栈，当接口访问顺序如注释时，4 处将产生未定义行为
+- 考虑一个栈，**即使 top 和 pop 各自内部都加了锁，这两个接口间依旧存在竞争**
+  - 如下，两个线程同时操作一个栈
+  - 接口内部各自加锁，而不是整个栈上加锁
+    - 效率稍稍好点
+    - 但只能保证同一时刻只有一个接口被访问
+    - 单个线程的多次访问的间隙中，可能与其他线程的操作互相交叠
+  - 当接口访问顺序如注释时，4 处将产生未定义行为
+    - 注意如果没有先 empty 后 top/pop 的间隙，是不会产生条件竞争的
+  - 这是一个经典的条件竞争
+    - *使用互斥量对栈内部数据进行保护，但依旧不能阻止条件竞争的发生*
+    - 这是 *接口固有的问题*
 ```c++
 std::stack<int> stk;
 stk.emplace(1);
@@ -676,28 +685,52 @@ void thread_one()
 {
     if (!stk.empty())  // 1 此时栈里有一个数
     {
-        std::cout << stk.top() << '\n';  // 4 此时栈空了，未定义行为
+        // 2 注意执行到这里时，线程一是没有锁的，线程二可以在此处横插一脚！
+        std::cout << stk.top() << '\n';  // 5 此时，栈空了，未定义行为
     }
 }
 
 void thread_two()
 {
-    if (!stk.empty())  // 2 此时栈里有一个数
+    if (!stk.empty())  // 3 此时栈里依旧有一个数
     {
-        stk.pop();  // 3 弹出，栈空了
+        stk.pop();  // 4 弹出栈顶，这回栈空了
     }
 }
 ```
-- 案例分析：为什么 C++ 的 `pop` 不返回被弹出的元素？（为了异常安全）
+- 比起上面的 *未定义行为 UB Undefined Behavior*，下面由于条件竞争产生的 *重复处理数据* 的 BUG 更加隐秘、难以排查：
+```c++
+std::stack<int> stk;
+if (!s.empty())  // 1
+{    
+    const int value = s.top();  // 2
+    s.pop();  // 3
+    do_something(value);
+}
+```
+- 表3.1 一种可能执行顺序
+  - **同一个栈顶被处理了两次**！
+| Thread A                   | Thread B                   |
+| -------------------------- | -------------------------- |
+| if (!s.empty);             |                            |
+|                            | if(!s.empty);              |
+| int const value = s.top(); |                            |
+|                            | int const value = s.top(); |
+| s.pop();                   |                            |
+| do_something(value);       | s.pop();                   |
+|                            | do_something(value);       |
+- 注释：为什么 C++ STL `std::stack::pop` 不返回被弹出的元素？（为了异常安全）
   - 假设有一个 `std::stack<std::vector<int>>`
   - `std::vector` 的拷贝构造函数可能会抛出一个 `std::bad_alloc` 异常
   - 当 `pop` 函数将栈顶弹出并返回“弹出值”时，会有一个潜在的问题
-    - `pop` 函数会先创建临时量，然后弹出元素，然后临时量拷贝到返回值
-    - 如果拷贝构造函数**抛出异常**，要**弹出的数据将会丢失**
-    - 它的确从栈上移出了，但是拷贝失败了！
+    - `pop` 函数：首先用栈顶创建一个临时量，然后弹出栈顶，最后临时量拷贝到返回值
+    - 如果最后一步**拷贝抛出异常**，就会导致它的确从栈上移出了，但是接收却失败了
+    - 要**弹出的数据将会丢失**
   - `std::stack` 的设计人员将这个操作分为两部分：`top` 和 `pop`
     - 这样，在不能安全的将元素拷贝出去的情况下，栈中的这个数据还依旧存在，没有丢失
-- 如何解决 `top` `pop` 拆分带来的线程安全问题？
+- 如何解决 `top` `pop` 拆分带来的条件竞争问题？
+  - 两个接口之间的条件竞争：将 `top` `pop` 合并为一个函数，不要拆分，只有一个接口，自然就没有条件竞争了
+  - 针对拷贝操作的异常安全问题：提供返回指针或者修改入参两种方式，直接避免拷贝
 ```c++
 struct empty_stack : public std::exception
 {
@@ -937,13 +970,14 @@ thread_local unsigned long hierarchical_mutex::this_thread_hierarchy_value(ULONG
 #### 📌 3.2.6 [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock) 灵活的锁
 
 - [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock)
-  - [std::lock_guard](https://en.cppreference.com/w/cpp/thread/lock_guard) 只是 RAII 管理器，没有任何其他功能
+  - `std::lock_guard` 只是 minimal RAII 管理器，没有任何其他功能
     - `std::lock_guard` 只有构造函数和析构函数，不支持其他操作
+    - `std::unique_lock` 支持 `std::lock_guard` 的全部特性，包括析构时自动释放占有的锁
   - `std::unique_lock` 更灵活，支持更多的构造时拿锁策略
     - 可将 `std::adopt_lock` 作为第二个参数传入构造函数，对互斥量进行管理
     - 可将 `std::defer_lock` 作为第二个参数传入构造函数，表明互斥量应保持解锁状态
   - `std::unique_lock` 完全适配普通互斥锁对象所有的操作，比如传给 `std::lock`
-  - `std::unique_lock` 会占用比较多的空间，并且比 `std::lock_guard` 稍慢一些
+  - `std::unique_lock` 会占用**更多空间**，并且比 `std::lock_guard` 稍**慢**一些
 ```c++
 void swap(X & lhs, X & rhs)
 {
@@ -982,12 +1016,6 @@ void process_data()
 }
 ```
 
-#### 📌 读写锁 [std::shared_mutex](https://en.cppreference.com/w/cpp/thread/shared_mutex)
-
-- [std::shared_mutex](https://en.cppreference.com/w/cpp/thread/shared_mutex)：读写锁
-- [std::shared_lock](https://en.cppreference.com/w/cpp/thread/shared_lock)：读锁
-- [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock)：写锁
-
 ### 🌱 3.3 多线程下保护共享数据的其他方式
 
 #### 📌 3.3.1 保护共享数据的初始化过程
@@ -998,6 +1026,10 @@ void process_data()
   - 不可拷贝、不可移动
 - [std::call_once](https://en.cppreference.com/w/cpp/thread/call_once)
   - 使用 `std::call_once` 比显式使用互斥量消耗的资源更少，特别是当初始化完成后
+```c++
+template <class Callable, class ... Args>
+void call_once(std::once_flag & flag, Callable && f, Args && ... args);
+```
 - 例子：Lazy Initialization
 ```c++
 std::shared_ptr<some_resource> resource_ptr;
@@ -1028,22 +1060,220 @@ my_class & get_my_class_instance()
 }
 ```
 
-#### 📌 3.3.2 保护不常更新的数据结构
+#### 📌 3.3.2 读写锁：保护不常更新的数据结构
 
+- [std::shared_mutex](https://en.cppreference.com/w/cpp/thread/shared_mutex)
+  - 更高的性能优势
+  - 更少的操作方式
+- [std::shared_timed_mutex](https://en.cppreference.com/w/cpp/thread/shared_timed_mutex)
+  - 支持更多操作方式
+- 读锁定：
+  - [std::shared_lock](https://en.cppreference.com/w/cpp/thread/shared_lock)
+- 写锁定：
+  - [std::lock_guard](https://en.cppreference.com/w/cpp/thread/lock_guard)
+  - [std::unique_lock](https://en.cppreference.com/w/cpp/thread/unique_lock)
+- 示例：DNS Cache
+```c++
+class dns_entry;
 
+class dns_cache
+{
+public:
+    std::optional<dns_entry> find(const std::string & domain) const
+    {
+        std::shared_lock<std::shared_mutex> lk(entry_mutex);  // 1 读锁
+        const Entries::const_iterator it = entries.find(domain);
+        return (it == entries.end()) ? std::nullopt : it->second;
+    }
 
+    void update(const std::string & domain, const dns_entry & detail)
+    {
+        std::lock_guard<std::shared_mutex> lk(entry_mutex);  // 2 写锁
+        entries[domain] = detail;
+    }
 
+private:
+    using Entries = std::unordered_map<std::string, dns_entry>;
+    Entries entries;
+    mutable std::shared_mutex entry_mutex;
+};
+```
 
+#### 📌 3.3.3 嵌套锁
 
+- [std::recursive_mutex](https://en.cppreference.com/w/cpp/thread/recursive_mutex)
+  - 线程对已经获取的 `std::mutex` 再次上锁是错误的，尝试这样做会导致未定义行为
+  - 其他线程对互斥量上锁前，当前线程必须释放拥有的所有锁，所以如果你调用 `lock` 三次，也必须调用 `unlock` 三次
+  - `std::lock_guard<std::recursive_mutex>` 和 `std::unique_lock<std::recursive_mutex>` 可以帮你处理这些问题
 
+## 第四章 同步操作
 
+- C++ 标准库提供了一些工具可用于同步，形式上表现为
+  - 条件变量 [std::condition_variable](https://en.cppreference.com/w/cpp/thread/condition_variable)
+  - [std::future](https://en.cppreference.com/w/cpp/thread/future)
+- 并发技术规范中，为future添加了非常多的操作，并可与新工具一起使用：
+  - [std::latch](https://en.cppreference.com/w/cpp/thread/latch) ：轻量级锁资源
+  - [std::barrier](https://en.cppreference.com/w/cpp/thread/barrier)
 
+### 🌱 4.1 等待事件或条件
 
+- 等待的平凡实现
+```c++
+bool flag;
+std::mutex m;
 
+void wait_for_flag()
+{
+    std::unique_lock<std::mutex> lk(m);
 
+    while (!flag)
+    {
+        lk.unlock();  // 1 解锁互斥量
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));  // 2 休眠100ms
+        lk.lock();   // 3 再锁互斥量
+    }
+}
+```
 
+#### 📌 4.1.1 等待条件达成
 
+- C++标准库对条件变量有两套实现，两者都需要与互斥量一起才能工作（互斥量是为了同步）：
+  - [std::condition_variable](https://en.cppreference.com/w/cpp/thread/condition_variable)
+    - 仅能与 [std::mutex](https://en.cppreference.com/w/cpp/thread/mutex) 一起工作
+  - [std::condition_variable_any](https://en.cppreference.com/w/cpp/thread/condition_variable_any)
+    - 可以和任何自定义的互斥量一起工作
+    - 在性能和系统资源的使用方面会有**更多开销**
+- [std::condition_variable::wait](https://en.cppreference.com/w/cpp/thread/condition_variable/wait)
+```c++
+/// 调用前，unique_lock 中已经占有了一个锁。
+/// 首先，释放 unique_lock 中占有的锁，并阻塞。
+/// 之后，会被 notify 唤醒，或被 伪唤醒。
+/// 被唤醒后，重新上锁（这一步可能又会阻塞），成功上锁后返回。
+void wait(std::unique_lock<std::mutex> & lock);
 
+/// 等价于：while (!pred()) { wait(lock); }
+template <class Predicate>
+void wait(std::unique_lock<std::mutex> & lock, Predicate pred);
+```
+- **伪唤醒** Spurious Wakeup
+  - 调用 `wait` 的过程中，在互斥量锁定时，可能会去检查条件变量若干次，当提供测试条件的函数返回 `true` 就会立即返回。
+  - 当等待线程重新获取互斥量并检查条件变量时，并非直接响应另一个线程的通知，就是所谓的 *伪唤醒*（Spurious Wakeup）。
+  - 任意的函数和可调用对象，不仅限于 lambda 表达式，都可以传入 `wait` 用于 *检测伪唤醒并重新等待* 。
+  - 因为任何伪唤醒的数量和频率都是不确定的，所以**不建议**使用有 *副作用* 的函数做条件检查。
+```c++
+template <typename Predicate>
+void minimal_wait(std::unique_lock<std::mutex> & lk, Predicate pred)
+{
+    while (!pred())
+    {
+        lk.unlock();
+        lk.lock();
+    }
+}
+```
+- 代码 4.1 使用 `std::condition_variable` 处理数据等待的生产者——消费者模型
+```c++
+std::mutex data_mut;
+std::queue<Data> data_queue;  // 1
+std::condition_variable data_cond;
+
+void produce()
+{
+    while (!should_exit())
+    {
+        const Data data = produce_data();
+        std::lock_guard<std::mutex> lk(data_mut);
+        data_queue.push(data);  // 2
+        data_cond.notify_one();  // 3
+    }
+}
+
+void consume()
+{
+    while (true)
+    {
+        {
+            std::unique_lock<std::mutex> lk(mut);  // 4
+            data_cond.wait(lk, [] { return !data_queue.empty(); });  // 5
+
+            Data data = data_queue.front();
+            data_queue.pop();
+        }  // 6
+
+        comsume(data);
+
+        if (is_last_chunk(data))
+        {
+            break;
+        }
+    }
+}
+```
+
+#### 📌 4.1.2 构建线程安全队列
+
+- 线程安全的队列：
+  - 支持多线程**并行 push 和 pop，无需额外加锁**
+  - 传统的 `front` 和 `pop` 之间**即使各自上锁，依旧存在条件竞争**，需要合并为一个函数
+```c++
+template <typename T>
+class threadsafe_queue
+{
+public:
+    threadsafe_queue();
+    threadsafe_queue(const threadsafe_queue &);
+
+    threadsafe_queue & operator=(const threadsafe_queue &) = delete;
+
+    void push(T new_value)
+    {
+        std::lock_guard<std::mutex> lk(mut);
+        data_queue.push(new_value);
+        data_cond.notify_one();
+    }
+
+    wait_and_pop(T & value)
+    {
+        std::unique_lock<std::mutex> lk(mut);
+        data_cond.wait(lk, [this] { return !data_queue.empty(); });
+        value = data_queue.front();
+        data_queue.pop();
+    }
+
+    bool empty() const;
+
+private:
+    std::mutex mut;
+    std::queue<T> data_queue;
+    std::condition_variable data_cond;
+};
+
+threadsafe_queue<data_chunk> data_queue;  // 1
+
+void data_preparation_thread()
+{
+    while(more_data_to_prepare())
+    {
+        const data_chunk data = prepare_data();
+        data_queue.push(data);  // 2
+    }
+}
+
+void data_processing_thread()
+{
+    while (true)
+    {
+        data_chunk data;
+        data_queue.wait_and_pop(data);  // 3
+        process(data);
+
+        if (is_last_chunk(data))
+        {
+            break;
+        } 
+    }
+}
+```
 
 
 
