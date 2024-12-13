@@ -1477,49 +1477,8 @@ std::future<void> async_fut = std::async(f, 2, 3);
 async_fut.wait();
 std::cout << result.get() << '\n';
 ```
-- 代码 4.9 使用 `std::packaged_task` 执行一个图形界面线程
-```c++
-std::mutex m;
-std::deque<std::packaged_task<void ()>> tasks;
+- 例子：[简易线程池](https://github.com/AXIHIXA/ThreadPool/blob/main/minimal.cpp)
 
-bool gui_should_close();
-void gui_fetch_event();
-
-void gui_thread()  // 1
-{
-    while (!gui_should_close())  // 2
-    {
-        gui_fetch_event();  // 3
-        std::packaged_task<void ()> task;
-
-        {
-            std::lock_guard<std::mutex> lk(m);
-
-            if (tasks.empty())  // 4
-            {
-                continue;
-            }
-            
-            task = std::move(tasks.front());  // 5
-            tasks.pop_front();
-        }
-
-        task();  // 6
-    }
-}
-
-std::thread gui_bg_thread(gui_thread);
-
-template <typename Func>
-std::future<void> post_task_for_gui_thread(Func f)
-{
-    std::packaged_task<void ()> task(f);  // 7
-    std::future<void> res = task.get_future();  // 8
-    std::lock_guard<std::mutex> lk(m);
-    tasks.push_back(std::move(task));  // 9
-    return res; // 10
-}
-```
 
 
 
