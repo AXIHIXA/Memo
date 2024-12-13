@@ -1415,7 +1415,7 @@ void foo()
     - [std::packaged_task::operator()](https://en.cppreference.com/w/cpp/thread/packaged_task/operator()) **没有返回值**
     - 单独提供 [get_future](https://en.cppreference.com/w/cpp/thread/packaged_task/get_future) 方法来获取 `future`
       - `get_future` 只能调用一次，调用第二次时会抛出 `std::future_error`，因为一个任务只能绑定到一个 `future` 对象
-      - 推荐在**创建 `std::packaged_task` 后立即获取 `std::future` 并存储，返回该存储的变量**，这样最安全、易于理解且符合标准约定
+      - 推荐在**创建 `packaged_task` 后立即获取 `future` 并存储，返回该存储的变量**，这样最安全、易于理解且符合标准约定
       - 一定要延迟获取并返回也可以，但这样必须保证中间的代码不会调用 `get_future`，这会增加代码维护难度
   - 可以默认构造、可以用可调用对象构造 [(constructor)](https://en.cppreference.com/w/cpp/thread/packaged_task/packaged_task)
     - `explicit` 的构造函数**不支持赋值形式的构造**：
@@ -1478,21 +1478,197 @@ async_fut.wait();
 std::cout << result.get() << '\n';
 ```
 - 例子：[简易线程池](https://github.com/AXIHIXA/ThreadPool/blob/main/minimal.cpp)
+  - 提交的任务 `template <typename F, typename Args ...> submit(F && f, Args && ... args);`
+  - 创建 `shared_ptr`：`auto pTask = std::make_shared<std::packaged_task<R ()>>(std::bind(std::forard<F>(f), std::forward<Args>(args)...));`
+  - 当场获取 `future`：`std::future<R> fut = pTask->get_future();`
+  - 任务队列存储 `std::function<void ()>`，类型擦除：`tasks.emplace([pTask] { (*pTask)(); });`
+
+#### 📌 4.2.3 [std::promise](https://en.cppreference.com/w/cpp/thread/promise)
+
+- [std::promise](https://en.cppreference.com/w/cpp/thread/promise)
+  - 用于存储一个结果或异常以供异步查询
+    - `std::promise<R>`，如果只需要状态而不要值，使用 `std::promise_void`
+  - [get_future](https://en.cppreference.com/w/cpp/thread/promise/get_future)
+    - 由这个 `promise` 提供一个 `future` 对象
+    - 用于异步查询这个结果或异常
+    - 同样，推荐**创建 `promise` 后当场获取 `future` 并存储**
+  - [set_value](https://en.cppreference.com/w/cpp/thread/promise/set_value)
+    - 存储一个值，同时对应的 `future` 状态置为 Ready
+    - 当存储值之前销毁 `promise`，将会存储一个异常
+  - `std::promise`/`std::future` 提供一种机制
+    - `future` 可以阻塞等待线程
+    - 提供数据的线程可以使用 `promise` 对相关值进行设置，并将 `future` 的状态置为 Ready
+```c++
+void accumulate(std::vector<int>::iterator first,
+                std::vector<int>::iterator last,
+                std::promise<int> accumulate_promise)
+{
+    int sum = std::accumulate(first, last, 0);
+    accumulate_promise.set_value(sum); // Notify future
+}
+
+void do_work(std::promise<void> barrier)
+{
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    barrier.set_value();
+}
+ 
+void foo()
+{
+    // Demonstrate using promise<int> to transmit a result between threads.
+    std::vector<int> numbers = {1, 2, 3, 4, 5, 6};
+    std::promise<int> accumulate_promise;
+    std::future<int> accumulate_future = accumulate_promise.get_future();
+    std::thread work_thread(accumulate, 
+                            numbers.begin(), 
+                            numbers.end(),
+                            std::move(accumulate_promise));
+ 
+    // future::get() will wait until the future has a valid result and retrieves it.
+    // Calling wait() before get() is not needed
+    // accumulate_future.wait(); // wait for result
+    std::cout << "result = " << accumulate_future.get() << '\n';
+    work_thread.join(); // wait for thread completion
+ 
+    // Demonstrate using promise<void> to signal state between threads.
+    std::promise<void> barrier;
+    std::future<void> barrier_future = barrier.get_future();
+    std::thread new_work_thread(do_work, std::move(barrier));
+    barrier_future.wait();
+    new_work_thread.join();
+}
+```
+
+#### 📌 4.2.4 [std::promise::set_exception](https://en.cppreference.com/w/cpp/thread/promise/set_exception)：将异常存于 `future` 中
+
+- 第一种方式，`try-catch` 抓取当前异常
+```c++
+extern std::promise<double> some_promise;
+
+try
+{
+    some_promise.set_value(calculate_value());
+}
+catch (...)
+{
+    
+    some_promise.set_exception(std::current_exception());
+}
+```
+- 第二种方式，如果预先知道异常的类型，则直接存储
+```c++
+some_promise.set_exception(std::copy_exception(std::logic_error("foo")));
+```
+- 第三种方式，不设置 `future` 的情况下，直接销毁 `promise`，这会自动抛出 `std::future_error`（`std::future_errc::broken_promise`）
+
+#### 📌 4.2.5 [std::shared_future](https://en.cppreference.com/w/cpp/thread/shared_future)：多个线程的等待
+
+- `std::future` 是只移动的，所以其所有权可以在不同的实例中互相传递，但只有一个实例可以获得特定的同步结果
+- `std::shared_future` 实例是可拷贝的，所以多个对象可以引用同一关联期望值的结果
+  - 多个线程同时访问一个 `shared_future` 的 `wait`，**不安全**
+  - `shared_future` 对象本身可以被线程安全地拷贝
+  - 多个线程，每个线程通过自己的 `shared_future` 实例，访问同一个 shared state，是安全的
+```c++
+std::promise<int> p;
+std::future<int> f(p.get_future());
+assert(f.valid());  // 1 f 是合法的
+std::shared_future<int> sf(std::move(f));
+assert(!f.valid());  // 2 f 被 move 了，现在不合法了
+assert(sf.valid());  // 3 sf 现在是合法的
+```
+- 用右值 future 隐式转移所有权
+```c++
+std::promise<std::string> p;
+std::shared_future<std::string> sf(p.get_future());  // 1 隐式转移所有权
+```
+- 使用 [std::future::share](https://en.cppreference.com/w/cpp/thread/future/share) 显式共享所有权
+```c++
+std::shared_future<T> share() noexcept;
+```
+
+### 🌱 4.3 限时等待
+
+### 🌱 4.4 简化代码
+
+#### 📌 4.4.1 使用 `future` 的函数化编程
+
+#### 📌 4.4.2 使用消息传递的同步操作
+
+#### 📌 4.4.3 扩展规范中的持续性并发
+
+#### 📌 4.4.4 持续性连接
+
+#### 📌 4.4.5 等待多个 `future`
+
+#### 📌 4.4.6 使用 `when_any` 等待第一个 `future`
+
+#### 📌 4.4.7 锁存器和栅栏 [std::latch](https://en.cppreference.com/w/cpp/thread/latch) [std::barrier](https://en.cppreference.com/w/cpp/thread/barrier) (since C++20)
 
 
+- 锁存器：
+  - 构造 `std::latch` 时，将计数器的值作为构造函数的唯一参数
+  - 当等待的事件发生，就会调用锁存器 `count_down` 成员函数。
+  - 当计数器为 0 时，锁存器状态变为就绪。
+  - 可以调用 `wait` 成员函数对锁存器进行阻塞，直到等待的锁存器处于就绪状态。
+  - 如果需要对锁存器是否就绪的状态进行检查，可调用 `is_ready` 成员函数。
+  - 想要减少计数器 1 并阻塞直至 0 ，则可以调用 `count_down_and_wait` 成员函数。
+```c++
+void foo()
+{
+    unsigned const thread_count = ...;
+    std::latch done(thread_count);
+    my_data data[thread_count];
 
+    std::vector<std::future<void>> threads;
 
+    for (unsigned i=0;i<thread_count;++i)
+    {
+        threads.push_back(
+            std::async(
+                    std::launch::async,
+                    [&, i]
+                    {
+                        data[i] = make_data(i);
+                        done.count_down();
+                        do_more_stuff();
+                    }
+            )
+        );
+    }
+    
+    done.wait();
+    process_data(data,thread_count);
+}
+```
+- 栅栏：
+  - 相当于 `__syncthreads` 或者 `__syncwarps` 或者 `cudaDeviceSynchronize` 等等
+```c++
+std::barrier sync(num_threads);
 
+for (unsigned i = 0; i < num_threads; ++i) 
+{
+    threads[i] = joining_thread([&, i] 
+    {
+        while (!source.done()) 
+        {
+            if (!i)
+            {
+                data_block current_block = source.get_next_data_block();
+                chunks = divide_into_chunks(current_block, num_threads);
+            }
 
+            sync.arrive_and_wait(); // 2
+            result.set_chunk(i, num_threads, process(chunks[i])); // 3
+            sync.arrive_and_wait(); // 4
 
-
-
-
-
-
-
-
-
+            if (!i) 
+            {
+                sink.write_data(std::move(result));
+            }
+        }
+    });
+}
+```
 
 ## 
 
