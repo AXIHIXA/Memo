@@ -1602,7 +1602,7 @@ std::shared_future<T> share() noexcept;
 
 #### 📌 4.4.6 使用 `when_any` 等待第一个 `future`
 
-#### 📌 4.4.7 锁存器和栅栏 [std::latch](https://en.cppreference.com/w/cpp/thread/latch) [std::barrier](https://en.cppreference.com/w/cpp/thread/barrier) (since C++20)
+#### 📌 4.4.7 锁存器 [std::latch](https://en.cppreference.com/w/cpp/thread/latch) 和栅栏 [std::barrier](https://en.cppreference.com/w/cpp/thread/barrier) (since C++20)
 
 
 - 锁存器：
@@ -1676,11 +1676,16 @@ for (unsigned i = 0; i < num_threads; ++i)
 
 #### 📌 5.2.1 标准原子类型
 
+- [std::atomic](https://en.cppreference.com/w/cpp/atomic/atomic) 这些类型的操作都是原子的
+  - 语言定义中只有这些类型的操作是原子的，也可以用互斥锁来模拟原子操作。
+  - 它们几乎都有一个 `is_lock_free` 成员函数，
+  - 这个函数可以让用户查询某原子类型的操作是直接用的原子指令，还是内部用了一个锁结构
+- 只有 [std::atomic_flag](https://en.cppreference.com/w/cpp/atomic/atomic_flag) 类型**不提供** `is_lock_free`
+  - 该类型是一个简单的布尔标志，并且在这种类型上的操作都是无锁的
 
+#### 📌 5.2.2 [std::atomic_flag](https://en.cppreference.com/w/cpp/atomic/atomic_flag)
 
-
-
-
+#### 📌 5.2.3 [std::atomic<bool>](https://en.cppreference.com/w/cpp/atomic/atomic)
 
 
 
