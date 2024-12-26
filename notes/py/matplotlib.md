@@ -2,6 +2,16 @@
 
 - Notes of reading [`matplotlib` Tutorials](https://matplotlib.org/tutorials/index.html)
 
+## [Backends](https://matplotlib.org/stable/users/explain/figure/backends.html)
+
+- Interactive backend (required `PyQt5` or other Qt distributions):
+```py
+import matplotlib
+matplotlib.use('QtAgg')
+```
+- In PyCharm, backend is PyCharm's [non-builtin backend](https://matplotlib.org/stable/users/explain/figure/backends.html#using-non-builtin-backends) `module://backend_interagg`
+- Non-builtin backends must be in `PYTHONPATH` (automatically populated with PyCharm's PATHS at runtime)
+
 ## Introductory
 
 ### 🌱 [Usage Guide](https://matplotlib.org/tutorials/introductory/usage.html#sphx-glr-tutorials-introductory-usage-py)
