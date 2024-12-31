@@ -44,6 +44,8 @@
   6. [WSL 2](./notes/system/06-wsl-2.md)
 - Miscs
   - [Adobe PhotoShop Miscs](./notes/misc/photoshop.md)
+- Paper
+  - [3DGS](./notes/paper/3dgs.ipynb)
 
 
 
