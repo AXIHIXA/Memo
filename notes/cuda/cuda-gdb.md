@@ -9,78 +9,6 @@
 
 
 
-## [CUDA-GDB](https://docs.nvidia.com/cuda/cuda-gdb/index.html)
-
-- Basics
-```
-(cuda-gdb) info threads
-(cuda-gdb) thread 1
-```
-```
-(cuda-gdb) info cuda threads
-(cuda-gdb) cuda thread 1
-```
-```
-(cuda-gdb) help cuda name_of_the_cuda_command
-(cuda-gdb) help set cuda name_of_the_cuda_option
-(cuda-gdb) help info cuda name_of_the_info_cuda_command
-```
-- Current focus
-```
-(cuda-gdb) cuda device sm warp lane block thread
-block (0,0,0), thread (0,0,0), device 0, sm 0, warp 0, lane 0
-(cuda-gdb) cuda kernel block thread
-kernel 1, block (0,0,0), thread (0,0,0)
-(cuda-gdb) cuda kernel
-kernel 1
-```
-- Switch focus
-```
-(cuda-gdb) cuda device 0 sm 1 warp 2 lane 3
-[Switching focus to CUDA kernel 1, grid 2, block (8,0,0), thread
-(67,0,0), device 0, sm 1, warp 2, lane 3]
-374 int totalThreads = gridDim.x * blockDim.x;
-```
-```
-# Omitted coordinates default to current focus. 
-(cuda-gdb) cuda thread (15)
-[Switching focus to CUDA kernel 1, grid 2, block (8,0,0), thread
-(15,0,0), device 0, sm 1, warp 0, lane 15]
-374 int totalThreads = gridDim.x * blockDim.x;
-```
-```
-# Parentheses for the block and thread arguments are optional.
-(cuda-gdb) cuda block 1 thread 3
-[Switching focus to CUDA kernel 1, grid 2, block (1,0,0), thread (3,0,0),
-device 0, sm 3, warp 0, lane 3]
-374 int totalThreads = gridDim.x * blockDim.
-```
-- Access variables and states
-```
-(cuda-gdb) print &array
-$1 = (@shared int (*)[0]) 0x20
-(cuda-gdb) print array[0]@4
-$2 = {0, 128, 64, 192}
-```
-```
-# Shared memory
-(cuda-gdb) print *(@shared int*)0x20
-$3 = 0
-(cuda-gdb) print *(@shared int*)0x24
-$4 = 128
-(cuda-gdb) print *(@shared int*)0x28
-$5 = 64
-```
-```
-# Kernel input parameter
-(cuda-gdb) print &data
-$6 = (const @global void * const @parameter *) 0x10
-(cuda-gdb) print *(@global void * const @parameter *) 0x10
-$7 = (@global void * const @parameter) 0x110000</>
-```
-
-
-
 ## [GDB](https://sourceware.org/gdb/current/onlinedocs/gdb)
 
 ### [Invoking GDB](https://sourceware.org/gdb/current/onlinedocs/gdb#Invoking-GDB)
@@ -197,7 +125,21 @@ $7 = (@global void * const @parameter) 0x110000</>
 
 ### [Kernel Focus](https://docs.nvidia.com/cuda/cuda-gdb/#kernel-focus)
 
-#### Current Focus*
+- Basics
+```
+(cuda-gdb) info threads
+(cuda-gdb) thread 1
+```
+```
+(cuda-gdb) info cuda threads
+(cuda-gdb) cuda thread 1
+```
+```
+(cuda-gdb) help cuda name_of_the_cuda_command
+(cuda-gdb) help set cuda name_of_the_cuda_option
+(cuda-gdb) help info cuda name_of_the_info_cuda_command
+```
+- Current focus
 ```
 (cuda-gdb) cuda device sm warp lane block thread
 block (0,0,0), thread (0,0,0), device 0, sm 0, warp 0, lane 0
@@ -206,39 +148,36 @@ kernel 1, block (0,0,0), thread (0,0,0)
 (cuda-gdb) cuda kernel
 kernel 1
 ```
-#### Switching Focus*
+- Switch focus
 ```
 (cuda-gdb) cuda device 0 sm 1 warp 2 lane 3
 [Switching focus to CUDA kernel 1, grid 2, block (8,0,0), thread
 (67,0,0), device 0, sm 1, warp 2, lane 3]
 374 int totalThreads = gridDim.x * blockDim.x;
 ```
-If the specified focus is not fully defined by the command, the debugger will assume that the omitted coordinates are set to the coordinates in the current focus, including the subcoordinates of the block and thread.
 ```
+# Omitted coordinates default to current focus. 
 (cuda-gdb) cuda thread (15)
 [Switching focus to CUDA kernel 1, grid 2, block (8,0,0), thread
 (15,0,0), device 0, sm 1, warp 0, lane 15]
 374 int totalThreads = gridDim.x * blockDim.x;
 ```
-The parentheses for the block and thread arguments are optional.
 ```
+# Parentheses for the block and thread arguments are optional.
 (cuda-gdb) cuda block 1 thread 3
 [Switching focus to CUDA kernel 1, grid 2, block (1,0,0), thread (3,0,0),
 device 0, sm 3, warp 0, lane 3]
 374 int totalThreads = gridDim.x * blockDim.
 ```
-
-### [Inspecting Program State](https://docs.nvidia.com/cuda/cuda-gdb/#inspecting-program-state)
-
-- Depending on the variable type and usage, variables can be stored either in registers or in local, shared, const or global memory. You can print the address of any variable to find out where it is stored and directly access the associated memory.
+- Access variables and states
 ```
 (cuda-gdb) print &array
 $1 = (@shared int (*)[0]) 0x20
 (cuda-gdb) print array[0]@4
 $2 = {0, 128, 64, 192}
 ```
-- Access the shared memory indexed into the starting offset to see what the stored values are:
 ```
+# Shared memory
 (cuda-gdb) print *(@shared int*)0x20
 $3 = 0
 (cuda-gdb) print *(@shared int*)0x24
@@ -246,18 +185,20 @@ $4 = 128
 (cuda-gdb) print *(@shared int*)0x28
 $5 = 64
 ```
-- Access the starting address of the input parameter to the kernel.
 ```
+# Kernel input parameter
 (cuda-gdb) print &data
 $6 = (const @global void * const @parameter *) 0x10
 (cuda-gdb) print *(@global void * const @parameter *) 0x10
 $7 = (@global void * const @parameter) 0x110000</>
 ```
-- Info CUDA Commands
-  - info cuda devices: information about all the devices
-  - info cuda sms: information about all the active SMs in the current device
-  - info cuda warps: information about all the active warps in the current SM
-  - info cuda lanes: information about all the active lanes in the current warp
-  - info cuda kernels: information about all the active kernels
-  - info cuda blocks: information about all the active blocks in the current kernel
-  - info cuda threads: information about all the active threads in the current kernel
+
+### Info CUDA Commands
+
+- info cuda devices: information about all the devices
+- info cuda sms: information about all the active SMs in the current device
+- info cuda warps: information about all the active warps in the current SM
+- info cuda lanes: information about all the active lanes in the current warp
+- info cuda kernels: information about all the active kernels
+- info cuda blocks: information about all the active blocks in the current kernel
+- info cuda threads: information about all the active threads in the current kernel
