@@ -45,7 +45,9 @@
 - Miscs
   - [Adobe PhotoShop Miscs](./notes/misc/photoshop.md)
 - Paper
-  - [3DGS](./notes/paper/3dgs.ipynb)
+  - Neural Rendering
+    - [NeRF](./notes/paper/neural_rendering/nerf.ipynb)
+    - [3DGS](./notes/paper/neural_rendering//3dgs.ipynb)
 
 
 
