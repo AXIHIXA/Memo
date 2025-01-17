@@ -42,6 +42,7 @@
   4. [System Management](./notes/system/04-system-management.md)
   5. [System Programming](./notes/system/05-system-programming.md)
   6. [WSL 2](./notes/system/06-wsl-2.md)
+  7. [MacOSX](./notes/system/07-macosx.md)
 - Miscs
   - [Adobe PhotoShop Miscs](./notes/misc/photoshop.md)
 - Paper
