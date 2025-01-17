@@ -1,10 +1,25 @@
 # Mac OSX Shortcuts
 
+## Common Shortcuts
+
+- [Common Shortcuts](https://support.apple.com/en-us/102650)
+  - Hard-coded, non-editable, could not be overwritten by other configurations. 
+  - In case of conflicts, these common shortcuts will prevail. 
+
+## Shortcuts
+
+- Use F1, F2, etc keys as standard function keys: 
+  - Finder (Top left corner) > Services > Service Settings > Function Keys > ...
+  - OR: 
+  - System Settings (from Taskbar) > Keyboard > **Keyboard Shortcuts**... > Function Keys > ...
+
 ## Touchpad
 
 - Use three fingers
   - Swipe left/right: Change screen;
-  - Swipe up: Show screen management tab on the top.
+  - **Mission Control**:
+    - Shortcut: Ctrl + Up
+    - Swipe up: Show screen management tab on the top.
 
 ## Terminal
 
