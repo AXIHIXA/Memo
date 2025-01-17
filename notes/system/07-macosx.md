@@ -14,6 +14,7 @@
 ## Finder
 
 - Command + Delete: Delete a file;
+- Command + Shift + Period(.): Show/hide hidden files;
 - Select a file and press Enter: Rename a file.
 
 ## Chrome
