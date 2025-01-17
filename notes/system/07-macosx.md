@@ -16,6 +16,7 @@
 - Command + Delete: Delete a file;
 - Command + Shift + Period(.): Show/hide hidden files;
 - Select a file and press Enter: Rename a file.
+- Create New Text File: [HERE](https://apple.stackexchange.com/questions/84309/how-to-create-a-text-file-in-a-folder)
 
 ## Chrome
 
