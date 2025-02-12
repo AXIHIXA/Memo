@@ -24,6 +24,7 @@
     4. *[Effective Modern C++](./notes/cpp/effective_cpp_notes_04_effective_modern_cpp.md)*
   - *[CPP Concurrency In Action](./notes/cpp/cpp_concurrency_in_action_notes.md)*
   - [Notes on The Translation (g++) And Loading (ld, lld, ld-linux.so) Toolchains](./notes/cpp/translation_and_loading_toolchain.md)
+  - [Command Line Cheat Sheet (CMake)](./notes/cpp/cmd_cheat_sheet.md)
 - CUDA
   - [CUDA C++ Programming Guide](./notes/cuda/cuda_cpp_programming_guide.md)
   - [Professional CUDA C Programming](./notes/cuda/professional_cuda_c_programming.md)
