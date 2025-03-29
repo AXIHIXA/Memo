@@ -146,20 +146,26 @@ Thank you for installing Anaconda3!
 conda create -n py3 python
 conda activate py3
 
+# Boilerplate packages. 
 # for opencv-python's versioning, see below.
 # for PyTorch's version under this default setting, see https://pytorch.org/get-started/locally/.
-pip install matplotlib numpy einops h5py scipy sympy scikit-image scikit-learn scikit-learn-intelex opencv-python-headless==4.5.5.64
+pip install matplotlib numpy einops h5py scipy sympy scikit-image scikit-learn opencv-python-headless==4.5.5.64
 pip install torch torchvision torchaudio
 
+# Ubuntu with AMD64 architecture is fine;
+# MacOSX with ARM64 architecture does not have scikit-learn-intelex!
+pip install scikit-learn-intelex
+
+# Juypter.
 pip install ipykernel 
 python -m ipykernel install --name py3 --user
 ```
 - **Never** update anaconda itself as well as the base environment, it is highly likely to downgrade!
-    - **Never** call the following commands:
-    ```
-    conda update anaconda
-    conda update --all
-    ```
+```
+# NEVER call the following commands:
+conda update anaconda
+conda update --all
+```
 - [Uninstall anaconda](https://docs.anaconda.com/anaconda/install/uninstall/)
 ```bash
 conda install anaconda-clean
