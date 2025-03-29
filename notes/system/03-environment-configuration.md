@@ -254,15 +254,15 @@ jupyter server --generate-config
 jupyter server password
 ```
 
-edit `jupyter_server_config.py`:    
+edit `~/.jupyter/jupyter_server_config.py`:    
 
 ```
 https://jupyter-notebook.readthedocs.io/en/stable/public_server.html?highlight=serverapp%20ip#running-a-public-notebook-server
 # Set ip to '*' to bind on all interfaces (ips) for the public server
-c.ServerApp.ip = '*'                 # 335
-c.ServerApp.open_browser = False     # 440
-c.ServerApp.password = 'argon2:...'  # 451
-c.ServerApp.port = 9000              # 464
+c.ServerApp.ip = '*'                 # 357
+c.ServerApp.open_browser = False     # 461
+c.ServerApp.password = 'argon2:...'  # 465
+c.ServerApp.port = 9000              # 473
 ```
     
 #### kernel management
