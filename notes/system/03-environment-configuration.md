@@ -148,7 +148,7 @@ conda activate py3
 
 # for opencv-python's versioning, see below.
 # for PyTorch's version under this default setting, see https://pytorch.org/get-started/locally/.
-pip install matplotlib numpy scipy scikit-image scikit-learn scikit-learn-intelex sympy opencv-python-headless==4.5.5.64
+pip install matplotlib numpy einops h5py scipy sympy scikit-image scikit-learn scikit-learn-intelex opencv-python-headless==4.5.5.64
 pip install torch torchvision torchaudio
 
 pip install ipykernel 
