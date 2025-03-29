@@ -110,6 +110,11 @@ export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}"
 
 ### anaconda
 
+- **Best Practive**:
+  - Use conda to manage environments ONLY.
+  - Use PyPI (pip) to manage packages!
+    - PyPI has more updates and more support (e.g., PyTorch no longer supports conda installation);
+    - PyPI is much faster than conda to resolve package dependencies!
 - Installation:
 ```
 # `bash` is CRITICAL!!! or you may fail when choosing to modify .bashrc
@@ -117,38 +122,34 @@ bash ./Anaconda...
 ```
 - Choose `yes`:
 ```
-Do you wish to update your shell profile to automatically initialize conda?
-This will activate conda on startup and change the command prompt when activated.
-If you'd prefer that conda's base environment not be activated on startup,
-   run the following command when conda is activated:
-
-conda config --set auto_activate_base false
-
 You can undo this by running `conda init --reverse $SHELL`? [yes|no]
-[yes] >>> yes
-no change     /Users/ax/opt/anaconda3/condabin/conda
-no change     /Users/ax/opt/anaconda3/bin/conda
-no change     /Users/ax/opt/anaconda3/bin/conda-env
-no change     /Users/ax/opt/anaconda3/bin/activate
-no change     /Users/ax/opt/anaconda3/bin/deactivate
-no change     /Users/ax/opt/anaconda3/etc/profile.d/conda.sh
-no change     /Users/ax/opt/anaconda3/etc/fish/conf.d/conda.fish
-no change     /Users/ax/opt/anaconda3/shell/condabin/Conda.psm1
-modified      /Users/ax/opt/anaconda3/shell/condabin/conda-hook.ps1
-no change     /Users/ax/opt/anaconda3/lib/python3.12/site-packages/xontrib/conda.xsh
-no change     /Users/ax/opt/anaconda3/etc/profile.d/conda.csh
-modified      /Users/ax/.zshrc
+[no] >>> yes
+no change     /home/xihan1/opt/anaconda3/condabin/conda
+no change     /home/xihan1/opt/anaconda3/bin/conda
+no change     /home/xihan1/opt/anaconda3/bin/conda-env
+no change     /home/xihan1/opt/anaconda3/bin/activate
+no change     /home/xihan1/opt/anaconda3/bin/deactivate
+no change     /home/xihan1/opt/anaconda3/etc/profile.d/conda.sh
+no change     /home/xihan1/opt/anaconda3/etc/fish/conf.d/conda.fish
+no change     /home/xihan1/opt/anaconda3/shell/condabin/Conda.psm1
+no change     /home/xihan1/opt/anaconda3/shell/condabin/conda-hook.ps1
+no change     /home/xihan1/opt/anaconda3/lib/python3.12/site-packages/xontrib/conda.xsh
+no change     /home/xihan1/opt/anaconda3/etc/profile.d/conda.csh
+no change     /home/xihan1/.bashrc
+No action taken.
+Thank you for installing Anaconda3!
 
 ==> For changes to take effect, close and re-open your current shell. <==
-
-Thank you for installing Anaconda3!
 ```
 - New virtual environment (do NOT use `opencv` package from `conda-forge`; go to PyPI):
 ```
-conda create -n py3 ipykernel matplotlib numpy scipy scikit-image scikit-learn scikit-learn-intelex sympy 
+conda create -n py3 python
 conda activate py3
+pip install ipykernel matplotlib numpy scipy scikit-image scikit-learn scikit-learn-intelex sympy opencv-python-headless==4.5.5.64
 python -m ipykernel install --name py3 --user
-# for opencv-python, see below. 
+pip install torch torchvision torchaudio
+# for opencv-python's versioning, see below.
+# for PyTorch's version under this default setting, see https://pytorch.org/get-started/locally/.
 ```
 - **Never** update anaconda itself as well as the base environment, it is highly likely to downgrade!
     - **Never** call the following commands:
