@@ -19,6 +19,7 @@
   - `$HOME/.bashrc`
     - 用于初始化 Bash 环境的环境变量。
     - 一个使用 Bash 启动的应用，其环境变量只由 `$HOME/.bashrc` 初始化，`$HOME/.profile` 中的配置**不会**生效！
+    - 但通过 GUI 启动的 Terminal 中，`$HOME/.profile` 中的配置是生效（继承）的！
 - 系统环境变量
   - 建议放置于 `/etc/profile.d/*.sh` 里。
   - `/etc/profile`
@@ -56,7 +57,7 @@ sudoedit /etc/profile.d/my-env-vars.sh
 
 # Tex Live
 # $HOME/.bashrc is NOT sourced by GUI apps!
-# In addition to $HOME/.bashrc, also set PATH in /etc/profile.d/my-env-vars.sh,
+# Set PATH in /etc/profile.d/my-env-vars.sh,
 # so that GUI-launched Tex Studio could find correct Tex Live installation. 
 export PATH="/usr/local/texlive/2025/bin/x86_64-linux${PATH:+:${PATH}}"
 
