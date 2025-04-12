@@ -1,48 +1,64 @@
-# Environment Configuration
+# 环境配置 Environment Configuration
 
 
 
-## 🌱 Environment Variables
+## 🌱 环境变量 Environment Variables
 
 ### Wiki
 
-- See [Environment Variables - Ubuntu Documentation](https://help.ubuntu.com/community/EnvironmentVariables). 
-- Local Variables: 
-  - Suggested: `~/.profile`. 
-    - **NOT** for anaconda initialization script and aliases! 
-      These still go to `~/.bashrc` as you invoke anaconda commands in Bash shells! 
-  - Shell config files such as `~/.bashrc`, `~/.bash_profile`, and `~/.bash_login` 
-    are often suggested for setting environment variables. 
-    While this may work on Bash shells for programs started from the shell, 
-    variables set in those files are **not** available 
-    by default to programs started from the graphical environment in a desktop session.
-- System Variables: 
-  - Suggested: `/etc/profile.d/*.sh`. 
-  - While `/etc/profile` is often suggested for setting environment variables system-wide, 
-    it is a configuration file of the base-files package, 
-    so it's **not** appropriate to edit that file directly. 
-    Use a file in `/etc/profile.d` instead as shown above. 
-    (Files in `/etc/profile.d` are sourced by `/etc/profile`.)
-  - The shell config file `/etc/bash.bashrc` is sometimes suggested for setting environment variables system-wide. 
-    While this may work on Bash shells for programs started from the shell, 
-    variables set in that file are **not** available 
-    by default to programs started from the graphical environment in a desktop session.
+- 参考文档
+  - [Environment Variables - Ubuntu Documentation](https://help.ubuntu.com/community/EnvironmentVariables). 
+- 本地环境变量
+  - 建议放置于 `$HOME/.profile` 里。
+    - 注意，Anaconda 的初始化脚本以及 alias 除外，这两样必须放在 `$HOME/.bashrc` 里！
+    - 这几样是只在 Bash 环境里用的！
+  - `$HOME/.profile`
+    - 用于初始化 GUI 环境的环境变量。
+    - 一个使用 Desktop launcher 启动的应用，其环境变量只由 `$HOME/.profile` 初始化，`$HOME/.bashrc` 中的配置**不会**生效！
+    - `$HOME/.profile` 会检测当前环境，如果是 Bash，则也会执行 `$HOME/.bashrc`，因此不要在 `$HOME/.bashrc` 中执行 `$HOME/.profile`，不然会产生死循环！
+  - `$HOME/.bashrc`
+    - 用于初始化 Bash 环境的环境变量。
+    - 一个使用 Bash 启动的应用，其环境变量只由 `$HOME/.bashrc` 初始化，`$HOME/.profile` 中的配置**不会**生效！
+- 系统环境变量
+  - 建议放置于 `/etc/profile.d/*.sh` 里。
+  - `/etc/profile`
+    - 由 login shell 执行
+      - When you log in via a text console, TTY, SSH, or graphical login manager (like GDM/lightDM)， and a login shell is started (like Bash).
+      - It is sourced before the user's `~/.bash_profile`, `~/.bash_login`, or `~/.profile` (whichever exists first).
+    - 对于 non-login 或 non-interactive 环境，则不会被执行。
+    - While `/etc/profile` is often suggested for setting environment variables system-wide, it is a configuration file of the base-files package, so it's **not** appropriate to edit that file directly. Use a file in `/etc/profile.d` instead as shown above. (Files in `/etc/profile.d` are sourced by `/etc/profile`.)
+    - **修改后不会立即生效，需要 log out and re-login！**
+      - 其他方式，如切换 TTY，都有丢失当前上下文的风险，重新登录是 best practice！
 - `sudo` Caveat:
-  - Any variables added to these locations will **not** be reflected when invoking them with a `sudo` command, 
-    as `sudo` has a default policy of resetting the Environment 
-    and setting a secure path (this behavior is defined in `/etc/sudoers`). 
-    - As a workaround, you can use `sudo su` that will provide a shell with root privileges 
-      but retaining any modified `PATH` variables. 
-    - Alternatively you can setup sudo not to reset certain environment variables 
-      by adding some explicit environment settings to keep in `/etc/sudoers`. 
+  - Any variables added to these locations will **not** be reflected when invoking them with a `sudo` command, as `sudo` has a default policy of resetting the Environment and setting a secure path (this behavior is defined in `/etc/sudoers`). 
+    - As a workaround, you can use `sudo su` that will provide a shell with root privileges but retaining any modified `PATH` variables. 
+    - Alternatively you can setup sudo not to reset certain environment variables by adding some explicit environment settings to keep in `/etc/sudoers`. 
 
-### Current `/etc/profile.d/my-env-vars.sh`
+### 如何修改 PATH
 
+```bash
+export PATH=/path/to/prepend${PATH:+:${PATH}}
+```
+- Bash 语法：`${FOO:+${BAR}}`
+  - 如果变量 FOO 已定义且非空，则展开为 `${BAR}`；否则，展开为空串
+- 上述修改方法，相比 `export PATH=/path/to/prepend:${PATH}` 的好处在于：
+  - 如果 PATH 为空，则这种简单写法会被展开为 `export PATH=/path/to/prepend:`，相当于 `export PATH=/path/to/prepend:.`，即将当前目录放进了 PATH，会有安全性问题！
+  - 上述复杂写法则能够保证 PATH 为空时的安全性。
+
+### `/etc/profile.d/my-env-vars.sh`
+
+- `/etc/profile.d/*.sh` 会自动被 `/etc/profile` 执行
 ```bash
 sudo touch /etc/profile.d/my-env-vars.sh
 sudoedit /etc/profile.d/my-env-vars.sh
 
 # The following are the contents to be appended to /etc/profiles.d/my-env-vars.sh: 
+
+# Tex Live
+# $HOME/.bashrc is NOT sourced by GUI apps!
+# In addition to $HOME/.bashrc, also set PATH in /etc/profile.d/my-env-vars.sh,
+# so that GUI-launched Tex Studio could find correct Tex Live installation. 
+export PATH="/usr/local/texlive/2025/bin/x86_64-linux${PATH:+:${PATH}}"
 
 # cuda
 export PATH="/usr/local/cuda/bin${PATH:+:${PATH}}"
@@ -55,7 +71,7 @@ export EDITOR="/usr/bin/vim"
 export JAVA_HOME="/opt/jdk"
 export JRE_HOME="${JAVA_HOME}/jre"
 export CLASSPATH=".:${JAVA_HOME}/lib:${JRE_HOME}/lib:${CLASSPATH}"
-export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}"
+export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin${PATH:+:${PATH}}"
 ```
 
 
@@ -526,7 +542,7 @@ sudoedit /etc/profile.d/my-env-vars.sh
 export JAVA_HOME="/opt/jdk"
 export JRE_HOME="${JAVA_HOME}/jre"
 export CLASSPATH=".:${JAVA_HOME}/lib:${JRE_HOME}/lib:${CLASSPATH}"
-export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin:${PATH}"
+export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin${PATH:+:${PATH}}"
 ```
 
 ### jdk的安装位置
