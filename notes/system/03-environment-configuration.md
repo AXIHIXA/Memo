@@ -27,7 +27,7 @@
       - It is sourced before the user's `~/.bash_profile`, `~/.bash_login`, or `~/.profile` (whichever exists first).
     - 对于 non-login 或 non-interactive 环境，则不会被执行。
     - While `/etc/profile` is often suggested for setting environment variables system-wide, it is a configuration file of the base-files package, so it's **not** appropriate to edit that file directly. Use a file in `/etc/profile.d` instead as shown above. (Files in `/etc/profile.d` are sourced by `/etc/profile`.)
-    - **修改后不会立即生效，需要 log out and re-login！**
+    - **修改后不会立即生效，需要 log out and log back in！**
       - 其他方式，如切换 TTY，都有丢失当前上下文的风险，重新登录是 best practice！
 - `sudo` Caveat:
   - Any variables added to these locations will **not** be reflected when invoking them with a `sudo` command, as `sudo` has a default policy of resetting the Environment and setting a secure path (this behavior is defined in `/etc/sudoers`). 
