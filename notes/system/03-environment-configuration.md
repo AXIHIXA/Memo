@@ -15,6 +15,7 @@
   - `$HOME/.profile`
     - 用于初始化 GUI 环境的环境变量。
     - 一个使用 Desktop launcher 启动的应用，其环境变量只由 `$HOME/.profile` 初始化，`$HOME/.bashrc` 中的配置**不会**生效！
+      - GUI 中打开 Terminal 用 Bash 的情况下，`$HOME/.profile` 和 `$HOME/.bashrc` 都会生效。
     - `$HOME/.profile` 会检测当前环境，如果是 Bash，则也会执行 `$HOME/.bashrc`，因此不要在 `$HOME/.bashrc` 中执行 `$HOME/.profile`，不然会产生死循环！
   - `$HOME/.bashrc`
     - 用于初始化 Bash 环境的环境变量。
@@ -29,7 +30,7 @@
     - 对于 non-login 或 non-interactive 环境，则不会被执行。
     - While `/etc/profile` is often suggested for setting environment variables system-wide, it is a configuration file of the base-files package, so it's **not** appropriate to edit that file directly. Use a file in `/etc/profile.d` instead as shown above. (Files in `/etc/profile.d` are sourced by `/etc/profile`.)
     - **修改后不会立即生效，需要 log out and log back in！**
-      - 其他方式，如切换 TTY，都有丢失当前上下文的风险，重新登录是 best practice！
+      - 其他方式，如切换 TTY，都有丢失当前上下文的风险，重新登录才是 best practice！
 - `sudo` Caveat:
   - Any variables added to these locations will **not** be reflected when invoking them with a `sudo` command, as `sudo` has a default policy of resetting the Environment and setting a secure path (this behavior is defined in `/etc/sudoers`). 
     - As a workaround, you can use `sudo su` that will provide a shell with root privileges but retaining any modified `PATH` variables. 
