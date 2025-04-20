@@ -35,6 +35,14 @@
   - Any variables added to these locations will **not** be reflected when invoking them with a `sudo` command, as `sudo` has a default policy of resetting the Environment and setting a secure path (this behavior is defined in `/etc/sudoers`). 
     - As a workaround, you can use `sudo su` that will provide a shell with root privileges but retaining any modified `PATH` variables. 
     - Alternatively you can setup sudo not to reset certain environment variables by adding some explicit environment settings to keep in `/etc/sudoers`. 
+  - `su` v.s. `su -`
+    - `su`：
+      - substitute user，切换用户，但保留当前的 working directory 以及环境（环境变量等）；
+      - 后面不跟随其他命令时，切换到 root。
+    - `su -`：
+      - 切换到 root，并启用一个全新的 login shell session。
+      - 当前工作目录和上下文不会被保留。
+
 
 ### 如何修改 PATH
 
