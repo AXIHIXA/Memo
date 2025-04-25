@@ -175,8 +175,14 @@ conda activate py3
 # Boilerplate packages. 
 # for opencv-python's versioning, see below.
 # for PyTorch's version under this default setting, see https://pytorch.org/get-started/locally/.
-pip install matplotlib numpy einops h5py scipy sympy scikit-image scikit-learn opencv-python-headless==4.5.5.64
-pip install torch torchvision torchaudio
+# No need to install numpy manually; it's a dependency of PyTorch. 
+pip install matplotlib einops h5py scipy sympy scikit-image scikit-learn opencv-python-headless==4.5.5.64
+
+# Stay with the legacy versions of PyTorch via conda. 
+# pip install torch torchvision torchaudio
+# https://pytorch.org/get-started/locally/
+# https://pytorch.org/get-started/previous-versions/
+conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=12.4 -c pytorch -c nvidia
 
 # Ubuntu with AMD64 architecture is fine;
 # MacOSX with ARM64 architecture does not have scikit-learn-intelex!
