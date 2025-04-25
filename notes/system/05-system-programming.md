@@ -6,8 +6,8 @@
 
 #### 🎯 Terminal
 
-- `Ctrl + Shift + F1`: GUI
-- `Ctrl + Shift + F2-FX`: TTY terminal
+- `Ctrl + Alt + F1`: GUI
+- `Ctrl + Alt + F2-FX`: TTY terminal
 - TTY: teletype (black screen, no GUI)
 - PTS: GUI terminal @ `/dev/pts/x`
 
