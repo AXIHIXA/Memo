@@ -169,7 +169,8 @@ Thank you for installing Anaconda3!
 ```
 - New virtual environment (do NOT use `opencv` package from `conda-forge`; go to PyPI):
 ```
-conda create -n py3 python
+# Stay with Python 3.10 for PyTorch 2.5.1 compatibility. 
+conda create -n py3 python=3.10
 conda activate py3
 
 # Boilerplate packages. 
