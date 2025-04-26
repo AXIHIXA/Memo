@@ -203,8 +203,9 @@ conda update --all
 ```bash
 conda install anaconda-clean
 anaconda-clean --yes
-rm -r ~/opt/anaconda3
-# Remove Anaconda path from .bash_rc
+# -rf needed; there are write-protected contents in ~/opt/anaconda3 and will pop up prompts. 
+rm -rf ~/opt/anaconda3
+# Remove Anaconda init script from .bash_rc
 ```
 - `opencv-python`:
   - PyCharm fails to index `opencv-python>=4.6.0.66`:
