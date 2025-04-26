@@ -203,7 +203,7 @@ conda update --all
 ```bash
 conda install anaconda-clean
 anaconda-clean --yes
-rm -rf ~/opt/anaconda3
+rm -r ~/opt/anaconda3
 # Remove Anaconda path from .bash_rc
 ```
 - `opencv-python`:
