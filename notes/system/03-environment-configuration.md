@@ -235,6 +235,13 @@ pip install PyGLM
 ##### Real Ubuntu System
 
 ```bash
+# Aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /home/xihan1/workspace"
+alias jl="cd /home/xihan1/workspace; jupyter lab"
+alias cls="reset"
+
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/home/xihan1/opt/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
@@ -249,13 +256,6 @@ else
 fi
 unset __conda_setup
 # <<< conda initialize <<<
-
-# Aliases
-alias c3="conda activate py3"
-alias d3="conda deactivate"
-alias ws="cd /home/xihan1/workspace"
-alias jl="cd /home/xihan1/workspace; jupyter lab"
-alias cls="reset"
 ```
 
 *Note*: `cls` is a Windows PowerShell command to clear the terminal. `reset` is a Linux Bash command to reinitialize the terminal, as if it were opened from scratch. 
