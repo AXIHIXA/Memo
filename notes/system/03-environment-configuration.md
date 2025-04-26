@@ -250,7 +250,7 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 
-# Anaconda
+# Aliases
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /home/xihan1/workspace"
@@ -258,30 +258,33 @@ alias jl="cd /home/xihan1/workspace; jupyter lab"
 alias cls="reset"
 ```
 
+*Note*: `cls` is a Windows PowerShell command to clear the terminal. `reset` is a Linux Bash command to reinitialize the terminal, as if it were opened from scratch. 
+
+##### `WSL`
+
+```bash
+vi ~/.bashrc
+
+# Aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /mnt/d/workspace"
+alias jl="cd /mnt/d/workspace; jupyter lab"
+alias cls="reset"
+alias ss="sudo service ssh --full-restart"
+alias pp="c3; python /mnt/d/AX/TMP/renamer/pixiv.py"
+```
+
 ##### `VMWare` Client
 
 ```bash
 gedit ~/.bashrc
 
-# Anaconda
+# Aliases
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /media/ax/DATA/workspace"
 alias jl="cd /media/ax/DATA/workspace; jupyter lab"
-alias cls="reset"
-```
-
-##### `WSL`
-
-```bash
-gedit ~/.bashrc
-
-# Anaconda
-alias c3="conda activate py3"
-alias d3="conda deactivate"
-alias ws="cd /mnt/d/workspace"
-alias jl="cd /mnt/d/workspace; jupyter lab"
-alias ss="sudo service ssh --full-restart"
 alias cls="reset"
 ```
 
