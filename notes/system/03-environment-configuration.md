@@ -273,7 +273,7 @@ alias ws="cd /mnt/d/workspace"
 alias jl="cd /mnt/d/workspace; jupyter lab"
 alias cls="reset"
 alias ss="sudo service ssh --full-restart"
-alias pp="c3; python /mnt/d/AX/TMP/renamer/pixiv.py"
+alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv.py"
 ```
 
 ##### `VMWare` Client
