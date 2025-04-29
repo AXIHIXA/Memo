@@ -276,6 +276,19 @@ alias ss="sudo service ssh --full-restart"
 alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv.py"
 ```
 
+##### `MaxOS`
+
+```bash
+vi ~/.zshrc
+
+# Aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /Users/ax/workspace"
+alias jl="cd /Users/ax/workspace; jupyter lab"
+alias cls="reset"
+```
+
 ##### `VMWare` Client
 
 ```bash
