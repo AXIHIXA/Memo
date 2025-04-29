@@ -176,8 +176,7 @@ conda activate py3
 # Boilerplate packages. 
 # for opencv-python's versioning, see below.
 # for PyTorch's version under this default setting, see https://pytorch.org/get-started/locally/.
-# No need to install numpy manually; it's a dependency of PyTorch. 
-pip install matplotlib einops h5py scipy sympy scikit-image scikit-learn opencv-python-headless==4.5.5.64
+pip install matplotlib einops h5py numpy scipy sympy scikit-image scikit-learn opencv-python-headless==4.5.5.64
 
 # Stay with the legacy versions of PyTorch via conda. 
 # pip install torch torchvision torchaudio
@@ -276,7 +275,7 @@ alias ss="sudo service ssh --full-restart"
 alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv.py"
 ```
 
-##### `MaxOS`
+##### `osx-arm64`
 
 ```bash
 vi ~/.zshrc
