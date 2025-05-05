@@ -176,7 +176,7 @@ conda activate py3
 # Boilerplate packages. 
 # for opencv-python's versioning, see below.
 # for PyTorch's version under this default setting, see https://pytorch.org/get-started/locally/.
-pip install matplotlib einops h5py numpy scipy sympy scikit-image scikit-learn opencv-python-headless==4.5.5.64
+pip install matplotlib einops h5py numpy scipy sympy scikit-image scikit-learn opencv-python-headless
 
 # Stay with the legacy versions of PyTorch via conda. 
 # pip install torch torchvision torchaudio
@@ -207,9 +207,6 @@ rm -rf ~/opt/anaconda3
 # Remove Anaconda init script from .bash_rc
 ```
 - `opencv-python`:
-  - PyCharm fails to index `opencv-python>=4.6.0.66`:
-    - Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (both main and contrib). 
-    - Manually hint old versions when installing. 
   - `opencv-python` conflicts with `matplotlib` (which uses `PyQt5` on its default `QtAgg1` backend) on Qt versioning. 
     - Could not load the Qt platform plugin "xcb". 
     - Check [this](https://github.com/opencv/opencv-python/issues/386#issuecomment-687655197) GitHub issue. 
@@ -219,7 +216,11 @@ rm -rf ~/opt/anaconda3
   - Ultimate solution:
     ```bash
     # pip uninstall opencv-python
-    pip install opencv-python-headless==4.5.5.64
+    # pip install opencv-python-headless
+
+    # A previous release of PyCharm fails to index `opencv-python>=4.6.0.66`:
+    # Pycharm refused to index or autocomplete properly while on OpenCV version 4.6 (both main and contrib). 
+    # Manually hint old versions when installing --> pip install opencv-python-headless==4.5.5.64
     ```
 - [PyTorch](https://pytorch.org/get-started/locally/)
 - [PyGLM](https://pypi.org/project/PyGLM/)
