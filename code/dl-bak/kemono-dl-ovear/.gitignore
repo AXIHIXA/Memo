@@ -1,0 +1,10 @@
+venv/
+Downloads/
+yt_dlp_temp/
+*cookies.txt
+*.pyc
+*.log
+*.bat
+links.txt
+test.py
+archive.txt
