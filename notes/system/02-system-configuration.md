@@ -18,6 +18,14 @@ set -g status-interval 60
 set -g display-time 3000
 set -g history-limit 65535
 
+touch ~/.vimrc
+gedit ~/.vimrc
+
+set tabstop=4
+set shiftwidth=4
+set expandtab
+set backspace=indent,eol,start
+
 # default editor
 sudo update-alternatives --config editor
 
