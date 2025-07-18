@@ -273,9 +273,9 @@ alias ws="cd /mnt/d/workspace"
 alias jl="cd /mnt/d/workspace; jupyter lab"
 alias cls="reset"
 alias ss="sudo service ssh --full-restart"
-alias ppp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv.py"
-alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_old.py"
-alias kkpixiv="bash /mnt/e/opt/PatreonDownloader-AlexCSDev/download-patreon.sh"
+alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_single.py"
+alias ppp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_multiple.py"
+alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDev/download-patreon.sh"
 ```
 
 ##### `osx-arm64`

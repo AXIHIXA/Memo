@@ -1,7 +1,7 @@
 import os
 
 
-SAVE_DIR = '/mnt/d/AX/ETC/MARCH OF THE PENGUINS'
+SAVE_DIR = '/mnt/f/Hfhf'
 TMP_DIR = '/mnt/g/TMP'
 
 
