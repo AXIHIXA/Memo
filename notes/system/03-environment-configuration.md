@@ -275,6 +275,7 @@ alias cls="reset"
 alias ss="sudo service ssh --full-restart"
 alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_single.py"
 alias ppp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_multiple.py"
+alias ppu="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_add_user_prefix.py"
 alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDev/download-patreon.sh"
 ```
 
