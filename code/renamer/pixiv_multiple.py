@@ -61,24 +61,19 @@ def rename_all_creators():
 
 
 def move_all_creators():
-    cr_3d = set(os.listdir(os.path.join(SAVE_DIR, '3D')))
     cr_cg = set(os.listdir(os.path.join(SAVE_DIR, 'CG')))
     cr_cg_ai = set(os.listdir(os.path.join(SAVE_DIR, 'CG-AI')))
     cr_cg_ai_ns = set(os.listdir(os.path.join(SAVE_DIR, 'CG-AI-NS')))
 
-    os.mkdir(os.path.join(TMP_DIR, '3D'))
     os.mkdir(os.path.join(TMP_DIR, 'CG'))
     os.mkdir(os.path.join(TMP_DIR, 'CG-AI'))
     os.mkdir(os.path.join(TMP_DIR, 'CG-AI-NS'))
 
     for cr in os.listdir(TMP_DIR):
-        if cr in ['3D', 'CG', 'CG-AI', 'CG-AI-NS']:
+        if cr in ['CG', 'CG-AI', 'CG-AI-NS']:
             continue
 
-        if cr in cr_3d:
-            print(f'{cr} => 3D.')
-            os.rename(os.path.join(TMP_DIR, cr), os.path.join(TMP_DIR, '3D', cr))
-        elif cr in cr_cg:
+        if cr in cr_cg:
             print(f'{cr} => CG.')
             os.rename(os.path.join(TMP_DIR, cr), os.path.join(TMP_DIR, 'CG', cr))
         elif cr in cr_cg_ai:
