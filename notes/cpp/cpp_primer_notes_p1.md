@@ -199,6 +199,199 @@
 
 ### 🌱 内存对齐（Alignment）
 
+- **CPP1. C++ 内存模型**
+  - 类的实例在内存中的布局（二进制 packet 布局）？
+    - ？？？
+  - 类 Unix 环境下进程的内存映像？
+    - ELF 的几个重要分段（注意这个是可执行文件的格式，不是虚拟内存中的段）
+      - TEXT 段（又称代码段）：程序执行代码（函数体）
+      - RDDATA 段：存放只读数据，例如编译期常量，类的虚表
+      - DATA 段：已初始化的全局变量和静态变量
+      - BSS 段（Block Started by Symbol）：未初始化的全局变量和静态变量
+    - 运行时虚拟内存中的段（从低地址向高地址）：
+      - NULL 页：未映射的地址区域，用于捕捉非法指针访问，占用一页，4KB，0x0 到 0xFFF
+      - 可执行代码段：ELF 中的 TEXT 段，只读，可执行
+      - 只读数据段：ELF 中的 RDDATA 段，只读
+      - 已初始化数据段：ELF 中的 DATA 段，可读可写
+      - 未初始化数据段：ELF 中的 BSS 段，可读可写，只占用虚拟地址空间，不实际占用内存或磁盘
+      - 堆
+      - 保留区域或映射区域：共享库的 TEXT、DATA 等映射到这里
+      - 栈
+      - 内核空间：内核态数据，用户态不能访问
+    - 存储期：
+      - 自动存储期（对应栈段）
+      - 静态存储期（对应 BSS 段、代码段和数据段）
+      - 堆存储期（new 或者 malloc 出来的）
+      - 线程局部存储期（C++20 才单独分出来）
+  - 内存序？
+```c++
+enum memory_order
+{
+    memory_order_relaxed,  // atomic is atomic, nothing more
+    memory_order_consume,  // not recommended, deprecated in C++26
+    memory_order_acquire,  // release-acquire memory order (mutex lock and unlock)
+    memory_order_release,  // release-acquire memory order (mutex lock and unlock)
+    memory_order_acq_rel,  // release-acquire memory order (mutex lock and unlock)
+    memory_order_seq_cst   // all threads observe the same order of memory operations
+};
+```
+- **CPP2. C++ 内存对齐**
+  - 地址必须是 alignof 的整数倍，sizeof 也必须是 alignof 的整数倍
+  ```cpp
+  struct Sample
+  {
+      char c;    // sizeof == 1,  alignof == 1
+      int i;     // sizeof == 4,  alignof == 4
+      double d;  // sizeof == 8,  alignof == 8
+  };             // sizeof == 16, alignof == 8
+
+  // Bytes
+  // 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+  // c           i  i  i  i  d  d  d  d  d  d  d  d
+  ```
+  - 每个 [类类型](https://en.cppreference.com/w/cpp/language/type) 都自带一个 [对齐要求 alignment requirement](https://en.cppreference.com/w/cpp/language/object#Alignment) 属性
+    - 无符号整数类型 [std::size_t](https://en.cppreference.com/w/cpp/types/size_t) `using size_t = decltype(sizeof(0));`
+    - **alignof 必须是 2 的幂次**
+    - **sizeof 必须是 alignof 的整数倍**
+    - 表示此类型能够被分配到的地址的起始位置
+      - 也表记为 两个 连续的可以分配此类型对象的地址 之间的 字节的数量
+    - 通过 [alignof 操作符](https://en.cppreference.com/w/cpp/language/alignof) 或 [std::alignment_of 模板](https://en.cppreference.com/w/cpp/types/alignment_of) 查询
+  - 默认对齐要求
+    - 空类：1
+    - 基础数据类型：sizeof
+    - 基础类类型：数据成员的对齐要求的**最大值**
+    - 多态类：自带一个虚函数表指针 vptr，对齐要求 8
+    - 带有虚继承的子类：自带一个虚基类表指针 vbptr，对齐要求 8
+  - [alignas 说明符](https://en.cppreference.com/w/cpp/language/alignas)
+    - 语法
+      - `alignas(expr)`：整形常量表达式，数值为合法的对齐数
+      - `alignas(type-id)`：等价于 `alignas(alignof(type-id))`
+      - `alignas(pack...)`：可用于模板形参包
+    - 可使用于
+      - 类的声明或定义
+      - 类的数据成员的声明（这个类不能是 bitfield）
+      - 变量的声明，以下两种特例除外：
+        - 函数形参
+        - catch 的形参
+    - 注意
+      - 作用于类型的声明或定义时，会同时更改这个类型的 sizeof，添加 padding bits
+      - 作用于变量的声明时，只会更改这个变量的起始地址（使其满足对齐要求），但不会变更 sizeof
+```c++
+struct StructOne       // align 64 size 192
+{
+    char c[32];        // align  1 size  32
+    int i;             // align  4 size   4
+
+    struct alignas(64)
+    {
+        unsigned int a;
+        unsigned int b;
+        unsigned int c;
+        unsigned int d;
+        unsigned int e;
+        unsigned int f;
+    }
+    data;              // align 64 size  64
+
+    int j;             // align  4 size   4
+    char v[0];         // align  1 size   0
+};
+
+struct StructTwo       // align 64 size 128
+{
+    char c[32];        // align  1 size  32
+    int i;             // align  4 size   4
+
+    struct
+    {
+        unsigned int a;
+        unsigned int b;
+        unsigned int c;
+        unsigned int d;
+        unsigned int e;
+        unsigned int f;
+    }
+    data alignas(64);  // align 64 size  24
+
+    int j;             // align  4 size   4
+    char v[0];         // align  1 size   0
+};
+```
+- **CPP3. 虚表和虚指针**
+  - 虚（函数）表
+    - 类的属性，不是对象的属性
+    - 在编译时，遇到类的定义中有虚函数时，由编译器当场生成，存放于 RDDATA 段
+    - 是存放虚函数地址的数组
+  - 虚（函数表）指针
+    - 对象的属性
+    - 由编译器在执行构造函数时赋值
+      - 先构造基类部分，虚指针为指向基类的虚表
+      - 再构造派生类部分，虚指针被更新为指向派生类的虚表
+    - 始终指向该对象的运行时实际类型的虚表
+- **CPP4. 虚继承**
+  - 菱形继承的问题
+    - 基类成员在菱形继承的子类中有多个拷贝
+    - 浪费空间
+    - 造成二义性
+  - 虚继承底层实现
+    - `g++ -fdump-lang-class *.cpp `
+    - 通过**虚基类表指针 vbptr**偏移来实现虚继承
+  - 菱形继承的例子
+    - 多继承子类有多个基类部分，按顺序一个一个来构造
+    - 如果构造某个基类时发现了虚基类指针，且之前构造好的基类部分中也有这个类型的指针，则会偏移当前基类部分的 vbptr 到之前构造好的地方，使得虚继承的部分只有一份
+    - 即下面例子里的 alternative-path
+```c++
+struct A
+{
+    int a;
+};
+
+struct B : public virtual A
+{
+    int b;
+};
+
+struct C : public virtual A
+{
+    int c;
+};
+
+struct D : public B, public C
+{
+    int d;
+};
+
+struct E : public C, public B
+{
+    int d;
+};
+```
+```
+Class A
+    A (0x0x7f8e0785f420) 0
+
+Class B
+    B (0x0x7f8e077041a0) 0
+    A (0x0x7f8e0785f480) 12 virtual
+
+Class C
+    C (0x0x7f8e07704208) 0
+    A (0x0x7f8e0785f600) 12 virtual
+
+Class D
+    D (0x0x7f8e07870000) 0
+    B (0x0x7f8e07704270) 0
+    A (0x0x7f8e0785f660) 32 virtual
+    C (0x0x7f8e077042d8) 16
+    A (0x0x7f8e0785f660) alternative-path
+
+Class E
+    E (0x0x7f8e07870070) 0
+    C (0x0x7f8e077043a8) 0
+    A (0x0x7f8e0785f720) 32 virtual
+    B (0x0x7f8e07704410) 16
+    A (0x0x7f8e0785f720) alternative-path
+```
 
 
 
