@@ -33,8 +33,8 @@ def rename_a_single_creator(creator_dir):
                     print(filename)
                     raise e
     
-    for _, dirs, files in os.walk(creator_dir):
-        for filename in files:
+    for dirpath, dirnames, filenames in os.walk(creator_dir):
+        for filename in filenames:
             if '.py' not in filename:
                 prefix, lst = filename.split('_p')
 
