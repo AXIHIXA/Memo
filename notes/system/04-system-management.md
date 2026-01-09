@@ -10,7 +10,46 @@ sudo updatedb
 ```
 Note: **NOT** `sudo mlocate updatedb`!
 
+### Auto SSH Keys for Remote SSH Sessions
 
+- Setup quick alias for ssh.
+```
+# ">" denotes shell commands on local,
+# "$" denotes shell commands on remote. ****
+> mkdir -p ~/.ssh
+> vi ~/.ssh
+```
+```
+Host some-remote-alias    # You can also call it something else. This is just an alias for the server
+    HostName <hostname>   # The hostname such as remote.domain.com
+    Port     <port>       # The port. If omitted, default to 22
+    User     <username>   # Your unix account username
+```
+- Setup ssh keys on local and remote.
+```
+# ">" denotes shell commands on local,
+# "$" denotes shell commands on remote. 
+> ssh-keygen
+> cat ~/.ssh/id_xxx.pub
+# Copy the contents
+> ssh user@remote
+# Use account password to log in
+$ mkdir -p ~/.ssh
+# If the key was generated on windows, make sure to escape the backslash by adding double backslash
+$ echo "<COPIED PUB KEY>" >> ~/.ssh/authorized_keys
+$ chmod go-w ~
+$ chmod 700 ~/.ssh
+$ chmod 600 ~/.ssh/authorized_keys
+```
+- To verify that authentication is working, open a new terminal session and try SSHing in again. You should be asked for the key passphrase if you configured one, not your unix account password.
+```
+> ssh -v some-remote-alias
+# or the alias you used when updating .ssh/config
+# You will be asked for the passphrase if your ssh key has one. Enter it when asked.
+# Check for the following 2 lines of log to confirm the usage of your key pair (signature and length might vary)
+debug1: Offering public key: xxxxxxxx
+debug1: Server accepts key: xxxxxxxx
+```
 
 ### 🌱 配置`ssh`
 
