@@ -1,4 +1,4 @@
-# Mac OSX Shortcuts
+# Mac OSX
 
 ## Shortcuts
 
@@ -33,6 +33,20 @@
   - Command + V: Copy
   - Command + Option + V: Cut
 - Create New Text File: [HERE](https://apple.stackexchange.com/questions/84309/how-to-create-a-text-file-in-a-folder)
+  - Apps -> Search "Automator" -> Choose "Quick Action" -> Left side bar choose "Utilities -> Run Apple Script"
+  - Edit tabs: Workflow receives "no input" in "Finder.app"
+  - Image "+ Add"
+  - Double click "Run AppleScript", Replace purple script with:
+```
+tell application "Finder"
+    set txt to make new file at (the target of the front window) as alias with properties {name:"Untitled Document.txt"}
+    select txt
+end tell
+```
+  - Top-left bar -> File -> Save, Save as "New Document" (will be stored in `~/Library/Services/`).
+    - Note that this name in "Services" will be final, won't change even if you update the file name in `~/Library/Services/`. 
+  - Under System Settings (in Dock) -> Keyboard Shortcuts... -> Services -> General. You will see "New Document" listed with "none" as the shortcut. Double click "none", replace with `Ctrl + Option + N` or other shortcuts. 
+- To always show file extensions on macOS, go to Finder > Settings (or Preferences) > Advanced and check "Show all filename extensions"
 
 ## Chrome
 
