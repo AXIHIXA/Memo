@@ -21,8 +21,14 @@
 
 ## Terminal
 
-- Command replaces Ctrl;
-- Ctrl + C/Z remains unchanged.
+- Profile
+  - Duplicate "Clear Dark", rename to "AX", set as Default.
+  - Text -> Background -> Color & Effects -> Ocacity 90%, Blur 50%
+  - Text -> Font -> font size to 16
+- Notes
+  - Command replaces Ctrl;
+  - Ctrl + C/Z remains unchanged.
+  
 
 ## Finder
 
@@ -51,4 +57,4 @@ end tell
 ## Chrome
 
 - Duplicate tab: Option + Shift + D.
-- Refresh page: Command + Shift + R. 
+- Refresh page: Command + R. 
