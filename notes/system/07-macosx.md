@@ -1,5 +1,16 @@
 # Mac OSX
 
+## Apps
+
+- [Scroll Reverser](https://pilotmoon.com/scrollreverser/)
+  - Revert only mouse but not touchpad, useful.
+  - Need to relaunch upon reboots. After launch, see top right corner of window. Displays as an up-and-down arrow. 
+ 
+## Manual Pages
+
+- [Choose an app to open a file on Mac](https://support.apple.com/guide/mac-help/choose-an-app-to-open-a-file-on-mac-mh35597/mac)
+- [Install and validate fonts in Font Book on Mac](https://support.apple.com/guide/font-book/install-and-validate-fonts-fntbk1000/mac)
+
 ## Shortcuts
 
 - [Common Shortcuts](https://support.apple.com/en-us/102650)
