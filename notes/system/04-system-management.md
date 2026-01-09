@@ -17,12 +17,12 @@ Note: **NOT** `sudo mlocate updatedb`!
 # ">" denotes shell commands on local,
 # "$" denotes shell commands on remote. ****
 > mkdir -p ~/.ssh
-> vi ~/.ssh
+> vi ~/.ssh/config
 ```
 ```
 Host some-remote-alias    # You can also call it something else. This is just an alias for the server
     HostName <hostname>   # The hostname such as remote.domain.com
-    Port     <port>       # The port. If omitted, default to 22
+    Port     <port>       # The port. If omitted, defaults to 22
     User     <username>   # Your unix account username
 ```
 - Setup ssh keys on local and remote.
