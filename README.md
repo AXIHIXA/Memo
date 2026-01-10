@@ -41,9 +41,8 @@
   2. [System Configuration](./notes/system/02-system-configuration.md)
   3. [Environment Configuration](./notes/system/03-environment-configuration.md)
   4. [System Management](./notes/system/04-system-management.md)
-  5. [System Programming](./notes/system/05-system-programming.md)
-  6. [WSL 2](./notes/system/06-wsl-2.md)
-  7. [MacOSX](./notes/system/07-macosx.md)
+  5. [WSL 2](./notes/system/05-wsl-2.md)
+  6. [MacOSX](./notes/system/06-macos.md)
 - Miscs
   - [Adobe PhotoShop Miscs](./notes/misc/photoshop.md)
 - Paper
