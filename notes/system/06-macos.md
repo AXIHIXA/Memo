@@ -72,8 +72,8 @@ do shell script "open -a Terminal.app " & thePath
   - Double click "Run AppleScript", Replace purple script with:
 ```
 tell application "Finder"
-  set txt to make new file at (the target of the front window) as alias with properties {name:"Untitled Document.txt"}
-  select txt
+    set txt to make new file at (the target of the front window) as alias with properties {name:"Untitled Document.txt"}
+    select txt
 end tell
 ```
   - Top-left bar -> File -> Save, Save as "New Document" (will be stored in `~/Library/Services/`).
