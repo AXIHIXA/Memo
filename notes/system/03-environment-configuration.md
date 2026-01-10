@@ -1,6 +1,119 @@
 # 环境配置 Environment Configuration
 
 
+## 🌱 .BASHRC
+
+- *Note*:
+  - Environment variables
+    - Should **not** be configured in `.bashrc`! It should stay in `.profile`!
+    - See the next section.
+  - Clear screen: 
+    - `cls` is a Windows PowerShell command to clear the terminal.
+    - `reset` is a Linux Bash command to reinitialize the terminal, as if it were opened from scratch. 
+
+### Colossus Remote Ubuntu
+
+```bash
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/localhome/local-xihan/opt/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/localhome/local-xihan/opt/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/localhome/local-xihan/opt/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/localhome/local-xihan/opt/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+# Xi's personal aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /localhome/local-xihan/workspace"
+alias jl="cd /localhome/local-xihan/workspace; jupyter lab"
+alias cls="reset"
+
+# TRT
+export GIT_TRT_ROOT="/localhome/local-xihan/workspace/git-trt"
+export PATH="/localhome/local-xihan/workspace/git-trt/bin:$PATH"
+export MANPATH="/localhome/local-xihan/workspace/git-trt/man:$MANPATH"
+export TRT_GITLAB_API_TOKEN="MASKED OUT REPLACE WITH REAL TOKEN"
+```
+
+### `osx-arm64`
+
+```bash
+vi ~/.zshrc
+
+# Aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /Users/ax/workspace"
+alias jl="cd /Users/ax/workspace; jupyter lab"
+alias cls="reset"
+```
+
+### Real Ubuntu System
+
+```bash
+# Aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /home/xihan1/workspace"
+alias jl="cd /home/xihan1/workspace; jupyter lab"
+alias cls="reset"
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/xihan1/opt/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/xihan1/opt/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/xihan1/opt/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/xihan1/opt/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+```
+
+### `WSL`
+
+```bash
+vi ~/.bashrc
+
+# Aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /mnt/d/workspace"
+alias jl="cd /mnt/d/workspace; jupyter lab"
+alias cls="reset"
+alias ss="sudo service ssh --full-restart"
+alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_single.py"
+alias ppp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_multiple.py"
+alias ppu="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_add_user_prefix.py"
+alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDev/download-patreon.sh"
+```
+
+### `VMWare` Client
+
+```bash
+gedit ~/.bashrc
+
+# Aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /media/ax/DATA/workspace"
+alias jl="cd /media/ax/DATA/workspace; jupyter lab"
+alias cls="reset"
+```
+
+
 
 ## 🌱 环境变量 Environment Variables
 
@@ -228,82 +341,6 @@ rm -rf ~/opt/anaconda3
 pip install PyGLM
 ```
 - **Note**: When building third-library C++ projects, remember to deactive the base conda environment to avoid dependency overlaps! 
-
-
-
-#### `.bashrc`
-
-##### Real Ubuntu System
-
-```bash
-# Aliases
-alias c3="conda activate py3"
-alias d3="conda deactivate"
-alias ws="cd /home/xihan1/workspace"
-alias jl="cd /home/xihan1/workspace; jupyter lab"
-alias cls="reset"
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/xihan1/opt/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/home/xihan1/opt/anaconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/xihan1/opt/anaconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/home/xihan1/opt/anaconda3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
-```
-
-*Note*: `cls` is a Windows PowerShell command to clear the terminal. `reset` is a Linux Bash command to reinitialize the terminal, as if it were opened from scratch. 
-
-##### `WSL`
-
-```bash
-vi ~/.bashrc
-
-# Aliases
-alias c3="conda activate py3"
-alias d3="conda deactivate"
-alias ws="cd /mnt/d/workspace"
-alias jl="cd /mnt/d/workspace; jupyter lab"
-alias cls="reset"
-alias ss="sudo service ssh --full-restart"
-alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_single.py"
-alias ppp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_multiple.py"
-alias ppu="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_add_user_prefix.py"
-alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDev/download-patreon.sh"
-```
-
-##### `osx-arm64`
-
-```bash
-vi ~/.zshrc
-
-# Aliases
-alias c3="conda activate py3"
-alias d3="conda deactivate"
-alias ws="cd /Users/ax/workspace"
-alias jl="cd /Users/ax/workspace; jupyter lab"
-alias cls="reset"
-```
-
-##### `VMWare` Client
-
-```bash
-gedit ~/.bashrc
-
-# Aliases
-alias c3="conda activate py3"
-alias d3="conda deactivate"
-alias ws="cd /media/ax/DATA/workspace"
-alias jl="cd /media/ax/DATA/workspace; jupyter lab"
-alias cls="reset"
-```
 
 
 
