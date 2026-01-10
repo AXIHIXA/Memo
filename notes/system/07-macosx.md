@@ -39,6 +39,23 @@
 - Notes
   - Command replaces Ctrl;
   - Ctrl + C/Z remains unchanged.
+- Automator Service:
+  - Apps -> Search "Automator" -> Choose "Quick Action" -> Left side bar choose "Utilities -> Run Apple Script"
+  - Edit tabs: Workflow receives "no input" in "Finder.app"
+  - Double click "Run AppleScript", Replace purple script with:
+```
+tell application "Finder"
+	set current_folder to (target of front window) as alias
+	set thePath to quoted form of (POSIX path of current_folder)
+end tell
+
+tell application "Terminal"
+	activate
+	do script "cd " & thePath
+end tell
+```
+  - Top-left bar -> File -> Save, Save as "Open in Terminal" (will be stored in `~/Library/Services/`).
+    - Note that this name in "Services" will be final, won't change even if you update the file name in `~/Library/Services/`. 
   
 
 ## Finder
@@ -56,8 +73,8 @@
   - Double click "Run AppleScript", Replace purple script with:
 ```
 tell application "Finder"
-    set txt to make new file at (the target of the front window) as alias with properties {name:"Untitled Document.txt"}
-    select txt
+  set txt to make new file at (the target of the front window) as alias with properties {name:"Untitled Document.txt"}
+  select txt
 end tell
 ```
   - Top-left bar -> File -> Save, Save as "New Document" (will be stored in `~/Library/Services/`).
