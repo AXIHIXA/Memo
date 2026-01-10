@@ -14,6 +14,11 @@
 ### Colossus Remote Ubuntu
 
 ```bash
+vi ~/.bashrc
+
+# Conda initialize script is configured by Anaconda itself.
+# Play with .bashrc after setting up Anaconda. 
+
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/localhome/local-xihan/opt/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
@@ -48,7 +53,25 @@ export TRT_GITLAB_API_TOKEN="MASKED OUT REPLACE WITH REAL TOKEN"
 ```bash
 vi ~/.zshrc
 
-# Aliases
+# Conda initialize script is configured by Anaconda itself.
+# Play with .bashrc after setting up Anaconda. 
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/Users/xihan/opt/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/Users/xihan/opt/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/Users/xihan/opt/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/Users/xihan/opt/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+# Xi's personal aliases
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /Users/ax/workspace"
@@ -59,12 +82,10 @@ alias cls="reset"
 ### Real Ubuntu System
 
 ```bash
-# Aliases
-alias c3="conda activate py3"
-alias d3="conda deactivate"
-alias ws="cd /home/xihan1/workspace"
-alias jl="cd /home/xihan1/workspace; jupyter lab"
-alias cls="reset"
+vi ~/.bashrc
+
+# Conda initialize script is configured by Anaconda itself.
+# Play with .bashrc after setting up Anaconda. 
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
@@ -80,6 +101,13 @@ else
 fi
 unset __conda_setup
 # <<< conda initialize <<<
+
+# Xi's personal aliases
+alias c3="conda activate py3"
+alias d3="conda deactivate"
+alias ws="cd /home/xihan1/workspace"
+alias jl="cd /home/xihan1/workspace; jupyter lab"
+alias cls="reset"
 ```
 
 ### `WSL`
@@ -87,7 +115,7 @@ unset __conda_setup
 ```bash
 vi ~/.bashrc
 
-# Aliases
+# Xi's personal aliases
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd /mnt/d/workspace"
@@ -103,7 +131,7 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
 ### `VMWare` Client
 
 ```bash
-gedit ~/.bashrc
+vi ~/.bashrc
 
 # Aliases
 alias c3="conda activate py3"
