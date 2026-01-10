@@ -28,8 +28,9 @@ Host some-remote-alias    # You can also call it something else. This is just an
 - Setup ssh keys on local and remote.
 ```
 # ">" denotes shell commands on local,
-# "$" denotes shell commands on remote. 
-> ssh-keygen
+# "$" denotes shell commands on remote.
+# -t ed25519 to generate ed25519 keys instead of rsa keys. 
+> ssh-keygen -t ed25519
 > cat ~/.ssh/id_xxx.pub
 # Copy the contents
 > ssh user@remote
