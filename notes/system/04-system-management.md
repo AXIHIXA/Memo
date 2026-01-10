@@ -24,7 +24,7 @@ Host some-remote-alias    # You can also call it something else. This is just an
     Port     <port>       # The port. If omitted, defaults to 22
     User     <username>   # Your unix account username
 ```
-- After this, `ssh some-remote-alias` could be used as a shortcut to the full command `ssh -p username@hostname`. 
+- After this, `ssh some-remote-alias` could be used as a shortcut to the full command `ssh -p port username@hostname`. 
 - Setup ssh keys on local and remote.
 ```
 # -t ed25519 to generate ed25519 keys instead of rsa keys. 
@@ -33,6 +33,8 @@ Host some-remote-alias    # You can also call it something else. This is just an
 # Copy the contents
 > ssh user@remote
 # Use account password to log in
+```
+```
 $ mkdir -p ~/.ssh
 # If the key was generated on windows, make sure to escape the backslash by adding double backslash
 $ echo "<COPIED PUB KEY>" >> ~/.ssh/authorized_keys
