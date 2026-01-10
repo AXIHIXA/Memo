@@ -31,7 +31,7 @@ Host some-remote-alias    # You can also call it something else. This is just an
 > ssh-keygen -t ed25519
 > cat ~/.ssh/id_xxx.pub
 # Copy the contents
-> ssh user@remote
+> ssh some-remote-alias
 # Use account password to log in
 ```
 ```
