@@ -57,10 +57,11 @@ do shell script "open -a Terminal.app " & thePath
 
 ## Finder
 
+- **To always show file extensions on macOS, go to Finder -> Settings (or Preferences) -> Advanced and check "Show all filename extensions"**
+- **To always show the bottom path bar: go to Finder -> View -> Show Path Bar**
 - Command + Delete: Delete a file;
 - Command + Shift + Period(.): Show/hide hidden files;
 - Select a file and press Enter: Rename a file.
-- To always show file extensions on macOS, go to Finder -> Settings (or Preferences) -> Advanced and check "Show all filename extensions"
 - Command + C: Select a file for copy or cut, then: 
   - Command + V: Copy
   - Command + Option + V: Cut
