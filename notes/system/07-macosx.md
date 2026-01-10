@@ -49,20 +49,18 @@ tell application "Finder"
 	set thePath to quoted form of (POSIX path of current_folder)
 end tell
 
-tell application "Terminal"
-	activate
-	do script "cd " & thePath
-end tell
+do shell script "open -a Terminal.app " & thePath
 ```
   - Top-left bar -> File -> Save, Save as "Open in Terminal" (will be stored in `~/Library/Services/`).
     - Note that this name in "Services" will be final, won't change even if you update the file name in `~/Library/Services/`. 
-  
+  - Under System Settings (in Dock) -> Keyboard Shortcuts... -> Services -> General. You will see "New Document" listed with "none" as the shortcut. Double click "none", replace with `Ctrl + Option + M` or other shortcuts. 
 
 ## Finder
 
 - Command + Delete: Delete a file;
 - Command + Shift + Period(.): Show/hide hidden files;
 - Select a file and press Enter: Rename a file.
+- To always show file extensions on macOS, go to Finder -> Settings (or Preferences) -> Advanced and check "Show all filename extensions"
 - Command + C: Select a file for copy or cut, then: 
   - Command + V: Copy
   - Command + Option + V: Cut
@@ -80,7 +78,7 @@ end tell
   - Top-left bar -> File -> Save, Save as "New Document" (will be stored in `~/Library/Services/`).
     - Note that this name in "Services" will be final, won't change even if you update the file name in `~/Library/Services/`. 
   - Under System Settings (in Dock) -> Keyboard Shortcuts... -> Services -> General. You will see "New Document" listed with "none" as the shortcut. Double click "none", replace with `Ctrl + Option + N` or other shortcuts. 
-- To always show file extensions on macOS, go to Finder > Settings (or Preferences) > Advanced and check "Show all filename extensions"
+
 
 ## Chrome
 
