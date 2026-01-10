@@ -4,7 +4,8 @@
 
 - Go to beginning of line: HOME
 - Go to end of line: END
-- Shift pages: PAGE UP, PAGE DOWN
+- Scroll down to the previous page: PAGE UP
+- Scroll down to the next page: PAGE DOWN
 
 ## Terminal
 
