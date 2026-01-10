@@ -10,25 +10,23 @@ sudo updatedb
 ```
 Note: **NOT** `sudo mlocate updatedb`!
 
-### Auto SSH Keys for Remote SSH Sessions
+### 🌱 Auto SSH Keyed Login for Remote SSH Sessions
 
 - Setup quick alias for ssh.
+- ">" denotes shell commands on local,
+- "$" denotes shell commands on remote.
 ```
-# ">" denotes shell commands on local,
-# "$" denotes shell commands on remote. ****
 > mkdir -p ~/.ssh
 > vi ~/.ssh/config
-```
-```
+
 Host some-remote-alias    # You can also call it something else. This is just an alias for the server
     HostName <hostname>   # The hostname such as remote.domain.com
     Port     <port>       # The port. If omitted, defaults to 22
     User     <username>   # Your unix account username
 ```
+- After this, `ssh some-remote-alias` could be used as a shortcut to the full command `ssh -p username@hostname`. 
 - Setup ssh keys on local and remote.
 ```
-# ">" denotes shell commands on local,
-# "$" denotes shell commands on remote.
 # -t ed25519 to generate ed25519 keys instead of rsa keys. 
 > ssh-keygen -t ed25519
 > cat ~/.ssh/id_xxx.pub
@@ -52,7 +50,7 @@ debug1: Offering public key: xxxxxxxx
 debug1: Server accepts key: xxxxxxxx
 ```
 
-### 🌱 配置`ssh`
+### 🌱 Configure SSH Server
 
 ```
 sudo ssh-keygen -A
