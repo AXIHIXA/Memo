@@ -100,11 +100,34 @@ $
   - `docker run [OPTIONS] IMAGE [COMMAND] [ARG...]`
   - Automatically create, start, and attach the container.
     - STDIN/STDERR/STDOUT and signals.
-    - Occupies the terminal window if the container does not automatically terminate!
-  - [Detached mode (`-d`, `--detach`)](https://docs.docker.com/reference/cli/docker/container/run/#detach)
-    - Starts a container as a background process that doesn't occupy your terminal window.
-    - `docker run --detach our-server`
-    - `docker run -d our-server`
+    - **Running a container occupies the terminal window!**
+  - OPTIONS
+    - [Detached mode (`-d`, `--detach`)](https://docs.docker.com/reference/cli/docker/container/run/#detach)
+      - Starts a container as a background process that doesn't occupy your terminal window.
+      - `docker run --detach our-server`
+      - `docker run -d our-server`
+    - [Publish or expose port (`-p`, `--expose`)](https://docs.docker.com/reference/cli/docker/container/run/#publish)
+      - **Ports in the container must be mapped to ports on the host machine before we could access them.**
+      - This is called _publish_ or _exposure_.
+      - Formula: _outside, colon, inside_
+      - E.g., `docker run -p 127.0.0.1:80:8080/tcp nginx:alpine`.
+        - This binds port 8080 of the container to TCP port 80 on 127.0.0.1 of the host.
+        - You can also specify UDP and SCTP ports.
+        - Note: If you don't specify an IP address (i.e., -p 80:80 instead of -p 127.0.0.1:80:80):
+          - Docker publishes the port on all interfaces (address 0.0.0.0) by default.
+          - These ports are externally accessible.
+    - [Publish all exposed ports (`-P`, `--publish-all`)](https://docs.docker.com/reference/cli/docker/container/run/#publish-all)
+      - Publish all exposed ports to random ports.
+    - [Mount volume (`-v`)](https://docs.docker.com/reference/cli/docker/container/run/#volume)
+      - **Everything created in the container stays inside the container (unless with mountedc volumes)**.
+      - `docker  run  -v $(pwd):$(pwd) -w $(pwd) -i -t  ubuntu pwd`
+        - The example above mounts the current directory into the container at the same path using the `-v` flag,
+        - sets it as the working directory, and then
+        - runs the pwd command inside the container.
+      - As of Docker Engine version 23, you can use relative paths on the host:
+        - `docker  run  -v ./content:/content -w /content -i -t  ubuntu pwd`
+    - [Mount volume read-only (--read-only)](https://docs.docker.com/reference/cli/docker/container/run/#read-only)
+      - `docker run --read-only -v /icanwrite busybox touch /icanwrite/here`
   - Aliases:
     - `docker container run`
     - **docker run**
@@ -155,6 +178,8 @@ $ vi entrypoint.bash
 #!/usr/bin/env bash
 
 echo "Hello from our-first-image :-)"
+
+$
 ```
 
 ### Build a Docker Image from Dockerfiles
@@ -243,6 +268,3 @@ $
     - `docker image rm`
     - **docker rmi**
 
-### Bind Ports to a Container
-
-- 
