@@ -26,38 +26,24 @@ $ tty
 /dev/pts/1
 ```
 
-#### 🎯 `df`
+#### 🎯 `df` & `du`
 
-- See hardware mount points
+- df: Display space available of FILE. **Preferrred over du???**
+```bash
+# -h, --human-readable  print sizes in powers of 1024 (e.g., 1023M)
+df [OPTION]... [FILE]...
 ```
-$ df
-Filesystem     1K-blocks      Used Available Use% Mounted on
-udev            32849452         0  32849452   0% /dev
-tmpfs            6577592      2472   6575120   1% /run
-/dev/nvme0n1p7 946248720 336514664 561593512  38% /
-tmpfs           32887952     66904  32821048   1% /dev/shm
-tmpfs               5120         4      5116   1% /run/lock
-tmpfs           32887952         0  32887952   0% /sys/fs/cgroup
-/dev/loop0           128       128         0 100% /snap/bare/5
-/dev/loop2         56960     56960         0 100% /snap/core18/2679
-/dev/loop3        168832    168832         0 100% /snap/gnome-3-28-1804/161
-/dev/loop4        166784    166784         0 100% /snap/gnome-3-28-1804/145
-/dev/loop5         64896     64896         0 100% /snap/core20/1822
-/dev/loop6         47104     47104         0 100% /snap/snap-store/638
-/dev/loop7         47104     47104         0 100% /snap/snap-store/599
-/dev/loop12        51072     51072         0 100% /snap/snapd/18357
-/dev/loop8         64896     64896         0 100% /snap/core20/1778
-/dev/loop11       224256    224256         0 100% /snap/gnome-3-34-1804/77
-/dev/loop15       354688    354688         0 100% /snap/gnome-3-38-2004/119
-/dev/loop16        93952     93952         0 100% /snap/gtk-common-themes/1535
-/dev/loop9        224256    224256         0 100% /snap/gnome-3-34-1804/72
-/dev/loop13        51072     51072         0 100% /snap/snapd/17950
-/dev/loop10        83328     83328         0 100% /snap/gtk-common-themes/1534
-/dev/loop14       354688    354688         0 100% /snap/gnome-3-38-2004/115
-/dev/nvme0n1p1    149504     91386     58118  62% /boot/efi
-tmpfs            6577588        20   6577568   1% /run/user/125
-tmpfs            6577588        72   6577516   1% /run/user/1002
-/dev/loop17        56960     56960         0 100% /snap/core18/2697
+```bash
+df -h [FILE]
+```
+- du: Diaplay space usage of FILE, recursively for directories
+```bash
+du [OPTION]... [FILE]...
+```
+```bash
+# -h, --human-readable  print sizes in human readable format (e.g., 1K 234M 2G)
+# -s, --summarize       display only a total for each argument
+du -hs FILE
 ```
 
 #### 🎯 `man`
