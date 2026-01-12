@@ -45,10 +45,14 @@ alias cls="reset"
 vi ~/.profile
 
 # TRT
-export GIT_TRT_ROOT="/localhome/local-xihan/workspace/git-trt"
-export PATH="/localhome/local-xihan/workspace/git-trt/bin:$PATH"
-export MANPATH="/localhome/local-xihan/workspace/git-trt/man:$MANPATH"
-export TRT_GITLAB_API_TOKEN="MASKED OUT REPLACE WITH REAL TOKEN"
+WORKSPACE="$HOME/workspace"
+export GIT_TRT_ROOT="$WORKSPACE/git-trt"
+export PATH="$GIT_TRT_ROOT/bin:$PATH"
+export MANPATH="$GIT_TRT_ROOT/man:$MANPATH"
+GITLAB_PAT=<REPLACE WITH REAL GITLAB TOKEN>
+export TRT_ROOT="$WORKSPACE/trt"
+export TRT_GITLAB_API_TOKEN=$GITLAB_PAT
+export TRT_USER="xihan"
 ```
 
 ### `osx-arm64`
