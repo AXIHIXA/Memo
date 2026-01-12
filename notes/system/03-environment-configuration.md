@@ -40,6 +40,9 @@ alias d3="conda deactivate"
 alias ws="cd /localhome/local-xihan/workspace"
 alias jl="cd /localhome/local-xihan/workspace; jupyter lab"
 alias cls="reset"
+```
+```
+vi ~/.profile
 
 # TRT
 export GIT_TRT_ROOT="/localhome/local-xihan/workspace/git-trt"
