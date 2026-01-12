@@ -35,10 +35,11 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 # Xi's personal aliases
+WORKSPACE="$HOME/workspace"
 alias c3="conda activate py3"
 alias d3="conda deactivate"
-alias ws="cd /localhome/local-xihan/workspace"
-alias jl="cd /localhome/local-xihan/workspace; jupyter lab"
+alias ws="cd $WORKSPACE"
+alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
 ```
 ```bash
@@ -79,10 +80,11 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 # Xi's personal aliases
+WORKSPACE="$HOME/workspace"
 alias c3="conda activate py3"
 alias d3="conda deactivate"
-alias ws="cd /Users/ax/workspace"
-alias jl="cd /Users/ax/workspace; jupyter lab"
+alias ws="cd $WORKSPACE"
+alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
 ```
 
@@ -110,10 +112,11 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 # Xi's personal aliases
+WORKSPACE="$HOME/workspace"
 alias c3="conda activate py3"
 alias d3="conda deactivate"
-alias ws="cd /home/xihan1/workspace"
-alias jl="cd /home/xihan1/workspace; jupyter lab"
+alias ws="cd $WORKSPACE"
+alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
 ```
 
@@ -123,10 +126,11 @@ alias cls="reset"
 vi ~/.bashrc
 
 # Xi's personal aliases
+WORKSPACE="/mnt/d/workspace"
 alias c3="conda activate py3"
 alias d3="conda deactivate"
-alias ws="cd /mnt/d/workspace"
-alias jl="cd /mnt/d/workspace; jupyter lab"
+alias ws="cd $WORKSPACE"
+alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
 alias ss="sudo service ssh --full-restart"
 alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_single.py"
@@ -141,10 +145,11 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
 vi ~/.bashrc
 
 # Aliases
+WORKSPACE="/media/$USER/DATA/workspace"
 alias c3="conda activate py3"
 alias d3="conda deactivate"
-alias ws="cd /media/ax/DATA/workspace"
-alias jl="cd /media/ax/DATA/workspace; jupyter lab"
+alias ws="cd $WORKSPACE"
+alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
 ```
 
