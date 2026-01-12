@@ -10,29 +10,31 @@
 
 ### Browse Exisinging Images and Containers
 
-- List images: `docker images`
+- [List images](https://docs.docker.com/reference/cli/docker/image/ls/):
+  - `docker image ls [OPTIONS] [REPOSITORY[:TAG]]`
   - Aliases:
     - `docker image ls`
     - `docker image list`
-    - `docker images`
-- List containers: `docker ps`
-  - By default, only show containers that are actively running.
-    - To see all containers, append OPTION `-a` or `--all`.
+    - **docker images**
+- [List containers](https://docs.docker.com/reference/cli/docker/container/ls/):
+  - `docker container ls [OPTIONS]`
   - Aliases:
     - `docker container ls`
     - `docker container list`
     - `docker container ps`
-    - `docker ps`
+    - **docker ps**
+  - By default, only show containers that are actively running.
+    - To see all containers, append OPTION `-a` or `--all`.
 
-### [Create Docker Container from Images](https://docs.docker.com/reference/cli/docker/container/create/)
+### Create Docker Container from Images
 
-- Create a new container:
+- Create a new container from images]((https://docs.docker.com/reference/cli/docker/container/create/)):
   - `docker container create [OPTIONS] IMAGE [COMMAND] [ARG...]`
   - Containers are created from images.
     - If the image does not locally exist, if will be downloaded from online register (by default, Docker Hub).
   - Aliases:
     - `docker container create`
-    - `docker create`
+    - **docker create**
   - E.g., `docker container create hello-world:latest`
     - The default container for testing docker installation.
     - Will print out a welcome message upon execution.
@@ -40,9 +42,9 @@
 - At this step, the created container is not yet started.
   - Does not automatically execute the image's entry point.
 
-### [Start a Container](https://docs.docker.com/reference/cli/docker/container/start/)
+### Start a Container
 
-- Run one or more stopped containers:
+- [Run one or more stopped containers]((https://docs.docker.com/reference/cli/docker/container/start/):
   - `docker container start [OPTIONS] CONTAINER [CONTAINERS...]`
   - The `CONTAINER` need not to be the full ID.
     - Container tags are also allowed. 
@@ -52,7 +54,7 @@
     - No need to create a new one form an image. 
   - Aliases:
     - `docker container start`
-    - `docker start`
+    - **docker start**
   - E.g.:
     - Start the container:
       - `docker container start CONTAINER`
@@ -89,70 +91,37 @@ $ docker logs 5e2
 Hello from Docker!
 This message shows that your installation appears to be working correctly.
 
-To generate this message, Docker took the following steps:
- 1. The Docker client contacted the Docker daemon.
- 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
-    (amd64)
- 3. The Docker daemon created a new container from that image which runs the
-    executable that produces the output you are currently reading.
- 4. The Docker daemon streamed that output to the Docker client, which sent it
-    to your terminal.
-
-To try something more ambitious, you can run an Ubuntu container with:
- $ docker run -it ubuntu bash
-
-Share images, automate workflows, and more with a free Docker ID:
- https://hub.docker.com/
-
-For more examples and ideas, visit:
- https://docs.docker.com/get-started/
-
 $
 ```
 
-### [Running a Container](https://docs.docker.com/reference/cli/docker/container/run/)
+### Running a Container
 
-- Create and run a new container from an image ("the short way"):
+- [Create and run a new container from an image ("the short way")](https://docs.docker.com/reference/cli/docker/container/run/):
   - `docker run [OPTIONS] IMAGE [COMMAND] [ARG...]`
   - Automatically create, start, and attach the container.
-    - `docker run == docker container create + docker container start + docker container attach`
-  - Does **not** show the container ID (like for `docker container create` command).
+    - STDIN/STDERR/STDOUT and signals.
+    - Occupies the terminal window if the container does not automatically terminate!
+  - [Detached mode (`-d`, `--detach`)](https://docs.docker.com/reference/cli/docker/container/run/#detach)
+    - Starts a container as a background process that doesn't occupy your terminal window.
+    - `docker run --detach our-server`
+    - `docker run -d our-server`
   - Aliases:
     - `docker container run`
-    - `docker run`
+    - **docker run**
 ```
 $ docker run hello-world:latest`
 
 Hello from Docker!
 This message shows that your installation appears to be working correctly.
 
-To generate this message, Docker took the following steps:
- 1. The Docker client contacted the Docker daemon.
- 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
-    (amd64)
- 3. The Docker daemon created a new container from that image which runs the
-    executable that produces the output you are currently reading.
- 4. The Docker daemon streamed that output to the Docker client, which sent it
-    to your terminal.
-
-To try something more ambitious, you can run an Ubuntu container with:
- $ docker run -it ubuntu bash
-
-Share images, automate workflows, and more with a free Docker ID:
- https://hub.docker.com/
-
-For more examples and ideas, visit:
- https://docs.docker.com/get-started/
-
 $
 ```
 
-### Create a Docker Container from [Dockerfiles](https://docs.docker.com/reference/dockerfile/)
+### [Dockerfile](https://docs.docker.com/reference/dockerfile/)
 
-- Two files needed to create a local Docker image:
-  - Dockerfile
-  - entrypoint.bash
-- Dockerfile
+- Files needed to create a local Docker image:
+  - [Dockerfile](https://docs.docker.com/reference/dockerfile/)
+  - Associated scripts (if any)
 ```
 $ vi Dockerfile 
 
@@ -180,7 +149,6 @@ ENTRYPOINT [ "/entrypoint.bash" ]
 
 $
 ```
-- `entrypoint.bash`
 ```
 $ vi entrypoint.bash
 
@@ -188,10 +156,20 @@ $ vi entrypoint.bash
 
 echo "Hello from our-first-image :-)"
 ```
+
+### Build a Docker Image from Dockerfiles
+
 - [Build a Docker image](https://docs.docker.com/reference/cli/docker/buildx/build/):
-  - `docker build [OPTIONS] PATH | URL | -`
+  - `docker buildx build [OPTIONS] PATH | URL | -`
+  - PATH: Dockerfile defaults to `PATH/Dockerfile`.
+  - [Specify a Dockerfile with OPTIONS `-f` or `--file`](https://docs.docker.com/reference/cli/docker/buildx/build/#file):
+    - `--file <filepath>` or `-f <filepath>` specifies the filepath of the Dockerfile to use.
+      - Useful when Dockerfile is not named exactly `PATH/Dockerfile`.
+      - E.g., `docker build --file server.Dockerfile --tag our-first-server .`
+    - To read a Dockerfile from stdin, use `-` as the argument for `--file`:
+      - E.g., `cat Dockerfile | docker buildx build -f - .`
   - Aliases:
-    - `docker build`
+    - **docker build**
     - `docker builder build`
     - `docker image build`
     - `docker buildx b`
@@ -211,23 +189,60 @@ Hello from our-first-image :-)
 $
 ```
 
-### [Remove a Container](https://docs.docker.com/reference/cli/docker/container/rm/)
+### Stop or Kill a Running Container
 
-- Remove one or more containers:
+- [Stop one or more running containers](https://docs.docker.com/reference/cli/docker/container/stop/)
+  - `docker container stop [OPTIONS] CONTAINER [CONTAINER...]`
+  - The main process inside the container will receive **SIGTERM**, and after a grace period, **SIGKILL**. 
+  - OPTIONS
+    - [`-s, --signal`](https://docs.docker.com/reference/cli/docker/container/stop/#signal): Signal to send to the container.
+    - [`-t, --timeout`](https://docs.docker.com/reference/cli/docker/container/stop/#timeout): Seconds to wait before killing the container.
+      - E.g., `docker stop -t 0 our-server`:
+        - Immediately stop the running container.
+        - Be careful, could lead to data loss. 
+  - Aliases
+    - `docker container stop`
+    - **docker stop**
+- [Kills one or more containers](https://docs.docker.com/reference/cli/docker/container/kill/):
+  - `docker container kill [OPTION] CONTAINER [CONTAINER...]`
+  - The main process inside the container is sent:
+    - **SIGKILL** signal (default), or the OPTION.
+  - OPTION [`-s, --signal`](https://docs.docker.com/reference/cli/docker/container/kill/#signal).
+    - The signal can be a name or a number.
+    - The SIG prefix is optional.
+    - E.g., the following are equivalent:
+      - `docker kill --signal=SIGHUP our-server`
+      - `docker kill --signal=HUP our-server`
+      - `docker kill --signal=1 our-server`
+  - CONTAINER can be an ID, an ID-prefix, or a name.
+  - Aliases:
+    - `docker container kill`
+    - **docker kill**
+
+### Remove Containers or Images
+
+- [Remove one or more containers](https://docs.docker.com/reference/cli/docker/container/rm/)
   - `docker container rm [OPTIONS] CONTAINER [CONTAINER...]`
+  - Batch removal: `docker ps -aq | xargs docker rm`
+    - `-q`: Tell `docker ps` to only output IDs.
+    - [xargs](https://man7.org/linux/man-pages/man1/xargs.1.html)
+      - A built-in Linux tool that builds and executes command lines from STDIN. 
+      - `xargs [options] [command [initial-arguments]]`
+    - Take Each ID from `docker ps -aq` and feed it to `docker rm`'s arguments. 
   - Aliases:
     - `docker container remove`
     - `docker container rm`
-    - `docker rm`
-
-### [Remove an Image](https://docs.docker.com/reference/cli/docker/image/rm/)
-
-- Removes (and un-tags) one or more images:
+    - **docker rm**
+- [Remove (and un-tag) one or more images](https://docs.docker.com/reference/cli/docker/image/rm/)
   - `docker image rm [OPTIONS] IMAGE [IMAGE...]`
-  - If a container uses this image, the container should be removed first
-    - Unless we use the `-f` OPTION.
+  - If a container uses this image, the container should be removed first. 
+    - Unless we use the [`-f`, `--force`](https://docs.docker.com/reference/cli/docker/image/rm/) OPTION.
+    - But this could lead to undefined behaviors. 
   - Aliases:
     - `docker image remove`
     - `docker image rm`
-    - `docker rmi`
+    - **docker rmi**
 
+### Bind Ports to a Container
+
+- 
