@@ -41,7 +41,7 @@ alias ws="cd /localhome/local-xihan/workspace"
 alias jl="cd /localhome/local-xihan/workspace; jupyter lab"
 alias cls="reset"
 ```
-```
+```bash
 vi ~/.profile
 
 # TRT
