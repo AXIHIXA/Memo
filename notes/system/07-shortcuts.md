@@ -19,31 +19,22 @@
 
 - Show Command Palette: `Command + Shift + P` or `F1`
 - Show Terminal: `Command + J`
+- Terminal tab -> Top right corner "+v" -> "Configure Terminal Settings"
 
 ### Settings
 
 - **Choose the "User" tab to avoid conflicts between profiles! Other profiles default to User!**
 - Search "font"
   - Left Scroll Menu
-    - Text Editor -> Font (@editor font)
-      - Editor: Font Size: 20
-      - Editor: Font Family: 'JetBrains Mono', Consolas, 'Courier New', monospace
-    - Features -> Debug (@feature:debug)
-      - Debug > Console: Font Size: 20
-    - Features -> Terminal (@feature:terminal)
+    - Text Editor -> Font (`@editor font`)
+      - Editor: Font Size: `20`
+      - Editor: Font Family: `'JetBrains Mono', Consolas, 'Courier New', monospace`
+    - Features -> Debug (`@feature:debug`)
+      - Debug > Console: Font Size: `20`
+    - Features -> Terminal (`@feature:terminal`)
       - Terminal > Integrated: Font Family: (Defaults to Editor: Font Family's value.)
-      - Terminal > Integrated: Font Size: 20 (@feature:terminal font size)
+      - Terminal > Integrated: Font Size: `20` (`@feature:terminal font size`)
 - Search "cursor"
   - Left Scroll Menu
-    - Features -> Terminal (@feature:terminal)
-      - Terminal > Integrated: Cursor Style: line (@feature:terminal cursor style)
-
-### Old, Don't Use
-
-- Editer Font: Toolbar, Cursor -> Settings -> VS Code Settings -> Upper search bar, "font"
-  - Editor: Font size: 20
-  - Editor: Font Family: 'JetBrains Mono', Consolas, 'Courier New', monospace
-- Terminal Font: Settings -> Upper search bar, "@feature:terminal font"
-  - Or: Terminal tab -> Top right corner "+v" -> "Configure Terminal Settings"
-  - Font family defaults to editor's
-  - Font size: 20
+    - Features -> Terminal (`@feature:terminal`)
+      - Terminal > Integrated: Cursor Style: `line` (`@feature:terminal cursor style`)
