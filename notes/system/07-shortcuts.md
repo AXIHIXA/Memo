@@ -24,6 +24,8 @@
 ### Settings
 
 - **Choose the "User" tab to avoid conflicts between profiles! Other profiles default to User!**
+- Cursor -> Settings -> Keyboard Shortcuts -> Search "Quick Voice Chat" -> Right Click, Remove Keybinding.
+  - It conflicts inside integrated Terminal to detach a Docker container (`Ctrl+P+Q`). 
 - Search "font"
   - Left Scroll Menu
     - Text Editor -> Font (`@editor font`)
