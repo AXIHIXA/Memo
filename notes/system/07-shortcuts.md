@@ -22,6 +22,19 @@
 ### Settings
 
 - **Choose the "User" tab to avoid conflicts between profiles! Other profiles default to User!**
+- Search "font"
+  - Left scroll menu
+    - Text Editor -> Font
+      - Editor: Font size: 20
+      - Editor: Font Family: 'JetBrains Mono', Consolas, 'Courier New', monospace
+    - Features -> Debug
+      - Debug > Console: Font Size: 20
+    - Features -> Terminal
+      - Terminal > Integrated: Font size: 20
+      - Font family defaults to editor's
+
+### Old, Don't Use
+
 - Editer Font: Toolbar, Cursor -> Settings -> VS Code Settings -> Upper search bar, "font"
   - Editor: Font size: 20
   - Editor: Font Family: 'JetBrains Mono', Consolas, 'Courier New', monospace
