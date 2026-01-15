@@ -17,7 +17,8 @@
 
 ## Cursor & Visual Studio Code
 
-- Open command palette: `F1` or `Command + Shift + P`
+- Show Command Palette: `Command + Shift + P` or `F1`
+- Show Terminal: `Command + J`
 
 ### Settings
 
