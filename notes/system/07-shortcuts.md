@@ -14,3 +14,18 @@
 - Delete the previous word: Ctrl + W
 - Delete left of the cursor on this line: Ctrl + U
 - Delete right of the cursor on this line: Ctrl + K
+
+## Cursor & Visual Studio Code
+
+- Open command palette: `F1` or `Command + Shift + P`
+
+### Settings
+
+- **Choose the "User" tab to avoid conflicts between profiles! Other profiles default to User!**
+- Editer Font: Toolbar, Cursor -> Settings -> VS Code Settings -> Upper search bar, "font"
+  - Editor: Font size: 20
+  - Editor: Font Family: 'JetBrains Mono', Consolas, 'Courier New', monospace
+- Terminal Font: Settings -> Upper search bar, "@feature:terminal font"
+  - Or: Terminal tab -> Top right corner "+v" -> "Configure Terminal Settings"
+  - Font family defaults to editor's
+  - Font size: 20
