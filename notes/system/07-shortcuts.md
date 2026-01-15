@@ -31,7 +31,8 @@
     - Features -> Debug
       - Debug > Console: Font Size: 20
     - Features -> Terminal
-      - Terminal > Integrated: Font size: 20
+      - Terminal > Integrated: Font size: 20 (@feature:terminal font size)
+      - Terminal > Integrated: Cursor Style: line (@feature:terminal cursor style)
       - Font family defaults to editor's
 
 ### Old, Don't Use
