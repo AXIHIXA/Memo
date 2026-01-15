@@ -24,7 +24,7 @@ vi ~/.bashrc
 # <<< conda initialize <<<
 
 # Xi's personal aliases
-WORKSPACE="~/workspace"
+WORKSPACE=`realpath ~/workspace`
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd $WORKSPACE"
