@@ -24,16 +24,19 @@
 
 - **Choose the "User" tab to avoid conflicts between profiles! Other profiles default to User!**
 - Search "font"
-  - Left scroll menu
-    - Text Editor -> Font
-      - Editor: Font size: 20
+  - Left Scroll Menu
+    - Text Editor -> Font (@editor font)
+      - Editor: Font Size: 20
       - Editor: Font Family: 'JetBrains Mono', Consolas, 'Courier New', monospace
-    - Features -> Debug
+    - Features -> Debug (@feature:debug)
       - Debug > Console: Font Size: 20
-    - Features -> Terminal
-      - Terminal > Integrated: Font size: 20 (@feature:terminal font size)
+    - Features -> Terminal (@feature:terminal)
+      - Terminal > Integrated: Font Family: (Defaults to Editor: Font Family's value.)
+      - Terminal > Integrated: Font Size: 20 (@feature:terminal font size)
+- Search "cursor"
+  - Left Scroll Menu
+    - Features -> Terminal (@feature:terminal)
       - Terminal > Integrated: Cursor Style: line (@feature:terminal cursor style)
-      - Font family defaults to editor's
 
 ### Old, Don't Use
 
