@@ -1,4 +1,4 @@
-# Shortcuts
+# Generic Software Shortcuts
 
 ## Vim
 
@@ -15,7 +15,7 @@
 - Delete left of the cursor on this line: Ctrl + U
 - Delete right of the cursor on this line: Ctrl + K
 
-## Cursor & Visual Studio Code
+## [Cursor](https://cursor.com/dashboard) and [Visual Studio Code](https://code.visualstudio.com/)
 
 - Show Command Palette: `Command + Shift + P` or `F1`
 - Show Terminal: `Command + J`
@@ -37,4 +37,5 @@
 - Search "cursor"
   - Left Scroll Menu
     - Features -> Terminal (`@feature:terminal`)
+      - Terminal > Integrated: Cursor Blinking: Check (`@feature:terminal cursor blinking`)
       - Terminal > Integrated: Cursor Style: `line` (`@feature:terminal cursor style`)
