@@ -2,25 +2,32 @@
 
 ## Vim
 
-- Go to beginning of line: HOME
-- Go to end of line: END
-- Scroll down to the previous page: PAGE UP
-- Scroll down to the next page: PAGE DOWN
+- Go to beginning of line: `HOME`
+- Go to end of line: `END`
+- Scroll down to the previous page: `PAGE UP`
+- Scroll down to the next page: `PAGE DOWN`
 
 ## Terminal
 
-- Go to beginning of line: Ctrl + A
-- Go to end of line: Ctrl + E
-- Delete the previous word: Ctrl + W
-- Delete left of the cursor on this line: Ctrl + U
-- Delete right of the cursor on this line: Ctrl + K
+- Go to beginning of line: `Ctrl` + `A`
+- Go to end of line: `Ctrl` + `E`
+- Delete the previous word: `Ctrl` + `W`
+- Delete left of the cursor on this line: `Ctrl` + `U`
+- Delete right of the cursor on this line: `Ctrl` + `K`
 
 ## [Cursor](https://cursor.com/dashboard) and [Visual Studio Code](https://code.visualstudio.com/)
 
-- Show Command Palette: `Command + Shift + P` or `F1`
-- Show On/Off Terminal: `Command + J`
-- Toggle On/Off Side Bar: `Command + B`
+### App Shortcuts
+
+- Show Command Palette: `Command` + `Shift` + `P` or `F1`
+- Show On/Off Terminal: `Command` + `J`
+- Toggle On/Off Side Bar: `Command` + `B`
 - Terminal tab -> Top right corner "+v" -> "Configure Terminal Settings"
+
+### Code Navigation Shortcuts
+
+- Jump between Opening and Closing Braces: `Command` + `Shift` + `\`
+- Select everything between a pair of a matching brace: `Ctrl` + `Shirt` + `Right Arrow`
 
 ### Settings
 
