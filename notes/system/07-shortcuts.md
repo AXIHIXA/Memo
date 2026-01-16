@@ -18,7 +18,8 @@
 ## [Cursor](https://cursor.com/dashboard) and [Visual Studio Code](https://code.visualstudio.com/)
 
 - Show Command Palette: `Command + Shift + P` or `F1`
-- Show Terminal: `Command + J`
+- Show On/Off Terminal: `Command + J`
+- Toggle On/Off Side Bar: `Command + B`
 - Terminal tab -> Top right corner "+v" -> "Configure Terminal Settings"
 
 ### Settings
