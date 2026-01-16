@@ -20,8 +20,9 @@
 ### App Shortcuts
 
 - Show Command Palette: `Command` + `Shift` + `P` or `F1`
-- Show On/Off Terminal: `Command` + `J`
-- Toggle On/Off Side Bar: `Command` + `B`
+- Toggle On/Off Terminal: `Command` + `J`
+- Toggle On/Off Left Side Bar: `Command` + `B`
+- Toggle On/Off Chat Window: `Option` + `Command` + `B`
 - Terminal tab -> Top right corner "+v" -> "Configure Terminal Settings"
 
 ### Code Navigation Shortcuts
