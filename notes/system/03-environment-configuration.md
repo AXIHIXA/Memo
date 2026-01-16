@@ -68,7 +68,7 @@ fi
 vi ~/.zshrc
 
 # Colored prompt, Ubuntu desktop style
-export PROMPT="%B%F{green}%n@%m%f:%F{blue}%~%f%b %# "
+export PROMPT="%B%F{green}%n@%m%f%b:%B%F{blue}%~%f%b %# "
 
 # Conda initialize script is configured by Anaconda itself.
 # Play with ~/.zshrc after setting up Anaconda. 
