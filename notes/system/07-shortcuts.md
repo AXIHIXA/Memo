@@ -25,19 +25,22 @@
 
 - **Choose the "User" tab to avoid conflicts between profiles! Other profiles default to User!**
 - Cursor -> Settings -> Keyboard Shortcuts -> Search "Quick Voice Chat" -> Right Click, Remove Keybinding.
-  - It conflicts inside integrated Terminal to detach a Docker container (`Ctrl+P+Q`). 
-- Search "font"
-  - Left Scroll Menu
-    - Text Editor -> Font (`@editor font`)
-      - Editor: Font Size: `20`
-      - Editor: Font Family: `'JetBrains Mono', Consolas, 'Courier New', monospace`
-    - Features -> Debug (`@feature:debug`)
-      - Debug > Console: Font Size: `20`
-    - Features -> Terminal (`@feature:terminal`)
-      - Terminal > Integrated: Font Family: (Defaults to Editor: Font Family's value.)
-      - Terminal > Integrated: Font Size: `20` (`@feature:terminal font size`)
-- Search "cursor"
-  - Left Scroll Menu
-    - Features -> Terminal (`@feature:terminal`)
-      - Terminal > Integrated: Cursor Blinking: Check (`@feature:terminal cursor blinking`)
-      - Terminal > Integrated: Cursor Style: `line` (`@feature:terminal cursor style`)
+  - It conflicts inside integrated Terminal to detach a Docker container (`Ctrl+P+Q`).
+- Cursor -> Settings -> VS Code Settings
+  - Search "font"
+    - Left Scroll Menu
+      - Text Editor -> Font (`@editor font`)
+        - Editor: Font Size: `20`
+        - Editor: Font Family: `'JetBrains Mono', Consolas, 'Courier New', monospace`
+      - Features -> Debug (`@feature:debug`)
+        - Debug > Console: Font Size: `20`
+      - Features -> Terminal (`@feature:terminal`)
+        - Terminal > Integrated: Font Family: (Defaults to Editor: Font Family's value.)
+        - Terminal > Integrated: Font Size: `20` (`@feature:terminal font size`)
+  - Search "minimap"
+    - Editor > Minimap Enabled: Toggle On
+  - Search "cursor"
+    - Left Scroll Menu
+      - Features -> Terminal (`@feature:terminal`)
+        - Terminal > Integrated: Cursor Blinking: Toggle On (`@feature:terminal cursor blinking`)
+        - Terminal > Integrated: Cursor Style: `line` (`@feature:terminal cursor style`)
