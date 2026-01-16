@@ -62,7 +62,7 @@ then
 fi
 ```
 
-### `osx-arm64`
+### MacOS
 
 ```bash
 vi ~/.zshrc
