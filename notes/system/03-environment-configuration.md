@@ -17,7 +17,7 @@
 vi ~/.bashrc
 
 # Conda initialize script is configured by Anaconda itself.
-# Play with .bashrc after setting up Anaconda.
+# Play with ~/.bashrc after setting up Anaconda.
 
 # >>> conda initialize >>>
 # ...
@@ -67,8 +67,11 @@ fi
 ```bash
 vi ~/.zshrc
 
+# Colored prompt, Ubuntu desktop style
+export PROMPT="%B%F{green}%n@%m%f:%F{blue}%~%f%b %# "
+
 # Conda initialize script is configured by Anaconda itself.
-# Play with .bashrc after setting up Anaconda. 
+# Play with ~/.zshrc after setting up Anaconda. 
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
@@ -94,13 +97,14 @@ alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
 ```
 
+
 ### Real Ubuntu System
 
 ```bash
 vi ~/.bashrc
 
 # Conda initialize script is configured by Anaconda itself.
-# Play with .bashrc after setting up Anaconda. 
+# Play with ~/.bashrc after setting up Anaconda. 
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
