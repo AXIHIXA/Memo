@@ -45,6 +45,7 @@
   4. [System Management](./notes/system/04-system-management.md)
   5. [WSL 2](./notes/system/05-wsl-2.md)
   6. [MacOSX](./notes/system/06-macos.md)
+  7. [Generic Software Shortcuts](./notes/system/07-shortcuts.md)
 - Miscs
   - [Adobe PhotoShop Miscs](./notes/misc/photoshop.md)
 - Paper
