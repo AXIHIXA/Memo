@@ -90,7 +90,6 @@ fi
 
 ### MacOS
 
-- `~/.zshrc`
 ```bash
 vi ~/.zshrc
 
@@ -123,7 +122,6 @@ alias ws="cd $WORKSPACE"
 alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
 ```
-- `~/.vimrc`
 ```bash
 vi ~/.vimrc
 
