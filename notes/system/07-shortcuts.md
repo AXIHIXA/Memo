@@ -19,7 +19,7 @@
 
 ### Clear Recent from Welcome Page
 
-- Top left corner > File > Open Recent > Clear Recently Opened...
+- From Top Toolbar: File > Open Recent > Clear Recently Opened...
 
 ### App Shortcuts
 
