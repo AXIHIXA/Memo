@@ -16,15 +16,28 @@
 ```bash
 vi ~/.bashrc
 
-# Conda initialize script is configured by Anaconda itself.
-# Play with ~/.bashrc after setting up Anaconda.
+# Colored prompts
+if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+else
+    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+fi
+
+# Color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
+
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
 
 # >>> conda initialize >>>
 # ...
 # <<< conda initialize <<<
-
-# Colored prompt, Ubuntu desktop style
-export PS1="\[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "
 
 # Xi's personal aliases
 WORKSPACE=`realpath ~/workspace`
@@ -48,53 +61,107 @@ export TRT_USER
 export TRT_GITLAB_API_TOKEN=$GITLAB_PAT
 export TRT_CONTAINERS_PATH="$SCRATCH/.trt_containers"
 
-if [[ -f ~/.git-trt-autocomplete.bash ]]
-then
+# TRT autocomplete
+if [[ -f ~/.git-trt-autocomplete.bash ]]; then
     source ~/.git-trt-autocomplete.bash
 fi
 ```
 ```bash
 vi ~/.profile
 
-if [[ -f ~/.bashrc ]]
-then
-    source ~/.bashrc
+# if running bash
+if [ -n "$BASH_VERSION" ]; then
+    # include .bashrc if it exists
+    if [ -f "$HOME/.bashrc" ]; then
+	. "$HOME/.bashrc"
+    fi
+fi
+
+# set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+# set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/.local/bin" ] ; then
+    PATH="$HOME/.local/bin:$PATH"
 fi
 ```
 
 ### MacOS
 
+- `~/.zshrc`
 ```bash
 vi ~/.zshrc
 
-# Colored prompt, Ubuntu desktop style
-export PROMPT="%B%F{green}%n@%m%f%b:%B%F{blue}%~%f%b %# "
+# Colored prompt
+if (( $+commands[tput] )) && tput setaf 1 &>/dev/null; then
+    export PROMPT="%B%F{green}%n@%m%f%b:%B%F{blue}%~%f%b %# "
+fi
 
-# Conda initialize script is configured by Anaconda itself.
-# Play with ~/.zshrc after setting up Anaconda. 
+# Colored ls
+export CLICOLOR=1
+export LSCOLORS=ExGxBxDxCxEgEdxbxgxcxd
+
+# Colored grep
+if echo "test" | command grep --color=auto "test" &>/dev/null 2>&1; then
+    grep() { command grep --color=auto "$@"; }
+    fgrep() { command fgrep --color=auto "$@"; }
+    egrep() { command egrep --color=auto "$@"; }
+    export GREP_COLORS='ms=01;31:mc=01;31:fn=35:ln=32:se=36'
+fi
 
 # >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/Users/xihan/opt/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/Users/xihan/opt/anaconda3/etc/profile.d/conda.sh" ]; then
-        . "/Users/xihan/opt/anaconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/Users/xihan/opt/anaconda3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
+# ...
 # <<< conda initialize <<<
 
 # Xi's personal aliases
-WORKSPACE="$HOME/workspace"
+WORKSPACE=`realpath ~/workspace`
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd $WORKSPACE"
 alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
+```
+- `~/.vimrc`
+```bash
+vi ~/.vimrc
+
+" ===== Basic Settings =====
+syntax on                      " Enable syntax highlighting
+filetype plugin indent on      " Enable file type detection
+"set number                     " Show line numbers
+"set relativenumber             " Relative line numbers
+set ruler                      " Show cursor position
+set showcmd                    " Show command in status bar
+"set showmode                   " Show current mode
+"set cursorline                 " Highlight current line
+
+" ===== Colors =====
+set t_Co=256                   " Use 256 colors
+"set background=dark            " Dark background
+"colorscheme desert             " Color scheme
+
+" ===== Indentation =====
+set autoindent                 " Auto-indent new lines
+set smartindent                " Smart indentation
+set tabstop=4                  " Tab width
+set shiftwidth=4               " Indent width
+set expandtab                  " Use spaces instead of tabs
+
+" ===== Search =====
+set hlsearch                   " Highlight search results
+set incsearch                  " Incremental search
+set ignorecase                 " Ignore case in search
+set smartcase                  " Case-sensitive if uppercase present
+
+" ===== Performance =====
+set lazyredraw                 " Don't redraw during macros
+set ttyfast                    " Faster terminal
+
+" ===== Backup =====
+set nobackup                   " No backup files
+set noswapfile                 " No swap files
 ```
 
 
@@ -103,26 +170,12 @@ alias cls="reset"
 ```bash
 vi ~/.bashrc
 
-# Conda initialize script is configured by Anaconda itself.
-# Play with ~/.bashrc after setting up Anaconda. 
-
 # >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/xihan1/opt/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/home/xihan1/opt/anaconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/xihan1/opt/anaconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/home/xihan1/opt/anaconda3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
+# ...
 # <<< conda initialize <<<
 
 # Xi's personal aliases
-WORKSPACE="$HOME/workspace"
+WORKSPACE=`realpath ~/workspace`
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias ws="cd $WORKSPACE"
@@ -134,6 +187,10 @@ alias cls="reset"
 
 ```bash
 vi ~/.bashrc
+
+# >>> conda initialize >>>
+# ...
+# <<< conda initialize <<<
 
 # Xi's personal aliases
 WORKSPACE="/mnt/d/workspace"
@@ -147,20 +204,6 @@ alias pp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_single.py"
 alias ppp="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_multiple.py"
 alias ppu="c3; python /mnt/d/workspace/Memo/code/renamer/pixiv_add_user_prefix.py"
 alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDev/download-patreon.sh"
-```
-
-### `VMWare` Client
-
-```bash
-vi ~/.bashrc
-
-# Aliases
-WORKSPACE="/media/$USER/DATA/workspace"
-alias c3="conda activate py3"
-alias d3="conda deactivate"
-alias ws="cd $WORKSPACE"
-alias jl="cd $WORKSPACE; jupyter lab"
-alias cls="reset"
 ```
 
 
