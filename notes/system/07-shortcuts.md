@@ -17,6 +17,10 @@
 
 ## [Cursor](https://cursor.com/dashboard) and [Visual Studio Code](https://code.visualstudio.com/)
 
+### Clear Recent from Welcome Page
+
+- Top left corner > File > Open Recent > Clear Recently Opened...
+
 ### App Shortcuts
 
 - Show Command Palette: `Command` + `Shift` + `P` or `F1`
