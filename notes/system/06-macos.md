@@ -35,7 +35,7 @@
 - Profile
   - Duplicate "Clear Dark", rename to "AX", set as Default.
   - Text -> Background -> Color & Effects -> Ocacity 90%, Blur 50%
-  - Text -> Font -> font size to 16
+  - Text -> Font -> font size to 16 (air) or 18 (pro or external monitor)
 - Notes
   - Command replaces Ctrl;
   - Ctrl + C/Z remains unchanged.
