@@ -39,6 +39,18 @@
 - Jump between Opening and Closing Braces: `Command` + `Shift` + `\`
 - Select everything between a pair of a matching brace: `Ctrl` + `Shirt` + `Right Arrow`
 
+### Remote Development Envionment
+
+- Install the Remote - SSH (`anysphere.remote-ssh`) and Dev Containers extensions (`anysphere.remote-containers`) extensions.
+- Reload Cursor by doing Ctrl+Shift+P and typing Developer: Reload Window. 
+- Open the Remote Explorer extension. To the right of “SSH TARGETS”, select the gear icon and add a new entry to the SSH config file.
+- To the right of “SSH TARGETS”, click the refresh button to see your entry on the list. Click on the small button in the new entry and connect to it.
+- Open the dev container. The simplest way is `Command+Shift+P` and type `Dev Container: Attach to Running Container`.
+- In the CMake extension, click “build”. (If the CMake extension isn't visible, try doing > Developer: Reload Window or > CMake: Configure from Ctrl+Shift+P.)
+- By default, VSCode/Cursor binds F7 as the keybinding to build the currently-selected CMake target.
+  - Add a keybinding such as Ctrl+Shift+F7 for “CMake: Compile Active File”. This lets you build the open .cpp file instantly.
+  - Build less than the full project by clicking Set Build Target. (Or Ctrl+Shift+P and enter > CMake: Set Build Target.)
+
 ### Settings
 
 - **Choose the "User" tab to avoid conflicts between profiles! Other profiles default to User!**
