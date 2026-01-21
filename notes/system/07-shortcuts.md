@@ -21,6 +21,11 @@
 
 - From Top Toolbar: File > Open Recent > Clear Recently Opened...
 
+### Chat Window
+
+- Toggle On/Off Chat Window: `Option` + `Command` + `B`
+- Remove Chat History: "Clock" icon on the second row of the top-right corner 
+
 ### App Shortcuts
 
 - Show Command Palette: `Command` + `Shift` + `P` or `F1`
