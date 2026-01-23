@@ -41,22 +41,21 @@ fi
 
 # Xi's personal aliases
 WORKSPACE=`realpath ~/workspace`
+SCRATCH=`realpath ~/scratch.xihan_coreai`
 alias c3="conda activate py3"
 alias d3="conda deactivate"
+alias sc="cd $SCRATCH"
 alias ws="cd $WORKSPACE"
 alias jl="cd $WORKSPACE; jupyter lab"
 alias cls="reset"
 
 # TRT
-# Configured here in purpose as we use Bash (~/.bashrc)
-# instead of GUI (~/.profile) for remote sessions
 TRT_USER="xihan"
-SCRATCH="/home/scratch.${TRT_USER}_coreai"
 GITLAB_PAT="YOUR GITLAB PERSONAL ACCESS TOKEN GOES HERE"
-export GIT_TRT_ROOT="$SCRATCH/git-trt"
+export GIT_TRT_ROOT="$WORKSPACE/git-trt"
 export PATH="$GIT_TRT_ROOT/bin:$PATH"
 export MANPATH="$GIT_TRT_ROOT/man:$MANPATH"
-export TRT_ROOT="$SCRATCH/trt"
+export TRT_ROOT="$WORKSPACE/trt"
 export TRT_USER
 export TRT_GITLAB_API_TOKEN=$GITLAB_PAT
 export TRT_CONTAINERS_PATH="$SCRATCH/.trt_containers"
