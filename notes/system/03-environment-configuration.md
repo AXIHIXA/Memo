@@ -14,6 +14,9 @@
 ### ComputeLab Remote Ubuntu
 
 ```bash
+ln -s /home/scratch.xihan_coreai ~/scratch.xihan_coreai
+mkdir -p /home/scratch.xihan_coreai/workspace
+ln -s /home/scratch.xihan_coreai/workspace ~/workspace
 vi ~/.bashrc
 
 # Colored prompts
@@ -40,8 +43,8 @@ fi
 # <<< conda initialize <<<
 
 # Xi's personal aliases
-WORKSPACE=`realpath ~/workspace`
-SCRATCH=`realpath ~/scratch.xihan_coreai`
+SCRATCH=`realpath /home/scratch.xihan_coreai`
+WORKSPACE=`realpath $SCRATCH/workspace`
 alias c3="conda activate py3"
 alias d3="conda deactivate"
 alias sc="cd $SCRATCH"
