@@ -73,7 +73,7 @@ vi ~/.gitconfig
 
 [trt]
         gitlab-api-token = "YOUR GITLAB PERSONAL ACCESS TOKEN GOES HERE"
-        runc-default-args = "--mounts /home/scratch.xihan_coreai/:/home/xihan/scratch.xihan_coreai/,/home/scratch.svc_compute_arch/:/home/xihan/scratch.svc_compute_arch/"
+        runc-default-args = "--mounts /home/scratch.xihan_coreai/:/home/xihan/scratch.xihan_coreai/,/home/scratch.xihan_coreai/workspace:/home/xihan/workspace,/home/scratch.svc_compute_arch/:/home/xihan/scratch.svc_compute_arch/"
 ```
 ```bash
 vi ~/.profile
