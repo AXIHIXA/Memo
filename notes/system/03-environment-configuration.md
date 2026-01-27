@@ -9,7 +9,8 @@
     - See the next section.
   - Clear screen: 
     - `cls` is a Windows PowerShell command to clear the terminal.
-    - `reset` is a Linux Bash command to reinitialize the terminal, as if it were opened from scratch. 
+    - `reset` is a Linux Bash command to reinitialize the terminal, as if it were opened from scratch.
+    - `clear` is a Linux Bash command to clear all previous contents.
 
 ### ComputeLab Remote Ubuntu
 
