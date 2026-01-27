@@ -13,6 +13,7 @@
 
 ### ComputeLab Remote Ubuntu
 
+- 1. ~/.bashrc
 ```bash
 ln -s /home/scratch.xihan_coreai ~/scratch.xihan_coreai
 mkdir -p /home/scratch.xihan_coreai/workspace
@@ -50,7 +51,10 @@ alias d3="conda deactivate"
 alias sc="cd $SCRATCH"
 alias ws="cd $WORKSPACE"
 alias jl="cd $WORKSPACE; jupyter lab"
-alias cls="reset"
+alias cls="clear"
+
+# Xi's personal scripts
+export PATH="$SCRATCH/opt/bin:$PATH"
 
 # TRT
 TRT_USER="xihan"
@@ -68,6 +72,7 @@ if [[ -f ~/.git-trt-autocomplete.bash ]]; then
     source ~/.git-trt-autocomplete.bash
 fi
 ```
+- 2. ~/.gitconfig
 ```bash
 vi ~/.gitconfig
 
@@ -75,6 +80,7 @@ vi ~/.gitconfig
         gitlab-api-token = "YOUR GITLAB PERSONAL ACCESS TOKEN GOES HERE"
         runc-default-args = "--mounts /home/scratch.xihan_coreai/:/home/xihan/scratch.xihan_coreai/,/home/scratch.xihan_coreai/workspace:/home/xihan/workspace,/home/scratch.svc_compute_arch/:/home/xihan/scratch.svc_compute_arch/"
 ```
+- 3. ~/.profile
 ```bash
 vi ~/.profile
 
@@ -95,6 +101,31 @@ fi
 if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
+```
+- 4. $SCRATCH/opt/run_cudnn_docker.sh
+```bash
+cd $SCRATCH
+mkdir -p opt
+cd opt
+mkdir -p bin
+vi run_cudnn_docker.sh
+
+#!/bin/bash
+docker \
+    run \
+    -it \
+    --rm \
+    --user=151841:30 \
+    --volume=/home/xihan:/home/xihan \
+    --volume=/home/scratch.xihan_coreai:/home/scratch.xihan_coreai \
+    --workdir=/home/xihan \
+    --hostname=docker-computelab-304.nvidia.com \
+    --name=xihan_local \
+    --gpus=all \
+    urm.nvidia.com/hw-cudnn-docker/dev:xihan-local
+
+chmod +x run_cudnn_docker.sh
+ln -s `realpath run_cudnn_docker.sh` bin/rcd
 ```
 
 ### MacOS
