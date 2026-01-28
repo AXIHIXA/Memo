@@ -98,8 +98,8 @@ fi
 cd $SCRATCH
 mkdir -p opt
 cd opt
-mkdir -p bin
-vi run_cudnn_docker.sh
+mkdir -p scripts
+vi scripts/run_cudnn_docker.sh
 
 #!/bin/bash
 docker \
@@ -115,7 +115,8 @@ docker \
     --gpus=all \
     urm.nvidia.com/hw-cudnn-docker/dev:xihan-local
 
-chmod +x run_cudnn_docker.sh
+chmod +x scripts/run_cudnn_docker.sh
+mkdir -p bin
 ln -s `realpath run_cudnn_docker.sh` bin/rcd
 ```
 
