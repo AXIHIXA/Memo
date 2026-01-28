@@ -46,6 +46,7 @@
   5. [WSL 2](./notes/system/05-wsl-2.md)
   6. [MacOSX](./notes/system/06-macos.md)
   7. [Generic Software Shortcuts](./notes/system/07-shortcuts.md)
+  8. [GIT](./notes/system/08-git.md)
 - Miscs
   - [Adobe PhotoShop Miscs](./notes/misc/photoshop.md)
 - Paper
