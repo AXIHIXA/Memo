@@ -32,6 +32,8 @@ Docker loves to cache. This is generally great, but it can sometimes lead to und
 ```bash
 # Remove unused images (not associated with a container or a tag)
 docker image prune
+# Remove the docker build cache ("docker build" is used to build a per-user image)
+docker buildx prune
 # Remove all stopped containers
 docker container prune
 ```
@@ -278,6 +280,7 @@ $
     - `docker image remove`
     - `docker image rm`
     - **docker rmi**
+
 
 
 
