@@ -93,7 +93,7 @@ if [ -n "$BASH_VERSION" ]; then
     fi
 fi
 ```
-- 4. $SCRATCH/opt/run_cudnn_docker.sh (After [Repo Setup](./08-git.md))
+- 4. $SCRATCH/opt/run_cudnn_docker.sh (After [Repo Setup](../git-notes/git-notes.md))
 ```bash
 cd $SCRATCH
 mkdir -p opt

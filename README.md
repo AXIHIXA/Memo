@@ -32,6 +32,8 @@
     - [(OLD) C++ Concurrency Debugging](./notes/cpp/debugging.md)
 - Docker
   - [Docker](./notes/docker/docker.md)
+- Git
+  - [Git](./notes/git-notes/git-notes.md)
 - Python
     - [Python Offical Tutorial Notes](./notes/py/py.md)
     - [NumPy Tutorial Notes](./notes/py/numpy.md)
@@ -46,7 +48,6 @@
   5. [WSL 2](./notes/system/05-wsl-2.md)
   6. [MacOSX](./notes/system/06-macos.md)
   7. [Generic Software Shortcuts](./notes/system/07-shortcuts.md)
-  8. [GIT](./notes/system/08-git.md)
 - Miscs
   - [Adobe PhotoShop Miscs](./notes/misc/photoshop.md)
 - Paper
