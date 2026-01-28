@@ -26,6 +26,21 @@
   - By default, only show containers that are actively running.
     - To see all containers, append OPTION `-a` or `--all`.
 
+### Clear Cache
+
+Docker loves to cache. This is generally great, but it can sometimes lead to undesired effects.
+```bash
+# Remove unused images (not associated with a container or a tag)
+docker image prune
+# Remove the docker build cache ("docker build" is used to build a per-user image)
+docker buildx prune
+# Remove a stopped container
+docker rm <container_name>
+# Remove all stopped containers
+docker container prune
+```
+For more details: [Docker Clear Cache](https://depot.dev/blog/docker-clear-cache).
+
 ### Create Docker Container from Images
 
 - Create a new container from images]((https://docs.docker.com/reference/cli/docker/container/create/)):
@@ -267,4 +282,5 @@ $
     - `docker image remove`
     - `docker image rm`
     - **docker rmi**
+
 
