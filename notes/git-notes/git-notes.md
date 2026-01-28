@@ -43,6 +43,31 @@ chmod +x ./scripts/bh
 ```
 - Copy and save the commands for Docker image build and container run. 
 ```bash
+# Check whether this aligns with the latest output!
+echo "
+FROM urm.nvidia.com/hw-cudnn-docker/dev
+RUN groupadd -g 30 hardware ; \
+useradd -l -p '' -g hardware --uid 151841 xihan -s /bin/bash ; \
+passwd -d xihan ; \
+passwd -d root ; \
+echo xihan 'ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+USER xihan
+" | docker build -f - -t urm.nvidia.com/hw-cudnn-docker/dev:xihan-local .
+```
+```bash
+#!/bin/bash
+docker \
+    run \
+    -it \
+    --rm \
+    --user=151841:30 \
+    --volume=/home/xihan:/home/xihan \
+    --volume=/home/scratch.xihan_coreai:/home/scratch.xihan_coreai \
+    --workdir=/home/xihan \
+    --hostname=docker-computelab-304.nvidia.com \
+    --name=xihan \
+    --gpus=all \
+    urm.nvidia.com/hw-cudnn-docker/dev:xihan-local
 ```
 - [Docker Clear Cache](https://github.com/AXIHIXA/Memo/blob/master/notes/docker/docker.md#clear-cache):
 ```bash
