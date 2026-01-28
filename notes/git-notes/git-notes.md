@@ -48,10 +48,6 @@ chmod +x ./scripts/bh
 ```bash
 # Remove unused images (not associated with a container or a tag)
 docker image prune
-# Remove the docker build cache ("docker build" is used to build a per-user image)
-docker buildx prune
-# Remove a stopped container
-docker rm <container_name>
 # Remove all stopped containers
 docker container prune
 ```
