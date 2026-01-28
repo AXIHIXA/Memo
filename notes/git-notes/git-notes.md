@@ -42,3 +42,16 @@ chmod +x ./scripts/bh
 ./scripts/bh run --dry-run
 ```
 - Copy and save the commands for Docker image build and container run. 
+```bash
+```
+- [Docker Clear Cache](https://github.com/AXIHIXA/Memo/blob/master/notes/docker/docker.md#clear-cache):
+```bash
+# Remove unused images (not associated with a container or a tag)
+docker image prune
+# Remove the docker build cache ("docker build" is used to build a per-user image)
+docker buildx prune
+# Remove a stopped container
+docker rm <container_name>
+# Remove all stopped containers
+docker container prune
+```
