@@ -110,7 +110,7 @@ docker \
     --volume=/home/xihan:/home/xihan \
     --volume=/home/scratch.xihan_coreai:/home/scratch.xihan_coreai \
     --workdir=/home/xihan \
-    --hostname=docker-computelab-304.nvidia.com \
+    --hostname=docker-`hostname` \
     --name=xihan \
     --gpus=all \
     urm.nvidia.com/hw-cudnn-docker/dev:xihan-local
