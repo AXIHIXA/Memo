@@ -3,7 +3,7 @@
 ## Profile
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 nsys profile /path/to-executable ARGS...
+CUDA_VISIBLE_DEVICES=1 nsys profile /path/to/executable ARGS...
 ```
 
 ## See Dumped Stats
