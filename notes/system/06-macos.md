@@ -36,6 +36,11 @@
     - Shortcut: Ctrl + Up
     - Swipe up: Show screen management tab on the top.
 
+## Multiple Desktops
+
+- Ctrl + Left/Right: Change screen;
+- Mission Control: Ctrl + Up
+
 ## Terminal
 
 - Profile
@@ -52,7 +57,7 @@
 ```
 tell application "Finder"
 	set current_folder to (target of front window) as alias
-	set thePath to quoted form of (POSIX path of current_folder)
+	set thePath to the quoted form of (POSIX path of current_folder)
 end tell
 
 do shell script "open -a Terminal.app " & thePath
