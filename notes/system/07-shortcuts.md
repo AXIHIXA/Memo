@@ -11,8 +11,8 @@
 
 - Go to beginning of line: `Ctrl` + `A`
 - Go to end of line: `Ctrl` + `E`
-- Go to the previous word: `Alt` + `Left Arrow` (`Opt` + `Left Arrow`)
-- Go to the next word: `Alt` + `Right Arrow` (`Opt` + `Right Arrow`)
+- Go to the previous word: `Alt` + `LEFT`
+- Go to the next word: `Alt` + `RIGHT`
 - Delete the previous word: `Ctrl` + `W`
 - Delete left of the cursor on this line: `Ctrl` + `U`
 - Delete right of the cursor on this line: `Ctrl` + `K`
