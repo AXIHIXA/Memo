@@ -2,26 +2,39 @@
 
 ## Profile
 
+```bash
 CUDA_VISIBLE_DEVICES=1 nsys profile /path/to-executable ARGS...
+```
 
 ## See Dumped Stats
 
-### Overall summary
+### Overall Summary
 
+```bash
 nsys stats report1.nsys-rep
+```
 
-### CUDA API statistics
+### CUDA API Statistics
 
+```bash
 nsys stats --report cuda_api_sum report1.nsys-rep
+```
 
-### CUDA GPU kernel statistics
+### CUDA GPU Kernel Statistics
 
+```bash
 nsys stats --report cuda_gpu_kern_sum report1.nsys-rep
+```
 
-### CUDA memory operations
+### CUDA Memory Operations
 
+```bash
 nsys stats --report cuda_gpu_mem_sum report1.nsys-rep
+```
 
-### NVTX ranges (if you used NVTX markers)
+### NVTX Ranges (If You Used NVTX Markers)
 
+```bash
 nsys stats --report nvtx_sum report1.nsys-rep
+```
+
