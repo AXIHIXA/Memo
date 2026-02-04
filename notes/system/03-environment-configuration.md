@@ -119,6 +119,21 @@ chmod +x scripts/run_cudnn_docker.sh
 mkdir -p bin
 ln -s `realpath run_cudnn_docker.sh` bin/rcd
 ```
+- 5. $SCRATCH/opt/run_cudnn_docker.sh (After [Repo Setup](../git-notes/git-notes.md))
+```bash
+cd $SCRATCH
+mkdir -p opt
+cd opt
+mkdir -p scripts
+vi scripts/nsys-stats-report-cuda_gpu_kern_sum.sh
+
+#!/bin/sh
+nsys stats --report cuda_gpu_kern_sum $1
+
+chmod +x scripts/nsys-stats-report-cuda_gpu_kern_sum.sh
+mkdir -p bin
+ln -s `realpath run_cudnn_docker.sh` bin/nss
+```
 
 ### MacOS
 
