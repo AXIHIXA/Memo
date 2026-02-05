@@ -156,7 +156,7 @@ case "$BUILD_TYPE" in
         ;;
 esac
 
-# Check if clean argument is provided
+# Check if the clean argument is provided
 if [ $# -ge 2 ]; then
     CLEAN_ARG=$(echo "$2" | tr '[:upper:]' '[:lower:]')
     if [ "$CLEAN_ARG" = "clean" ]; then
@@ -165,7 +165,9 @@ if [ $# -ge 2 ]; then
             rm -rf "$BUILD_DIR"
         fi
     else
-        echo "Warning: Unknown argument '$2' ignored."
+        echo "Error: Unknown argument '$2'"
+        echo "Valid options: clean (optional, case insensitive)"
+        exit 1
     fi
 fi
 
