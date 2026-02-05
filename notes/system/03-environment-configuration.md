@@ -194,6 +194,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo "Done"
 exit 0
 
 chmod +x xi-cmake-build.sh 
