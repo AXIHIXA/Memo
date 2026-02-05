@@ -133,10 +133,6 @@ vi xi-cmake-build.sh
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <Debug|Release> [clean]"
-    echo "Example: $0 Debug"
-    echo "Example: $0 Release"
-    echo "Example: $0 Debug clean"
-    echo "Example: $0 Release clean"
     exit 1
 fi
 
@@ -165,20 +161,24 @@ if [ $# -ge 2 ]; then
     CLEAN_ARG=$(echo "$2" | tr '[:upper:]' '[:lower:]')
     if [ "$CLEAN_ARG" = "clean" ]; then
         if [ -d "$BUILD_DIR" ]; then
-            echo "Removing $BUILD_DIR directory..."
+            echo "rm -rf '$BUILD_DIR'"
             rm -rf "$BUILD_DIR"
-            echo "$BUILD_DIR has been removed."
-        else
-            echo "$BUILD_DIR directory does not exist, nothing to clean."
         fi
-        exit 0
     else
         echo "Warning: Unknown argument '$2' ignored."
     fi
 fi
 
 # CMake build
+echo "mkdir -p '$BUILD_DIR'"
 mkdir -p "$BUILD_DIR"
+
+if [ $? -ne 0 ]; then
+    echo "Error: failed to create build directory '$BUILD_DIR'"
+    exit 1
+fi
+
+echo "cmake -DCMAKE_BUILD_TYPE='$CMAKE_BUILD_TYPE' -B'$BUILD_DIR'"
 cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -B"$BUILD_DIR"
 
 if [ $? -ne 0 ]; then
@@ -186,7 +186,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-cmake --build $BUILD_DIR -j
+echo "cmake --build '$BUILD_DIR' -j"
+cmake --build "$BUILD_DIR" -j
 
 if [ $? -ne 0 ]; then
     echo "Error: cmake builder returned a non-zero value"
