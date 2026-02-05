@@ -153,6 +153,11 @@ This message shows that your installation appears to be working correctly.
 $
 ```
 
+### Attach to a Running Container
+
+- `docker attach`: Conflicts with existing sessions. All sessions will see the same input/output.
+- `docker exec -it <container_name_or_id> /bin/bash`: Do not conflict with existing sessions. 
+
 ### [Dockerfile](https://docs.docker.com/reference/dockerfile/)
 
 - Files needed to create a local Docker image:
@@ -280,6 +285,7 @@ $
     - `docker image remove`
     - `docker image rm`
     - **docker rmi**
+
 
 
 
