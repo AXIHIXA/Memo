@@ -99,7 +99,8 @@ cd $SCRATCH
 mkdir -p opt
 cd opt
 mkdir -p scripts
-vi scripts/xi-run-cudnn-container.sh
+cd scripts
+vi xi-run-cudnn-container.sh
 
 #!/bin/bash
 docker \
@@ -115,19 +116,18 @@ docker \
     --gpus=all \
     urm.nvidia.com/hw-cudnn-docker/dev:xihan-local
 
-chmod +x scripts/xi-run-cudnn-container.sh
+chmod +x xi-run-cudnn-container.sh
 ```
 ```bash
-mkdir -p scripts
-vi scripts/xi-nsys-stats-report-cuda-gpu-kern-sum.sh
+vi xi-nsys-stats-report-cuda-gpu-kern-sum.sh
 
 #!/bin/sh
 nsys stats --report cuda_gpu_kern_sum $1
 
-chmod +x scripts/xi-nsys-stats-report-cuda-gpu-kern-sum.sh
+chmod +x xi-nsys-stats-report-cuda-gpu-kern-sum.sh
 ```
 ```bash
-vi scripts/xi-cmake-build.sh 
+vi xi-cmake-build.sh 
 
 #!/bin/sh
 
@@ -195,9 +195,11 @@ fi
 
 exit 0
 
-chmod +x scripts/xi-cmake-build.sh 
+chmod +x xi-cmake-build.sh 
 ```
 ```bash
+cd $SCRATCH
+cd opt
 mkdir -p bin
 cd bin
 ln -s `realpath ../scripts/xi-run-cudnn-container.sh` rcd
