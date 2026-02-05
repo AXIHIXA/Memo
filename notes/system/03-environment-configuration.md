@@ -93,13 +93,13 @@ if [ -n "$BASH_VERSION" ]; then
     fi
 fi
 ```
-- 4. $SCRATCH/opt/run_cudnn_docker.sh (After [Repo Setup](../git-notes/git-notes.md))
+- 4. $SCRATCH/opt/scripts (After [Repo Setup](../git-notes/git-notes.md))
 ```bash
 cd $SCRATCH
 mkdir -p opt
 cd opt
 mkdir -p scripts
-vi scripts/run_cudnn_docker.sh
+vi scripts/xi-run-cudnn-container.sh
 
 #!/bin/bash
 docker \
@@ -115,24 +115,94 @@ docker \
     --gpus=all \
     urm.nvidia.com/hw-cudnn-docker/dev:xihan-local
 
-chmod +x scripts/run_cudnn_docker.sh
-mkdir -p bin
-ln -s `realpath run_cudnn_docker.sh` bin/rcd
+chmod +x scripts/xi-run-cudnn-container.sh
 ```
-- 5. $SCRATCH/opt/run_cudnn_docker.sh (After [Repo Setup](../git-notes/git-notes.md))
 ```bash
-cd $SCRATCH
-mkdir -p opt
-cd opt
 mkdir -p scripts
-vi scripts/nsys-stats-report-cuda_gpu_kern_sum.sh
+vi scripts/xi-nsys-stats-report-cuda-gpu-kern-sum.sh
 
 #!/bin/sh
 nsys stats --report cuda_gpu_kern_sum $1
 
-chmod +x scripts/nsys-stats-report-cuda_gpu_kern_sum.sh
+chmod +x scripts/xi-nsys-stats-report-cuda-gpu-kern-sum.sh
+```
+```bash
+vi scripts/xi-cmake-build.sh 
+
+#!/bin/sh
+
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <Debug|Release> [clean]"
+    echo "Example: $0 Debug"
+    echo "Example: $0 Release"
+    echo "Example: $0 Debug clean"
+    echo "Example: $0 Release clean"
+    exit 1
+fi
+
+# Convert argument to lowercase for case-insensitive comparison
+BUILD_TYPE=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+
+# Set CMAKE_BUILD_TYPE and build directory based on input
+case "$BUILD_TYPE" in
+    debug)
+        CMAKE_BUILD_TYPE="Debug"
+        BUILD_DIR="cmake-build-debug"
+        ;;
+    release)
+        CMAKE_BUILD_TYPE="Release"
+        BUILD_DIR="cmake-build-release"
+        ;;
+    *)
+        echo "Error: Invalid build type '$1'"
+        echo "Valid options: Debug, Release (case insensitive)"
+        exit 1
+        ;;
+esac
+
+# Check if clean argument is provided
+if [ $# -ge 2 ]; then
+    CLEAN_ARG=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+    if [ "$CLEAN_ARG" = "clean" ]; then
+        if [ -d "$BUILD_DIR" ]; then
+            echo "Removing $BUILD_DIR directory..."
+            rm -rf "$BUILD_DIR"
+            echo "$BUILD_DIR has been removed."
+        else
+            echo "$BUILD_DIR directory does not exist, nothing to clean."
+        fi
+        exit 0
+    else
+        echo "Warning: Unknown argument '$2' ignored."
+    fi
+fi
+
+# CMake build
+mkdir -p "$BUILD_DIR"
+cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -B"$BUILD_DIR"
+
+if [ $? -ne 0 ]; then
+    echo "Error: cmake generator returned a non-zero value"
+    exit 1
+fi
+
+cmake --build $BUILD_DIR -j
+
+if [ $? -ne 0 ]; then
+    echo "Error: cmake builder returned a non-zero value"
+    exit 1
+fi
+
+exit 0
+
+chmod +x scripts/xi-cmake-build.sh 
+```
+```bash
 mkdir -p bin
-ln -s `realpath run_cudnn_docker.sh` bin/nss
+cd bin
+ln -s `realpath ../scripts/xi-run-cudnn-container.sh` rcd
+ln -s `realpath ../scripts/xi-nsys-stats-report-cuda-gpu-kern-sum.sh` nss
+ln -s `realpath ../scripts/xi-cmake-build.sh` cmk
 ```
 
 ### MacOS
