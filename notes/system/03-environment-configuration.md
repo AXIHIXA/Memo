@@ -170,13 +170,15 @@ if [ $# -ge 2 ]; then
 fi
 
 # CMake build
-echo "mkdir -p '$BUILD_DIR'"
-mkdir -p "$BUILD_DIR"
+if [ -d "$BUILD_DIR" ]; then
+    echo "mkdir '$BUILD_DIR'"
+    mkdir "$BUILD_DIR"
 
-if [ $? -ne 0 ]; then
-    echo "Error: failed to create build directory '$BUILD_DIR'"
-    exit 1
-fi
+    if [ $? -ne 0 ]; then
+        echo "Error: failed to create build directory '$BUILD_DIR'"
+        exit 1
+    fi
+fi 
 
 echo "cmake -DCMAKE_BUILD_TYPE='$CMAKE_BUILD_TYPE' -B'$BUILD_DIR'"
 cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -B"$BUILD_DIR"
