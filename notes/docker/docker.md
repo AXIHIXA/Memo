@@ -188,33 +188,6 @@ $
     - `docker exec -it CONTAINER /bin/bash`
     - Get into a running container without conflicting with other sesseions"
 
-### Save and Load an Image
-
-- [docker image save](https://docs.docker.com/reference/cli/docker/image/save/)
-  - Save one or more images to a tar archive (streamed to STDOUT by default). 
-  - Save built images for further use. Good on shared devices where old Docker images are frequently removed. 
-  - Syntax:
-    - USAGE: `docker save [OPTIONS] IMAGE [IMAGE...]`
-    - OPTIONS:
-      - `-o, --output string`: Write to a file, instead of STDOUT
-    - Aliases:
-      - docker image save
-      - **docker save**
-  - Example:
-    - `docker save -o /path/to/your/image.tar IMAGE` 
-- [docker image load](https://docs.docker.com/reference/cli/docker/image/load/)
-  - Load an image from a tar archive or STDIN.
-  - Load prebuilt images into Docker management. Good on shared devices where old Docker images are frequently removed.
-  - Syntax:
-    - USAGE: `docker load OPTIONS`
-    - OPTIONS:
-      - `-i, --input string`: Read from tar archive file, instead of STDIN
-    - Aliases:
-      - docker image load
-      - **docker load**
-  - Example:
-    - `docker load -i /path/to/your/image.tar`
-
 ### Stop or Kill a Running Container
 
 - [Stop one or more running containers](https://docs.docker.com/reference/cli/docker/container/stop/)
@@ -244,6 +217,33 @@ $
   - Aliases:
     - `docker container kill`
     - **docker kill**
+
+### Save and Load an Image
+
+- [docker image save](https://docs.docker.com/reference/cli/docker/image/save/)
+  - Save one or more images to a tar archive (streamed to STDOUT by default). 
+  - Save built images for further use. Good on shared devices where old Docker images are frequently removed. 
+  - Syntax:
+    - USAGE: `docker save [OPTIONS] IMAGE [IMAGE...]`
+    - OPTIONS:
+      - `-o, --output string`: Write to a file, instead of STDOUT
+    - Aliases:
+      - docker image save
+      - **docker save**
+  - Example:
+    - `docker save -o /path/to/your/image.tar IMAGE` 
+- [docker image load](https://docs.docker.com/reference/cli/docker/image/load/)
+  - Load an image from a tar archive or STDIN.
+  - Load prebuilt images into Docker management. Good on shared devices where old Docker images are frequently removed.
+  - Syntax:
+    - USAGE: `docker load OPTIONS`
+    - OPTIONS:
+      - `-i, --input string`: Read from tar archive file, instead of STDIN
+    - Aliases:
+      - docker image load
+      - **docker load**
+  - Example:
+    - `docker load -i /path/to/your/image.tar`
 
 ### Remove Containers or Images
 
@@ -346,5 +346,6 @@ Hello from our-first-image :-)
 
 $
 ```
+
 
 
