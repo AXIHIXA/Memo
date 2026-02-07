@@ -158,9 +158,10 @@ $
 ### "Get into" to a Running Container
 
 - [docker container attach](https://docs.docker.com/reference/cli/docker/container/attach/)
+  - Attach local standard input, output, and error streams to a running container. 
   - Syntax:
     - USAGE: `docker attach [OPTIONS] CONTAINER`
-    - Aliases:
+    - ALIASES:
       - docker container attach
       - docker attach
   - Conflicts with existing sessions.
@@ -181,7 +182,7 @@ $
     -u, --user string          Username or UID (format: "<name|uid>[:<group|gid>]")
     -w, --workdir string       Working directory inside the container
     ```
-    - Aliases:
+    - ALIASES:
       - docker container exec
       - docker exec
   - Example:
@@ -193,13 +194,13 @@ $
 - [Stop one or more running containers](https://docs.docker.com/reference/cli/docker/container/stop/)
   - `docker container stop [OPTIONS] CONTAINER [CONTAINER...]`
   - The main process inside the container will receive **SIGTERM**, and after a grace period, **SIGKILL**. 
-  - OPTIONS
+  - OPTIONS:
     - [`-s, --signal`](https://docs.docker.com/reference/cli/docker/container/stop/#signal): Signal to send to the container.
     - [`-t, --timeout`](https://docs.docker.com/reference/cli/docker/container/stop/#timeout): Seconds to wait before killing the container.
       - E.g., `docker stop -t 0 our-server`:
         - Immediately stop the running container.
         - Be careful, could lead to data loss. 
-  - Aliases
+  - ALIASES:
     - `docker container stop`
     - **docker stop**
 - [Kills one or more containers](https://docs.docker.com/reference/cli/docker/container/kill/):
@@ -227,7 +228,7 @@ $
     - USAGE: `docker save [OPTIONS] IMAGE [IMAGE...]`
     - OPTIONS:
       - `-o, --output string`: Write to a file, instead of STDOUT
-    - Aliases:
+    - ALIASES:
       - docker image save
       - **docker save**
   - Example:
@@ -239,7 +240,7 @@ $
     - USAGE: `docker load OPTIONS`
     - OPTIONS:
       - `-i, --input string`: Read from tar archive file, instead of STDIN
-    - Aliases:
+    - ALIASES:
       - docker image load
       - **docker load**
   - Example:
@@ -346,6 +347,7 @@ Hello from our-first-image :-)
 
 $
 ```
+
 
 
 
