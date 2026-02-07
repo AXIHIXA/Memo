@@ -1,6 +1,8 @@
 # [Docker](https://docs.docker.com/reference/)
 
-## Everyday Use with [Docker Command Line Interface (CLI)](https://docs.docker.com/reference/cli/docker/)
+
+
+## Basic Usage: Daily Use with [Docker Command Line Interface (CLI)](https://docs.docker.com/reference/cli/docker/)
 
 ### Help
 
@@ -242,7 +244,9 @@ $
     - `docker image rm`
     - **docker rmi**
 
-## Docker Image Creation
+
+
+## Advanced Usage: Docker Image Creation
 
 ### [Dockerfile](https://docs.docker.com/reference/dockerfile/)
 
@@ -317,3 +321,4 @@ Hello from our-first-image :-)
 
 $
 ```
+
