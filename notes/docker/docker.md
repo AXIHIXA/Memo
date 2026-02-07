@@ -155,8 +155,38 @@ $
 
 ### Attach to a Running Container
 
-- `docker attach`: Conflicts with existing sessions. All sessions will see the same input/output.
-- `docker exec -it <container_name_or_id> /bin/bash`: Do not conflict with existing sessions. 
+- `docker attach`
+  - Conflicts with existing sessions.
+  - All sessions will see the same input/output.
+- `docker exec -it <container_name_or_id> /bin/bash`
+  - Do not conflict with existing sessions. 
+
+### Save and Load an Image
+
+- [docker image save](https://docs.docker.com/reference/cli/docker/image/save/)
+  - Save one or more images to a tar archive (streamed to STDOUT by default). 
+  - Save built images for further use. Good on shared devices where old Docker images are frequently removed. 
+  - Syntax:
+    - USAGE: `docker save [OPTIONS] IMAGE [IMAGE...]`
+    - OPTIONS:
+      - `-o, --output string`: Write to a file, instead of STDOUT
+    - Aliases:
+      - docker image save
+      - **docker save**
+  - Example:
+    - `docker save -o /path/to/your/image.tar IMAGE` 
+- [docker image load](https://docs.docker.com/reference/cli/docker/image/load/)
+  - Load an image from a tar archive or STDIN.
+  - Load prebuilt images into Docker management. Good on shared devices where old Docker images are frequently removed.
+  - Syntax:
+    - USAGE: `docker load OPTIONS`
+    - OPTIONS:
+      - `i-, --input string`: Read from tar archive file, instead of STDIN
+    - Aliases:
+      - docker image load
+      - **docker load**
+  - Example:
+    - `docker load -i /path/to/your/image.tar`
 
 ### [Dockerfile](https://docs.docker.com/reference/dockerfile/)
 
@@ -285,6 +315,7 @@ $
     - `docker image remove`
     - `docker image rm`
     - **docker rmi**
+
 
 
 
