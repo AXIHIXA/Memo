@@ -155,13 +155,38 @@ This message shows that your installation appears to be working correctly.
 $
 ```
 
-### Attach to a Running Container
+### "Get into" to a Running Container
 
-- `docker attach`
+- [docker container attach](https://docs.docker.com/reference/cli/docker/container/attach/)
+  - Syntax:
+    - USAGE: `docker attach [OPTIONS] CONTAINER`
+    - Aliases:
+      - docker container attach
+      - docker attach
   - Conflicts with existing sessions.
-  - All sessions will see the same input/output.
-- `docker exec -it <container_name_or_id> /bin/bash`
-  - Do not conflict with existing sessions. 
+  - Cons: **All sessions will see the same input/output**.
+- [docker container exec](https://docs.docker.com/reference/cli/docker/container/exec/)
+  - Execute a command in a running container.
+  - Syntax:
+    - USAGE: `docker exec [OPTIONS] CONTAINER COMMAND [ARG...]`
+    - OPTIONS:
+    ```bash
+    -d, --detach               Detached mode: run command in the background
+        --detach-keys string   Override the key sequence for detaching a container
+    -e, --env list             Set environment variables
+        --env-file list        Read in a file of environment variables
+    -i, --interactive          Keep STDIN open even if not attached
+        --privileged           Give extended privileges to the command
+    -t, --tty                  Allocate a pseudo-TTY
+    -u, --user string          Username or UID (format: "<name|uid>[:<group|gid>]")
+    -w, --workdir string       Working directory inside the container
+    ```
+    - Aliases:
+      - docker container exec
+      - docker exec
+  - Example:
+    - `docker exec -it CONTAINER /bin/bash`
+    - Get into a running container without conflicting with other sesseions"
 
 ### Save and Load an Image
 
@@ -321,4 +346,5 @@ Hello from our-first-image :-)
 
 $
 ```
+
 
