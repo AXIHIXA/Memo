@@ -1,6 +1,6 @@
 # [Docker](https://docs.docker.com/reference/)
 
-## [Docker Command Line Interface (CLI)](https://docs.docker.com/reference/cli/docker/)
+## Everyday Use with [Docker Command Line Interface (CLI)](https://docs.docker.com/reference/cli/docker/)
 
 ### Help
 
@@ -188,6 +188,62 @@ $
   - Example:
     - `docker load -i /path/to/your/image.tar`
 
+### Stop or Kill a Running Container
+
+- [Stop one or more running containers](https://docs.docker.com/reference/cli/docker/container/stop/)
+  - `docker container stop [OPTIONS] CONTAINER [CONTAINER...]`
+  - The main process inside the container will receive **SIGTERM**, and after a grace period, **SIGKILL**. 
+  - OPTIONS
+    - [`-s, --signal`](https://docs.docker.com/reference/cli/docker/container/stop/#signal): Signal to send to the container.
+    - [`-t, --timeout`](https://docs.docker.com/reference/cli/docker/container/stop/#timeout): Seconds to wait before killing the container.
+      - E.g., `docker stop -t 0 our-server`:
+        - Immediately stop the running container.
+        - Be careful, could lead to data loss. 
+  - Aliases
+    - `docker container stop`
+    - **docker stop**
+- [Kills one or more containers](https://docs.docker.com/reference/cli/docker/container/kill/):
+  - `docker container kill [OPTION] CONTAINER [CONTAINER...]`
+  - The main process inside the container is sent:
+    - **SIGKILL** signal (default), or the OPTION.
+  - OPTION [`-s, --signal`](https://docs.docker.com/reference/cli/docker/container/kill/#signal).
+    - The signal can be a name or a number.
+    - The SIG prefix is optional.
+    - E.g., the following are equivalent:
+      - `docker kill --signal=SIGHUP our-server`
+      - `docker kill --signal=HUP our-server`
+      - `docker kill --signal=1 our-server`
+  - CONTAINER can be an ID, an ID-prefix, or a name.
+  - Aliases:
+    - `docker container kill`
+    - **docker kill**
+
+### Remove Containers or Images
+
+- [Remove one or more containers](https://docs.docker.com/reference/cli/docker/container/rm/)
+  - `docker container rm [OPTIONS] CONTAINER [CONTAINER...]`
+  - Batch removal: `docker ps -aq | xargs docker rm`
+    - `-q`: Tell `docker ps` to only output IDs.
+    - [xargs](https://man7.org/linux/man-pages/man1/xargs.1.html)
+      - A built-in Linux tool that builds and executes command lines from STDIN. 
+      - `xargs [options] [command [initial-arguments]]`
+    - Take Each ID from `docker ps -aq` and feed it to `docker rm`'s arguments. 
+  - Aliases:
+    - `docker container remove`
+    - `docker container rm`
+    - **docker rm**
+- [Remove (and un-tag) one or more images](https://docs.docker.com/reference/cli/docker/image/rm/)
+  - `docker image rm [OPTIONS] IMAGE [IMAGE...]`
+  - If a container uses this image, the container should be removed first. 
+    - Unless we use the [`-f`, `--force`](https://docs.docker.com/reference/cli/docker/image/rm/) OPTION.
+    - But this could lead to undefined behaviors. 
+  - Aliases:
+    - `docker image remove`
+    - `docker image rm`
+    - **docker rmi**
+
+## Docker Image Creation
+
 ### [Dockerfile](https://docs.docker.com/reference/dockerfile/)
 
 - Files needed to create a local Docker image:
@@ -261,64 +317,3 @@ Hello from our-first-image :-)
 
 $
 ```
-
-### Stop or Kill a Running Container
-
-- [Stop one or more running containers](https://docs.docker.com/reference/cli/docker/container/stop/)
-  - `docker container stop [OPTIONS] CONTAINER [CONTAINER...]`
-  - The main process inside the container will receive **SIGTERM**, and after a grace period, **SIGKILL**. 
-  - OPTIONS
-    - [`-s, --signal`](https://docs.docker.com/reference/cli/docker/container/stop/#signal): Signal to send to the container.
-    - [`-t, --timeout`](https://docs.docker.com/reference/cli/docker/container/stop/#timeout): Seconds to wait before killing the container.
-      - E.g., `docker stop -t 0 our-server`:
-        - Immediately stop the running container.
-        - Be careful, could lead to data loss. 
-  - Aliases
-    - `docker container stop`
-    - **docker stop**
-- [Kills one or more containers](https://docs.docker.com/reference/cli/docker/container/kill/):
-  - `docker container kill [OPTION] CONTAINER [CONTAINER...]`
-  - The main process inside the container is sent:
-    - **SIGKILL** signal (default), or the OPTION.
-  - OPTION [`-s, --signal`](https://docs.docker.com/reference/cli/docker/container/kill/#signal).
-    - The signal can be a name or a number.
-    - The SIG prefix is optional.
-    - E.g., the following are equivalent:
-      - `docker kill --signal=SIGHUP our-server`
-      - `docker kill --signal=HUP our-server`
-      - `docker kill --signal=1 our-server`
-  - CONTAINER can be an ID, an ID-prefix, or a name.
-  - Aliases:
-    - `docker container kill`
-    - **docker kill**
-
-### Remove Containers or Images
-
-- [Remove one or more containers](https://docs.docker.com/reference/cli/docker/container/rm/)
-  - `docker container rm [OPTIONS] CONTAINER [CONTAINER...]`
-  - Batch removal: `docker ps -aq | xargs docker rm`
-    - `-q`: Tell `docker ps` to only output IDs.
-    - [xargs](https://man7.org/linux/man-pages/man1/xargs.1.html)
-      - A built-in Linux tool that builds and executes command lines from STDIN. 
-      - `xargs [options] [command [initial-arguments]]`
-    - Take Each ID from `docker ps -aq` and feed it to `docker rm`'s arguments. 
-  - Aliases:
-    - `docker container remove`
-    - `docker container rm`
-    - **docker rm**
-- [Remove (and un-tag) one or more images](https://docs.docker.com/reference/cli/docker/image/rm/)
-  - `docker image rm [OPTIONS] IMAGE [IMAGE...]`
-  - If a container uses this image, the container should be removed first. 
-    - Unless we use the [`-f`, `--force`](https://docs.docker.com/reference/cli/docker/image/rm/) OPTION.
-    - But this could lead to undefined behaviors. 
-  - Aliases:
-    - `docker image remove`
-    - `docker image rm`
-    - **docker rmi**
-
-
-
-
-
-
-
