@@ -181,7 +181,7 @@ $
   - Syntax:
     - USAGE: `docker load OPTIONS`
     - OPTIONS:
-      - `i-, --input string`: Read from tar archive file, instead of STDIN
+      - `-i, --input string`: Read from tar archive file, instead of STDIN
     - Aliases:
       - docker image load
       - **docker load**
@@ -315,6 +315,7 @@ $
     - `docker image remove`
     - `docker image rm`
     - **docker rmi**
+
 
 
 
