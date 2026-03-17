@@ -34,6 +34,8 @@
   - [Docker](./notes/docker/docker.md)
 - Git
   - [Git](./notes/git-notes/git-notes.md)
+- PowerShell
+  - [PowerShell](./notes/powershell/powershell.md)
 - Python
     - [Python Offical Tutorial Notes](./notes/py/py.md)
     - [NumPy Tutorial Notes](./notes/py/numpy.md)
