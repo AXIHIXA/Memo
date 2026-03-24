@@ -35,7 +35,7 @@ C:\Users\xihan\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 | Feature | Bash | PowerShell |
 | :--- | :--- | :--- |
 | **Variable Syntax** | `var="val"` | `$var = "val"` |
-| **Home Directory** | `~` | `$HOME` or `~` |
+| **Home Directory** | `~` | `$HOME` or `~` or `$env:USERPROFILE` |
 | **Current Directory** | `$PWD` | `$PWD` |
 | **Last Command Success** | `$?` | `$?` (Returns True/False) |
 | **External Exit Code** | `$?` | `$LASTEXITCODE` (Returns Number) |
