@@ -21,7 +21,8 @@ Set-PSReadLineOption -EditMode Emacs
 
 #### 1. Save Configurations
 
-- PowerShell `write-host` vs. Bash `echo`;
+- PowerShell `write-host` vs. Bash `echo`.
+  - In PowerShell, `write-host` is a wrapper of `write-output`, `echo` is an alias to `write-output`. 
 - PowerShell `$profile` vs. Bash `~/.profile/` & `~/.bashrc`.
 ```powershell
 PS C:\Users\xihan> write-host $profile
