@@ -1,11 +1,17 @@
-# WSL 2 
+# Windows
 
-## 1
+## Shortcuts
+
+- Adjust window size (full, half screen, etc.): `Win`+`Left/Right/Up/Down`. 
+
+## WSL 2 
+
+### 1
 
 - [Enable WSL 2](https://docs.microsoft.com/zh-cn/windows/wsl/install-win10#step-1---download-the-linux-kernel-update-package)
 - [Windows Terminal](https://docs.microsoft.com/zh-cn/windows/terminal/)
 
-## 2
+### 2
 
 - `CLion` with WSL 2 `Ubuntu 20.04`:
     - Edit `clion64.exe.vmoptions`, append the following: 
