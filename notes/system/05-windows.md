@@ -24,7 +24,39 @@ choco install vim
 
 - Download from the Docker website and simply manually install Docker Desktop. 
 - Needs manual start from the GUI every startup.
-- Desktop tray > Docker Desktop > Switch to Windows Container. 
+- **Kill all Docker processes in Task Manager if Docker freezes upon startup.**
+- Desktop tray > Docker Desktop > Switch to Windows Container.
+- Force restart Docker if the switch freezes for 10+ minutes:
+```powershell
+# Kill Docker Desktop
+Stop-Process -Name "Docker Desktop" -Force -ErrorAction SilentlyContinue
+# Restart the Docker Windows service
+Restart-Service docker -Force
+# Relaunch Docker Desktop
+& "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+```
+
+## 🌱 `$profile`
+
+```powershell
+code $profile
+
+# Use Emacs (Bash) keybindings
+Set-PSReadLineOption -EditMode Emacs
+
+# Anaconda
+#region conda initialize (lazy-loaded for fast shell startup)
+# !! Contents within this block are managed by 'conda init' !!
+function conda {
+    Remove-Item Function:\conda
+    If (Test-Path "C:\Users\xihan\opt\anaconda3\Scripts\conda.exe") {
+        (& "C:\Users\xihan\opt\anaconda3\Scripts\conda.exe" "shell.powershell" "hook") | Out-String | ?{$_} | Invoke-Expression
+    }
+    conda @args
+}
+#endregion
+```
+- The default "eager conda init" block could be obtained by the command `conda init`. We use a lazy version because these scripts can drastically slow down Terminal startups. 
 
 ## 🌱 PowerShell Configuration
 
@@ -37,11 +69,10 @@ code $profile
 # Use Emacs (Bash) keybindings
 Set-PSReadLineOption -EditMode Emacs
 ```
-- By default:
-  - Move cursor to front/back: Windows `Home/End` vs. Emacs `Ctrl+A/E`.
-  - Clear content before/after cursor: Windows `Ctrl+Home/End` vs. Emacs `Ctrl+U/K`.
-  - Move cursor forward/backward by one word: Windows `Ctrl+LeftArrow/RightArrow` vs. Emacs `Alt+LeftArrow/RightArrow`.
-  - Delete the word before/after the cursor: Windows `Ctrl+Backspace/Delete` vs. Emacs `Ctrl+W`/`Alt+D`.
+- Move cursor to front/back: Windows `Home/End` vs. Emacs `Ctrl+A/E`.
+- Clear content before/after cursor: Windows `Ctrl+Home/End` vs. Emacs `Ctrl+U/K`.
+- Move cursor forward/backward by one word: Windows `Ctrl+LeftArrow/RightArrow` vs. Emacs `Alt+LeftArrow/RightArrow`.
+- Delete the word before/after the cursor: Windows `Ctrl+Backspace/Delete` vs. Emacs `Ctrl+W`/`Alt+D`.
 
 ### Vimrc
 
