@@ -84,3 +84,7 @@ set ttyfast                    " Faster terminal
 set nobackup                   " No backup files
 set noswapfile                 " No swap files
 ```
+
+## 🌱 PowerShell
+
+- [PowerShell](../powershell/powershell.md).
