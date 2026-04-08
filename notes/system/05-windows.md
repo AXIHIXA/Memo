@@ -38,11 +38,15 @@ Restart-Service docker -Force
 
 ## 🌱 `$profile`
 
+- Save with UTF-8 encoding inside vscode.
 ```powershell
 code $profile
 
 # Use Emacs (Bash) keybindings
 Set-PSReadLineOption -EditMode Emacs
+
+# Personal aliases
+Set-Alias vi vim
 
 # Anaconda
 #region conda initialize (lazy-loaded for fast shell startup)
