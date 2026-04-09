@@ -55,8 +55,8 @@ function conda {
     Remove-Item Function:\conda
     If (Test-Path "C:\Users\xihan\opt\anaconda3\Scripts\conda.exe") {
         (& "C:\Users\xihan\opt\anaconda3\Scripts\conda.exe" "shell.powershell" "hook") | Out-String | ?{$_} | Invoke-Expression
+        conda @args
     }
-    conda @args
 }
 #endregion
 ```
@@ -97,6 +97,10 @@ set showcmd                    " Show command in status bar
 set t_Co=256                   " Use 256 colors
 "set background=dark            " Dark background
 "colorscheme desert             " Color scheme
+
+" ===== Cursor =====
+let &t_SI = "\e[5 q"           " Use blinking bar for standard mode
+let &t_EI = "\e[5 q"           " Use blinking bar for edit mode
 
 " ===== Indentation =====
 set autoindent                 " Auto-indent new lines
