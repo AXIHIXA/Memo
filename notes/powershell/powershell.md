@@ -52,7 +52,7 @@ C:\Users\xihan\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 | `grep "pattern"` | `Select-String "pattern"` | `sls` |
 | `cat file.txt` | `Get-Content file.txt` | `cat`, `type`, `gc` |
 | `mkdir folder` | `New-Item -Type Directory` | `mkdir` |
-| `rm -rf` | `Remove-Item -Recurse -Force` | `rm`, `del`, `ri` |
+| `rm -rf` | `Remove-Item -Recurse -Force` `rm -Resurse -Force` `rm -r -fo` | `rm`, `del`, `ri` |
 | `find . -name "*.js"` | `Get-ChildItem -Recurse -Filter *.js` | `gci -r` |
 | `man command` | `Get-Help command -Online` | `help` |
 
