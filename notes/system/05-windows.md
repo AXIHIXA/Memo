@@ -36,7 +36,9 @@ Restart-Service docker -Force
 & "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 ```
 
-## 🌱 `$profile`
+## 🌱 Profiles
+
+### profile
 
 - Save with UTF-8 encoding inside vscode.
 ```powershell
@@ -61,6 +63,25 @@ function conda {
 #endregion
 ```
 - The default "eager conda init" block could be obtained by the command `conda init`. We use a lazy version because these scripts can drastically slow down Terminal startups. 
+
+### gitconfig
+
+```
+[trt]
+    gitlab-api-token = <ENCRYPTED>
+    trt-root = C:/Users/xihan/workspace/trt
+    runc-default-args = --mounts C:/Users/xihan/workspace/|C:/home/xihan/workspace,C:/Users/xihan/opt/|C:/Users/xihan/opt/,C:/Users/xihan/Documents/|C:/Users/ContainerAdministrator/Documents/
+[filter "lfs"]
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+[user]
+    name = Xi Han
+    email = xihan@nvidia.com
+[alias]
+    trt = !python3 C:/Users/xihan/workspace/git-trt/bin/git-trt
+```
 
 ## 🌱 PowerShell Configuration
 
