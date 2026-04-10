@@ -66,6 +66,7 @@ function conda {
 
 ### gitconfig
 
+- Note that Windows Docker containers do **not** support CUDA pass-through!
 ```
 [trt]
     gitlab-api-token = <ENCRYPTED>
