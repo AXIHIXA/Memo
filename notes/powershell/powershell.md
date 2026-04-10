@@ -48,7 +48,7 @@ C:\Users\xihan\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
 | Bash Command | PowerShell Cmdlet | Common Alias |
 | :--- | :--- | :--- |
 | `echo "text"` | `Write-Output "text"` | `echo`, `write` |
-| `ls -al` | `Get-ChildItem` | `ls`, `dir`, `gci` |
+| `ls -la` | `Get-ChildItem` | `ls`, `dir`, `gci` |
 | `grep "pattern"` | `Select-String "pattern"` | `sls` |
 | `cat file.txt` | `Get-Content file.txt` | `cat`, `type`, `gc` |
 | `mkdir folder` | `New-Item -Type Directory` | `mkdir` |
