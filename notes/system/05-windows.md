@@ -49,6 +49,12 @@ Set-PSReadLineOption -EditMode Emacs
 
 # Personal aliases
 Set-Alias vi vim
+$WORKSPACE="$HOME\workspace"
+
+# Personal helper functions
+function ws {
+    cd $WORKSPACE
+}
 
 # Anaconda
 #region conda initialize (lazy-loaded for fast shell startup)
