@@ -73,3 +73,5 @@
       - Features -> Terminal (`@feature:terminal`)
         - Terminal > Integrated: Cursor Blinking: Toggle On (`@feature:terminal cursor blinking`)
         - Terminal > Integrated: Cursor Style: `line` (`@feature:terminal cursor style`)
+- Sync VS Code settings.
+- Chat window font size:  Settings (gear icon) > General > Chat and change the "Font Size" option to Small, Large, or Extra Large. 
