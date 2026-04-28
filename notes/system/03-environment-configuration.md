@@ -496,8 +496,10 @@ Thank you for installing Anaconda3!
 
 ==> For changes to take effect, close and re-open your current shell. <==
 ```
-- Conda initialization script from eager-load to lazy-load:
+- Conda initialization script from eager-load to lazy-load (Linux Bash):
 ```bash
+vi ~/.bashrc
+
 # >>> conda initialize (lazy-loaded for fast shell startup) >>>
 # !! Contents within this block are managed by 'conda init' !!
 __CONDA_ROOT="$HOME/opt/anaconda3"
@@ -517,6 +519,46 @@ conda() {
     conda "$@"
 }
 # <<< conda initialize <<<
+```
+- Conda initialization script from eager-load to lazy-load (MacOS Zsh):
+```bash
+vi ~/.zshrc
+
+# >>> conda initialize (lazy-loaded for fast shell startup) >>>
+# !! Contents within this block are managed by 'conda init' !!
+__CONDA_ROOT="$HOME/opt/anaconda3"
+conda() {
+    unset -f conda
+    __conda_setup="$("$__CONDA_ROOT/bin/conda" 'shell.zsh' 'hook' 2> /dev/null)"
+    if [ $? -eq 0 ]; then
+        eval "$__conda_setup"
+    else
+        if [ -f "$__CONDA_ROOT/etc/profile.d/conda.sh" ]; then
+            . "$__CONDA_ROOT/etc/profile.d/conda.sh"
+        else
+            export PATH="$__CONDA_ROOT/bin:$PATH"
+        fi
+    fi
+    unset __conda_setup
+    conda "$@"
+}
+# <<< conda initialize <<<
+```
+- Conda initialization script from eager-load to lazy-load (Windows PowerShell):
+```powershell
+code $Profile
+
+# Anaconda
+#region conda initialize (lazy-loaded for fast shell startup)
+# !! Contents within this block are managed by 'conda init' !!
+function conda {
+    Remove-Item Function:\conda
+    If (Test-Path "C:\Users\xihan\opt\anaconda3\Scripts\conda.exe") {
+        (& "C:\Users\xihan\opt\anaconda3\Scripts\conda.exe" "shell.powershell" "hook") | Out-String | ?{$_} | Invoke-Expression
+        conda @args
+    }
+}
+#endregion
 ```
 - New virtual environment (do NOT use `opencv` package from `conda-forge`; go to PyPI):
 ```bash
