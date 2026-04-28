@@ -476,7 +476,7 @@ export PATH="${JAVA_HOME}/bin:${JRE_HOME}/bin${PATH:+:${PATH}}"
 bash ./Anaconda...
 ```
 - Choose `yes`:
-```
+```bash
 You can undo this by running `conda init --reverse $SHELL`? [yes|no]
 [no] >>> yes
 no change     /home/xihan1/opt/anaconda3/condabin/conda
@@ -496,8 +496,30 @@ Thank you for installing Anaconda3!
 
 ==> For changes to take effect, close and re-open your current shell. <==
 ```
-- New virtual environment (do NOT use `opencv` package from `conda-forge`; go to PyPI):
+- Conda initialization script from eager-load to lazy-load:
+```bash
+# >>> conda initialize (lazy-loaded for fast shell startup) >>>
+# !! Contents within this block are managed by 'conda init' !!
+__CONDA_ROOT="$HOME/opt/anaconda3"
+conda() {
+    unset -f conda
+    __conda_setup="$("$__CONDA_ROOT/bin/conda" 'shell.bash' 'hook' 2> /dev/null)"
+    if [ $? -eq 0 ]; then
+        eval "$__conda_setup"
+    else
+        if [ -f "$__CONDA_ROOT/etc/profile.d/conda.sh" ]; then
+            . "$__CONDA_ROOT/etc/profile.d/conda.sh"
+        else
+            export PATH="$__CONDA_ROOT/bin:$PATH"
+        fi
+    fi
+    unset __conda_setup
+    conda "$@"
+}
+# <<< conda initialize <<<
 ```
+- New virtual environment (do NOT use `opencv` package from `conda-forge`; go to PyPI):
+```bash
 # Stay with Python 3.10 for PyTorch 2.5.1 compatibility. 
 conda create -n py3 python=3.10
 conda activate py3
@@ -818,7 +840,7 @@ set(ALL_COMPILE_DEFS
   - Details also available above in `{fmt}`'s section. 
 - See the [Sample CMakeLists.txt](../../code/CPX/CMakeLists.txt). 
 
-## 🌱 java
+## 🌱 Java
 
 ### jdk
 
