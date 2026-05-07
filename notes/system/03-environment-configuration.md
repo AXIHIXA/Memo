@@ -11,6 +11,9 @@
     - `cls` is a Windows PowerShell command to clear the terminal.
     - `reset` is a Linux Bash command to reinitialize the terminal, as if it were opened from scratch.
     - `clear` is a Linux Bash command to clear all previous contents.
+  - Empty-guarded export:
+    - `${FOO:+BAR}`: If FOO is not empty, expands to BAR; otherwise, expand to nothing.
+    - `export PATH=/path/to/something${PATH:+:${PATH}}`: Do NOT append : if PATH is empty. 
 
 ### ComputeLab Remote Ubuntu
 
