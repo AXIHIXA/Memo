@@ -81,8 +81,16 @@ fi
 vi ~/.gitconfig
 
 [trt]
-        gitlab-api-token = "YOUR GITLAB PERSONAL ACCESS TOKEN GOES HERE"
-        runc-default-args = "--mounts /home/scratch.xihan_coreai/:/home/xihan/scratch.xihan_coreai/,/home/scratch.xihan_coreai/workspace:/home/xihan/workspace,/home/scratch.svc_compute_arch/:/home/xihan/scratch.svc_compute_arch/"
+        gitlab-api-token = "..."
+        runc-default-args = "--mounts /home/scratch.xihan_coreai/:/home/scratch.xihan_coreai/,/home/scratch.anatoll_hw/:/home/scratch.anatoll_hw/,/home/scratch.svc_compute_arch/:/home/scratch.svc_compute_arch/,/home/scratch.xihan_coreai/workspace/:/home/xihan/workspace/,/home/scratch.xihan_coreai/Downloads/:/home/xihan/Downloads/,/home/scratch.xihan_coreai/opt/:/home/xihan/opt/"
+[filter "lfs"]
+        clean = git-lfs clean -- %f
+        smudge = git-lfs smudge -- %f
+        process = git-lfs filter-process
+        required = true
+[user]
+        name = ...
+        email = ...
 ```
 - 3. ~/.profile
 ```bash
