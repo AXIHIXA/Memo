@@ -104,31 +104,7 @@ if [ -n "$BASH_VERSION" ]; then
     fi
 fi
 ```
-- 4. $SCRATCH/opt/scripts (After [Repo Setup](../git-notes/git-notes.md))
-```bash
-cd $SCRATCH
-mkdir -p opt
-cd opt
-mkdir -p scripts
-cd scripts
-vi xi-run-cudnn-container.sh
-
-#!/bin/bash
-docker \
-    run \
-    -it \
-    --rm \
-    --user=151841:30 \
-    --volume=/home/xihan:/home/xihan \
-    --volume=/home/scratch.xihan_coreai:/home/scratch.xihan_coreai \
-    --workdir=/home/xihan \
-    --hostname=docker-`hostname` \
-    --name=xihan \
-    --gpus=all \
-    urm.nvidia.com/hw-cudnn-docker/dev:xihan-local
-
-chmod +x xi-run-cudnn-container.sh
-```
+- 4. Custom User Scripts
 ```bash
 vi xi-nsys-stats-report-cuda-gpu-kern-sum.sh
 
@@ -138,90 +114,11 @@ nsys stats --report cuda_gpu_kern_sum $1
 chmod +x xi-nsys-stats-report-cuda-gpu-kern-sum.sh
 ```
 ```bash
-vi xi-cmake-build.sh 
-
-#!/bin/sh
-
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <Debug|Release> [clean]"
-    exit 1
-fi
-
-# Convert argument to lowercase for case-insensitive comparison
-BUILD_TYPE=$(echo "$1" | tr '[:upper:]' '[:lower:]')
-
-# Set CMAKE_BUILD_TYPE and build directory based on input
-case "$BUILD_TYPE" in
-    debug)
-        CMAKE_BUILD_TYPE="Debug"
-        BUILD_DIR="cmake-build-debug"
-        ;;
-    release)
-        CMAKE_BUILD_TYPE="Release"
-        BUILD_DIR="cmake-build-release"
-        ;;
-    *)
-        echo "Error: Invalid build type '$1'"
-        echo "Valid options: Debug, Release (case insensitive)"
-        exit 1
-        ;;
-esac
-
-# Check if the clean argument is provided
-if [ $# -ge 2 ]; then
-    CLEAN_ARG=$(echo "$2" | tr '[:upper:]' '[:lower:]')
-    if [ "$CLEAN_ARG" = "clean" ]; then
-        if [ -d "$BUILD_DIR" ]; then
-            echo "rm -rf '$BUILD_DIR'"
-            rm -rf "$BUILD_DIR"
-        fi
-    else
-        echo "Error: Unknown argument '$2'"
-        echo "Valid options: clean (optional, case insensitive)"
-        exit 1
-    fi
-fi
-
-# CMake build
-if [ -d "$BUILD_DIR" ]; then
-    echo "mkdir '$BUILD_DIR'"
-    mkdir "$BUILD_DIR"
-
-    if [ $? -ne 0 ]; then
-        echo "Error: failed to create build directory '$BUILD_DIR'"
-        exit 1
-    fi
-fi 
-
-echo "cmake -DCMAKE_BUILD_TYPE='$CMAKE_BUILD_TYPE' -B'$BUILD_DIR'"
-cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -B"$BUILD_DIR"
-
-if [ $? -ne 0 ]; then
-    echo "Error: cmake generator returned a non-zero value"
-    exit 1
-fi
-
-echo "cmake --build '$BUILD_DIR' -j"
-cmake --build "$BUILD_DIR" -j
-
-if [ $? -ne 0 ]; then
-    echo "Error: cmake builder returned a non-zero value"
-    exit 1
-fi
-
-echo "Done"
-exit 0
-
-chmod +x xi-cmake-build.sh 
-```
-```bash
 cd $SCRATCH
 cd opt
 mkdir -p bin
 cd bin
-ln -s `realpath ../scripts/xi-run-cudnn-container.sh` rcd
 ln -s `realpath ../scripts/xi-nsys-stats-report-cuda-gpu-kern-sum.sh` nss
-ln -s `realpath ../scripts/xi-cmake-build.sh` cmk
 ```
 
 ### MacOS
@@ -382,6 +279,43 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
     - `su -`：
       - 切换到 root，并启用一个全新的 login shell session。
       - 当前工作目录和上下文不会被保留。
+- Conda Env
+  - For set/unset an new env var:
+  ```bash
+  # $CONDA_PREFIX is the path to your env (e.g. ~/miniconda3/envs/myenv).
+  mkdir $CONDA_PREFIX/etc/conda/activate.d/
+  mkdir $CONDA_PREFIX/etc/conda/deactivate.d/
+
+  touch $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+
+  #!/bin/sh
+  export MY_OLD_VAR="${MY_VAR:-}"   # stash the original (may be unset)
+  export MY_VAR="my_value"
+
+  touch $CONDA_PREFIX/etc/conda/deactivate.d/env_vars.sh:
+
+  #!/bin/sh
+  export MY_VAR="$MY_OLD_VAR"
+  unset MY_OLD_VAR
+  ```
+  ```bash
+  # If you want a clean unset when the original didn't exist,
+  # you can guard with [ -z "$MY_OLD_VAR" ] && unset MY_VAR || export MY_VAR="$MY_OLD_VAR".
+  # On Windows, there's an equivalent .bat convention under activate.d\ and deactivate.d\.
+  ```
+  - To modify an existing env var (such as `$PATH` or `$Env:Path`:
+    When you conda deactivate, conda automatically restores the previous value (or unsets it if it didn't exist before).
+    This is stored in the env's metadata, so it's the cleanest option for plain `KEY=val` pairs.
+  ```bash
+  # set a var for the currently active env
+  conda env config vars set MY_VAR=my_value
+  # must reactivate for it to take effect
+  conda activate myenv
+  # list configured vars
+  conda env config vars list
+  # remove it
+  conda env config vars unset MY_VAR
+  ```
 
 
 ### 如何修改 PATH
