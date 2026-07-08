@@ -280,7 +280,7 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
       - 切换到 root，并启用一个全新的 login shell session。
       - 当前工作目录和上下文不会被保留。
 - Conda Env
-  - For set/unset an new env var:
+  - To set/unset a new env var on Linux:
   ```bash
   # $CONDA_PREFIX is the path to your env (e.g. ~/miniconda3/envs/myenv).
   mkdir $CONDA_PREFIX/etc/conda/activate.d/
@@ -301,7 +301,20 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
   ```bash
   # If you want a clean unset when the original didn't exist,
   # you can guard with [ -z "$MY_OLD_VAR" ] && unset MY_VAR || export MY_VAR="$MY_OLD_VAR".
-  # On Windows, there's an equivalent .bat convention under activate.d\ and deactivate.d\.
+  ```
+  - To set/unset a new env var on Windows:
+  ```powershell
+  mkdir $env:CONDA_PREFIX/etc/conda/activate.d/
+  mkdir $env:CONDA_PREFIX/etc/conda/deactivate.d/
+  
+  touch $env:CONDA_PREFIX/etc/conda/activate.d/path.ps1
+  
+  $env:_CONDA_OLD_PATH = $env:PATH
+  $env:PATH = "$env:PATH;C:\my\dir"   # append (use "C:\my\dir;$env:PATH" to prepend)
+
+  touch $env:CONDA_PREFIX/etc/conda/deactivate.d/path.ps1
+  $env:PATH = $env:_CONDA_OLD_PATH
+  Remove-Item Env:_CONDA_OLD_PATH
   ```
   - To modify an existing env var (such as `$PATH` or `$Env:Path`:
     When you conda deactivate, conda automatically restores the previous value (or unsets it if it didn't exist before).
