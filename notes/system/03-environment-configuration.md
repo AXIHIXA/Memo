@@ -283,8 +283,7 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
   - To set/unset a new env var on Linux:
   ```bash
   # $CONDA_PREFIX is the path to your env (e.g. ~/miniconda3/envs/myenv).
-  mkdir $CONDA_PREFIX/etc/conda/activate.d/
-  mkdir $CONDA_PREFIX/etc/conda/deactivate.d/
+  cd $CONDA_PREFIX/etc/conda/
 
   touch $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 
@@ -307,12 +306,12 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
   mkdir $env:CONDA_PREFIX/etc/conda/activate.d/
   mkdir $env:CONDA_PREFIX/etc/conda/deactivate.d/
   
-  touch $env:CONDA_PREFIX/etc/conda/activate.d/path.ps1
+  New-Item $env:CONDA_PREFIX/etc/conda/activate.d/path.ps1
   
   $env:_CONDA_OLD_PATH = $env:PATH
   $env:PATH = "$env:PATH;C:\my\dir"   # append (use "C:\my\dir;$env:PATH" to prepend)
 
-  touch $env:CONDA_PREFIX/etc/conda/deactivate.d/path.ps1
+  New-Item $env:CONDA_PREFIX/etc/conda/deactivate.d/path.ps1
   $env:PATH = $env:_CONDA_OLD_PATH
   Remove-Item Env:_CONDA_OLD_PATH
   ```
