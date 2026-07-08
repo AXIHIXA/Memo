@@ -303,8 +303,7 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
   ```
   - To set/unset a new env var on Windows:
   ```powershell
-  mkdir $env:CONDA_PREFIX/etc/conda/activate.d/
-  mkdir $env:CONDA_PREFIX/etc/conda/deactivate.d/
+  cd $env:CONDA_PREFIX/etc/conda/
   
   New-Item $env:CONDA_PREFIX/etc/conda/activate.d/path.ps1
   
@@ -312,6 +311,7 @@ alias kkpixiv="bash /mnt/d/workspace/Memo/code/dl-bak/PatreonDownloader-AlexCSDe
   $env:PATH = "$env:PATH;C:\my\dir"   # append (use "C:\my\dir;$env:PATH" to prepend)
 
   New-Item $env:CONDA_PREFIX/etc/conda/deactivate.d/path.ps1
+  
   $env:PATH = $env:_CONDA_OLD_PATH
   Remove-Item Env:_CONDA_OLD_PATH
   ```
