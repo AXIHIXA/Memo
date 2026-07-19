@@ -1,7 +1,7 @@
 import os
 
 
-SAVE_DIR = '/mnt/f/Hfhf'
+SAVE_DIR = '/mnt/g/Hfhf'
 TMP_DIR = '/mnt/g/TMP'
 
 
