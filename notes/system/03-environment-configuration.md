@@ -2,13 +2,13 @@
 
 ## 🌱 Readline Options
 
-- Mac Start/Opt maps to Win/Linux Alt.
 - Win: `Set-PSReadLineOption -EditMode Emacs` to use Unix-style terminal shortcuts. 
 - Ctrl+A/E: Move cursor to the line's front/back. (Inside Vim, Home/End.)
 - Ctrl+U/K: Delete everything to the left/right of the cursor.
-- Ctrl+B/F: Jump between words. 
-  - Opt+Left/Right: Mac alternative.
-  - Alt+Left/Right: Unix/Win alternative, can be blocked by Windows App. 
+- Jump between words: 
+  - Alt+B/F: Unix/Win.
+  - Opt+B/F: Remote Win from a Mac host. (Mac keyboard's Start/Opt key maps to Alt key.)
+  - Opt+Left/Right: Mac alternative (As Opt+B/F maps to specical characters on Mac.)
 
 ## 🌱 .BASHRC
 
