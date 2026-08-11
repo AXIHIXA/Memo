@@ -1,5 +1,14 @@
 # 环境配置 Environment Configuration
 
+## 🌱 Readline Options
+
+- Mac Start/Opt maps to Win/Linux Alt.
+- Win: `Set-PSReadLineOption -EditMode Emacs` to use Unix-style terminal shortcuts. 
+- Ctrl+A/E: Move cursor to the line's front/back. (Inside Vim, Home/End.)
+- Ctrl+U/K: Delete everything to the left/right of the cursor.
+- Ctrl+B/F: Jump between words. 
+  - Opt+Left/Right: Mac alternative.
+  - Alt+Left/Right: Unix/Win alternative, can be blocked by Windows App. 
 
 ## 🌱 .BASHRC
 
@@ -13,7 +22,7 @@
     - `clear` is a Linux Bash command to clear all previous contents.
   - Empty-guarded export:
     - `${FOO:+BAR}`: If FOO is not empty, expands to BAR; otherwise, expand to nothing.
-    - `export PATH=/path/to/something${PATH:+:${PATH}}`: Do NOT append : if PATH is empty. 
+    - `export PATH=/path/to/something${PATH:+:${PATH}}`: Do NOT append : if PATH is empty.
 
 ### ComputeLab Remote Ubuntu
 
