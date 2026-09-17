@@ -71,7 +71,7 @@ export PATH="$SCRATCH/opt/bin:$PATH"
 
 # TRT
 TRT_USER="xihan"
-GITLAB_PAT="YOUR GITLAB PERSONAL ACCESS TOKEN GOES HERE"
+GITLAB_PAT="<token-redacted>"
 export GIT_TRT_ROOT="$WORKSPACE/git-trt"
 export PATH="$GIT_TRT_ROOT/bin:$PATH"
 export MANPATH="$GIT_TRT_ROOT/man:$MANPATH"
@@ -79,11 +79,11 @@ export TRT_ROOT="$WORKSPACE/trt"
 export TRT_USER
 export TRT_GITLAB_API_TOKEN=$GITLAB_PAT
 export TRT_CONTAINERS_PATH="$SCRATCH/.trt_containers"
+export MYELIN_ROOT="$WORKSPACE/myelin"
 
-# TRT autocomplete
-if [[ -f ~/.git-trt-autocomplete.bash ]]; then
-    source ~/.git-trt-autocomplete.bash
-fi
+# JFrog artifactory identity token
+# https://artifactory.nvidia.com/ui/user_profile
+export ARTIFACTORY_TOKEN="<token-redacted>"
 ```
 - 2. ~/.gitconfig
 ```bash
