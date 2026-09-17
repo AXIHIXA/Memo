@@ -71,23 +71,21 @@ export PATH="$SCRATCH/opt/bin:$PATH"
 
 # Xi's identity tokens
 # GitLab personal access token: https://gitlab-master.nvidia.com/-/user_settings/personal_access_tokens
-# JFrog aws-artifactory identity token: https://artifactory.nvidia.com/ui/user_profile
-GITLAB_API_TOKEN="<redacted>"
-JFROG_IDENTITY_TOKEN="<redacted>"
-
-# TRT
+# AWS-Artifactory identity token: https://artifactory.nvidia.com/ui/user_profile
 TRT_USER="xihan"
+GITLAB_PERSONAL_ACCESS_TOKEN="<>"
+AWS_ARTIFACTORY_IDENTITY_TOKEN="<>"
+
+# TRT, Myelin, and cuDNN development
+export TRT_USER
+export TRT_GITLAB_API_TOKEN=$GITLAB_PERSONAL_ACCESS_TOKEN
+export ARTIFACTORY_TOKEN=$AWS_ARTIFACTORY_IDENTITY_TOKEN
 export GIT_TRT_ROOT="$WORKSPACE/git-trt"
 export PATH="$GIT_TRT_ROOT/bin:$PATH"
 export MANPATH="$GIT_TRT_ROOT/man:$MANPATH"
 export TRT_ROOT="$WORKSPACE/trt"
-export TRT_USER
-export TRT_GITLAB_API_TOKEN=$GITLAB_API_TOKEN
 export TRT_CONTAINERS_PATH="$SCRATCH/.trt_containers"
 export MYELIN_ROOT="$WORKSPACE/myelin"
-
-# cuDNN
-export ARTIFACTORY_TOKEN=$JFROG_IDENTITY_TOKEN
 ```
 - 2. ~/.gitconfig
 ```bash
