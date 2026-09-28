@@ -3,7 +3,7 @@
 ## 🌱 Readline Options
 
 - Win: `Set-PSReadLineOption -EditMode Emacs` to use Unix-style terminal shortcuts. 
-- Ctrl+A/E: Move cursor to the line's front/back. (Inside Vim, Home/End.)
+- Ctrl+A/E: Move the cursor to the line's front/back. (Inside Vim, Home/End.)
 - Ctrl+U/K: Delete everything to the left/right of the cursor.
 - Jump between words: 
   - Alt+B/F: Unix/Win.
@@ -80,7 +80,9 @@ AWS_ARTIFACTORY_IDENTITY_TOKEN="<>"
 export TRT_USER
 export TRT_GITLAB_API_TOKEN=$GITLAB_PERSONAL_ACCESS_TOKEN
 export ARTIFACTORY_USERNAME=$TRT_USER
+export CONAN_LOGIN_USERNAME_TRT_VIRTUAL_AWS=$TRT_USER
 export AWS_ARTIFACTORY_PASSWORD=$AWS_ARTIFACTORY_IDENTITY_TOKEN
+export CONAN_PASSWORD_TRT_VIRTUAL_AWS=$AWS_ARTIFACTORY_IDENTITY_TOKEN
 export GIT_TRT_ROOT="$WORKSPACE/git-trt"
 export PATH="$GIT_TRT_ROOT/bin:$PATH"
 export MANPATH="$GIT_TRT_ROOT/man:$MANPATH"
