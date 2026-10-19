@@ -72,9 +72,11 @@ export PATH="$SCRATCH/opt/bin:$PATH"
 # Xi's identity tokens
 # GitLab personal access token: https://gitlab-master.nvidia.com/-/user_settings/personal_access_tokens
 # AWS-Artifactory identity token: https://artifactory.nvidia.com/ui/user_profile
+# GTL API key: https://gtl-ui.nvidia.com/tools/api-keys#api-keys
 TRT_USER="xihan"
 GITLAB_PERSONAL_ACCESS_TOKEN="<>"
 AWS_ARTIFACTORY_IDENTITY_TOKEN="<>"
+GTL_API_KEY="<>"
 
 # TRT environment variables
 export TRT_USER
@@ -85,6 +87,7 @@ export CONAN_LOGIN_USERNAME_MYELIN_AWS=$TRT_USER
 export AWS_ARTIFACTORY_PASSWORD=$AWS_ARTIFACTORY_IDENTITY_TOKEN
 export CONAN_PASSWORD_TRT_VIRTUAL_AWS=$AWS_ARTIFACTORY_IDENTITY_TOKEN
 export CONAN_PASSWORD_MYELIN_AWS=$AWS_ARTIFACTORY_IDENTITY_TOKEN
+export GTL_API_KEY
 export GIT_TRT_ROOT="$WORKSPACE/git-trt"
 export PATH="$GIT_TRT_ROOT/bin:$PATH"
 export MANPATH="$GIT_TRT_ROOT/man:$MANPATH"
