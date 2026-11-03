@@ -122,8 +122,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Match redacted images in `pix` with originals in `qq` and rename `qq` files."
     )
-    parser.add_argument("pix", type=Path, help="Path to the `pix` directory (redacted images)")
-    parser.add_argument("qq", type=Path, help="Path to the `qq` directory (original images to rename)")
+    parser.add_argument("--pix", type=Path, default="pix", help="Path to the directory containing redacted images")
+    parser.add_argument("--qq", type=Path, default="qq", help="Path to the directory containing original images to rename")
     parser.add_argument(
         "--exact-ext",
         action="store_true",
